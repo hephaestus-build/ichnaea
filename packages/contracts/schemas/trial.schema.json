@@ -1,0 +1,507 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ichnaea:schema:trial:1",
+  "title": "ichnaea.trial/1",
+  "description": "The normalised evidence of one trial.",
+  "x-ichnaea-stability": "alpha",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "ichnaea.trial/1",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "offline",
+        "online"
+      ],
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "run": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "case": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "unit": {
+      "type": "string",
+      "enum": [
+        "turn",
+        "trace",
+        "session",
+        "episode"
+      ],
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "configuration": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "arm": {
+      "type": "string",
+      "enum": [
+        "base",
+        "candidate"
+      ],
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "replicate": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991,
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "outcome": {
+      "type": "string",
+      "enum": [
+        "completed",
+        "abstained",
+        "system_failure",
+        "infrastructure_failure",
+        "budget_exceeded",
+        "invalid_configuration",
+        "not_run"
+      ],
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "dataClass": {
+      "type": "string",
+      "enum": [
+        "none",
+        "pseudonymous",
+        "personal",
+        "special"
+      ],
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "input": {
+      "x-ichnaea-data": {
+        "class": "inherit",
+        "identifier": "content"
+      },
+      "$ref": "#/$defs/JsonValue"
+    },
+    "output": {
+      "x-ichnaea-data": {
+        "class": "inherit",
+        "identifier": "content"
+      },
+      "$ref": "#/$defs/JsonValue"
+    },
+    "pointer": {
+      "type": "string",
+      "minLength": 1,
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "model_call",
+              "tool_call",
+              "retrieval",
+              "user_turn",
+              "other"
+            ],
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          },
+          "model": {
+            "type": "string",
+            "minLength": 1,
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "error",
+              "refused",
+              "timeout"
+            ],
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          },
+          "inputTokens": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          },
+          "outputTokens": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          },
+          "durationMs": {
+            "type": "number",
+            "minimum": 0,
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          },
+          "detail": {
+            "x-ichnaea-data": {
+              "class": "inherit",
+              "identifier": "content"
+            },
+            "$ref": "#/$defs/JsonValue"
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      }
+    },
+    "usage": {
+      "type": "object",
+      "properties": {
+        "calls": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991,
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none"
+          }
+        },
+        "inputTokens": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991,
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none"
+          }
+        },
+        "outputTokens": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991,
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none"
+          }
+        },
+        "cost": {
+          "type": "number",
+          "minimum": 0,
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none"
+          }
+        },
+        "costUnit": {
+          "type": "string",
+          "minLength": 1,
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none"
+          }
+        },
+        "wallMs": {
+          "type": "number",
+          "minimum": 0,
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none"
+          }
+        }
+      }
+    },
+    "observed": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          },
+          "value": {
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            },
+            "$ref": "#/$defs/JsonValue"
+          },
+          "expected": {
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            },
+            "$ref": "#/$defs/JsonValue"
+          }
+        },
+        "required": [
+          "name",
+          "value"
+        ]
+      }
+    },
+    "signals": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "x-ichnaea-data": {
+        "class": "inherit",
+        "identifier": "content"
+      }
+    },
+    "cache": {
+      "type": "object",
+      "properties": {
+        "hit": {
+          "type": "boolean",
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none"
+          }
+        },
+        "from": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none"
+          }
+        }
+      },
+      "required": [
+        "hit"
+      ]
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          },
+          "digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          },
+          "uri": {
+            "type": "string",
+            "minLength": 1,
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "digest"
+        ]
+      }
+    },
+    "joinKeys": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "type": "string"
+      },
+      "x-ichnaea-data": {
+        "class": "pseudonymous",
+        "identifier": "quasi"
+      }
+    },
+    "error": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "minLength": 1,
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none"
+          }
+        },
+        "message": {
+          "type": "string",
+          "x-ichnaea-data": {
+            "class": "inherit",
+            "identifier": "content"
+          }
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    },
+    "startedAt": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "endedAt": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "inputDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    }
+  },
+  "required": [
+    "schema",
+    "id",
+    "source",
+    "case",
+    "unit",
+    "configuration",
+    "replicate",
+    "outcome",
+    "dataClass"
+  ],
+  "$defs": {
+    "JsonValue": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/JsonValue"
+          }
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          }
+        }
+      ]
+    }
+  }
+}

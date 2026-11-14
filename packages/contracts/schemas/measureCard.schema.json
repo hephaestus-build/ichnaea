@@ -1,0 +1,248 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ichnaea:schema:measureCard:1",
+  "title": "ichnaea.measureCard/1",
+  "description": "The definition of a measure.",
+  "x-ichnaea-stability": "alpha",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "ichnaea.measureCard/1",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*\\/[a-z0-9][a-z0-9._-]*$",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "construct": {
+      "type": "string",
+      "minLength": 1,
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "operationalDefinition": {
+      "type": "string",
+      "minLength": 1,
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "valueType": {
+      "type": "string",
+      "enum": [
+        "binary",
+        "score"
+      ],
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "unit": {
+      "type": "string",
+      "minLength": 1,
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "direction": {
+      "type": "string",
+      "enum": [
+        "higher",
+        "lower"
+      ],
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "scale": {
+      "type": "object",
+      "properties": {
+        "min": {
+          "type": "number",
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none"
+          }
+        },
+        "max": {
+          "type": "number",
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none"
+          }
+        }
+      },
+      "required": [
+        "min",
+        "max"
+      ]
+    },
+    "justification": {
+      "type": "string",
+      "minLength": 1,
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "errorModel": {
+      "type": "string",
+      "minLength": 1,
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "applicability": {
+      "type": "string",
+      "minLength": 1,
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "tier": {
+      "type": "string",
+      "enum": [
+        "primary",
+        "secondary",
+        "diagnostic"
+      ],
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "unitOfEvaluation": {
+      "type": "string",
+      "enum": [
+        "turn",
+        "trace",
+        "session",
+        "episode"
+      ],
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "establishes": {
+      "type": "string",
+      "minLength": 1,
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "computedBy": {
+      "type": "string",
+      "enum": [
+        "ichnaea",
+        "application",
+        "judge"
+      ],
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "judge": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*\\/[a-z0-9][a-z0-9._-]*$",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "validation": {
+      "type": "object",
+      "properties": {
+        "tester": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "passed",
+                "failed"
+              ],
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none"
+              }
+            },
+            "digest": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none"
+              }
+            },
+            "ranAt": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none"
+              }
+            }
+          },
+          "required": [
+            "status",
+            "digest",
+            "ranAt"
+          ]
+        },
+        "calibration": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "schema",
+    "id",
+    "version",
+    "construct",
+    "operationalDefinition",
+    "valueType",
+    "unit",
+    "direction",
+    "justification",
+    "errorModel",
+    "applicability",
+    "tier",
+    "unitOfEvaluation",
+    "establishes",
+    "computedBy"
+  ]
+}

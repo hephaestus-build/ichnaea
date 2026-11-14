@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ichnaea:schema:monitor:1",
+  "title": "ichnaea.monitor/1",
+  "description": "An online or scheduled check with an owner and an action.",
+  "x-ichnaea-stability": "development",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "ichnaea.monitor/1",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "measure": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*\\/[a-z0-9][a-z0-9._-]*$",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "strata": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "sampling": {
+      "type": "string",
+      "enum": [
+        "census",
+        "random",
+        "triage"
+      ],
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "statistic": {
+      "type": "string",
+      "enum": [
+        "bernoulli-cusum",
+        "poisson-cusum",
+        "confidence-sequence",
+        "age-threshold"
+      ],
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "parameters": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "type": "number"
+      },
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "reference": {
+      "type": "number",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "falseAlarmsPerYear": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "practicalMargin": {
+      "type": "number",
+      "minimum": 0,
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1,
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "action": {
+      "type": "string",
+      "minLength": 1,
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "info",
+        "warning",
+        "critical"
+      ],
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    }
+  },
+  "required": [
+    "schema",
+    "id",
+    "measure",
+    "sampling",
+    "statistic",
+    "parameters",
+    "reference",
+    "falseAlarmsPerYear",
+    "practicalMargin",
+    "owner",
+    "action",
+    "severity"
+  ]
+}

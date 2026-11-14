@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    // zod is the authoring source of the contracts. Under isolatedDeclarations every exported
+    // schema would need its full zod type written out by hand: a second copy of each schema.
+    // API Extractor checks the emitted declarations instead.
+    "isolatedDeclarations": false
+  },
+  "include": ["src", "test", "scripts"]
+}

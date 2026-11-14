@@ -1,0 +1,336 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ichnaea:schema:calibration:1",
+  "title": "ichnaea.calibration/1",
+  "description": "Agreement between a judge and human labels, with a status.",
+  "x-ichnaea-stability": "development",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "ichnaea.calibration/1",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "judge": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*\\/[a-z0-9][a-z0-9._-]*$",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "judgeDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "measure": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*\\/[a-z0-9][a-z0-9._-]*$",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "calibrationSet": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "humanHuman": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "statistic": {
+            "type": "string",
+            "enum": [
+              "raw",
+              "cohen-kappa",
+              "gwet-ac1",
+              "krippendorff-alpha"
+            ],
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          },
+          "estimate": {
+            "type": "number",
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          },
+          "lower": {
+            "type": "number",
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          },
+          "upper": {
+            "type": "number",
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          },
+          "n": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          }
+        },
+        "required": [
+          "statistic",
+          "estimate",
+          "lower",
+          "upper",
+          "n"
+        ]
+      }
+    },
+    "judgeHuman": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "statistic": {
+            "type": "string",
+            "enum": [
+              "raw",
+              "cohen-kappa",
+              "gwet-ac1",
+              "krippendorff-alpha"
+            ],
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          },
+          "estimate": {
+            "type": "number",
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          },
+          "lower": {
+            "type": "number",
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          },
+          "upper": {
+            "type": "number",
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          },
+          "n": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          }
+        },
+        "required": [
+          "statistic",
+          "estimate",
+          "lower",
+          "upper",
+          "n"
+        ]
+      }
+    },
+    "perRater": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "rater": {
+            "type": "string",
+            "minLength": 1,
+            "x-ichnaea-data": {
+              "class": "pseudonymous",
+              "identifier": "direct",
+              "egress": []
+            }
+          },
+          "items": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          },
+          "agreement": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "statistic": {
+                  "type": "string",
+                  "enum": [
+                    "raw",
+                    "cohen-kappa",
+                    "gwet-ac1",
+                    "krippendorff-alpha"
+                  ],
+                  "x-ichnaea-data": {
+                    "class": "none",
+                    "identifier": "none"
+                  }
+                },
+                "estimate": {
+                  "type": "number",
+                  "x-ichnaea-data": {
+                    "class": "none",
+                    "identifier": "none"
+                  }
+                },
+                "lower": {
+                  "type": "number",
+                  "x-ichnaea-data": {
+                    "class": "none",
+                    "identifier": "none"
+                  }
+                },
+                "upper": {
+                  "type": "number",
+                  "x-ichnaea-data": {
+                    "class": "none",
+                    "identifier": "none"
+                  }
+                },
+                "n": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991,
+                  "x-ichnaea-data": {
+                    "class": "none",
+                    "identifier": "none"
+                  }
+                }
+              },
+              "required": [
+                "statistic",
+                "estimate",
+                "lower",
+                "upper",
+                "n"
+              ]
+            }
+          }
+        },
+        "required": [
+          "rater",
+          "items",
+          "agreement"
+        ]
+      }
+    },
+    "confusion": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "strata": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "tolerance": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "diagnostic",
+        "calibrated",
+        "expired"
+      ],
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "expiry": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    }
+  },
+  "required": [
+    "schema",
+    "judge",
+    "judgeDigest",
+    "measure",
+    "calibrationSet",
+    "humanHuman",
+    "judgeHuman",
+    "confusion",
+    "tolerance",
+    "status",
+    "expiry",
+    "createdAt"
+  ]
+}

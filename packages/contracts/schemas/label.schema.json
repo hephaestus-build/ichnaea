@@ -1,0 +1,159 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ichnaea:schema:label:1",
+  "title": "ichnaea.label/1",
+  "description": "One annotation on one trial for one measure.",
+  "x-ichnaea-stability": "development",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "ichnaea.label/1",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "trial": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "measure": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*\\/[a-z0-9][a-z0-9._-]*$",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "value": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "string",
+          "const": "unknown"
+        }
+      ],
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "responseSet": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "rater": {
+      "type": "string",
+      "minLength": 1,
+      "x-ichnaea-data": {
+        "class": "pseudonymous",
+        "identifier": "direct",
+        "egress": []
+      }
+    },
+    "raterRole": {
+      "type": "string",
+      "enum": [
+        "expert",
+        "crowd",
+        "developer",
+        "user",
+        "judge"
+      ],
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "bundle",
+        "application",
+        "tool",
+        "judge"
+      ],
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "rubricDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "bundleDigest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "labelledAt": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "rationale": {
+      "type": "string",
+      "x-ichnaea-data": {
+        "class": "inherit",
+        "identifier": "content"
+      }
+    },
+    "dataClass": {
+      "type": "string",
+      "enum": [
+        "none",
+        "pseudonymous",
+        "personal",
+        "special"
+      ],
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    }
+  },
+  "required": [
+    "schema",
+    "trial",
+    "measure",
+    "value",
+    "rater",
+    "raterRole",
+    "source",
+    "rubricDigest",
+    "labelledAt",
+    "dataClass"
+  ]
+}

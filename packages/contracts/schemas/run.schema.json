@@ -1,0 +1,212 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ichnaea:schema:run:1",
+  "title": "ichnaea.run/1",
+  "description": "The ledger of a plan's trials with lineage.",
+  "x-ichnaea-stability": "alpha",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "ichnaea.run/1",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "plan": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "exploratory": {
+      "type": "boolean",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "environment": {
+      "type": "object",
+      "properties": {
+        "node": {
+          "type": "string",
+          "minLength": 1,
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none"
+          }
+        },
+        "platform": {
+          "type": "string",
+          "minLength": 1,
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none"
+          }
+        },
+        "ichnaea": {
+          "type": "string",
+          "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$",
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none"
+          }
+        },
+        "ci": {
+          "type": "string",
+          "minLength": 1,
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none"
+          }
+        }
+      },
+      "required": [
+        "node",
+        "platform",
+        "ichnaea"
+      ]
+    },
+    "lineage": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "measure",
+              "judge",
+              "preset",
+              "plugin",
+              "featureGate",
+              "gate",
+              "package"
+            ],
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          },
+          "version": {
+            "type": "string",
+            "minLength": 1,
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          },
+          "digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "version"
+        ]
+      }
+    },
+    "ledger": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "trial": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "planned",
+              "running",
+              "recorded"
+            ],
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "completed",
+              "abstained",
+              "system_failure",
+              "infrastructure_failure",
+              "budget_exceeded",
+              "invalid_configuration",
+              "not_run"
+            ],
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          }
+        },
+        "required": [
+          "trial",
+          "state"
+        ]
+      }
+    },
+    "startedAt": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "completedAt": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    }
+  },
+  "required": [
+    "schema",
+    "id",
+    "plan",
+    "exploratory",
+    "environment",
+    "lineage",
+    "ledger",
+    "startedAt"
+  ]
+}
