@@ -1083,6 +1083,7 @@ export const Decision: z.ZodObject<{
                 "fixed-cases needs at least 2 trials per case and arm": "fixed-cases needs at least 2 trials per case and arm";
                 "no applicable case with a base value": "no applicable case with a base value";
                 "run invalid": "run invalid";
+                "the plan was made without the decide plugin": "the plan was made without the decide plugin";
             }>;
         }, z.core.$strict>], "computed">>;
         run: z.ZodArray<z.ZodDiscriminatedUnion<[z.ZodObject<{
@@ -1106,6 +1107,7 @@ export const Decision: z.ZodObject<{
                 "fixed-cases needs at least 2 trials per case and arm": "fixed-cases needs at least 2 trials per case and arm";
                 "no applicable case with a base value": "no applicable case with a base value";
                 "run invalid": "run invalid";
+                "the plan was made without the decide plugin": "the plan was made without the decide plugin";
             }>;
         }, z.core.$strict>], "computed">>;
     }, z.core.$strict>;
@@ -2300,6 +2302,7 @@ export const Plan: z.ZodObject<{
             "fixed-cases needs at least 2 trials per case and arm": "fixed-cases needs at least 2 trials per case and arm";
             "no applicable case with a base value": "no applicable case with a base value";
             "run invalid": "run invalid";
+            "the plan was made without the decide plugin": "the plan was made without the decide plugin";
         }>;
     }, z.core.$strict>], "computed">>;
     budget: z.ZodObject<{
@@ -2381,6 +2384,7 @@ export const PowerEntry: z.ZodDiscriminatedUnion<[z.ZodObject<{
         "fixed-cases needs at least 2 trials per case and arm": "fixed-cases needs at least 2 trials per case and arm";
         "no applicable case with a base value": "no applicable case with a base value";
         "run invalid": "run invalid";
+        "the plan was made without the decide plugin": "the plan was made without the decide plugin";
     }>;
 }, z.core.$strict>], "computed">;
 
@@ -2392,6 +2396,7 @@ export const PowerNotComputed: z.ZodEnum<{
     "fixed-cases needs at least 2 trials per case and arm": "fixed-cases needs at least 2 trials per case and arm";
     "no applicable case with a base value": "no applicable case with a base value";
     "run invalid": "run invalid";
+    "the plan was made without the decide plugin": "the plan was made without the decide plugin";
 }>;
 
 // @public

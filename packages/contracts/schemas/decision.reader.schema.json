@@ -1985,7 +1985,8 @@
                     "x-ichnaea-known": [
                       "run invalid",
                       "no applicable case with a base value",
-                      "fixed-cases needs at least 2 trials per case and arm"
+                      "fixed-cases needs at least 2 trials per case and arm",
+                      "the plan was made without the decide plugin"
                     ]
                   }
                 },
@@ -2233,7 +2234,8 @@
                     "x-ichnaea-known": [
                       "run invalid",
                       "no applicable case with a base value",
-                      "fixed-cases needs at least 2 trials per case and arm"
+                      "fixed-cases needs at least 2 trials per case and arm",
+                      "the plan was made without the decide plugin"
                     ]
                   }
                 },

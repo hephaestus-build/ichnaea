@@ -38,7 +38,10 @@ margins of the statistics package (decision 0012). It adds the planning power st
 plan, an estimate-only plan too. Without the plugin, a plan has no power statement, and
 `ichnaea import` says so.
 Each decision carries that statement unchanged, and a run-time statement that never changes the
-verdict (decision 0014).
+verdict (decision 0017). When a library caller decides a plan that has no statement, `decide()`
+computes it from the plan with `planningPower`, the plugin's own function. It does not switch the
+plan to estimate-only. When the plugin would refuse the plan, each entry says "the plan was made
+without the decide plugin".
 
 `decidePrimaries` is the per-measure rule on counts alone. `test/req51.sim.test.ts` uses it to
 show that the rate of false REGRESSION verdicts stays at or below α. Run it with

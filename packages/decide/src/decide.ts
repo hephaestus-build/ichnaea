@@ -30,6 +30,8 @@ import {
 } from "@hephaestus-build/ichnaea-stats";
 import type * as z from "zod";
 
+import { describeCounts, plannedTrialsPerCase, planningPower } from "./planning.ts";
+
 /** Everything a decision is computed from. Reports never compute anything new. */
 export interface DecideInput {
   readonly plan: Plan;
@@ -115,21 +117,27 @@ const AGAINST_NON_INFERIORITY: Imputation = { base: true, candidate: false };
 /** Works against regression: missing candidate trials pass, missing base trials fail. */
 const AGAINST_REGRESSION: Imputation = { base: false, candidate: true };
 
-/** Planned trials per case in one arm (a suite can give some cases more, `replicatesFor`). */
-export function plannedTrialsPerCase(plan: Plan, arm: string): Map<string, number> {
-  const counts = new Map<string, number>();
-  for (const t of plan.trials) if (t.arm === arm) counts.set(t.case, (counts.get(t.case) ?? 0) + 1);
-  return counts;
-}
-
-/** "2 (43 cases), 3 (17 cases)": the trial counts per case and arm, for power statements. */
-export function describeCounts(counts: readonly number[]): string {
-  const by = new Map<number, number>();
-  for (const c of counts) by.set(c, (by.get(c) ?? 0) + 1);
-  return [...by.entries()]
-    .toSorted(([a], [b]) => a - b)
-    .map(([r, n]) => `${r} (${n} case${n === 1 ? "" : "s"})`)
-    .join(", ");
+/**
+ * The plan's planning statement (REQ-54, decision 0017). A plan made with the decide plugin carries
+ * it. A plan made without the plugin carries none, so `decide` computes it with the plugin's own
+ * function, `planningPower`, because the statement is a function of the plan alone. Its `floor` and
+ * `decidable` say whether the planning floor is below the margin. It never changes the mode: only
+ * the plugin switches a plan to estimate-only, before any call. When no statement
+ * can be computed, for a margin that the plugin refuses, each entry says that the plan was made
+ * without the decide plugin. A plan with a primary measure never gives an empty statement.
+ */
+function planningOf(plan: Plan): PowerEntry[] {
+  if (plan.power.length > 0) return plan.power;
+  const { power } = planningPower(plan);
+  if (power && power.length > 0) return power;
+  return plan.primary.map((p) => ({
+    computed: false,
+    measure: p.measure,
+    applicableCases: new Set(plan.trials.map((t) => t.case)).size,
+    replicates: plan.replicates,
+    margin: p.margin,
+    reason: "the plan was made without the decide plugin",
+  }));
 }
 
 function seedOf(plan: Plan): number {
@@ -1226,7 +1234,7 @@ export async function decideWith(input: DecideInput, compare: Compare): Promise<
     measures,
     gates,
     power: {
-      planning: plan.power,
+      planning: planningOf(plan),
       run: runPower(plan, tallies, pair?.base, verdict === "INVALID"),
     },
     missingness: { byArm, differs: new Set(byArm.map((a) => a.missing)).size > 1, sensitivity },
@@ -1240,7 +1248,7 @@ export async function decideWith(input: DecideInput, compare: Compare): Promise<
 }
 
 /**
- * The run-time power statement (REQ-54, decision 0014): per primary measure, the applicable cases,
+ * The run-time power statement (REQ-54, decision 0017): per primary measure, the applicable cases,
  * the zero-noise floor, and the minimum detectable effect simulated from the base arm's per-case
  * rates in this run, labelled with that assumption. It describes the run and never changes its
  * verdict or mode. An INVALID run draws no inference and its base arm may be the broken part, so

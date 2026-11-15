@@ -24,6 +24,7 @@ interface Mutant {
 
 const D = "src/decide.ts";
 const P = "src/plugin.ts";
+const PL = "src/planning.ts";
 const CORE = ["core", "decide", "report", "example-support-assistant"];
 export const MUTANTS: readonly Mutant[] = [
   // Record checks: INVALID.
@@ -495,7 +496,19 @@ export const MUTANTS: readonly Mutant[] = [
     from: "if (b > 0.5 && k < 0.5)",
     to: "if (b > 0.5 && k <= 0.5)",
   },
-  // The power statement (decision 0014).
+  // The power statement (decision 0017).
+  {
+    id: "decide keeps an empty planning statement",
+    file: D,
+    from: "      planning: planningOf(plan),",
+    to: "      planning: plan.power,",
+  },
+  {
+    id: "fallback reason dropped",
+    file: D,
+    from: "  if (power && power.length > 0) return power;",
+    to: "  return power ?? [];",
+  },
   {
     id: "power: INVALID runs the simulation",
     file: D,
@@ -522,20 +535,20 @@ export const MUTANTS: readonly Mutant[] = [
   },
   {
     id: "power: planning floor ignored",
-    file: P,
+    file: PL,
     from: "    const decidable = floor < effective;",
     to: "    const decidable = true;",
   },
   {
     id: "power: an estimate-only plan has no planning statement",
-    file: P,
+    file: PL,
     from: "  if (counts.length === 0) return {};",
     to: '  if (counts.length === 0 || plan.mode !== "decision") return {};',
     projects: CORE,
   },
   {
     id: "power: an estimate-only plan gets the floor's mode reasons",
-    file: P,
+    file: PL,
     from: '  return reasons.length > 0 && plan.mode === "decision"',
     to: "  return reasons.length > 0",
   },
@@ -549,43 +562,43 @@ export const MUTANTS: readonly Mutant[] = [
   // Margins (decision 0012).
   {
     id: "margin: floor not checked",
-    file: P,
+    file: PL,
     from: "      tested < VALIDATED_MARGIN_FLOOR",
     to: "      tested < 0",
   },
   {
     id: "margin: floor boundary",
-    file: P,
+    file: PL,
     from: "      tested < VALIDATED_MARGIN_FLOOR",
     to: "      tested <= VALIDATED_MARGIN_FLOOR",
   },
   {
     id: "margin: ceiling not checked",
-    file: P,
+    file: PL,
     from: "        : tested > VALIDATED_MARGIN_CEILING",
     to: "        : tested > 1",
   },
   {
     id: "margin: ceiling boundary",
-    file: P,
+    file: PL,
     from: "        : tested > VALIDATED_MARGIN_CEILING",
     to: "        : tested >= VALIDATED_MARGIN_CEILING",
   },
   {
     id: "margin: the declared margin is checked, not the effective one",
-    file: P,
+    file: PL,
     from: "    const tested = p.margin - (p.safetyMargin ?? 0);",
     to: "    const tested = p.margin;",
   },
   {
     id: "margin: placeholders exempt from the range",
-    file: P,
+    file: PL,
     from: '  for (const p of plan.estimand === "fixed-cases" ? plan.primary : []) {',
     to: '  for (const p of plan.estimand === "fixed-cases"\n    ? plan.primary.filter((x) => x.marginStatus === "registered")\n    : []) {',
   },
   {
     id: "margin: range applied under sampled-cases",
-    file: P,
+    file: PL,
     from: '  for (const p of plan.estimand === "fixed-cases" ? plan.primary : []) {',
     to: "  for (const p of plan.primary) {",
   },

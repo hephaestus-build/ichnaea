@@ -32,6 +32,7 @@ export const PowerNotComputed = z.enum([
   "run invalid",
   "no applicable case with a base value",
   "fixed-cases needs at least 2 trials per case and arm",
+  "the plan was made without the decide plugin",
 ]);
 
 /**
@@ -39,7 +40,7 @@ export const PowerNotComputed = z.enum([
  * the assumption behind them, or not computed, with the reason; it never holds a number that is not
  * one. `decidable` says whether the margin is within reach of the minimum detectable effect. Only
  * the plan's entry may switch a plan to estimate-only, before any call; a decision's run-time entry
- * describes the run and never changes its verdict or mode (decision 0014).
+ * describes the run and never changes its verdict or mode (decision 0017).
  */
 export const PowerEntry = z.discriminatedUnion("computed", [
   z.strictObject({
