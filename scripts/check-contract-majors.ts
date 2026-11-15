@@ -1,4 +1,4 @@
-// A major contract change ships with a migration (REQ-07, DN-1): every record's current major is
+// A major contract change ships with a migration (REQ-07): every record's current major is
 // listed in packages/contracts/majors.json, and every major beyond 1 names a migration module that
 // exists. A release cannot carry a new major without one.
 import { existsSync, readFileSync } from "node:fs";
