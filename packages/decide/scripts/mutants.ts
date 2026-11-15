@@ -527,6 +527,21 @@ export const MUTANTS: readonly Mutant[] = [
     to: "    if (false)",
     projects: CORE,
   },
+  // The monthly call ledger (REQ-86): no corrupt line can lower the month's total.
+  {
+    id: "ledger: calls unchecked",
+    file: "../core/src/ledger.ts",
+    from: "const LedgerLine = z.looseObject({ run: z.string(), calls: z.int().min(0) });",
+    to: "const LedgerLine = z.looseObject({ run: z.string(), calls: z.unknown() });",
+    projects: ["core"],
+  },
+  {
+    id: "ledger: negative calls accepted",
+    file: "../core/src/ledger.ts",
+    from: "const LedgerLine = z.looseObject({ run: z.string(), calls: z.int().min(0) });",
+    to: "const LedgerLine = z.looseObject({ run: z.string(), calls: z.int() });",
+    projects: ["core"],
+  },
   // The planner's other refusals and the CI policy.
   {
     id: "planner allows a composite primary",

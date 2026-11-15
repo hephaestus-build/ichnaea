@@ -3,12 +3,34 @@ import { setTimeout as delay } from "node:timers/promises";
 import { join } from "node:path";
 
 import { canonicalize } from "@hephaestus-build/ichnaea-contracts";
+import * as z from "zod";
 
 /** One booking in the monthly call ledger. */
 export interface LedgerBooking {
   readonly run: string;
   readonly calls: number;
   readonly at: string;
+}
+
+/**
+ * What every ledger line must hold: the run and a non-negative whole number of calls. Other
+ * fields, such as a writer's `commit`, `event` or `kind`, are allowed and ignored.
+ */
+const LedgerLine = z.looseObject({ run: z.string(), calls: z.int().min(0) });
+
+/**
+ * Thrown when a ledger line, or a booking to write, is not a valid booking. The booking stops: a
+ * ledger that cannot be read never counts as 0 calls, so one corrupt line cannot lift the cap.
+ */
+export class LedgerError extends Error {
+  override readonly name = "LedgerError";
+}
+
+/** Why a value is not a booking, from its first problem; undefined when it is one. */
+function bookingProblem(value: unknown): string | undefined {
+  const issue = LedgerLine.safeParse(value).error?.issues[0];
+  if (!issue) return undefined;
+  return issue.path.length > 0 ? `${issue.path.join(".")}: ${issue.message}` : issue.message;
 }
 
 /** Age after which a ledger lock is taken to belong to a crashed run. */
@@ -39,18 +61,33 @@ export class CallLedger {
     return join(this.root, "ledger", endpoint, `${at.slice(0, 7)}.jsonl`);
   }
 
-  /** Calls booked against an endpoint in the month of `at`. */
+  /**
+   * Calls booked against an endpoint in the month of `at`. Only a missing file counts as 0. A line
+   * that is not a booking throws a LedgerError that names the file and the line.
+   */
   async used(endpoint: string, at: string): Promise<number> {
+    const file = this.file(endpoint, at);
     let text = "";
     try {
-      text = await readFile(this.file(endpoint, at), "utf8");
+      text = await readFile(file, "utf8");
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     }
-    return text
-      .split("\n")
-      .filter((l) => l.trim() !== "")
-      .reduce((sum, l) => sum + (JSON.parse(l) as LedgerBooking).calls, 0);
+    let sum = 0;
+    for (const [i, line] of text.split("\n").entries()) {
+      if (line.trim() === "") continue;
+      let value: unknown;
+      try {
+        value = JSON.parse(line);
+      } catch {
+        throw new LedgerError(`call ledger ${file}, line ${i + 1}: not JSON`);
+      }
+      const problem = bookingProblem(value);
+      if (problem !== undefined)
+        throw new LedgerError(`call ledger ${file}, line ${i + 1}: not a booking (${problem})`);
+      sum += (value as LedgerBooking).calls;
+    }
+    return sum;
   }
 
   /** Books a run's worst-case calls, or refuses when the month's cap would be exceeded. */
@@ -60,6 +97,9 @@ export class CallLedger {
     booking: LedgerBooking,
   ): Promise<{ used: number; remaining: number }> {
     const file = this.file(endpoint, booking.at);
+    const problem = bookingProblem(booking);
+    if (problem !== undefined)
+      throw new LedgerError(`run '${booking.run}' cannot be booked: ${problem}`);
     await mkdir(join(file, ".."), { recursive: true });
     const release = await this.lock(`${file}.lock`);
     try {

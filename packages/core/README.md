@@ -16,6 +16,9 @@ The core of Ichnaea: the plugin host, the planner, import mode, the record store
   change varies is declared with `--vary <factor key>`.
 - **Store and ledger.** `FileStore` keeps every record as a canonical JSON line, append-only.
   `CallLedger` books each run's worst-case calls against a monthly cap before the first call.
+  Every ledger line must hold a `run` and a non-negative whole number of `calls`. Other fields are
+  ignored. A line that does not stops the booking with a `LedgerError` that names the file and
+  the line.
 - **Egress.** Every class of data except `none` stays in by default. Only the plugin that the
   configuration names as `governance` can let it out. Any plugin can refuse.
 

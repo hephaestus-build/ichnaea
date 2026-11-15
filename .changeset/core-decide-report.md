@@ -10,7 +10,7 @@ First end-to-end slice: import another runner's results, decide, report.
 `core`:
 
 - **Plugin host.** Seven lifecycle hooks, and measure cards validated at load. A primary measure needs a primary card, and is never a composite. Egress is denied by default. Only the plugin that the configuration names as `governance` can open it.
-- **Store and ledger.** A file store writes each run once and atomically. It refuses duplicate records, and reads a missing records file as a damaged run. A monthly call ledger takes over a lock left by a crashed run.
+- **Store and ledger.** A file store writes each run once and atomically. It refuses duplicate records, and reads a missing records file as a damaged run. A monthly call ledger takes over a lock left by a crashed run. A ledger line without a `run` and a non-negative whole number of `calls` stops the booking with an error that names the file and the line, so a corrupt line can never lower the month's total; other fields on a line are ignored.
 - **Planner.** It lists every trial before any call. A suite can give the cases of one slice more trials (`replicatesFor`). A placeholder margin, and anything else no validated method can decide, runs estimate-only with its reasons.
 - **Triggers.** Each trigger declares what the arms may vary (`TRIGGER_VARIES`). Anything else a change varies is declared with `ichnaea import --vary <factor key>`. `ichnaea help` lists each trigger and what it varies.
 - **Node.** The packages need Node 22.18 or later, the first version that loads `ichnaea.config.ts` without a flag. On an older Node, the CLI says so and exits with 2.
