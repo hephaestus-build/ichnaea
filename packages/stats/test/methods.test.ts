@@ -244,7 +244,7 @@ describe("method choice per estimand", () => {
     ).toBe(false);
   });
 
-  it("sampled-cases uses Tango from 300 single-trial cases in as many families, and is estimate-only below (decision 0007)", () => {
+  it("sampled-cases uses Tango from 300 single-trial cases in as many families, and is estimate-only below (decision 0009)", () => {
     const tango = compareCounts({
       valueType: "binary",
       estimand: "sampled-cases",

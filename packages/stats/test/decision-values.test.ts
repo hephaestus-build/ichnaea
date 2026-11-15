@@ -459,7 +459,7 @@ describe("input validation", () => {
     );
   });
 
-  it("keeps a case with one completed trial in an arm, and excludes one with none (decision 0007)", () => {
+  it("keeps a case with one completed trial in an arm, and excludes one with none (decision 0009)", () => {
     const thin = {
       id: "b",
       base: { successes: 1, trials: 1 },
@@ -495,7 +495,7 @@ describe("input validation", () => {
     ).toThrow(EstimandError);
   });
 
-  it("a regression in a case's only remaining trial stays in the evidence (decision 0007)", () => {
+  it("a regression in a case's only remaining trial stays in the evidence (decision 0009)", () => {
     // 60 cases at 3 of 3 in both arms. In 6, two candidate trials are missing and the third fails.
     const full = { successes: 3, trials: 3 };
     const input: CaseCounts[] = Array.from({ length: 60 }, (_, i) => ({
@@ -518,7 +518,7 @@ describe("input validation", () => {
     expect(result.regressionMethod).toBe("within-case-permutation");
   });
 
-  it("marks results outside the validated domain, naming each reason (decision 0007)", () => {
+  it("marks results outside the validated domain, naming each reason (decision 0009)", () => {
     const five = ["a", "b", "c", "d", "e"].map((id) => ({ ...ok, id }));
     expect(at(five).regression).toEqual({ validated: true, limitations: [] });
     expect(at(five.slice(0, 4)).regression.limitations).toEqual([
@@ -605,7 +605,7 @@ describe("what compareCounts refuses or does not validate", () => {
       EstimandError,
     );
     expect(() => compareCounts({ ...input, valueType: "proportion", cases: items })).toThrow(
-      /a proportion measure has no validated method yet/,
+      /the value type "proportion" has no validated method yet/,
     );
     for (const valueType of ["score", "ordinal"] as const)
       expect(() => compareCounts({ ...input, valueType })).toThrow(EstimandError);

@@ -1,6 +1,6 @@
 # 0007 Missing trials and the validated domain
 
-- Status: Accepted
+- Status: Superseded by 0009
 - Date: 2026-11-15
 
 ## Context
