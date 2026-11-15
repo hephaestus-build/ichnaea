@@ -1,6 +1,6 @@
 {
   "name": "@hephaestus-build/ichnaea-stats",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Statistics for paired GenAI evaluations: exact regression test, non-inferiority pending its validated floor",
   "keywords": [
     "confidence-interval",
