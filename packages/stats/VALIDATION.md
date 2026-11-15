@@ -45,15 +45,33 @@ each is pinned against an independent implementation:
   the same 1,300 raw 32-bit outputs per seed (two state regenerations) and the same 700
   `random_sample` doubles, bit for bit. This is the sequence that every seeded result before this
   change used, so no recorded result changes.
-- `test/reference-r-normal.json` comes from R 4.5.2 (`scripts/reference-normal.R`): `pnorm` at
-  334 points from −38 to 38 and `qnorm` at 140 probabilities from 1e-300 to 1 − 1e-15, with
-  points on both sides of every branch boundary. Ichnaea uses the same algorithms as R (Cody for
-  `pnorm`, AS 241 for `qnorm`). It agrees within 4 units in the last place: the worst
-  measured differences are 1.8 for `pnorm` and 1.7 for `qnorm`. For comparison, the library that
-  was used before was up to 774 units in the last place from R for `pnorm`.
+- `src/normal.ts` uses the same algorithms as R 4.5.2: Cody for `pnorm` and AS 241 for `qnorm`,
+  with R's tail bounds (−38.4674 and 8.2924) and R's asymptotic expansion for subnormal p.
+  `test/reference-normal-coefficients.json` holds every coefficient of `src/normal-coefficients.ts` as printed in R's source at
+  the tag R-4-5-2 (`scripts/reference-normal-coefficients.ts`), and a test requires the code to
+  use exactly those values. This check is needed because a wrong digit in a coefficient can be
+  invisible in every output: the independent review found `5226.495278852546` for R's
+  `5226.4952788528545610`, a change of about 1e-19 relative, which no reference value detects.
+- `test/reference-mpmath-normal.json` holds the true values, from mpmath 1.3.0 at 60 digits and
+  rounded to the nearest double (`scripts/reference-normal-mpmath.py`). It has `pnorm` at 12,363
+  points and `qnorm` at 3,930 probabilities from 5e-324 to 1 − 1e-16: a regular grid, extra points
+  on both sides of every branch boundary, and 9,000 seeded random points across the branch regions.
+  Ichnaea is within 2.5 ulps for `pnorm` with |x| ≤ 1 and within 4 ulps elsewhere. The worst
+  measured errors are 2.16, 3.30 and, for `qnorm`, 2.82 ulps.
+- `test/reference-r-normal.json` comes from R 4.5.2 (`scripts/reference-normal.R`): `pnorm` at 342
+  points from −38.47 to 38 and `qnorm` at 326 probabilities, 182 of them subnormal. Ichnaea is
+  within 4 ulps of R; the worst measured differences are 1.8 for `pnorm` and 1.7 for `qnorm`. For
+  subnormal p it is within 1 ulp of R, since it ports R's expansion operation for operation.
+  The library used before was up to 774 ulps from R for `pnorm`.
+- The oracles run on linux/amd64. R on arm64 gives slightly different last digits. Each committed
+  reference file is the oracle's output byte for byte: the formatter skips them.
 
 Property tests add symmetry, `pnorm(−x) = 1 − pnorm(x)`, and the inverse,
 `qnorm(pnorm(x)) = x`, at or below the median, where p keeps its full relative precision.
+
+`scripts/mutants.ts` changes each coefficient table, each branch boundary, each tail bound and the
+generator, and the tests detect every change. One change is not detectable: a change to the fifth-order
+term of the subnormal expansion moves the result by at most 0.84 ulps. That is below rounding.
 
 ## fixed-cases: what counts
 

@@ -188,13 +188,13 @@ export const MUTANTS: readonly Mutant[] = [
   },
   {
     id: "pnorm central coefficient typo",
-    file: "src/normal.ts",
+    file: "src/normal-coefficients.ts",
     from: "161.02823106855587",
     to: "161.02832106855587",
   },
   {
     id: "pnorm tail coefficient typo",
-    file: "src/normal.ts",
+    file: "src/normal-coefficients.ts",
     from: "0.023073441764940174",
     to: "0.023073414764940174",
   },
@@ -204,8 +204,12 @@ export const MUTANTS: readonly Mutant[] = [
     from: "Math.trunc(x * 16) / 16",
     to: "x",
   },
-  // Moving this boundary down to 0.5 is equivalent: both approximations stay within 2 ulps of R
-  // there. A digit typo is not.
+  {
+    id: "pnorm branch boundary moved",
+    file: "src/normal.ts",
+    from: "y <= 0.67448975",
+    to: "y <= 0.5",
+  },
   {
     id: "pnorm branch boundary typo",
     file: "src/normal.ts",
@@ -214,16 +218,37 @@ export const MUTANTS: readonly Mutant[] = [
   },
   {
     id: "qnorm central coefficient typo",
-    file: "src/normal.ts",
+    file: "src/normal-coefficients.ts",
     from: "13731.69376550946",
     to: "13731.69367550946",
   },
   {
     id: "qnorm far-tail coefficient typo",
-    file: "src/normal.ts",
+    file: "src/normal-coefficients.ts",
     from: "0.014875361290850615",
     to: "0.014875316290850615",
   },
+  {
+    id: "qnorm central denominator typo",
+    file: "src/normal-coefficients.ts",
+    from: "5226.495278852854",
+    to: "5226.495278852546",
+  },
+  {
+    id: "pnorm tail bound of R 4.4",
+    file: "src/normal.ts",
+    from: "x > -38.4674",
+    to: "x > -37.5193",
+  },
+  {
+    id: "qnorm subnormal p on the far rational",
+    file: "src/normal.ts",
+    from: "} else if (r <= 27) {",
+    to: "} else if (r <= 30) {",
+  },
+  // Not a mutant: changing the fifth-order term of qnorm's asymptotic expansion, (5 - 9 / (8 + x2))
+  // to (5 - 9 / (6 + x2)), moves the result by at most 0.84 ulps, on 1 % of 2,000,000 subnormal p.
+  // That is below rounding, so no reference value can detect it.
   {
     id: "mt19937 shift",
     file: "src/mt19937.ts",
