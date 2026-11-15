@@ -103,7 +103,12 @@ commands from a checkout of `main`.
 
 4. **Security features.** Secret scanning with push protection, Dependabot alerts, and private
    vulnerability reporting, the channel that `SECURITY.md` gives. Dependabot security updates stay
-   off: Renovate opens the pull requests for vulnerable dependencies.
+   off: Renovate opens the pull requests for vulnerable dependencies. CodeQL runs as GitHub's
+   default setup, which the organisation's security configuration turns on for every public
+   repository and enforces, so the repository has no CodeQL workflow of its own: GitHub refuses the
+   results of a CodeQL workflow while default setup is on. Read it back with
+   `gh api repos/hephaestus-build/ichnaea/code-scanning/default-setup --jq .state`, which gives
+   `configured`.
 
    ```sh
    gh api --method PATCH repos/hephaestus-build/ichnaea --input - <<'JSON'
@@ -252,20 +257,26 @@ commands from a checkout of `main`.
         | jq -S '{name, target, enforcement, conditions, rules, bypass_actors}')
     ```
 
-12. **Security scan checks.** CodeQL, dependency review and Scorecard run only on a public
-    repository; while the repository is private they skip and write a notice. After the flip, once
-    each has run on a pull request, make the three scan checks required in the `main` ruleset. Do
-    not do it before: a check that never runs blocks every pull request. Keep CodeQL's default
-    setup off, because it refuses results from these workflows. The Scorecard badge goes into the
-    README in the pull request that follows the flip.
+12. **Security scan checks.** CodeQL (the organisation's default setup), dependency review and
+    Scorecard run only on a public repository. After the flip, once CodeQL and dependency review
+    have each run on a pull request, make both checks required in the `main` ruleset. Do not do it
+    before: a check that never runs blocks every pull request. Scorecard runs on pushes to `main`
+    and weekly, not on pull requests, so it is not a required check. The Scorecard badge goes into
+    the README in the pull request that follows the flip.
+
+    Default setup reports through GitHub's code scanning app, not through GitHub Actions. Read the
+    name and the app of each check from a pull request that it ran on, and bind the check to that
+    app:
 
     ```sh
+    gh api "repos/hephaestus-build/ichnaea/commits/<head sha of the pull request>/check-runs" \
+      --jq '.check_runs[] | select(.name | test("CodeQL|dependency review")) | {name, app: .app.slug, id: .app.id}'
     id="$(gh api repos/hephaestus-build/ichnaea/rulesets --jq '.[] | select(.name == "main") | .id')"
     gh api "repos/hephaestus-build/ichnaea/rulesets/$id" \
-      | jq '{name, target, enforcement, conditions, bypass_actors, rules: [.rules[]
-          | if .type == "required_status_checks" then .parameters.required_status_checks += [
-              {context: "dependency review", integration_id: 15368},
-              {context: "codeql (actions)", integration_id: 15368},
-              {context: "codeql (javascript-typescript)", integration_id: 15368}] else . end]}' \
+      | jq --arg codeql "<CodeQL check name>" --argjson app <its app id> '{name, target, enforcement,
+          conditions, bypass_actors, rules: [.rules[] | if .type == "required_status_checks" then
+          .parameters.required_status_checks += [
+            {context: "dependency review", integration_id: 15368},
+            {context: $codeql, integration_id: $app}] else . end]}' \
       | gh api --method PUT "repos/hephaestus-build/ichnaea/rulesets/$id" --input -
     ```
