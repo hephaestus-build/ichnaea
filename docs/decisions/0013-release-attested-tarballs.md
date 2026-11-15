@@ -28,9 +28,10 @@ repository.
 3. The build job has read access only. It runs the checks, packs each package once, runs the
    example on the tarballs, and writes the SBOM, the checksums and the notes.
 4. The SBOM comes from what is shipped. The tarballs are installed into an empty project, as a
-   consumer would install them, and `pnpm sbom` lists that project's production dependencies. The
-   release fails if the SBOM lists no components, misses a shipped package at its version and
-   SHA-512, or misses a dependency of a shipped package.
+   consumer would install them, and `pnpm sbom` lists that project's production dependencies. Each
+   tarball's distribution URL is its download URL on the release, not a path on the runner. The
+   release fails if the SBOM lists no components, misses a shipped package at its version, SHA-512
+   and download URL for the tag, or misses a dependency of a shipped package.
 5. The release job runs in the `release` environment. Only `main` may deploy to it, and a
    maintainer approves each run. It attests build provenance and the SBOM for each tarball,
    creates the tag on the released commit, and publishes the release.
@@ -60,7 +61,8 @@ repository.
   packed tarballs. `pnpm sbom` on the project that installs them lists 6: the 5 packages and zod.
 - `scripts/check-on-main.test.ts` fails a commit that is off `main`, a commit that does not exist,
   and a run on another ref. `scripts/check-sbom.test.ts` fails an empty SBOM, a missing package, a
-  package with another SHA-512, and a missing dependency.
+  package with another SHA-512, a tarball URL for another tag or a path on the runner, and a
+  missing dependency.
 
 ## Consequences
 

@@ -1,14 +1,21 @@
 // Fails unless the release SBOM describes what is shipped: its top-level component is the release
 // project in the release's npm scope, every tarball is a component at its version with its
-// SHA-512, and every runtime and peer dependency of every tarball is listed.
-// Usage: node scripts/check-sbom.ts <sbom.cdx.json> <directory with .tgz files>
+// SHA-512 and its download URL for the tag, and every runtime and peer dependency of every tarball
+// is listed.
+// Usage: node scripts/check-sbom.ts <sbom.cdx.json> <directory with .tgz files> [<tag>]
+// Without a tag, the download URLs must name the placeholder tag of release-sbom.ts.
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
+import { basename } from "node:path";
 
 import { PROJECT, tarballsIn } from "./consumer-project.ts";
+import { downloadUrl } from "./release-notes.ts";
+import { tagArgument, UNTAGGED } from "./release-sbom.ts";
 
 export interface Shipped {
+  /** The tarball's file name, as on the release. */
+  readonly file: string;
   readonly name: string;
   readonly version: string;
   readonly sha512: string;
@@ -22,6 +29,7 @@ interface Component {
   readonly purl?: string;
   readonly externalReferences?: ReadonlyArray<{
     readonly type?: string;
+    readonly url?: string;
     readonly hashes?: ReadonlyArray<{ readonly alg?: string; readonly content?: string }>;
   }>;
 }
@@ -36,10 +44,16 @@ const npmPurl = (name: string, version: string): string =>
   `pkg:npm/${name.replace(/^@/, "%40")}@${version}`;
 
 /**
- * Returns one finding per way in which the SBOM does not describe the shipped tarballs. `project`
- * is the name of the top-level component, which has the version of the tarballs.
+ * Returns one finding per way in which the SBOM does not describe the shipped tarballs of the
+ * release `tag`. `project` is the name of the top-level component, which has the version of the
+ * tarballs.
  */
-export function checkSbom(bom: unknown, shipped: readonly Shipped[], project = PROJECT): string[] {
+export function checkSbom(
+  bom: unknown,
+  shipped: readonly Shipped[],
+  tag: string,
+  project = PROJECT,
+): string[] {
   const { bomFormat, components, metadata } = (bom ?? {}) as {
     bomFormat?: unknown;
     components?: unknown;
@@ -69,14 +83,22 @@ export function checkSbom(bom: unknown, shipped: readonly Shipped[], project = P
   for (const p of shipped) {
     const own = components.find((c) => fullName(c) === p.name && c.version === p.version);
     if (!own) findings.push(`the SBOM misses the shipped package ${p.name}@${p.version}`);
-    else if (
-      !own.externalReferences?.some(
-        (r) =>
-          r.type === "distribution" &&
+    else {
+      const distributions = (own.externalReferences ?? []).filter((r) => r.type === "distribution");
+      if (
+        !distributions.some((r) =>
           r.hashes?.some((h) => h.alg === "SHA-512" && h.content === p.sha512),
+        )
       )
-    )
-      findings.push(`${p.name}@${p.version} in the SBOM does not have the tarball's SHA-512`);
+        findings.push(`${p.name}@${p.version} in the SBOM does not have the tarball's SHA-512`);
+      // A consumer downloads the tarball from the release, not from a path on the build machine.
+      const url = downloadUrl(tag, p.file);
+      const urls = distributions.map((r) => r.url ?? "no URL");
+      if (urls.length === 0 || urls.some((u) => u !== url))
+        findings.push(
+          `${p.name}@${p.version} in the SBOM is distributed at ${urls.join(", ") || "no URL"}, not ${url}`,
+        );
+    }
     for (const d of p.dependencies)
       if (!names.has(d)) findings.push(`the SBOM misses ${d}, a dependency of ${p.name}`);
   }
@@ -90,6 +112,7 @@ export function shippedIn(dir: string): Shipped[] {
       execFileSync("tar", ["-xzOf", t.file, "package/package.json"], { encoding: "utf8" }),
     ) as { dependencies?: object; peerDependencies?: object };
     return {
+      file: basename(t.file),
       name: t.name,
       version: t.version,
       sha512: createHash("sha512").update(readFileSync(t.file)).digest("hex"),
@@ -104,17 +127,22 @@ export function shippedIn(dir: string): Shipped[] {
 }
 
 if (import.meta.main) {
-  const [sbom, dir] = process.argv.slice(2);
-  if (!sbom || !dir) throw new Error("usage: check-sbom.ts <sbom.cdx.json> <tarball directory>");
+  const [sbom, dir, tagArg] = process.argv.slice(2);
+  if (!sbom || !dir)
+    throw new Error("usage: check-sbom.ts <sbom.cdx.json> <tarball directory> [<tag>]");
+  const tag = tagArgument(tagArg);
   const bom: unknown = JSON.parse(readFileSync(sbom, "utf8"));
   const shipped = shippedIn(dir);
-  const findings = checkSbom(bom, shipped);
+  const findings = checkSbom(bom, shipped, tag);
   if (findings.length > 0) {
     console.error(`SBOM check failed (${findings.length}):\n${findings.join("\n")}`);
     process.exit(1);
   }
   const count = (bom as { components: unknown[] }).components.length;
   console.log(
-    `sbom: ${count} components; ${shipped.length} shipped packages at their SHA-512, with every dependency`,
+    `sbom: ${count} components; ${shipped.length} shipped packages at their SHA-512, with every dependency; ` +
+      (tag === UNTAGGED
+        ? `download URLs name the placeholder tag ${UNTAGGED}, so this SBOM is for no release`
+        : `download URLs of ${tag}`),
   );
 }

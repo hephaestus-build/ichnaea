@@ -52,10 +52,12 @@ jobs:
         run: pnpm -r --filter './packages/*' exec pnpm pack --pack-destination "$GITHUB_WORKSPACE/release"
       - name: Smoke test the packed tarballs
         run: node scripts/smoke-tarballs.ts release
-      - name: SBOM of what the tarballs install
+      - name: SBOM of what the tarballs install, with their download URLs on the release
+        env:
+          TAG: ${{ inputs.tag }}
         run: |
-          node scripts/release-sbom.ts release release/sbom.cdx.json
-          node scripts/check-sbom.ts release/sbom.cdx.json release
+          node scripts/release-sbom.ts release release/sbom.cdx.json "$TAG"
+          node scripts/check-sbom.ts release/sbom.cdx.json release "$TAG"
       - name: Checksums
         working-directory: release
         run: sha256sum -- *.tgz > SHA256SUMS
