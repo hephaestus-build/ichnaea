@@ -354,7 +354,6 @@ describe("case and case-set digests", () => {
     ["selection", (c) => ((c["provenance"] as Record<string, unknown>)["selection"] = "random")],
     ["exposure", (c) => ((c["provenance"] as Record<string, unknown>)["exposure"] = "sealed")],
     ["data class", (c) => (c["dataClass"] = "personal")],
-    ["pool", (c) => (c["pool"] = "sealed")],
     ["family", (c) => (c["family"] = "another-family")],
     ["licence", (c) => ((c["provenance"] as Record<string, unknown>)["licence"] = "MIT")],
   ])("changes the case and case-set digest when the %s changes", async (_, change) => {
@@ -368,6 +367,38 @@ describe("case and case-set digests", () => {
     });
     expect(await caseSetDigest([await entry(changed)])).not.toBe(
       await caseSetDigest([await entry(record)]),
+    );
+  });
+
+  it("keeps the case digest when the case moves pool, changes ID or its set is renamed; the set digest follows the first two only", async () => {
+    await fc.assert(
+      fc.asyncProperty(
+        fc.constantFrom("development", "validation", "sealed", "promoted"),
+        fc.stringMatching(/^[a-z][a-z0-9-]{0,20}$/),
+        fc.stringMatching(/^[a-z][a-z0-9-]{0,20}$/),
+        async (pool, id, setName) => {
+          const entryOf = async (c: Rec): Promise<unknown> => ({
+            id: c["id"],
+            digest: await caseDigest(c),
+            pool: c["pool"],
+            family: c["family"],
+          });
+          const original: Rec = structuredClone(record);
+          const moved: Rec = { ...structuredClone(record), pool };
+          const renamedCase: Rec = { ...structuredClone(record), id };
+          const renamedSet: Rec = { ...structuredClone(record), caseSet: setName };
+          const before = await caseDigest(original);
+          for (const c of [moved, renamedCase, renamedSet])
+            expect(await caseDigest(c)).toBe(before);
+          const set = await caseSetDigest([await entryOf(original)] as never);
+          expect(await caseSetDigest([await entryOf(renamedSet)] as never)).toBe(set);
+          if (pool !== original["pool"])
+            expect(await caseSetDigest([await entryOf(moved)] as never)).not.toBe(set);
+          if (id !== original["id"])
+            expect(await caseSetDigest([await entryOf(renamedCase)] as never)).not.toBe(set);
+        },
+      ),
+      { seed: 20261115, numRuns: 40 },
     );
   });
 
@@ -392,7 +423,6 @@ const member = (value: unknown, key: string): Rec => (value as Rec)[key] as Rec;
 const SPEC = {
   case: {
     hashed: [
-      "id",
       "unit",
       "dataClass",
       "input",
@@ -403,9 +433,8 @@ const SPEC = {
       "slices",
       "criticality",
       "provenance",
-      "pool",
     ],
-    excluded: ["schema", "caseSet", "validation"],
+    excluded: ["schema", "id", "pool", "caseSet", "validation"],
   },
   provenance: {
     hashed: [
@@ -462,7 +491,7 @@ const promoted = withProvenance({ source: "promoted", finding: "finding-17" });
 const provenanceOf = (c: Rec): Rec => member(c, "provenance");
 
 const CASE_ROWS: readonly Row[] = [
-  row("id", true, authored, (c) => (c["id"] = "refund-window-de-2")),
+  row("id", false, authored, (c) => (c["id"] = "refund-window-de-2")),
   row("unit", true, authored, (c) => (c["unit"] = "turn")),
   row("dataClass", true, authored, (c) => (c["dataClass"] = "personal")),
   row("input", true, authored, (c) => (member(c, "input")["lang"] = "fr")),
@@ -472,7 +501,7 @@ const CASE_ROWS: readonly Row[] = [
   row("family", true, authored, (c) => (c["family"] = "another-family")),
   row("slices", true, authored, (c) => (member(c, "slices")["lang"] = "fr")),
   row("criticality", true, authored, (c) => (c["criticality"] = "low")),
-  row("pool", true, authored, (c) => (c["pool"] = "sealed")),
+  row("pool", false, authored, (c) => (c["pool"] = "sealed")),
   // A change of the arm alone: both records carry `collected`, only `source` differs.
   row(
     "provenance.source",

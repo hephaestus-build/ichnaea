@@ -338,8 +338,8 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "case set pointer enters the case digest",
     file: "src/identity.ts",
-    from: '      "id",\n      "unit",',
-    to: '      "id",\n      "caseSet",\n      "unit",',
+    from: '    members: [\n      "unit",',
+    to: '    members: [\n      "caseSet",\n      "unit",',
     also: [
       {
         from: '      caseSet:\n        "A pointer to the set that holds the case. The same case in another set, or in a renamed set, keeps its digest, so a case is traced by its digest across sets. The set\'s own digest covers its membership.",\n',
@@ -349,10 +349,36 @@ export const MUTANTS: readonly Mutant[] = [
     regen: true,
   },
   {
+    id: "case ID enters the case digest",
+    file: "src/identity.ts",
+    from: '    members: [\n      "unit",',
+    to: '    members: [\n      "id",\n      "unit",',
+    also: [
+      {
+        from: '      id: "Where the case sits in its set. A case copied under a new ID keeps its digest, so a screened case cannot pass as new; the set entry hashes the ID.",\n',
+        to: "",
+      },
+    ],
+    regen: true,
+  },
+  {
+    id: "pool enters the case digest",
+    file: "src/identity.ts",
+    from: '      "provenance",\n    ],',
+    to: '      "provenance",\n      "pool",\n    ],',
+    also: [
+      {
+        from: '      pool: "Where the case sits in its set. Moving a screened case into another pool keeps its digest; the set entry hashes the pool.",\n',
+        to: "",
+      },
+    ],
+    regen: true,
+  },
+  {
     id: "review status enters the case digest",
     file: "src/identity.ts",
-    from: '      "pool",\n    ],',
-    to: '      "pool",\n      "validation",\n    ],',
+    from: '      "provenance",\n    ],',
+    to: '      "provenance",\n      "validation",\n    ],',
     also: [
       {
         from: '      validation: "The review status. Reviewing a case does not change what it asks or grades.",\n',

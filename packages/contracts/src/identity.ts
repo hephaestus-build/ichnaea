@@ -35,7 +35,6 @@ export const DIGEST_RULES: {
 } = {
   case: {
     members: [
-      "id",
       "unit",
       "dataClass",
       "input",
@@ -46,11 +45,12 @@ export const DIGEST_RULES: {
       "slices",
       "criticality",
       "provenance",
-      "pool",
     ],
     excluded: {
       schema:
         "The major version. A major that keeps this projection keeps identities; one that changes it is listed in majors.json, and its migration recomputes them.",
+      id: "Where the case sits in its set. A case copied under a new ID keeps its digest, so a screened case cannot pass as new; the set entry hashes the ID.",
+      pool: "Where the case sits in its set. Moving a screened case into another pool keeps its digest; the set entry hashes the pool.",
       caseSet:
         "A pointer to the set that holds the case. The same case in another set, or in a renamed set, keeps its digest, so a case is traced by its digest across sets. The set's own digest covers its membership.",
       validation: "The review status. Reviewing a case does not change what it asks or grades.",

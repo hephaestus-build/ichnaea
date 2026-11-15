@@ -61,11 +61,11 @@ of its record. `DIGEST_RULES` in [`src/identity.ts`](src/identity.ts) is the one
 projections: per record, the members hashed and the members excluded, each with its reason. Other
 languages read the same rules from [`fixtures/digest-rules.json`](fixtures/digest-rules.json).
 
-| Digest                 | Projection                                                                                             | Then                                                                                  |
-| ---------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
-| Case digest            | the case without its review status and case set pointer, and its provenance without the author pointer | —                                                                                     |
-| Case-set digest        | each entry's `id`, `digest`, `pool`, `family`                                                          | sort entries by `id` (UTF-16 code units); IDs unique, at least one                    |
-| Configuration identity | `models`, `parameters`, `factors`, and of each prompt its `name`, `digest` and `status`                | sort `models` by `role`, `parameters` and `prompts` by `name`; roles and names unique |
+| Digest                 | Projection                                                                                                       | Then                                                                                  |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Case digest            | the case without its ID, pool, review status and case set pointer, and its provenance without the author pointer | —                                                                                     |
+| Case-set digest        | each entry's `id`, `digest`, `pool`, `family`                                                                    | sort entries by `id` (UTF-16 code units); IDs unique, at least one                    |
+| Configuration identity | `models`, `parameters`, `factors`, and of each prompt its `name`, `digest` and `status`                          | sort `models` by `role`, `parameters` and `prompts` by `name`; roles and names unique |
 
 A projection keeps the listed members as written. Their values are hashed whole, so a member that a
 later minor version adds inside a hashed value changes the digest. A member added at a projected
