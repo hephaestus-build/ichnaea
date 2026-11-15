@@ -280,12 +280,21 @@ async function importCommand(
     `import: run ${values.run as string}: ${result.trials} trials, ${result.values} values, plan ${result.plan.mode}`,
   );
   for (const reason of result.plan.modeReasons) out(`  estimate-only: ${reason}`);
-  // The planning power statement (REQ-54): what a run of this plan can detect at best.
+  // The planning power statement (REQ-54): what a run of this plan can detect at best. A plugin
+  // computes it (the decision plugin does); without one, the plan has none, and the line says so.
+  const reach = (decidable: boolean): string =>
+    !decidable
+      ? "cannot decide"
+      : result.plan.mode === "decision"
+        ? "can decide"
+        : "within reach of the margin, but the plan is estimate-only";
   for (const p of result.plan.power)
     out(
       p.computed
-        ? `  power: ${p.measure}: smallest detectable drop ${(p.mde * 100).toFixed(1)} points (${p.assumption}), margin ${(p.margin * 100).toFixed(1)} points, ${p.decidable ? "can decide" : "cannot decide"}`
+        ? `  power: ${p.measure}: smallest detectable drop ${(p.mde * 100).toFixed(1)} points (${p.assumption}), margin ${(p.margin * 100).toFixed(1)} points, ${reach(p.decidable)}`
         : `  power: ${p.measure}: not computed (${p.reason})`,
     );
+  if (result.plan.power.length === 0 && result.plan.primary.length > 0)
+    out("  power: not computed: no plugin in the configuration states one (decidePlugin() does)");
   return 0;
 }

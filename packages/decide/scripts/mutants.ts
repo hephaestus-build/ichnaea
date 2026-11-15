@@ -526,6 +526,26 @@ export const MUTANTS: readonly Mutant[] = [
     from: "    const decidable = floor < effective;",
     to: "    const decidable = true;",
   },
+  {
+    id: "power: an estimate-only plan has no planning statement",
+    file: P,
+    from: "  if (counts.length === 0) return {};",
+    to: '  if (counts.length === 0 || plan.mode !== "decision") return {};',
+    projects: CORE,
+  },
+  {
+    id: "power: an estimate-only plan gets the floor's mode reasons",
+    file: P,
+    from: '  return reasons.length > 0 && plan.mode === "decision"',
+    to: "  return reasons.length > 0",
+  },
+  {
+    id: "power: import is silent about a plan without a statement",
+    file: "../core/src/cli.ts",
+    from: "  if (result.plan.power.length === 0 && result.plan.primary.length > 0)",
+    to: "  if (false)",
+    projects: CORE,
+  },
   // Margins (decision 0012).
   {
     id: "margin: floor not checked",

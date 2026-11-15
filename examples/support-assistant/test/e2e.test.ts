@@ -15,6 +15,7 @@ async function flow(
   candidateResults: string,
   varies: readonly string[] = ["prompt.answer"],
   trigger: string | null = "new-model",
+  suite = at("data/suite.json"),
 ): Promise<{ store: string; out: string[]; codes: number[] }> {
   const store = await mkdtemp(join(tmpdir(), "ichnaea-e2e-"));
   const out: string[] = [];
@@ -28,7 +29,7 @@ async function flow(
         "--importer",
         "support/results",
         "--suite",
-        at("data/suite.json"),
+        suite,
         "--case-set",
         at("data/case-set.json"),
         "--cases",
@@ -137,6 +138,80 @@ describe("example application, end to end", () => {
     expect(message).toContain("the arms also differ in model.answer, prompt.answer");
     expect(message).toContain("model.answer: --trigger new-model or --vary model.answer");
     expect(message).toContain("prompt.answer: --vary prompt.answer");
+  });
+
+  it("a placeholder margin runs estimate-only, and import still prints the planning MDE (REQ-54)", async () => {
+    const suite = JSON.parse(await readFile(at("data/suite.json"), "utf8")) as {
+      primary: Array<{ marginStatus: string }>;
+    };
+    for (const p of suite.primary) p.marginStatus = "placeholder";
+    const dir = await mkdtemp(join(tmpdir(), "ichnaea-e2e-placeholder-"));
+    const path = join(dir, "suite.json");
+    await writeFile(path, JSON.stringify(suite));
+    const { store, codes, out } = await flow(
+      "results/candidate-same.json",
+      undefined,
+      undefined,
+      path,
+    );
+    expect(codes, out.join("\n")).toEqual([0, 0, 0]);
+    expect(out.join("\n")).toMatch(/plan estimate-only/);
+    expect(out.join("\n")).toMatch(
+      /power: support\/facts-stated: smallest detectable drop \d+\.\d points \(planning: .*\), margin 15\.0 points, within reach of the margin, but the plan is estimate-only/,
+    );
+    const decision = JSON.parse(
+      await readFile(join(store, "runs", "run-1", "decision.json"), "utf8"),
+    ) as { verdict: unknown; power: { planning: Array<{ computed: boolean }> } };
+    expect(decision.verdict).toBeNull();
+    expect(decision.power.planning).toEqual([expect.objectContaining({ computed: true })]);
+  });
+
+  it("without the decision plugin the plan has no power statement, and import says so", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "ichnaea-e2e-no-decide-"));
+    const config = join(dir, "ichnaea.config.ts");
+    await writeFile(
+      config,
+      `import { support } from ${JSON.stringify(at("plugin.ts"))};\nexport default { plugins: [support], allowStability: ["alpha"] };\n`,
+    );
+    const out: string[] = [];
+    const code = await main(
+      [
+        "import",
+        "--config",
+        config,
+        "--importer",
+        "support/results",
+        "--suite",
+        at("data/suite.json"),
+        "--case-set",
+        at("data/case-set.json"),
+        "--cases",
+        at("data/cases.jsonl"),
+        "--arm",
+        `base:base:${at("configurations/base.json")}`,
+        "--arm",
+        `candidate:candidate:${at("configurations/candidate.json")}`,
+        "--file",
+        at("results/base.json"),
+        "--file",
+        at("results/candidate-same.json"),
+        "--run",
+        "run-1",
+        "--store",
+        join(dir, "store"),
+        "--now",
+        "2026-11-15T10:00:00Z",
+        "--trigger",
+        "new-model",
+        "--vary",
+        "prompt.answer",
+      ],
+      (t) => void out.push(t),
+    );
+    expect(code, out.join("\n")).toBe(0);
+    expect(out).toContain(
+      "  power: not computed: no plugin in the configuration states one (decidePlugin() does)",
+    );
   });
 
   it("the doctor passes: every measure's tester passes", async () => {

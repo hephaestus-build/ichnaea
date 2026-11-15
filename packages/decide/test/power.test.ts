@@ -88,6 +88,79 @@ describe("the power statement (REQ-54)", () => {
     for (const d of [one, none]) expect(JSON.stringify(d.power)).not.toMatch(/nonFinite|null/);
   });
 
+  it("an estimate-only plan with a placeholder margin carries its planning statement", async () => {
+    const s = await planned({ ...stable, marginStatus: "placeholder" });
+    expect(s.plan.mode).toBe("estimate-only");
+    expect(s.plan.modeReasons.join(" ")).toMatch(/placeholder margin/);
+    expect(s.plan.power).toEqual([
+      expect.objectContaining({
+        computed: true,
+        measure: "app/correct",
+        applicableCases: 60,
+        replicates: 3,
+        margin: 0.1,
+        decidable: true,
+        assumption: expect.stringMatching(/^planning: no noise/),
+      }),
+    ]);
+    const d = await run(s);
+    expect(d.verdict).toBeNull();
+    expect(d.power.planning).toEqual(s.plan.power);
+    // Its INVALID decision keeps the planning statement too.
+    const invalid = await run(
+      await planned({ ...stable, marginStatus: "placeholder", maxCalls: 1 }),
+    );
+    expect(invalid.verdict).toBe("INVALID");
+    expect(invalid.power.planning).toHaveLength(1);
+    expect(invalid.power.planning[0]).toMatchObject({ computed: true, measure: "app/correct" });
+  });
+
+  it("every plan carries a planning statement: one trial per case, and sampled-cases", async () => {
+    const one = await planned({ cases: 20, replicates: 1, base: () => 1, candidate: () => 1 });
+    expect(one.plan.mode).toBe("estimate-only");
+    expect(one.plan.power).toEqual([
+      {
+        computed: false,
+        measure: "app/correct",
+        applicableCases: 20,
+        replicates: 1,
+        margin: 0.1,
+        reason: "fixed-cases needs at least 2 trials per case and arm",
+      },
+    ]);
+    const sampled = await planned({
+      cases: 40,
+      replicates: 1,
+      base: () => 1,
+      candidate: () => 1,
+      estimand: "sampled-cases",
+      selection: "random",
+      family: (i) => `f${i}`,
+    });
+    expect(sampled.plan.mode).toBe("estimate-only");
+    expect(sampled.plan.power).toEqual([
+      expect.objectContaining({
+        computed: true,
+        applicableCases: 40,
+        assumption: expect.stringMatching(/^planning: no discordant pairs/),
+      }),
+    ]);
+  });
+
+  it("an estimate-only plan keeps its own reasons when the floor is out of reach too", async () => {
+    const o: ScenarioOptions = {
+      cases: 6,
+      replicates: 2,
+      base: () => 1,
+      candidate: () => 1,
+      margin: 0.05,
+      marginStatus: "placeholder",
+    };
+    const s = await planned(o);
+    expect(s.plan.power[0]).toMatchObject({ computed: true, decidable: false });
+    expect(s.plan.modeReasons).toEqual((await scenario(o)).plan.modeReasons);
+  });
+
   it("estimate-only and INCONCLUSIVE decisions keep the run-time estimate", async () => {
     const estimate = await run(
       await scenario({ cases: 4, replicates: 3, base: () => 0.9, candidate: () => 0.9 }),

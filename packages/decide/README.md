@@ -34,7 +34,9 @@ Whenever a primary measure misses a trial in either arm, each verdict is tested 
 imputation that works against it. A verdict that this changes becomes INCONCLUSIVE (decision 0010).
 
 The plugin refuses a plan whose margin, less its safety margin, lies outside the validated
-margins of the statistics package (decision 0012). It adds the plan's planning power statement.
+margins of the statistics package (decision 0012). It adds the planning power statement to every
+plan, an estimate-only plan too. Without the plugin, a plan has no power statement, and
+`ichnaea import` says so.
 Each decision carries that statement unchanged, and a run-time statement that never changes the
 verdict (decision 0014).
 
