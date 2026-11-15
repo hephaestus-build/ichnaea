@@ -2,6 +2,8 @@ name: CI
 
 on:
   pull_request:
+    # `edited` runs the title and body check again when someone changes either.
+    types: [opened, synchronize, reopened, edited]
   push:
     branches: [main]
   merge_group:
@@ -90,6 +92,13 @@ jobs:
           BASE: ${{ github.event.pull_request.base.sha }}
           HEAD: ${{ github.event.pull_request.head.sha }}
         run: pnpm exec commitlint --from "$BASE" --to "$HEAD"
+      # The title and body become the merge commit, so they are public text. The values reach the
+      # script through the environment and are never part of the shell command.
+      - name: No private record in the title and body
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: node scripts/check-purity.ts --env PR_TITLE --env PR_BODY
 
   ok:
     name: ok
