@@ -131,12 +131,11 @@ commands from a checkout of `main`.
    ```
 
 6. **The `main` rulesets.** Squash merges only, linear history and resolved threads. The `main`
-   ruleset requires four checks, each bound to the app that reports it, so no other app or commit
-   status of the same name can satisfy it: `ok` from `ci.yml`, `pull request text` from
-   `pull-request.yml` and `dependency review` from `dependency-review.yml`, all from GitHub Actions
-   (integration 15368), and `CodeQL` from GitHub Advanced Security (integration 57789), the
-   organisation's default setup. The last two are the checks of step 12: on a repository where
-   they have not run yet, apply the files without them. Nothing bypasses the `main` ruleset. Two
+   ruleset requires three checks, all from GitHub Actions (integration 15368), so no other app or
+   commit status of the same name can satisfy them: `ok` from `ci.yml`, `pull request text` from
+   `pull-request.yml` and `dependency review` from `dependency-review.yml`. `dependency review` is
+   the check of step 12: on a repository where it has not run yet, apply the files without it.
+   CodeQL is not a required check (step 12). Nothing bypasses the `main` ruleset. Two
    variants:
    - **One maintainer:** the `main` ruleset of `.github/rulesets/main-one-maintainer.json`, with no
      required approval, and the code owner ruleset of `.github/rulesets/main-code-owner.json`. The

@@ -28,8 +28,7 @@
         "required_status_checks": [
           { "context": "ok", "integration_id": 15368 },
           { "context": "pull request text", "integration_id": 15368 },
-          { "context": "dependency review", "integration_id": 15368 },
-          { "context": "CodeQL", "integration_id": 57789 }
+          { "context": "dependency review", "integration_id": 15368 }
         ],
         "strict_required_status_checks_policy": true
       }
