@@ -1,0 +1,20 @@
+{
+  "schema": "ichnaea.caseSet/1",
+  "id": "support-answers",
+  "version": "3",
+  "digest": "sha256:b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1",
+  "cases": [
+    {
+      "id": "refund-window-de",
+      "digest": "sha256:a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2",
+      "pool": "development",
+      "family": "refund-window"
+    },
+    {
+      "id": "refund-window-en",
+      "digest": "sha256:a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3",
+      "pool": "development",
+      "family": "refund-window"
+    }
+  ]
+}

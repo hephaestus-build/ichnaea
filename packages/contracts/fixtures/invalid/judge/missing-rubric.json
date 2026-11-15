@@ -1,0 +1,30 @@
+{
+  "schema": "ichnaea.judge/1",
+  "id": "support/grounded",
+  "version": "1.0.0",
+  "evaluatorKind": "model",
+  "model": {
+    "provider": "openai-compatible",
+    "id": "example-judge-2026-09"
+  },
+  "endpointClass": "deployment-gateway",
+  "promptDigest": "sha256:1515151515151515151515151515151515151515151515151515151515151515",
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "verdict": {
+        "enum": [
+          "yes",
+          "no",
+          "unknown"
+        ]
+      }
+    }
+  },
+  "outputKind": "binary",
+  "parameters": {
+    "temperature": 0
+  },
+  "swapOrder": false,
+  "repeats": 1
+}

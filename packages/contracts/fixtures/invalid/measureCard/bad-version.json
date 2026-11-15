@@ -1,0 +1,17 @@
+{
+  "schema": "ichnaea.measureCard/1",
+  "id": "support/facts-correct",
+  "version": "1.0",
+  "construct": "The answer states every gold fact of the case and contradicts none.",
+  "operationalDefinition": "1 if all positive gold facts are entailed and no negative fact is, else 0.",
+  "valueType": "binary",
+  "unit": "proportion",
+  "direction": "higher",
+  "justification": "Wrong return rules cost money and trust.",
+  "errorModel": "Paraphrases can be missed by the literal matcher.",
+  "applicability": "Cases with at least one gold fact.",
+  "tier": "primary",
+  "unitOfEvaluation": "session",
+  "establishes": "Agreement with the gold facts, not helpfulness.",
+  "computedBy": "ichnaea"
+}

@@ -1,0 +1,122 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ichnaea:schema:measureValue:1",
+  "title": "ichnaea.measureValue/1",
+  "description": "One measure value on one trial.",
+  "x-ichnaea-stability": "alpha",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "ichnaea.measureValue/1",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "trial": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "measure": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*\\/[a-z0-9][a-z0-9._-]*$",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "applicable": {
+      "type": "boolean",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "value": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "nonFinite": {
+              "type": "string",
+              "enum": [
+                "nan",
+                "inf",
+                "-inf"
+              ],
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none"
+              }
+            }
+          },
+          "required": [
+            "nonFinite"
+          ]
+        }
+      ],
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "ichnaea",
+        "application",
+        "judge",
+        "human"
+      ],
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "detail": {
+      "type": "string",
+      "x-ichnaea-data": {
+        "class": "inherit",
+        "identifier": "content"
+      }
+    },
+    "dataClass": {
+      "type": "string",
+      "enum": [
+        "none",
+        "pseudonymous",
+        "personal",
+        "special"
+      ],
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    }
+  },
+  "required": [
+    "schema",
+    "trial",
+    "measure",
+    "version",
+    "applicable",
+    "source",
+    "dataClass"
+  ]
+}

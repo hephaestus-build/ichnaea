@@ -1,0 +1,12 @@
+{
+  "schema": "ichnaea.measureValue/1",
+  "trial": "t-0001",
+  "measure": "support/facts-correct",
+  "version": "1.0.0",
+  "applicable": true,
+  "value": {
+    "nonFinite": "infinity"
+  },
+  "source": "ichnaea",
+  "dataClass": "none"
+}

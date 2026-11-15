@@ -1,0 +1,36 @@
+{
+  "schema": "ichnaea.suite/1",
+  "id": "support-answers",
+  "version": "1",
+  "objective": "Answers about returns stay correct when the assistant changes.",
+  "construct": "Factual correctness of answers against the help centre.",
+  "decision": "Merge or hold a change to the assistant.",
+  "scope": "Questions about returns and refunds in German and English.",
+  "nonCoverage": "Tone, latency under load, other topics.",
+  "estimand": "fixed-cases",
+  "caseSet": {
+    "id": "support-answers",
+    "path": "cases/support-answers.jsonl"
+  },
+  "replicates": 3,
+  "primary": [
+    {
+      "measure": "support/facts-correct",
+      "margin": 0.05
+    }
+  ],
+  "hardGates": [
+    "support/schema-valid"
+  ],
+  "budget": {
+    "maxCalls": 600,
+    "callsPerTrial": 2
+  },
+  "policy": {
+    "onRegression": "block",
+    "onInconclusive": "report",
+    "onEstimateOnly": "report",
+    "onInvalid": "block"
+  },
+  "measureReviewDate": "2027-05-01"
+}

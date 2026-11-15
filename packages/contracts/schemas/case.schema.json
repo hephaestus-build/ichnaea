@@ -1,0 +1,411 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ichnaea:schema:case:1",
+  "title": "ichnaea.case/1",
+  "description": "One evaluation input with fixtures and hidden references.",
+  "x-ichnaea-stability": "alpha",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "ichnaea.case/1",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "caseSet": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "unit": {
+      "type": "string",
+      "enum": [
+        "turn",
+        "trace",
+        "session",
+        "episode"
+      ],
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "dataClass": {
+      "type": "string",
+      "enum": [
+        "none",
+        "pseudonymous",
+        "personal",
+        "special"
+      ],
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "input": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "x-ichnaea-data": {
+        "class": "inherit",
+        "identifier": "content"
+      }
+    },
+    "turns": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "system",
+              "tool"
+            ],
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          },
+          "content": {
+            "x-ichnaea-data": {
+              "class": "inherit",
+              "identifier": "content"
+            },
+            "$ref": "#/$defs/JsonValue"
+          }
+        },
+        "required": [
+          "role",
+          "content"
+        ]
+      }
+    },
+    "fixtures": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          },
+          "digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          },
+          "uri": {
+            "type": "string",
+            "minLength": 1,
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "digest"
+        ]
+      }
+    },
+    "references": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "x-ichnaea-data": {
+        "class": "inherit",
+        "identifier": "content"
+      }
+    },
+    "family": {
+      "type": "string",
+      "minLength": 1,
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "slices": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "type": "string"
+      },
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "criticality": {
+      "type": "string",
+      "enum": [
+        "low",
+        "normal",
+        "high",
+        "critical"
+      ],
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string",
+          "minLength": 1,
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none"
+          }
+        },
+        "selection": {
+          "type": "string",
+          "enum": [
+            "curated",
+            "random",
+            "promoted",
+            "generated"
+          ],
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none"
+          }
+        },
+        "author": {
+          "type": "string",
+          "minLength": 1,
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none"
+          }
+        },
+        "created": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none"
+          }
+        },
+        "collected": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none"
+          }
+        },
+        "licence": {
+          "type": "string",
+          "minLength": 1,
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none"
+          }
+        },
+        "exposure": {
+          "type": "string",
+          "enum": [
+            "public",
+            "private",
+            "sealed"
+          ],
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none"
+          }
+        },
+        "reusedDataset": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none"
+              }
+            },
+            "version": {
+              "type": "string",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none"
+              }
+            },
+            "limits": {
+              "type": "string",
+              "minLength": 1,
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none"
+              }
+            }
+          },
+          "required": [
+            "name",
+            "limits"
+          ]
+        },
+        "generator": {
+          "type": "object",
+          "properties": {
+            "method": {
+              "type": "string",
+              "minLength": 1,
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none"
+              }
+            },
+            "model": {
+              "type": "string",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none"
+              }
+            },
+            "seedSource": {
+              "type": "string",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none"
+              }
+            }
+          },
+          "required": [
+            "method"
+          ]
+        }
+      },
+      "required": [
+        "source",
+        "selection",
+        "created",
+        "licence",
+        "exposure"
+      ]
+    },
+    "pool": {
+      "type": "string",
+      "enum": [
+        "development",
+        "validation",
+        "sealed",
+        "promoted"
+      ],
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "validation": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "reviewed",
+            "validated",
+            "suspect"
+          ],
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none"
+          }
+        },
+        "note": {
+          "type": "string",
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none"
+          }
+        }
+      },
+      "required": [
+        "status"
+      ]
+    }
+  },
+  "required": [
+    "schema",
+    "id",
+    "unit",
+    "dataClass",
+    "input",
+    "provenance",
+    "pool"
+  ],
+  "$defs": {
+    "JsonValue": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/JsonValue"
+          }
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          }
+        }
+      ]
+    }
+  }
+}

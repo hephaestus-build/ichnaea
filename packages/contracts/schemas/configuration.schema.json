@@ -1,0 +1,440 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ichnaea:schema:configuration:1",
+  "title": "ichnaea.configuration/1",
+  "description": "A resolved system configuration with factor statuses.",
+  "x-ichnaea-stability": "alpha",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "ichnaea.configuration/1",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    },
+    "models": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "minLength": 1,
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          },
+          "provider": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none"
+                },
+                "$ref": "#/$defs/JsonValue"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "pinned",
+                  "observed",
+                  "declared",
+                  "uncontrollable"
+                ],
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none"
+                }
+              },
+              "part": {
+                "type": "string",
+                "enum": [
+                  "code",
+                  "prompt",
+                  "model",
+                  "runtime",
+                  "parameter",
+                  "tool",
+                  "setting",
+                  "data",
+                  "other"
+                ],
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none"
+                }
+              }
+            },
+            "required": [
+              "value",
+              "status",
+              "part"
+            ]
+          },
+          "id": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none"
+                },
+                "$ref": "#/$defs/JsonValue"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "pinned",
+                  "observed",
+                  "declared",
+                  "uncontrollable"
+                ],
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none"
+                }
+              },
+              "part": {
+                "type": "string",
+                "enum": [
+                  "code",
+                  "prompt",
+                  "model",
+                  "runtime",
+                  "parameter",
+                  "tool",
+                  "setting",
+                  "data",
+                  "other"
+                ],
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none"
+                }
+              }
+            },
+            "required": [
+              "value",
+              "status",
+              "part"
+            ]
+          },
+          "version": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none"
+                },
+                "$ref": "#/$defs/JsonValue"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "pinned",
+                  "observed",
+                  "declared",
+                  "uncontrollable"
+                ],
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none"
+                }
+              },
+              "part": {
+                "type": "string",
+                "enum": [
+                  "code",
+                  "prompt",
+                  "model",
+                  "runtime",
+                  "parameter",
+                  "tool",
+                  "setting",
+                  "data",
+                  "other"
+                ],
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none"
+                }
+              }
+            },
+            "required": [
+              "value",
+              "status",
+              "part"
+            ]
+          },
+          "route": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none"
+                },
+                "$ref": "#/$defs/JsonValue"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "pinned",
+                  "observed",
+                  "declared",
+                  "uncontrollable"
+                ],
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none"
+                }
+              },
+              "part": {
+                "type": "string",
+                "enum": [
+                  "code",
+                  "prompt",
+                  "model",
+                  "runtime",
+                  "parameter",
+                  "tool",
+                  "setting",
+                  "data",
+                  "other"
+                ],
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none"
+                }
+              }
+            },
+            "required": [
+              "value",
+              "status",
+              "part"
+            ]
+          }
+        },
+        "required": [
+          "role",
+          "provider",
+          "id"
+        ]
+      }
+    },
+    "parameters": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            },
+            "$ref": "#/$defs/JsonValue"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pinned",
+              "observed",
+              "declared",
+              "uncontrollable"
+            ],
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          },
+          "part": {
+            "type": "string",
+            "enum": [
+              "code",
+              "prompt",
+              "model",
+              "runtime",
+              "parameter",
+              "tool",
+              "setting",
+              "data",
+              "other"
+            ],
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          }
+        },
+        "required": [
+          "value",
+          "status",
+          "part"
+        ]
+      }
+    },
+    "prompts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          },
+          "digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pinned",
+              "observed",
+              "declared",
+              "uncontrollable"
+            ],
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "digest",
+          "status"
+        ]
+      }
+    },
+    "factors": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            },
+            "$ref": "#/$defs/JsonValue"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pinned",
+              "observed",
+              "declared",
+              "uncontrollable"
+            ],
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          },
+          "part": {
+            "type": "string",
+            "enum": [
+              "code",
+              "prompt",
+              "model",
+              "runtime",
+              "parameter",
+              "tool",
+              "setting",
+              "data",
+              "other"
+            ],
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none"
+            }
+          }
+        },
+        "required": [
+          "value",
+          "status",
+          "part"
+        ]
+      }
+    },
+    "label": {
+      "type": "string",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none"
+      }
+    }
+  },
+  "required": [
+    "schema",
+    "description",
+    "models",
+    "parameters",
+    "prompts",
+    "factors"
+  ],
+  "$defs": {
+    "JsonValue": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/JsonValue"
+          }
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          }
+        }
+      ]
+    }
+  }
+}
