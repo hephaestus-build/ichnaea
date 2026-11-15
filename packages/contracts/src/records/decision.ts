@@ -66,6 +66,15 @@ export const ArmEstimate = z.strictObject({
   availability: Availability,
 });
 
+/**
+ * Whether one result of a comparison lies inside the validated domain of its method, and why not
+ * (decision 0015). A result that is not validated names at least one reason.
+ */
+export const Validity = z.discriminatedUnion("validated", [
+  z.strictObject({ validated: none(z.literal(true)), limitations: none(z.array(Text).max(0)) }),
+  z.strictObject({ validated: none(z.literal(false)), limitations: none(z.array(Text).min(1)) }),
+]);
+
 /** The comparison of one candidate with the base for one measure. None in estimate-only mode. */
 export const Comparison = z.strictObject({
   base: none(ArmName),
@@ -76,7 +85,37 @@ export const Comparison = z.strictObject({
   nonInferiorityP: none(Real),
   regressionP: none(Real),
   regressionPAdjusted: none(Real),
+  /** The stable name of the regression test's method. */
+  regressionMethod: none(Text),
+  /**
+   * Whether the regression test lies inside the domain where its type-I error is shown. REGRESSION
+   * needs it. It does not depend on the margin, and it never vouches for the interval.
+   */
+  regression: Validity,
+  /**
+   * Whether the non-inferiority result, the interval against the margin, lies inside the domain
+   * where its coverage is shown. NON-INFERIOR, and so PASS, needs it and `regression` (decision
+   * 0015).
+   */
+  nonInferiority: Validity,
   flips: z.array(Flip),
+});
+
+/**
+ * One imputation of the sensitivity analysis for missing trials (REQ-56): the measure decided
+ * again with its missing trials imputed against one verdict. Against non-inferiority, missing
+ * candidate trials fail and missing base trials pass; against regression, the reverse.
+ */
+export const SensitivityResult = z.strictObject({
+  imputation: none(z.enum(["against-non-inferiority", "against-regression"])),
+  difference: Estimate,
+  nonInferiorityP: none(Real),
+  regressionPAdjusted: none(Real),
+  regression: Validity,
+  nonInferiority: Validity,
+  verdict: none(MeasureVerdict),
+  /** Whether this imputation changes the measure's verdict, which then becomes INCONCLUSIVE. */
+  changesVerdict: none(z.boolean()),
 });
 
 /** The result for one primary or secondary measure. */
@@ -89,6 +128,8 @@ export const MeasureOutcome = z.strictObject({
   comparisons: z.array(Comparison),
   verdict: none(MeasureVerdict),
   coverage: none(z.number().min(0).max(1)),
+  /** Both imputations of a primary measure when the analysis ran; empty otherwise. */
+  sensitivity: z.array(SensitivityResult),
   notes: none(z.array(Text)),
 });
 
@@ -100,6 +141,9 @@ export const GateResult = z.strictObject({
   detail: content(z.string()).optional(),
 });
 
+/** A hard-gate result. */
+export type GateResult = z.infer<typeof GateResult>;
+
 /** The comparison of missing trials between arms (REQ-56). */
 export const Missingness = z.strictObject({
   byArm: z.array(
@@ -110,6 +154,10 @@ export const Missingness = z.strictObject({
     }),
   ),
   differs: none(z.boolean()),
+  /**
+   * `not-needed` when no primary measure has a missing trial in either arm; otherwise whether the
+   * sensitivity analysis changes a verdict.
+   */
   sensitivity: none(z.enum(["unchanged", "changes-verdict", "not-needed"])),
 });
 
@@ -119,6 +167,13 @@ export const Decision = z.strictObject({
   mode: none(z.enum(["decision", "estimate-only"])),
   verdict: none(Verdict.nullable()),
   reason: none(Text),
+  /**
+   * What the verdict is about, stated next to it in every output and built from the records: the
+   * cases the primary measures compare, "beyond run-to-run noise" only when each of them has at
+   * least 2 trials per arm, never a claim about new inputs. A failed hard gate says that a
+   * deterministic check failed; an INVALID decision makes no claim.
+   */
+  scope: none(Text),
   plan: none(PlanDigest),
   run: none(RunId),
   runDigest: none(Digest),
@@ -135,7 +190,12 @@ export const Decision = z.strictObject({
   alpha: none(z.number().gt(0).lt(0.5)),
   measures: z.array(MeasureOutcome),
   gates: z.array(GateResult),
-  power: z.array(PowerEntry),
+  /**
+   * The power statement (REQ-54): the plan's statement unchanged, and one run-time entry per
+   * primary measure. An INVALID decision computes no run-time entry: each one says "run invalid",
+   * so no later plan can take its noise as an assumption.
+   */
+  power: z.strictObject({ planning: z.array(PowerEntry), run: z.array(PowerEntry) }),
   missingness: Missingness,
   invalidReasons: none(z.array(Text)),
   limitations: none(z.array(Text)),

@@ -101,6 +101,7 @@ export const VALID: Record<string, Record<string, unknown>> = {
       {
         measure: "support/facts-correct",
         margin: 0.05,
+        marginStatus: "registered",
         marginReason: "A 5-point drop is the largest the owners accept.",
       },
     ],
@@ -110,7 +111,6 @@ export const VALID: Record<string, Record<string, unknown>> = {
       onRegression: "block",
       onInconclusive: "report",
       onEstimateOnly: "report",
-      onInvalid: "block",
     },
     measureReviewDate: "2027-05-01",
   },
@@ -122,7 +122,9 @@ export const VALID: Record<string, Record<string, unknown>> = {
     caseSet: "support-answers",
     caseSetDigest: d("b1"),
     trigger: "code",
+    varies: [],
     mode: "decision",
+    modeReasons: [],
     estimand: "fixed-cases",
     alpha: 0.05,
     replicates: 3,
@@ -133,6 +135,7 @@ export const VALID: Record<string, Record<string, unknown>> = {
     measures: [{ kind: "measure", id: "support/facts-correct", version: "1.0.0", digest: d("12") }],
     power: [
       {
+        computed: true,
         measure: "support/facts-correct",
         applicableCases: 60,
         replicates: 3,
@@ -147,6 +150,7 @@ export const VALID: Record<string, Record<string, unknown>> = {
       {
         measure: "support/facts-correct",
         margin: 0.05,
+        marginStatus: "registered",
         marginReason: "A 5-point drop is the largest the owners accept.",
       },
     ],
@@ -156,10 +160,18 @@ export const VALID: Record<string, Record<string, unknown>> = {
       onRegression: "block",
       onInconclusive: "report",
       onEstimateOnly: "report",
-      onInvalid: "block",
     },
     budget: { worstCaseCalls: 720, maxCalls: 800 },
-    trials: [{ id: "t-0001", case: "refund-window-de", arm: "candidate", replicate: 0, batch: 0 }],
+    trials: [
+      {
+        id: "t-0001",
+        case: "refund-window-de",
+        family: "refund-window",
+        arm: "candidate",
+        replicate: 0,
+        batch: 0,
+      },
+    ],
     seed: { algorithm: "mt19937", value: "20261115" },
     createdAt: "2026-11-15T10:00:00Z",
     ichnaea: "0.1.0",
@@ -244,6 +256,7 @@ export const VALID: Record<string, Record<string, unknown>> = {
     mode: "decision",
     verdict: "PASS",
     reason: "Every primary measure is non-inferior and every hard gate passed.",
+    scope: "on these 2 cases, beyond run-to-run noise",
     plan: d("13"),
     run: "run-2026-11-15-a",
     runDigest: d("14"),
@@ -302,27 +315,83 @@ export const VALID: Record<string, Record<string, unknown>> = {
             nonInferiorityP: 0.004,
             regressionP: 0.71,
             regressionPAdjusted: 0.71,
+            regressionMethod: "exact-stratified-conditional",
+            regression: { validated: true, limitations: [] },
+            nonInferiority: { validated: true, limitations: [] },
             flips: [{ case: "refund-window-de", direction: "negative", base: 1, candidate: 0.33 }],
           },
         ],
         verdict: "NON-INFERIOR",
         coverage: 0.994,
+        sensitivity: [
+          {
+            imputation: "against-non-inferiority",
+            difference: {
+              estimate: 0.004,
+              lower: -0.027,
+              upper: 1,
+              level: 0.95,
+              sided: "lower",
+              method: "stratified-score-rd-bc",
+            },
+            nonInferiorityP: 0.006,
+            regressionPAdjusted: 0.62,
+            regression: { validated: true, limitations: [] },
+            nonInferiority: { validated: true, limitations: [] },
+            verdict: "NON-INFERIOR",
+            changesVerdict: false,
+          },
+          {
+            imputation: "against-regression",
+            difference: {
+              estimate: 0.012,
+              lower: -0.018,
+              upper: 1,
+              level: 0.95,
+              sided: "lower",
+              method: "stratified-score-rd-bc",
+            },
+            nonInferiorityP: 0.003,
+            regressionPAdjusted: 0.78,
+            regression: { validated: true, limitations: [] },
+            nonInferiority: { validated: true, limitations: [] },
+            verdict: "NON-INFERIOR",
+            changesVerdict: false,
+          },
+        ],
         notes: [],
       },
     ],
     gates: [{ gate: "support/schema-valid", passed: true, failures: 0 }],
-    power: [
-      {
-        measure: "support/facts-correct",
-        applicableCases: 60,
-        replicates: 3,
-        margin: 0.05,
-        mde: { nonFinite: "nan" },
-        floor: 0.018,
-        assumption: "no comparable run yet",
-        decidable: false,
-      },
-    ],
+    power: {
+      planning: [
+        {
+          computed: true,
+          measure: "support/facts-correct",
+          applicableCases: 60,
+          replicates: 3,
+          margin: 0.05,
+          mde: 0.018,
+          floor: 0.018,
+          assumption: "planning: no noise, every case applicable, trials per case 3 (60 cases)",
+          decidable: true,
+        },
+      ],
+      run: [
+        {
+          computed: true,
+          measure: "support/facts-correct",
+          applicableCases: 60,
+          replicates: 3,
+          margin: 0.05,
+          mde: 0.034,
+          floor: 0.018,
+          assumption:
+            "per-case pass rates of the base arm in this run, trials per case 3 (60 cases)",
+          decidable: true,
+        },
+      ],
+    },
     missingness: {
       byArm: [
         { arm: "base", missing: 0, planned: 180 },
@@ -451,12 +520,20 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
       delete (r["parameters"] as Array<Record<string, unknown>>)[0]!["origin"],
   },
   suite: {
+    "replicates-for-without-reason": (r) => {
+      r["replicatesFor"] = [{ slice: "group", value: "small", replicates: 3 }];
+    },
+    "replicates-for-zero-trials": (r) => {
+      r["replicatesFor"] = [{ slice: "group", value: "small", replicates: 0, reason: "r" }];
+    },
     "missing-policy-inconclusive": (r) =>
       delete (r["policy"] as Record<string, unknown>)["onInconclusive"],
     "zero-replicates": (r) => (r["replicates"] = 0),
     "estimand-not-a-string": (r) => (r["estimand"] = ["fixed-cases"]),
     "negative-margin": (r) =>
       ((r["primary"] as Array<Record<string, unknown>>)[0]!["margin"] = -0.05),
+    "margin-without-status": (r) =>
+      delete (r["primary"] as Array<Record<string, unknown>>)[0]!["marginStatus"],
     "margin-without-reason": (r) =>
       delete (r["primary"] as Array<Record<string, unknown>>)[0]!["marginReason"],
     "unnamespaced-measure": (r) =>
@@ -498,6 +575,35 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
       outcome.comparisons[0]!.difference["level"] = 1.5;
     },
     "missing-missingness": (r) => delete r["missingness"],
+    "power-as-a-list": (r) => (r["power"] = []),
+    "run-power-not-a-number": (r) => {
+      const power = r["power"] as { run: Array<Record<string, unknown>> };
+      power.run[0]!["mde"] = { nonFinite: "nan" };
+    },
+    "not-computed-without-reason": (r) => {
+      const power = r["power"] as { run: Array<Record<string, unknown>> };
+      power.run[0] = { ...power.run[0], computed: false };
+    },
+    "unnamed-validated": (r) => {
+      const comparison = (
+        r["measures"] as Array<{ comparisons: Array<Record<string, unknown>> }>
+      )[0]!.comparisons[0]!;
+      delete comparison["regression"];
+      delete comparison["nonInferiority"];
+      comparison["validated"] = true;
+    },
+    "not-validated-without-reason": (r) => {
+      const comparison = (
+        r["measures"] as Array<{ comparisons: Array<Record<string, unknown>> }>
+      )[0]!.comparisons[0]!;
+      comparison["nonInferiority"] = { validated: false, limitations: [] };
+    },
+    "validated-with-a-limitation": (r) => {
+      const comparison = (
+        r["measures"] as Array<{ comparisons: Array<Record<string, unknown>> }>
+      )[0]!.comparisons[0]!;
+      comparison["regression"] = { validated: true, limitations: ["fewer than 5 cases"] };
+    },
   },
   judge: {
     "zero-repeats": (r) => (r["repeats"] = 0),
@@ -527,6 +633,19 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
  */
 /** Further valid records: shapes the main valid fixture does not show. */
 export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
+  suite: {
+    "more-trials-for-a-slice": (r) => {
+      r["replicates"] = 2;
+      r["replicatesFor"] = [
+        {
+          slice: "group",
+          value: "small",
+          replicates: 3,
+          reason: "a measure that applies to these 17 cases; 3 trials lower its floor",
+        },
+      ];
+    },
+  },
   trial: {
     online: (r) => {
       r["source"] = "online";

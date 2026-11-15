@@ -20,12 +20,14 @@ export type Estimand = z.infer<typeof Estimand>;
 /** What a CI policy does with a verdict that is not PASS (REQ-26, REQ-27). */
 export const PolicyAction = z.enum(["block", "report"]);
 
-/** The CI policy of a suite. INCONCLUSIVE and estimate-only must have a stated action (REQ-27). */
+/**
+ * The CI policy of a suite. INCONCLUSIVE and estimate-only must have a stated action (REQ-27). An
+ * INVALID run always blocks, so it has no action to choose: INVALID never maps to a pass (REQ-53).
+ */
 export const CiPolicy = z.strictObject({
   onRegression: none(PolicyAction),
   onInconclusive: none(PolicyAction),
   onEstimateOnly: none(PolicyAction),
-  onInvalid: none(PolicyAction),
 });
 
 /** The run budget (REQ-21). */
@@ -36,13 +38,32 @@ export const Budget = z.strictObject({
   costUnit: none(Text).optional(),
 });
 
+/**
+ * Whether a margin is registered by the measure's owner, or a placeholder. A placeholder margin
+ * gives no verdict: the plan runs estimate-only (decision 0012).
+ */
+export const MarginStatus = z.enum(["registered", "placeholder"]);
+
 /** A primary measure with its margin and optional safety margin. */
 export const PrimaryMeasure = z.strictObject({
   measure: none(MeasureId),
   margin: none(z.number().min(0)),
+  marginStatus: none(MarginStatus),
   marginReason: none(Text),
   safetyMargin: none(z.number().min(0)).optional(),
   coverageFloor: none(Probability).optional(),
+});
+
+/**
+ * More trials for the cases of one slice, for example a measure that applies to few cases: every
+ * case whose `slices[slice]` is `value` runs `replicates` trials per arm. A case that several
+ * entries match runs the largest count.
+ */
+export const ReplicatesFor = z.strictObject({
+  slice: none(Text),
+  value: none(Text),
+  replicates: none(z.int().min(1)),
+  reason: none(Text),
 });
 
 /** A reference to the case set a suite evaluates. */
@@ -67,7 +88,9 @@ export const Suite = z.strictObject({
   pools: none(
     z.array(z.enum(["development", "validation", "sealed", "promoted"])).min(1),
   ).optional(),
+  /** Trials per case and arm, unless `replicatesFor` gives a case more. */
   replicates: none(z.int().min(1)),
+  replicatesFor: z.array(ReplicatesFor).optional(),
   alpha: none(z.number().gt(0).lt(0.5)).optional(),
   primary: z.array(PrimaryMeasure),
   secondary: none(z.array(MeasureId)).optional(),

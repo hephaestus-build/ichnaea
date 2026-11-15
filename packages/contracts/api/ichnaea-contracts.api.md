@@ -593,10 +593,6 @@ export const CiPolicy: z.ZodObject<{
         block: "block";
         report: "report";
     }>;
-    onInvalid: z.ZodEnum<{
-        block: "block";
-        report: "report";
-    }>;
 }, z.core.$strict>;
 
 // @public
@@ -662,6 +658,21 @@ export const Comparison: z.ZodObject<{
             nan: "nan";
         }>;
     }, z.core.$strict>]>;
+    regressionMethod: z.ZodString;
+    regression: z.ZodDiscriminatedUnion<[z.ZodObject<{
+        validated: z.ZodLiteral<true>;
+        limitations: z.ZodArray<z.ZodString>;
+    }, z.core.$strict>, z.ZodObject<{
+        validated: z.ZodLiteral<false>;
+        limitations: z.ZodArray<z.ZodString>;
+    }, z.core.$strict>], "validated">;
+    nonInferiority: z.ZodDiscriminatedUnion<[z.ZodObject<{
+        validated: z.ZodLiteral<true>;
+        limitations: z.ZodArray<z.ZodString>;
+    }, z.core.$strict>, z.ZodObject<{
+        validated: z.ZodLiteral<false>;
+        limitations: z.ZodArray<z.ZodString>;
+    }, z.core.$strict>], "validated">;
     flips: z.ZodArray<z.ZodObject<{
         case: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
         direction: z.ZodEnum<{
@@ -818,6 +829,7 @@ export const Decision: z.ZodObject<{
         REGRESSION: "REGRESSION";
     }>>;
     reason: z.ZodString;
+    scope: z.ZodString;
     plan: z.core.$ZodBranded<z.ZodString, "PlanDigest", "out">;
     run: z.core.$ZodBranded<z.ZodString, "RunId", "out">;
     runDigest: z.ZodString;
@@ -938,6 +950,21 @@ export const Decision: z.ZodObject<{
                     nan: "nan";
                 }>;
             }, z.core.$strict>]>;
+            regressionMethod: z.ZodString;
+            regression: z.ZodDiscriminatedUnion<[z.ZodObject<{
+                validated: z.ZodLiteral<true>;
+                limitations: z.ZodArray<z.ZodString>;
+            }, z.core.$strict>, z.ZodObject<{
+                validated: z.ZodLiteral<false>;
+                limitations: z.ZodArray<z.ZodString>;
+            }, z.core.$strict>], "validated">;
+            nonInferiority: z.ZodDiscriminatedUnion<[z.ZodObject<{
+                validated: z.ZodLiteral<true>;
+                limitations: z.ZodArray<z.ZodString>;
+            }, z.core.$strict>, z.ZodObject<{
+                validated: z.ZodLiteral<false>;
+                limitations: z.ZodArray<z.ZodString>;
+            }, z.core.$strict>], "validated">;
             flips: z.ZodArray<z.ZodObject<{
                 case: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
                 direction: z.ZodEnum<{
@@ -955,6 +982,77 @@ export const Decision: z.ZodObject<{
             REGRESSION: "REGRESSION";
         }>;
         coverage: z.ZodNumber;
+        sensitivity: z.ZodArray<z.ZodObject<{
+            imputation: z.ZodEnum<{
+                "against-non-inferiority": "against-non-inferiority";
+                "against-regression": "against-regression";
+            }>;
+            difference: z.ZodObject<{
+                estimate: z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
+                    nonFinite: z.ZodEnum<{
+                        "-inf": "-inf";
+                        inf: "inf";
+                        nan: "nan";
+                    }>;
+                }, z.core.$strict>]>;
+                lower: z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
+                    nonFinite: z.ZodEnum<{
+                        "-inf": "-inf";
+                        inf: "inf";
+                        nan: "nan";
+                    }>;
+                }, z.core.$strict>]>;
+                upper: z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
+                    nonFinite: z.ZodEnum<{
+                        "-inf": "-inf";
+                        inf: "inf";
+                        nan: "nan";
+                    }>;
+                }, z.core.$strict>]>;
+                level: z.ZodNumber;
+                sided: z.ZodEnum<{
+                    lower: "lower";
+                    two: "two";
+                    upper: "upper";
+                }>;
+                method: z.ZodString;
+            }, z.core.$strict>;
+            nonInferiorityP: z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
+                nonFinite: z.ZodEnum<{
+                    "-inf": "-inf";
+                    inf: "inf";
+                    nan: "nan";
+                }>;
+            }, z.core.$strict>]>;
+            regressionPAdjusted: z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
+                nonFinite: z.ZodEnum<{
+                    "-inf": "-inf";
+                    inf: "inf";
+                    nan: "nan";
+                }>;
+            }, z.core.$strict>]>;
+            regression: z.ZodDiscriminatedUnion<[z.ZodObject<{
+                validated: z.ZodLiteral<true>;
+                limitations: z.ZodArray<z.ZodString>;
+            }, z.core.$strict>, z.ZodObject<{
+                validated: z.ZodLiteral<false>;
+                limitations: z.ZodArray<z.ZodString>;
+            }, z.core.$strict>], "validated">;
+            nonInferiority: z.ZodDiscriminatedUnion<[z.ZodObject<{
+                validated: z.ZodLiteral<true>;
+                limitations: z.ZodArray<z.ZodString>;
+            }, z.core.$strict>, z.ZodObject<{
+                validated: z.ZodLiteral<false>;
+                limitations: z.ZodArray<z.ZodString>;
+            }, z.core.$strict>], "validated">;
+            verdict: z.ZodEnum<{
+                "ESTIMATE-ONLY": "ESTIMATE-ONLY";
+                INCONCLUSIVE: "INCONCLUSIVE";
+                "NON-INFERIOR": "NON-INFERIOR";
+                REGRESSION: "REGRESSION";
+            }>;
+            changesVerdict: z.ZodBoolean;
+        }, z.core.$strict>>;
         notes: z.ZodArray<z.ZodString>;
     }, z.core.$strict>>;
     gates: z.ZodArray<z.ZodObject<{
@@ -963,35 +1061,54 @@ export const Decision: z.ZodObject<{
         failures: z.ZodInt;
         detail: z.ZodOptional<z.ZodString>;
     }, z.core.$strict>>;
-    power: z.ZodArray<z.ZodObject<{
-        measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
-        applicableCases: z.ZodInt;
-        replicates: z.ZodInt;
-        margin: z.ZodNumber;
-        mde: z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
-            nonFinite: z.ZodEnum<{
-                "-inf": "-inf";
-                inf: "inf";
-                nan: "nan";
+    power: z.ZodObject<{
+        planning: z.ZodArray<z.ZodDiscriminatedUnion<[z.ZodObject<{
+            computed: z.ZodLiteral<true>;
+            measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+            applicableCases: z.ZodInt;
+            replicates: z.ZodInt;
+            margin: z.ZodNumber;
+            mde: z.ZodNumber;
+            floor: z.ZodNumber;
+            sampledCasesFloor: z.ZodOptional<z.ZodNumber>;
+            assumption: z.ZodString;
+            decidable: z.ZodBoolean;
+        }, z.core.$strict>, z.ZodObject<{
+            computed: z.ZodLiteral<false>;
+            measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+            applicableCases: z.ZodInt;
+            replicates: z.ZodInt;
+            margin: z.ZodNumber;
+            reason: z.ZodEnum<{
+                "fixed-cases needs at least 2 trials per case and arm": "fixed-cases needs at least 2 trials per case and arm";
+                "no applicable case with a base value": "no applicable case with a base value";
+                "run invalid": "run invalid";
             }>;
-        }, z.core.$strict>]>;
-        floor: z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
-            nonFinite: z.ZodEnum<{
-                "-inf": "-inf";
-                inf: "inf";
-                nan: "nan";
+        }, z.core.$strict>], "computed">>;
+        run: z.ZodArray<z.ZodDiscriminatedUnion<[z.ZodObject<{
+            computed: z.ZodLiteral<true>;
+            measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+            applicableCases: z.ZodInt;
+            replicates: z.ZodInt;
+            margin: z.ZodNumber;
+            mde: z.ZodNumber;
+            floor: z.ZodNumber;
+            sampledCasesFloor: z.ZodOptional<z.ZodNumber>;
+            assumption: z.ZodString;
+            decidable: z.ZodBoolean;
+        }, z.core.$strict>, z.ZodObject<{
+            computed: z.ZodLiteral<false>;
+            measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+            applicableCases: z.ZodInt;
+            replicates: z.ZodInt;
+            margin: z.ZodNumber;
+            reason: z.ZodEnum<{
+                "fixed-cases needs at least 2 trials per case and arm": "fixed-cases needs at least 2 trials per case and arm";
+                "no applicable case with a base value": "no applicable case with a base value";
+                "run invalid": "run invalid";
             }>;
-        }, z.core.$strict>]>;
-        sampledCasesFloor: z.ZodOptional<z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
-            nonFinite: z.ZodEnum<{
-                "-inf": "-inf";
-                inf: "inf";
-                nan: "nan";
-            }>;
-        }, z.core.$strict>]>>;
-        assumption: z.ZodString;
-        decidable: z.ZodBoolean;
-    }, z.core.$strict>>;
+        }, z.core.$strict>], "computed">>;
+    }, z.core.$strict>;
     missingness: z.ZodObject<{
         byArm: z.ZodArray<z.ZodObject<{
             arm: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
@@ -1156,6 +1273,9 @@ export const FactorPart: z.ZodEnum<{
 }>;
 
 // @public
+export type FactorPart = z.infer<typeof FactorPart>;
+
+// @public
 export const FactorStatus: z.ZodEnum<{
     declared: "declared";
     observed: "observed";
@@ -1231,6 +1351,9 @@ export const GateResult: z.ZodObject<{
     failures: z.ZodInt;
     detail: z.ZodOptional<z.ZodString>;
 }, z.core.$strict>;
+
+// @public
+export type GateResult = z.infer<typeof GateResult>;
 
 // @public
 export const IDENTIFIER_KINDS: readonly ["none", "direct", "quasi", "content"];
@@ -1461,6 +1584,12 @@ export function lintContractSchema(schema: z.ZodType, path?: string): ContractVi
 export function lintDataPolicies(schema: z.ZodType, path?: string): ContractViolation[];
 
 // @public
+export const MarginStatus: z.ZodEnum<{
+    placeholder: "placeholder";
+    registered: "registered";
+}>;
+
+// @public
 export const MeasureCard: z.ZodObject<{
     schema: z.ZodLiteral<"ichnaea.measureCard/1">;
     id: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
@@ -1492,6 +1621,7 @@ export const MeasureCard: z.ZodObject<{
         primary: "primary";
         secondary: "secondary";
     }>;
+    composite: z.ZodOptional<z.ZodBoolean>;
     unitOfEvaluation: z.ZodEnum<{
         episode: "episode";
         session: "session";
@@ -1668,6 +1798,21 @@ export const MeasureOutcome: z.ZodObject<{
                 nan: "nan";
             }>;
         }, z.core.$strict>]>;
+        regressionMethod: z.ZodString;
+        regression: z.ZodDiscriminatedUnion<[z.ZodObject<{
+            validated: z.ZodLiteral<true>;
+            limitations: z.ZodArray<z.ZodString>;
+        }, z.core.$strict>, z.ZodObject<{
+            validated: z.ZodLiteral<false>;
+            limitations: z.ZodArray<z.ZodString>;
+        }, z.core.$strict>], "validated">;
+        nonInferiority: z.ZodDiscriminatedUnion<[z.ZodObject<{
+            validated: z.ZodLiteral<true>;
+            limitations: z.ZodArray<z.ZodString>;
+        }, z.core.$strict>, z.ZodObject<{
+            validated: z.ZodLiteral<false>;
+            limitations: z.ZodArray<z.ZodString>;
+        }, z.core.$strict>], "validated">;
         flips: z.ZodArray<z.ZodObject<{
             case: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
             direction: z.ZodEnum<{
@@ -1685,6 +1830,77 @@ export const MeasureOutcome: z.ZodObject<{
         REGRESSION: "REGRESSION";
     }>;
     coverage: z.ZodNumber;
+    sensitivity: z.ZodArray<z.ZodObject<{
+        imputation: z.ZodEnum<{
+            "against-non-inferiority": "against-non-inferiority";
+            "against-regression": "against-regression";
+        }>;
+        difference: z.ZodObject<{
+            estimate: z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
+                nonFinite: z.ZodEnum<{
+                    "-inf": "-inf";
+                    inf: "inf";
+                    nan: "nan";
+                }>;
+            }, z.core.$strict>]>;
+            lower: z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
+                nonFinite: z.ZodEnum<{
+                    "-inf": "-inf";
+                    inf: "inf";
+                    nan: "nan";
+                }>;
+            }, z.core.$strict>]>;
+            upper: z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
+                nonFinite: z.ZodEnum<{
+                    "-inf": "-inf";
+                    inf: "inf";
+                    nan: "nan";
+                }>;
+            }, z.core.$strict>]>;
+            level: z.ZodNumber;
+            sided: z.ZodEnum<{
+                lower: "lower";
+                two: "two";
+                upper: "upper";
+            }>;
+            method: z.ZodString;
+        }, z.core.$strict>;
+        nonInferiorityP: z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
+            nonFinite: z.ZodEnum<{
+                "-inf": "-inf";
+                inf: "inf";
+                nan: "nan";
+            }>;
+        }, z.core.$strict>]>;
+        regressionPAdjusted: z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
+            nonFinite: z.ZodEnum<{
+                "-inf": "-inf";
+                inf: "inf";
+                nan: "nan";
+            }>;
+        }, z.core.$strict>]>;
+        regression: z.ZodDiscriminatedUnion<[z.ZodObject<{
+            validated: z.ZodLiteral<true>;
+            limitations: z.ZodArray<z.ZodString>;
+        }, z.core.$strict>, z.ZodObject<{
+            validated: z.ZodLiteral<false>;
+            limitations: z.ZodArray<z.ZodString>;
+        }, z.core.$strict>], "validated">;
+        nonInferiority: z.ZodDiscriminatedUnion<[z.ZodObject<{
+            validated: z.ZodLiteral<true>;
+            limitations: z.ZodArray<z.ZodString>;
+        }, z.core.$strict>, z.ZodObject<{
+            validated: z.ZodLiteral<false>;
+            limitations: z.ZodArray<z.ZodString>;
+        }, z.core.$strict>], "validated">;
+        verdict: z.ZodEnum<{
+            "ESTIMATE-ONLY": "ESTIMATE-ONLY";
+            INCONCLUSIVE: "INCONCLUSIVE";
+            "NON-INFERIOR": "NON-INFERIOR";
+            REGRESSION: "REGRESSION";
+        }>;
+        changesVerdict: z.ZodBoolean;
+    }, z.core.$strict>>;
     notes: z.ZodArray<z.ZodString>;
 }, z.core.$strict>;
 
@@ -1919,10 +2135,12 @@ export const Plan: z.ZodObject<{
         "production-signal": "production-signal";
         "silent-change": "silent-change";
     }>;
+    varies: z.ZodArray<z.ZodString>;
     mode: z.ZodEnum<{
         decision: "decision";
         "estimate-only": "estimate-only";
     }>;
+    modeReasons: z.ZodArray<z.ZodString>;
     estimand: z.ZodEnum<{
         "fixed-cases": "fixed-cases";
         "sampled-cases": "sampled-cases";
@@ -2037,6 +2255,10 @@ export const Plan: z.ZodObject<{
     primary: z.ZodArray<z.ZodObject<{
         measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
         margin: z.ZodNumber;
+        marginStatus: z.ZodEnum<{
+            placeholder: "placeholder";
+            registered: "registered";
+        }>;
         marginReason: z.ZodString;
         safetyMargin: z.ZodOptional<z.ZodNumber>;
         coverageFloor: z.ZodOptional<z.ZodNumber>;
@@ -2056,40 +2278,30 @@ export const Plan: z.ZodObject<{
             block: "block";
             report: "report";
         }>;
-        onInvalid: z.ZodEnum<{
-            block: "block";
-            report: "report";
-        }>;
     }, z.core.$strict>;
-    power: z.ZodArray<z.ZodObject<{
+    power: z.ZodArray<z.ZodDiscriminatedUnion<[z.ZodObject<{
+        computed: z.ZodLiteral<true>;
         measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
         applicableCases: z.ZodInt;
         replicates: z.ZodInt;
         margin: z.ZodNumber;
-        mde: z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
-            nonFinite: z.ZodEnum<{
-                "-inf": "-inf";
-                inf: "inf";
-                nan: "nan";
-            }>;
-        }, z.core.$strict>]>;
-        floor: z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
-            nonFinite: z.ZodEnum<{
-                "-inf": "-inf";
-                inf: "inf";
-                nan: "nan";
-            }>;
-        }, z.core.$strict>]>;
-        sampledCasesFloor: z.ZodOptional<z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
-            nonFinite: z.ZodEnum<{
-                "-inf": "-inf";
-                inf: "inf";
-                nan: "nan";
-            }>;
-        }, z.core.$strict>]>>;
+        mde: z.ZodNumber;
+        floor: z.ZodNumber;
+        sampledCasesFloor: z.ZodOptional<z.ZodNumber>;
         assumption: z.ZodString;
         decidable: z.ZodBoolean;
-    }, z.core.$strict>>;
+    }, z.core.$strict>, z.ZodObject<{
+        computed: z.ZodLiteral<false>;
+        measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+        applicableCases: z.ZodInt;
+        replicates: z.ZodInt;
+        margin: z.ZodNumber;
+        reason: z.ZodEnum<{
+            "fixed-cases needs at least 2 trials per case and arm": "fixed-cases needs at least 2 trials per case and arm";
+            "no applicable case with a base value": "no applicable case with a base value";
+            "run invalid": "run invalid";
+        }>;
+    }, z.core.$strict>], "computed">>;
     budget: z.ZodObject<{
         worstCaseCalls: z.ZodInt;
         maxCalls: z.ZodInt;
@@ -2098,6 +2310,7 @@ export const Plan: z.ZodObject<{
     trials: z.ZodArray<z.ZodObject<{
         id: z.core.$ZodBranded<z.ZodString, "TrialId", "out">;
         case: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
+        family: z.ZodOptional<z.ZodString>;
         arm: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
         replicate: z.ZodInt;
         batch: z.ZodInt;
@@ -2123,6 +2336,7 @@ export type PlanDigest = z.infer<typeof PlanDigest>;
 export const PlannedTrial: z.ZodObject<{
     id: z.core.$ZodBranded<z.ZodString, "TrialId", "out">;
     case: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
+    family: z.ZodOptional<z.ZodString>;
     arm: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
     replicate: z.ZodInt;
     batch: z.ZodInt;
@@ -2146,40 +2360,48 @@ export const Pool: z.ZodEnum<{
 export type Pool = z.infer<typeof Pool>;
 
 // @public
-export const PowerEntry: z.ZodObject<{
+export const PowerEntry: z.ZodDiscriminatedUnion<[z.ZodObject<{
+    computed: z.ZodLiteral<true>;
     measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
     applicableCases: z.ZodInt;
     replicates: z.ZodInt;
     margin: z.ZodNumber;
-    mde: z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
-        nonFinite: z.ZodEnum<{
-            "-inf": "-inf";
-            inf: "inf";
-            nan: "nan";
-        }>;
-    }, z.core.$strict>]>;
-    floor: z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
-        nonFinite: z.ZodEnum<{
-            "-inf": "-inf";
-            inf: "inf";
-            nan: "nan";
-        }>;
-    }, z.core.$strict>]>;
-    sampledCasesFloor: z.ZodOptional<z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
-        nonFinite: z.ZodEnum<{
-            "-inf": "-inf";
-            inf: "inf";
-            nan: "nan";
-        }>;
-    }, z.core.$strict>]>>;
+    mde: z.ZodNumber;
+    floor: z.ZodNumber;
+    sampledCasesFloor: z.ZodOptional<z.ZodNumber>;
     assumption: z.ZodString;
     decidable: z.ZodBoolean;
-}, z.core.$strict>;
+}, z.core.$strict>, z.ZodObject<{
+    computed: z.ZodLiteral<false>;
+    measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+    applicableCases: z.ZodInt;
+    replicates: z.ZodInt;
+    margin: z.ZodNumber;
+    reason: z.ZodEnum<{
+        "fixed-cases needs at least 2 trials per case and arm": "fixed-cases needs at least 2 trials per case and arm";
+        "no applicable case with a base value": "no applicable case with a base value";
+        "run invalid": "run invalid";
+    }>;
+}, z.core.$strict>], "computed">;
+
+// @public
+export type PowerEntry = z.infer<typeof PowerEntry>;
+
+// @public
+export const PowerNotComputed: z.ZodEnum<{
+    "fixed-cases needs at least 2 trials per case and arm": "fixed-cases needs at least 2 trials per case and arm";
+    "no applicable case with a base value": "no applicable case with a base value";
+    "run invalid": "run invalid";
+}>;
 
 // @public
 export const PrimaryMeasure: z.ZodObject<{
     measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
     margin: z.ZodNumber;
+    marginStatus: z.ZodEnum<{
+        placeholder: "placeholder";
+        registered: "registered";
+    }>;
     marginReason: z.ZodString;
     safetyMargin: z.ZodOptional<z.ZodNumber>;
     coverageFloor: z.ZodOptional<z.ZodNumber>;
@@ -2275,6 +2497,14 @@ export const RecordDataClass: z.ZodEnum<{
     pseudonymous: "pseudonymous";
     special: "special";
 }>;
+
+// @public
+export const ReplicatesFor: z.ZodObject<{
+    slice: z.ZodString;
+    value: z.ZodString;
+    replicates: z.ZodInt;
+    reason: z.ZodString;
+}, z.core.$strict>;
 
 // @public
 export const RETENTION_RULES: readonly ["record", "subject"];
@@ -2453,6 +2683,79 @@ export const Seed: z.ZodObject<{
 export const SemVer: z.ZodString;
 
 // @public
+export const SensitivityResult: z.ZodObject<{
+    imputation: z.ZodEnum<{
+        "against-non-inferiority": "against-non-inferiority";
+        "against-regression": "against-regression";
+    }>;
+    difference: z.ZodObject<{
+        estimate: z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
+            nonFinite: z.ZodEnum<{
+                "-inf": "-inf";
+                inf: "inf";
+                nan: "nan";
+            }>;
+        }, z.core.$strict>]>;
+        lower: z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
+            nonFinite: z.ZodEnum<{
+                "-inf": "-inf";
+                inf: "inf";
+                nan: "nan";
+            }>;
+        }, z.core.$strict>]>;
+        upper: z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
+            nonFinite: z.ZodEnum<{
+                "-inf": "-inf";
+                inf: "inf";
+                nan: "nan";
+            }>;
+        }, z.core.$strict>]>;
+        level: z.ZodNumber;
+        sided: z.ZodEnum<{
+            lower: "lower";
+            two: "two";
+            upper: "upper";
+        }>;
+        method: z.ZodString;
+    }, z.core.$strict>;
+    nonInferiorityP: z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
+        nonFinite: z.ZodEnum<{
+            "-inf": "-inf";
+            inf: "inf";
+            nan: "nan";
+        }>;
+    }, z.core.$strict>]>;
+    regressionPAdjusted: z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
+        nonFinite: z.ZodEnum<{
+            "-inf": "-inf";
+            inf: "inf";
+            nan: "nan";
+        }>;
+    }, z.core.$strict>]>;
+    regression: z.ZodDiscriminatedUnion<[z.ZodObject<{
+        validated: z.ZodLiteral<true>;
+        limitations: z.ZodArray<z.ZodString>;
+    }, z.core.$strict>, z.ZodObject<{
+        validated: z.ZodLiteral<false>;
+        limitations: z.ZodArray<z.ZodString>;
+    }, z.core.$strict>], "validated">;
+    nonInferiority: z.ZodDiscriminatedUnion<[z.ZodObject<{
+        validated: z.ZodLiteral<true>;
+        limitations: z.ZodArray<z.ZodString>;
+    }, z.core.$strict>, z.ZodObject<{
+        validated: z.ZodLiteral<false>;
+        limitations: z.ZodArray<z.ZodString>;
+    }, z.core.$strict>], "validated">;
+    verdict: z.ZodEnum<{
+        "ESTIMATE-ONLY": "ESTIMATE-ONLY";
+        INCONCLUSIVE: "INCONCLUSIVE";
+        "NON-INFERIOR": "NON-INFERIOR";
+        REGRESSION: "REGRESSION";
+    }>;
+    changesVerdict: z.ZodBoolean;
+}, z.core.$strict>;
+
+// @public
 export function sha256(text: string): Promise<`sha256:${string}`>;
 
 // @public
@@ -2507,10 +2810,20 @@ export const Suite: z.ZodObject<{
         validation: "validation";
     }>>>;
     replicates: z.ZodInt;
+    replicatesFor: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        slice: z.ZodString;
+        value: z.ZodString;
+        replicates: z.ZodInt;
+        reason: z.ZodString;
+    }, z.core.$strict>>>;
     alpha: z.ZodOptional<z.ZodNumber>;
     primary: z.ZodArray<z.ZodObject<{
         measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
         margin: z.ZodNumber;
+        marginStatus: z.ZodEnum<{
+            placeholder: "placeholder";
+            registered: "registered";
+        }>;
         marginReason: z.ZodString;
         safetyMargin: z.ZodOptional<z.ZodNumber>;
         coverageFloor: z.ZodOptional<z.ZodNumber>;
@@ -2533,10 +2846,6 @@ export const Suite: z.ZodObject<{
             report: "report";
         }>;
         onEstimateOnly: z.ZodEnum<{
-            block: "block";
-            report: "report";
-        }>;
-        onInvalid: z.ZodEnum<{
             block: "block";
             report: "report";
         }>;
@@ -2733,6 +3042,15 @@ export const Usage: z.ZodObject<{
     costUnit: z.ZodOptional<z.ZodString>;
     wallMs: z.ZodOptional<z.ZodNumber>;
 }, z.core.$strict>;
+
+// @public
+export const Validity: z.ZodDiscriminatedUnion<[z.ZodObject<{
+    validated: z.ZodLiteral<true>;
+    limitations: z.ZodArray<z.ZodString>;
+}, z.core.$strict>, z.ZodObject<{
+    validated: z.ZodLiteral<false>;
+    limitations: z.ZodArray<z.ZodString>;
+}, z.core.$strict>], "validated">;
 
 // @public
 export const Verdict: z.ZodEnum<{

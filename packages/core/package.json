@@ -1,0 +1,47 @@
+{
+  "name": "@hephaestus-build/ichnaea-core",
+  "version": "0.0.0",
+  "description": "Ichnaea core: plugin host with lifecycle hooks, default-deny egress, append-only file store, call ledger, planner and CLI.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hephaestus-build/ichnaea.git",
+    "directory": "packages/core"
+  },
+  "bin": {
+    "ichnaea": "./dist/bin.js"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@hephaestus-build/ichnaea-contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "zod": "4.6.7"
+  },
+  "peerDependencies": {
+    "zod": "^4.6.0"
+  },
+  "engines": {
+    "node": ">=22.18.0"
+  }
+}

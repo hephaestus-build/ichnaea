@@ -9,7 +9,6 @@ import {
   ConfigurationIdentity,
   Digest,
   MeasureId,
-  Real,
   Seed,
   SemVer,
   SuiteId,
@@ -28,18 +27,44 @@ export const LineageItem = z.strictObject({
   digest: none(Digest).optional(),
 });
 
-/** The power statement of one primary measure (REQ-54). */
-export const PowerEntry = z.strictObject({
-  measure: none(MeasureId),
-  applicableCases: none(z.int().min(0)),
-  replicates: none(z.int().min(1)),
-  margin: none(z.number().min(0)),
-  mde: none(Real),
-  floor: none(Real),
-  sampledCasesFloor: none(Real).optional(),
-  assumption: none(Text),
-  decidable: none(z.boolean()),
-});
+/** Why a power entry was not computed. */
+export const PowerNotComputed = z.enum([
+  "run invalid",
+  "no applicable case with a base value",
+  "fixed-cases needs at least 2 trials per case and arm",
+]);
+
+/**
+ * The power statement of one primary measure (REQ-54). An entry is computed, with its numbers and
+ * the assumption behind them, or not computed, with the reason; it never holds a number that is not
+ * one. `decidable` says whether the margin is within reach of the minimum detectable effect. Only
+ * the plan's entry may switch a plan to estimate-only, before any call; a decision's run-time entry
+ * describes the run and never changes its verdict or mode (decision 0014).
+ */
+export const PowerEntry = z.discriminatedUnion("computed", [
+  z.strictObject({
+    computed: none(z.literal(true)),
+    measure: none(MeasureId),
+    applicableCases: none(z.int().min(0)),
+    replicates: none(z.int().min(1)),
+    margin: none(z.number().min(0)),
+    mde: none(z.number().min(0)),
+    floor: none(z.number().min(0)),
+    sampledCasesFloor: none(z.number().min(0)).optional(),
+    assumption: none(Text),
+    decidable: none(z.boolean()),
+  }),
+  z.strictObject({
+    computed: none(z.literal(false)),
+    measure: none(MeasureId),
+    applicableCases: none(z.int().min(0)),
+    replicates: none(z.int().min(1)),
+    margin: none(z.number().min(0)),
+    reason: none(PowerNotComputed),
+  }),
+]);
+/** A power entry. */
+export type PowerEntry = z.infer<typeof PowerEntry>;
 
 /**
  * One configuration of a plan with its role. A comparison has a `base` and one or more
@@ -52,10 +77,11 @@ export const Arm = z.strictObject({
   configuration: Configuration,
 });
 
-/** One planned trial. */
+/** One planned trial. `family` groups related cases (from the case set) for sampled-cases. */
 export const PlannedTrial = z.strictObject({
   id: none(TrialId),
   case: none(CaseId),
+  family: none(Text).optional(),
   arm: none(ArmName),
   replicate: none(z.int().min(0)),
   batch: none(z.int().min(0)),
@@ -86,7 +112,15 @@ export const Plan = z.strictObject({
   caseSet: none(CaseSetId),
   caseSetDigest: none(Digest),
   trigger: none(TriggerKind),
+  /**
+   * What the plan declares as varied between the arms beyond what its trigger varies by kind
+   * (REQ-15), as factor keys: `model.<role>`, `parameter.<name>`, `prompt.<name>` or
+   * `factor.<name>`. Any other difference between the arms makes the run INVALID.
+   */
+  varies: none(z.array(Text)),
   mode: none(z.enum(["decision", "estimate-only"])),
+  /** Why the plan runs estimate-only. Empty in decision mode. */
+  modeReasons: none(z.array(Text)),
   estimand: none(Estimand),
   alpha: none(z.number().gt(0).lt(0.5)),
   replicates: none(z.int().min(1)),

@@ -30,6 +30,11 @@ export const MeasureCard = z.strictObject({
   errorModel: none(Text),
   applicability: none(Text),
   tier: none(z.enum(["primary", "secondary", "diagnostic"])),
+  /**
+   * True for a per-case composite of other measures, for example "every applicable measure good".
+   * It mixes constructs, so it is never a primary measure (REQ-34).
+   */
+  composite: none(z.boolean()).optional(),
   unitOfEvaluation: none(Unit),
   establishes: none(Text),
   computedBy: none(z.enum(["ichnaea", "application", "judge"])),

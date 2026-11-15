@@ -20,6 +20,8 @@ export const FactorPart = z.enum([
   "data",
   "other",
 ]);
+/** The part of the system a factor belongs to. */
+export type FactorPart = z.infer<typeof FactorPart>;
 
 /** One element of a configuration with its value and control status (REQ-14). */
 export const Factor = z.strictObject({

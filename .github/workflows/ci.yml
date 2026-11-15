@@ -79,6 +79,8 @@ jobs:
         env:
           ICHNAEA_SIM_REPS: "6000"
         run: pnpm --filter ./packages/stats run test:sim
+      - name: False REGRESSION verdicts of the decision rule under no change (REQ-51)
+        run: pnpm --filter ./packages/decide run test:sim
 
   oracle:
     name: oracle

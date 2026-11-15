@@ -83,9 +83,10 @@ function fromJsonSchema(node: JsonSchema): fc.Arbitrary<unknown> {
       return fc.constant(null);
     case "array": {
       const min = (node["minItems"] as number | undefined) ?? 0;
+      const max = (node["maxItems"] as number | undefined) ?? Math.max(min, 3);
       return fc.array(fromJsonSchema(node["items"] as JsonSchema), {
         minLength: min,
-        maxLength: Math.max(min, 3),
+        maxLength: max,
       });
     }
     case "object": {
