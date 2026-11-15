@@ -33,8 +33,9 @@ repository.
    release fails if the SBOM lists no components, misses a shipped package at its version, SHA-512
    and download URL for the tag, or misses a dependency of a shipped package.
 5. The release job runs in the `release` environment. Only `main` may deploy to it, and a
-   maintainer approves each run. It attests build provenance and the SBOM for each tarball,
-   creates the tag on the released commit, and publishes the release.
+   maintainer approves each run. It fails first if the environment has no deploy key. Then it
+   attests build provenance and the SBOM for each tarball, creates the tag on the released commit,
+   and publishes the release.
 6. The job creates the tag with a deploy key. The key is a secret of the `release` environment. A
    tag ruleset lets only deploy keys create a `v*` tag, and a second ruleset lets nobody move or
    delete one. The release key is the only deploy key of the repository. Releases are immutable.
@@ -62,7 +63,8 @@ repository.
 - `scripts/check-on-main.test.ts` fails a commit that is off `main`, a commit that does not exist,
   and a run on another ref. `scripts/check-sbom.test.ts` fails an empty SBOM, a missing package, a
   package with another SHA-512, a tarball URL for another tag or a path on the runner, and a
-  missing dependency.
+  missing dependency. `scripts/release-workflow.test.ts` keeps the deploy key check first in the
+  release job.
 
 ## Consequences
 
