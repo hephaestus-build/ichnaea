@@ -307,6 +307,29 @@ describe("reports", () => {
     expect(renderHtml(view)).toContain(FLOOR_NOT_SET_REASON);
   });
 
+  it("a REGRESSION headline claims no run-to-run noise when a case has fewer than 2 trials in an arm", async () => {
+    // case-003 loses 2 of its 3 candidate trials.
+    const { decision } = await decided({
+      cases: 60,
+      replicates: 3,
+      base: () => 0.95,
+      candidate: () => 0.8,
+      margin: 0.05,
+      outcome: (t) =>
+        t.arm === "candidate" && t.case === "case-003" && t.replicate > 0
+          ? "infrastructure_failure"
+          : undefined,
+    });
+    expect(decision.verdict).toBe("REGRESSION");
+    const view = decisionView(decision, "synthetic");
+    const md = renderMarkdown(view);
+    expect(md).toContain(
+      "**REGRESSION** on these 60 cases: Measure app/correct dropped and is not shown non-inferior.",
+    );
+    expect(md).not.toMatch(/beyond run-to-run noise/);
+    expect(renderHtml(view)).not.toMatch(/beyond run-to-run noise/);
+  });
+
   it("shows no margin for a secondary measure, which is descriptive", async () => {
     const { decision } = await decided({ secondary: ["app/extra"] });
     const row = decisionView(decision, "synthetic").measures.find((m) => m.tier === "secondary");

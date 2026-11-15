@@ -139,6 +139,27 @@ describe("run verdicts", () => {
       `the non-inferiority result is not validated: ${MARGIN_FLOOR_NOT_SET}`,
     ]);
   });
+
+  it("the note on a drop inside the margin claims run-to-run noise only with 2 trials per case and arm", async () => {
+    const d = await decideFloorSet(
+      await scenario({
+        cases: 60,
+        replicates: 3,
+        base: () => 1,
+        candidate: () => 0.94,
+        margin: 0.15,
+        seed: 3,
+        outcome: (t) =>
+          t.arm === "candidate" && t.case === "case-003" && t.replicate > 0
+            ? "infrastructure_failure"
+            : undefined,
+      }),
+    );
+    const m = d.measures[0];
+    expect(m?.comparisons[0]?.regressionPAdjusted as number).toBeLessThanOrEqual(0.05);
+    expect(m?.notes.join(" ")).toMatch(/a drop smaller than the margin is significant/);
+    expect(m?.notes.join(" ")).not.toMatch(/beyond run-to-run noise/);
+  });
 });
 
 const invalidOf = async (s: Scenario): Promise<Decision> => {

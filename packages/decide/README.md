@@ -8,8 +8,9 @@ A run verdict is reached in this order (decision 0011):
    contradict themselves, a budget overrun, or coverage below the floor. Arms that differ beyond
    what the trigger varies and the plan declares are also INVALID. INVALID always blocks.
 2. **REGRESSION** when a hard gate failed, in either mode.
-3. **No verdict** when the plan is estimate-only or the run is exploratory. Every difference still
-   has its interval.
+3. **No verdict** when the plan is estimate-only or the run is exploratory. Each difference still
+   has the interval of the plan's estimand where the data supports a comparison; otherwise its notes
+   say why it has none.
 4. Otherwise, per primary measure (decision 0015):
    - NON-INFERIOR when both results of the comparison, `regression` and `nonInferiority`, are
      validated, and the one-sided bound clears the margin less its safety margin. Each measure is
@@ -22,8 +23,12 @@ A run verdict is reached in this order (decision 0011):
 
 **No run passes yet.** The statistics package has not set the validated margin floor, so no
 non-inferiority result is validated. A real drop still gives REGRESSION. A candidate that does not
-regress gives INCONCLUSIVE, and the reason says that no candidate can PASS until the floor is set
-(`FLOOR_NOT_SET_REASON`).
+regress gives INCONCLUSIVE, and the reason names the cause of each primary measure. When the lower
+bound does not clear the margin, the cases cannot tell yet, and the floor is named as well. When
+the bound clears the margin, only the floor stands in the way. When every measure has that second
+cause, the reason says that no candidate can PASS until the floor is set (`FLOOR_NOT_SET_REASON`).
+The reason says "beyond run-to-run noise" only where the scope sentence does: when every compared
+case has at least 2 trials in each arm.
 
 Whenever a primary measure misses a trial in either arm, each verdict is tested against the
 imputation that works against it. A verdict that this changes becomes INCONCLUSIVE (decision 0010).

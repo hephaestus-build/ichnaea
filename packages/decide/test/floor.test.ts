@@ -73,9 +73,11 @@ describe("while the validated margin floor is not set (decision 0015)", () => {
   });
 
   it("an unchanged candidate is INCONCLUSIVE with the floor's reason, and a report policy lets it through", async () => {
-    const s = await scenario({ cases: 12, replicates: 3, base: () => 0.9, candidate: () => 0.9 });
+    // Every trial passes, so the lower bound clears the margin: the floor is the only cause.
+    const s = await scenario({ cases: 12, replicates: 3, base: () => 1, candidate: () => 1 });
     const d = await run(s);
     expect(d.verdict).toBe("INCONCLUSIVE");
+    expect(d.measures[0]?.comparisons[0]?.difference.lower).toBeGreaterThan(-0.1);
     expect(d.reason).toBe(FLOOR_NOT_SET_REASON);
     expect(s.plan.policy.onInconclusive).toBe("report");
     expect(exitCode(d, s.plan.policy)).toBe(0);

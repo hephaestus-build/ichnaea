@@ -79,6 +79,29 @@ describe("scope sentences come from the records", () => {
     expect(thin.scope).toBe("on these 60 cases");
   });
 
+  it("the REGRESSION reason claims run-to-run noise only where the scope does", async () => {
+    const drop = { cases: 60, replicates: 3, base: () => 0.95, candidate: () => 0.8, margin: 0.05 };
+    const replicated = await run(await scenario(drop));
+    expect(replicated.verdict).toBe("REGRESSION");
+    expect(replicated.scope).toBe("on these 60 cases, beyond run-to-run noise");
+    expect(replicated.reason).toBe(
+      "Measure app/correct dropped beyond run-to-run noise and is not shown non-inferior.",
+    );
+    // case-003 loses 2 of its 3 candidate trials: neither text may claim run-to-run noise.
+    const thin = await run(
+      await scenario({
+        ...drop,
+        outcome: (t) =>
+          t.arm === "candidate" && t.case === "case-003" && t.replicate > 0
+            ? "infrastructure_failure"
+            : undefined,
+      }),
+    );
+    expect(thin.verdict).toBe("REGRESSION");
+    expect(thin.scope).toBe("on these 60 cases");
+    expect(thin.reason).toBe("Measure app/correct dropped and is not shown non-inferior.");
+  });
+
   it("estimate-only and INVALID decisions make no claim beyond run-to-run noise", async () => {
     const estimate = await run(
       await scenario({ cases: 12, replicates: 1, base: () => 1, candidate: () => 1 }),
@@ -169,6 +192,85 @@ describe("the INCONCLUSIVE reason names its cause", () => {
     expect(d.reason).toBe(
       "Measure app/correct could not be shown non-inferior: the cases cannot tell yet. This is not a pass.",
     );
+  });
+
+  it("cases that cannot tell while the floor is not set: the floor is named, not blamed alone", async () => {
+    // 12 cases, 2 trials; the base passes every trial and the candidate fails one trial in 2
+    // cases. The lower bound is about −25.6 points against a 5-point margin.
+    const d = await run(
+      await scenario({
+        cases: 12,
+        replicates: 2,
+        base: () => 1,
+        candidate: () => 1,
+        margin: 0.05,
+        value: (t) =>
+          t.arm === "candidate" && ["case-000", "case-001"].includes(t.case)
+            ? t.replicate !== 0
+            : undefined,
+      }),
+    );
+    const c = d.measures[0]?.comparisons[0];
+    expect(c?.difference.lower).toBeCloseTo(-0.256, 3);
+    expect(c?.regressionPAdjusted as number).toBeGreaterThan(0.05);
+    expect(d.verdict).toBe("INCONCLUSIVE");
+    expect(d.reason).not.toBe(FLOOR_REASON);
+    expect(d.reason).toBe(
+      "Measure app/correct could not be shown non-inferior: the cases cannot tell yet, and the validated margin floor is not set. This is not a pass.",
+    );
+  });
+
+  it("names each cause when the measures have different ones", async () => {
+    // app/b applies to 6 cases only, too few to clear the margin; app/a and app/c clear it.
+    const d = await run(
+      await scenario({
+        cases: 60,
+        replicates: 3,
+        base: () => 1,
+        candidate: () => 1,
+        measures: ["app/a", "app/b", "app/c"],
+        applies: (m, i) => m !== "app/b" || i < 6,
+      }),
+    );
+    expect(d.verdict).toBe("INCONCLUSIVE");
+    expect(d.reason).toBe(
+      "Not every primary measure was shown non-inferior. Measures app/a and app/c: no PASS yet, because the validated margin floor is not set. Measure app/b: the cases cannot tell yet, and the validated margin floor is not set. This is not a pass.",
+    );
+  });
+
+  it("names missing trials only for the measure that misses them", async () => {
+    // app/a misses no trial; its candidate fails one trial in 5 cases, a REGRESSION on its own.
+    // app/b, app/c and app/d have no candidate value in case-000, so their comparisons are outside
+    // the validated domain and outside the Holm family. Imputing their missing trials brings them
+    // into the family, and app/a no longer regresses.
+    const s = await scenario({
+      cases: 60,
+      replicates: 3,
+      base: () => 1,
+      candidate: () => 1,
+      margin: 0.05,
+      measures: ["app/a", "app/b", "app/c", "app/d"],
+    });
+    const trials = new Map(s.trials.map((t) => [t.id as string, t]));
+    const values = s.values.flatMap((v) => {
+      const t = trials.get(v.trial);
+      if (t?.arm !== "candidate") return [v];
+      if (v.measure !== "app/a") return t.case === "case-000" ? [] : [v];
+      const index = Number(t.case.slice(5));
+      return index >= 1 && index <= 5 && t.replicate === 0
+        ? [{ ...v, value: { type: "binary" as const, pass: false } }]
+        : [v];
+    });
+    const d = await run({ ...s, values });
+    expect(d.verdict).toBe("INCONCLUSIVE");
+    expect(d.measures.map((m) => m.verdict)).toEqual(Array(4).fill("INCONCLUSIVE"));
+    expect(d.reason).toBe(
+      "Not every primary measure was shown non-inferior. Measure app/a: imputing the missing trials of other primary measures against the verdict changes it. Measures app/b, app/c and app/d: their comparisons are outside the validated domain. This is not a pass.",
+    );
+    expect(d.measures[0]?.notes).toContain(
+      "imputing the missing trials of other primary measures against this verdict changes it, so it is INCONCLUSIVE (see the sensitivity analysis)",
+    );
+    expect(d.reason).not.toMatch(/its missing trials/);
   });
 });
 
@@ -273,6 +375,6 @@ describe("margins (decision 0012)", () => {
       selection: "random",
       family: (i) => `f${i}`,
     });
-    expect(planningPower(s.plan)).toEqual({});
+    expect(planningPower(s.plan).refuse).toBeUndefined();
   });
 });

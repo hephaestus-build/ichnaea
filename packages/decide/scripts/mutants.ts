@@ -223,14 +223,14 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "sensitivity only when missing counts differ",
     file: D,
-    from: "    plan.primary.some((p) =>\n      [pair.base, pair.candidate].some(\n        (arm) => (tallies.get(p.measure)?.arms.get(arm)?.missing ?? 0) > 0,\n      ),\n    );",
-    to: "    plan.primary.some(\n      (p) =>\n        tallies.get(p.measure)?.arms.get(pair.base)?.missing !==\n        tallies.get(p.measure)?.arms.get(pair.candidate)?.missing,\n    );",
+    from: "  const missesTrials = plan.primary.some((p) => missesOwnTrials(p.measure));",
+    to: "  const missesTrials =\n    pair !== undefined &&\n    plan.primary.some(\n      (p) =>\n        tallies.get(p.measure)?.arms.get(pair.base)?.missing !==\n        tallies.get(p.measure)?.arms.get(pair.candidate)?.missing,\n    );",
   },
   {
     id: "sensitivity only when the candidate misses",
     file: D,
-    from: "      [pair.base, pair.candidate].some(\n        (arm) => (tallies.get(p.measure)?.arms.get(arm)?.missing ?? 0) > 0,",
-    to: "      [pair.candidate].some(\n        (arm) => (tallies.get(p.measure)?.arms.get(arm)?.missing ?? 0) > 0,",
+    from: "    [pair.base, pair.candidate].some(\n      (arm) => (tallies.get(measure)?.arms.get(arm)?.missing ?? 0) > 0,",
+    to: "    [pair.candidate].some(\n      (arm) => (tallies.get(measure)?.arms.get(arm)?.missing ?? 0) > 0,",
   },
   {
     id: "sensitivity never changes a verdict",
@@ -278,8 +278,27 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "scope always claims run-to-run noise",
     file: D,
-    from: 'scope: `on these ${cases} cases${replicated && compared.size > 0 ? ", beyond run-to-run noise" : ""}`,',
+    from: 'scope: `on these ${cases} cases${noise ? ", beyond run-to-run noise" : ""}`,',
     to: "scope: `on these ${cases} cases, beyond run-to-run noise`,",
+  },
+  {
+    id: "noise claimed without 2 trials per case and arm",
+    file: D,
+    from: "    if (c.base.trials < 2 || c.candidate.trials < 2) return false;",
+    to: "",
+  },
+  {
+    id: "the regression reason always claims noise",
+    file: D,
+    from: 'dropped${noise ? " beyond run-to-run noise" : ""} and is not shown non-inferior.',
+    to: "dropped beyond run-to-run noise and is not shown non-inferior.",
+    projects: CORE,
+  },
+  {
+    id: "the non-inferiority note always claims noise",
+    file: D,
+    from: '${replicated(cases) ? "beyond run-to-run noise" : "significant"}',
+    to: "beyond run-to-run noise",
   },
   {
     id: "INVALID claims a scope",
@@ -334,9 +353,45 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "validity: the floor's plain reason dropped",
     file: D,
-    from: "  } else if (primaries.every((m) => onlyTheFloor(tested?.get(m.measure)))) {",
-    to: "  } else if (false) {",
+    from: "      open.length > 0 && open.every((o) => o.cause.onlyTheFloor)",
+    to: "      false",
     projects: CORE,
+  },
+  {
+    id: "validity: the floor reason ignores the bound",
+    file: D,
+    from: "  if (!c?.regression.validated || !(c.difference.lower > -effective)) return false;",
+    to: "  if (!c?.regression.validated) return false;",
+  },
+  {
+    id: "validity: the floor reason ignores the imputation against non-inferiority",
+    file: D,
+    from: "    if (imputed === undefined || onlyTheFloor(imputed.comparison, effective))",
+    to: "    if (true)",
+  },
+  {
+    id: "validity: a bound that does not clear the margin hides the floor",
+    file: D,
+    from: '    return `the cases cannot tell yet${unvalidated ? `, and ${unvalidated}` : ""}`;',
+    to: "    return `the cases cannot tell yet`;",
+  },
+  {
+    id: "validity: the reason names one measure's cause only",
+    file: D,
+    from: "  if (parts.length === 1 && only)",
+    to: "  if (only)",
+  },
+  {
+    id: "missing trials are named for a measure that misses none",
+    file: D,
+    from: '      s.missesOwnTrials\n        ? `${many ? "their" : "its"} missing trials`',
+    to: '      true\n        ? `${many ? "their" : "its"} missing trials`',
+  },
+  {
+    id: "missing trials in the note are named for a measure that misses none",
+    file: D,
+    from: '`imputing ${missesOwnTrials(id) ? "its missing trials"',
+    to: '`imputing ${true ? "its missing trials"',
   },
   {
     id: "validity: the floor's plain reason hides another limitation",

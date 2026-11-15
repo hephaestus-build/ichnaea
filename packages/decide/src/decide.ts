@@ -65,12 +65,15 @@ const FAILED = new Set(["system_failure", "budget_exceeded"]);
 const DEFAULT_COVERAGE_FLOOR = 0.9;
 
 /**
- * The reason of an INCONCLUSIVE run whose measures did not regress while the validated margin
- * floor is not set (decision 0015). Today an unchanged candidate gets it, so it must not read as a
- * broken setup.
+ * The reason of an INCONCLUSIVE run when the unset validated margin floor alone keeps every primary
+ * measure from NON-INFERIOR: each lower bound clears its effective margin, also with the measure's
+ * missing trials imputed against non-inferiority (decision 0015). A stable unchanged candidate gets
+ * it, so it must not read as a broken setup.
  */
 export const FLOOR_NOT_SET_REASON =
   "No primary measure regressed, but no candidate can PASS yet: the validated margin floor for non-inferiority is not set.";
+/** One measure's cause when the floor alone keeps it from NON-INFERIOR, and others have causes too. */
+const FLOOR_CAUSE = "no PASS yet, because the validated margin floor is not set";
 /** The statistics package's name for a value type. A type it has no name for has no method. */
 const STATS_VALUE_TYPE: Partial<Record<MeasuredValue["type"], ValueType>> = {
   binary: "binary",
@@ -456,9 +459,10 @@ export interface PrimaryVerdict {
   /** The Holm-adjusted regression p-value, for a validated comparison. */
   readonly regressionPAdjusted?: number;
   /**
-   * Why an INCONCLUSIVE measure is not non-inferior: the cases cannot tell, the comparison is
-   * outside the validated domain, its non-inferiority result alone is not validated, or there is no
-   * comparison.
+   * Why an INCONCLUSIVE measure is not non-inferior: the cases cannot tell (the lower bound does not
+   * clear the effective margin, whether or not the non-inferiority result is validated), the
+   * comparison is outside the validated domain, the bound clears the margin but the
+   * non-inferiority result is not validated, or there is no comparison.
    */
   readonly cause?: "cannot-tell" | "unvalidated" | "non-inferiority-unvalidated" | "no-comparison";
   readonly notes: readonly string[];
@@ -472,16 +476,34 @@ export interface PrimariesInput {
   readonly measures: readonly PrimaryCounts[];
 }
 
+/**
+ * Whether counts may claim "beyond run-to-run noise" (decision 0011): some case is compared, and
+ * every compared case has at least 2 trials in each arm.
+ */
+function replicated(cases: Iterable<CaseCounts>): boolean {
+  let compared = false;
+  for (const c of cases) {
+    if (c.base.trials === 0 || c.candidate.trials === 0) continue;
+    compared = true;
+    if (c.base.trials < 2 || c.candidate.trials < 2) return false;
+  }
+  return compared;
+}
+
 /** The limitations of a comparison's non-inferiority result that its regression result lacks. */
 function nonInferiorityOnly(comparison: Comparison): string[] {
   const domain = new Set(comparison.regression.limitations);
   return comparison.nonInferiority.limitations.filter((l) => !domain.has(l));
 }
 
-/** Whether the unset margin floor alone keeps a measure from NON-INFERIOR. */
-function onlyTheFloor(v: PrimaryVerdict | undefined): boolean {
-  if (v?.cause !== "non-inferiority-unvalidated" || !v.comparison) return false;
-  const limitations = nonInferiorityOnly(v.comparison);
+/**
+ * Whether the unset margin floor alone keeps a comparison from NON-INFERIOR: its regression result
+ * is validated, its lower bound clears the effective margin, and the floor is the only limitation
+ * of its non-inferiority result.
+ */
+function onlyTheFloor(c: Comparison | undefined, effective: number): boolean {
+  if (!c?.regression.validated || !(c.difference.lower > -effective)) return false;
+  const limitations = nonInferiorityOnly(c);
   return limitations.length === 1 && limitations[0] === MARGIN_FLOOR_NOT_SET;
 }
 
@@ -546,6 +568,16 @@ export function decidePrimariesWith(
         });
         continue;
       }
+      const nonInferior = comparison.difference.lower > -effective;
+      if (!nonInferior) {
+        verdicts.set(p.measure, {
+          verdict: "INCONCLUSIVE",
+          comparison,
+          cause: "cannot-tell",
+          notes: notValidated,
+        });
+        continue;
+      }
       if (!comparison.nonInferiority.validated) {
         verdicts.set(p.measure, {
           verdict: "INCONCLUSIVE",
@@ -555,13 +587,7 @@ export function decidePrimariesWith(
         });
         continue;
       }
-      const nonInferior = comparison.difference.lower > -effective;
-      verdicts.set(p.measure, {
-        verdict: nonInferior ? "NON-INFERIOR" : "INCONCLUSIVE",
-        comparison,
-        ...(nonInferior ? {} : { cause: "cannot-tell" as const }),
-        notes: [],
-      });
+      verdicts.set(p.measure, { verdict: "NON-INFERIOR", comparison, notes: [] });
     } catch (error) {
       if (!(error instanceof EstimandError)) throw error;
       verdicts.set(p.measure, {
@@ -585,15 +611,17 @@ export function decidePrimariesWith(
     if (v.verdict !== "NON-INFERIOR") {
       const { cause: _cause, ...rest } = v;
       verdicts.set(id, { ...rest, verdict: "REGRESSION", regressionPAdjusted: pa });
-    } else
+    } else {
+      const cases = input.measures.find((p) => p.measure === id)?.cases ?? [];
       verdicts.set(id, {
         ...v,
         regressionPAdjusted: pa,
         notes: [
           ...v.notes,
-          `a drop smaller than the margin is beyond run-to-run noise: compatible with a drop of up to ${(Math.abs(comparison.difference.lower) * 100).toFixed(1)} points`,
+          `a drop smaller than the margin is ${replicated(cases) ? "beyond run-to-run noise" : "significant"}: compatible with a drop of up to ${(Math.abs(comparison.difference.lower) * 100).toFixed(1)} points`,
         ],
       });
+    }
   });
   return verdicts;
 }
@@ -756,25 +784,32 @@ function sensitivityResult(
 }
 
 /**
+ * Whether a verdict of this run may say "beyond run-to-run noise" (decision 0011): only under
+ * fixed-cases, and only when every case the primary measures compare has at least 2 trials in each
+ * arm. The scope sentence and the REGRESSION reason both read it, so they never disagree.
+ */
+function beyondNoise(plan: Plan, tallies: ReadonlyMap<string, Tally>): boolean {
+  const cases = plan.primary.flatMap((p) => [...(tallies.get(p.measure)?.cases.values() ?? [])]);
+  return plan.estimand === "fixed-cases" && replicated(cases);
+}
+
+/**
  * The scope sentence of a verdict, built from the records (decision 0011). An INVALID decision
  * makes no claim. A failed hard gate says that a deterministic check failed. Otherwise it names the
- * cases the primary measures compare, and says "beyond run-to-run noise" only when every one of
- * them has at least 2 trials in each arm.
+ * cases the primary measures compare, and says "beyond run-to-run noise" only when `noise` holds
+ * (`beyondNoise`).
  */
 function scopeOf(
   verdict: DecisionInput["verdict"],
   gateFailed: boolean,
   plan: Plan,
   tallies: ReadonlyMap<string, Tally>,
+  noise: boolean,
 ): { scope: string; cases: number } {
   const compared = new Set<string>();
-  let replicated = true;
   for (const p of plan.primary)
-    for (const c of tallies.get(p.measure)?.cases.values() ?? []) {
-      if (c.base.trials === 0 || c.candidate.trials === 0) continue;
-      compared.add(c.id);
-      if (c.base.trials < 2 || c.candidate.trials < 2) replicated = false;
-    }
+    for (const c of tallies.get(p.measure)?.cases.values() ?? [])
+      if (c.base.trials > 0 && c.candidate.trials > 0) compared.add(c.id);
   const cases = compared.size > 0 ? compared.size : new Set(plan.trials.map((t) => t.case)).size;
   if (verdict === "INVALID") return { scope: "no claim: the records fail a check", cases };
   if (gateFailed) return { scope: "a deterministic check failed", cases };
@@ -789,9 +824,108 @@ function scopeOf(
   if (!fixed)
     return { scope: `on the population these ${cases} randomly drawn cases represent`, cases };
   return {
-    scope: `on these ${cases} cases${replicated && compared.size > 0 ? ", beyond run-to-run noise" : ""}`,
+    scope: `on these ${cases} cases${noise ? ", beyond run-to-run noise" : ""}`,
     cases,
   };
+}
+
+/** Why one primary measure keeps an INCONCLUSIVE run from PASS, as its reason says it. */
+interface Cause {
+  /** The cause for one measure, or for a group of measures that share it. */
+  readonly text: (many: boolean) => string;
+  /** The unset margin floor is all that keeps the measure from NON-INFERIOR (decision 0015). */
+  readonly onlyTheFloor: boolean;
+}
+
+/** What the sensitivity analysis found for one measure. */
+interface CauseContext {
+  /** The sensitivity analysis changed the measure's verdict. */
+  readonly changed: boolean;
+  /** The measure itself misses a trial in an arm. */
+  readonly missesOwnTrials: boolean;
+  /** The measure's verdict with its missing trials imputed against non-inferiority. */
+  readonly againstNonInferiority: PrimaryVerdict | undefined;
+}
+
+/**
+ * Why a comparison is not non-inferior, for a measure the floor alone does not explain: no
+ * comparison, outside the validated domain, a lower bound that does not clear the effective margin
+ * (with the floor named as well, because it also stands in the way), or a non-inferiority result
+ * that is not validated for more than the floor.
+ */
+function shortfall(v: PrimaryVerdict | undefined, effective: number, many: boolean): string {
+  const its = many ? "their" : "its";
+  const c = v?.comparison;
+  if (!c) return `${many ? "they have" : "it has"} no comparison (${v?.notes[0] ?? "no data"})`;
+  if (!c.regression.validated)
+    return `${many ? "their comparisons are" : "its comparison is"} outside the validated domain`;
+  if (v.verdict === "REGRESSION") return `${many ? "they regress" : "it regresses"}`;
+  const limitations = nonInferiorityOnly(c);
+  const unvalidated =
+    limitations.length === 0
+      ? ""
+      : limitations.length === 1 && limitations[0] === MARGIN_FLOOR_NOT_SET
+        ? "the validated margin floor is not set"
+        : `${its} non-inferiority result is not validated, because ${limitations.join("; ")}`;
+  if (!(c.difference.lower > -effective))
+    return `the cases cannot tell yet${unvalidated ? `, and ${unvalidated}` : ""}`;
+  return unvalidated || `${many ? "they are" : "it is"} not shown non-inferior`;
+}
+
+/**
+ * The cause of one INCONCLUSIVE primary measure (decision 0015): the sensitivity analysis changed
+ * its verdict; the unset floor alone stands in the way (its lower bound clears the effective margin,
+ * also with its missing trials imputed against non-inferiority); or what `shortfall` names. Missing
+ * trials are called the measure's own only when it misses some.
+ */
+function inconclusiveCause(
+  v: PrimaryVerdict | undefined,
+  effective: number,
+  s: CauseContext,
+): Cause {
+  if (s.changed) {
+    const whose = (many: boolean): string =>
+      s.missesOwnTrials
+        ? `${many ? "their" : "its"} missing trials`
+        : "the missing trials of other primary measures";
+    return {
+      onlyTheFloor: false,
+      text: (many) => `imputing ${whose(many)} against the verdict changes ${many ? "them" : "it"}`,
+    };
+  }
+  if (onlyTheFloor(v?.comparison, effective)) {
+    const imputed = s.missesOwnTrials ? s.againstNonInferiority : undefined;
+    if (imputed === undefined || onlyTheFloor(imputed.comparison, effective))
+      return { onlyTheFloor: true, text: () => FLOOR_CAUSE };
+    return {
+      onlyTheFloor: false,
+      text: (many) =>
+        `with ${many ? "their" : "its"} missing trials imputed against non-inferiority, ${shortfall(imputed, effective, many)}`,
+    };
+  }
+  return { onlyTheFloor: false, text: (many) => shortfall(v, effective, many) };
+}
+
+/** The INCONCLUSIVE reason that names each measure's cause, with measures of one cause together. */
+function inconclusiveReason(open: readonly { measure: string; cause: Cause }[]): string {
+  const groups = new Map<string, { measures: string[]; cause: Cause }>();
+  for (const o of open) {
+    const key = o.cause.text(false);
+    const group = groups.get(key);
+    if (group) group.measures.push(o.measure);
+    else groups.set(key, { measures: [o.measure], cause: o.cause });
+  }
+  const parts = [...groups.values()].map(({ measures, cause }) => ({
+    who:
+      measures.length === 1
+        ? `Measure ${measures[0]}`
+        : `Measures ${measures.slice(0, -1).join(", ")} and ${measures.at(-1)}`,
+    why: cause.text(measures.length > 1),
+  }));
+  const [only] = parts;
+  if (parts.length === 1 && only)
+    return `${only.who} could not be shown non-inferior: ${only.why}. This is not a pass.`;
+  return `Not every primary measure was shown non-inferior. ${parts.map((p) => `${p.who}: ${p.why}.`).join(" ")} This is not a pass.`;
 }
 
 /**
@@ -873,13 +1007,13 @@ export async function decideWith(input: DecideInput, compare: Compare): Promise<
   let sensitivity: "not-needed" | "unchanged" | "changes-verdict" = "not-needed";
   const changed = new Set<string>();
   const imputed = new Map<string, SensitivityResult[]>();
-  const missesTrials =
+  let againstNonInferiority: ReadonlyMap<string, PrimaryVerdict> = new Map();
+  const missesOwnTrials = (measure: string): boolean =>
     pair !== undefined &&
-    plan.primary.some((p) =>
-      [pair.base, pair.candidate].some(
-        (arm) => (tallies.get(p.measure)?.arms.get(arm)?.missing ?? 0) > 0,
-      ),
+    [pair.base, pair.candidate].some(
+      (arm) => (tallies.get(measure)?.arms.get(arm)?.missing ?? 0) > 0,
     );
+  const missesTrials = plan.primary.some((p) => missesOwnTrials(p.measure));
   if (tested && pair && missesTrials) {
     const again = (imputation: Imputation): Map<string, PrimaryVerdict> =>
       primaryVerdicts(
@@ -892,7 +1026,7 @@ export async function decideWith(input: DecideInput, compare: Compare): Promise<
         ),
         compare,
       );
-    const againstNonInferiority = again(AGAINST_NON_INFERIORITY);
+    againstNonInferiority = again(AGAINST_NON_INFERIORITY);
     const againstRegression = again(AGAINST_REGRESSION);
     for (const [id, v] of tested) {
       const ni = againstNonInferiority.get(id) as PrimaryVerdict;
@@ -973,7 +1107,7 @@ export async function decideWith(input: DecideInput, compare: Compare): Promise<
       );
     if (changed.has(id))
       notes.push(
-        "imputing its missing trials against this verdict changes it, so it is INCONCLUSIVE (see the sensitivity analysis)",
+        `imputing ${missesOwnTrials(id) ? "its missing trials" : "the missing trials of other primary measures"} against this verdict changes it, so it is INCONCLUSIVE (see the sensitivity analysis)`,
       );
     return {
       ...outcome,
@@ -1016,6 +1150,7 @@ export async function decideWith(input: DecideInput, compare: Compare): Promise<
   const primaries = measures.filter((m) => m.tier === "primary");
   const gates = input.gates.filter((g) => plan.hardGates.includes(g.gate));
   const failedGate = gates.find((g) => !g.passed);
+  const noise = beyondNoise(plan, tallies);
   let verdict: DecisionInput["verdict"];
   let reason: string;
   if (invalid.length > 0) {
@@ -1030,29 +1165,34 @@ export async function decideWith(input: DecideInput, compare: Compare): Promise<
     reason = `Estimate-only: ${modeReasons.join("; ") || "the plan supports no verdict"}. It reports estimates, intervals, differences and flips without a verdict.`;
   } else if (primaries.some((m) => m.verdict === "REGRESSION")) {
     verdict = "REGRESSION";
-    reason = `Measure ${primaries.find((m) => m.verdict === "REGRESSION")?.measure} dropped beyond run-to-run noise and is not shown non-inferior.`;
+    reason = `Measure ${primaries.find((m) => m.verdict === "REGRESSION")?.measure} dropped${noise ? " beyond run-to-run noise" : ""} and is not shown non-inferior.`;
   } else if (primaries.length > 0 && primaries.every((m) => m.verdict === "NON-INFERIOR")) {
     verdict = "PASS";
     reason = "Every primary measure is non-inferior and every hard gate passed.";
-  } else if (primaries.every((m) => onlyTheFloor(tested?.get(m.measure)))) {
-    // The floor alone keeps every measure from NON-INFERIOR: say so in plain words.
-    verdict = "INCONCLUSIVE";
-    reason = FLOOR_NOT_SET_REASON;
   } else {
     verdict = "INCONCLUSIVE";
-    const open = primaries.find((m) => m.verdict !== "NON-INFERIOR");
-    const result = open ? tested?.get(open.measure) : undefined;
-    const cause =
-      open && changed.has(open.measure)
-        ? "imputing its missing trials against the verdict changes it"
-        : result?.cause === "unvalidated"
-          ? "its comparison is outside the validated domain"
-          : result?.cause === "non-inferiority-unvalidated" && result.comparison
-            ? `its non-inferiority result is not validated, because ${nonInferiorityOnly(result.comparison).join("; ")}`
-            : result?.cause === "no-comparison"
-              ? `it has no comparison (${result.notes[0] ?? "no data"})`
-              : "the cases cannot tell yet";
-    reason = `Measure ${open?.measure ?? "?"} could not be shown non-inferior: ${cause}. This is not a pass.`;
+    const open = primaries
+      .filter((m) => m.verdict !== "NON-INFERIOR")
+      .map((m) => {
+        const p = plan.primary.find((x) => x.measure === m.measure);
+        return {
+          measure: m.measure as string,
+          cause: inconclusiveCause(
+            tested?.get(m.measure),
+            (p?.margin ?? 0) - (p?.safetyMargin ?? 0),
+            {
+              changed: changed.has(m.measure),
+              missesOwnTrials: missesOwnTrials(m.measure),
+              againstNonInferiority: againstNonInferiority.get(m.measure),
+            },
+          ),
+        };
+      });
+    // The floor alone keeps every measure from NON-INFERIOR: say so in plain words.
+    reason =
+      open.length > 0 && open.every((o) => o.cause.onlyTheFloor)
+        ? FLOOR_NOT_SET_REASON
+        : inconclusiveReason(open);
   }
 
   const { scope, cases } = scopeOf(
@@ -1060,6 +1200,7 @@ export async function decideWith(input: DecideInput, compare: Compare): Promise<
     verdict === "REGRESSION" && !!failedGate,
     plan,
     tallies,
+    noise,
   );
   const limitations = [
     ...(plan.estimand === "fixed-cases" && verdict !== "INVALID"

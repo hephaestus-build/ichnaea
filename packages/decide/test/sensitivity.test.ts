@@ -44,10 +44,14 @@ describe("the sensitivity analysis for missing trials (REQ-56)", () => {
       ["against-regression", "NON-INFERIOR", false],
     ]);
     // While the floor is not set, the observed verdict is INCONCLUSIVE, so no imputation can change
-    // it; each imputation still carries both results.
+    // it; each imputation still carries both results. The reason does not blame the floor alone:
+    // with the floor set, the imputation would still keep the measure from NON-INFERIOR.
     const unset = await run(s);
     expect(unset.verdict).toBe("INCONCLUSIVE");
-    expect(unset.reason).toBe(FLOOR_REASON);
+    expect(unset.reason).not.toBe(FLOOR_REASON);
+    expect(unset.reason).toBe(
+      "Measure app/correct could not be shown non-inferior: with its missing trials imputed against non-inferiority, it regresses. This is not a pass.",
+    );
     expect(unset.missingness.sensitivity).toBe("unchanged");
     expect(
       unset.measures[0]?.sensitivity.map((r) => [
