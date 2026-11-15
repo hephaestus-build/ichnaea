@@ -161,15 +161,15 @@ export function readStructures(
 }
 
 /**
- * The ids already judged in a TSV. A last line cut off by a stopped run (no line break) is removed
- * from the file, so the structure runs again.
+ * The ids already judged in a TSV. A last line cut off by a stopped run (no line break) does not
+ * count; with `repair` it is also removed from the file, so the structure runs again.
  */
-export function doneIds(out: string): Set<string> {
+export function doneIds(out: string, repair = true): Set<string> {
   if (!existsSync(out)) return new Set();
   let text = readFileSync(out, "utf8");
   if (text !== "" && !text.endsWith("\n")) {
     text = text.slice(0, text.lastIndexOf("\n") + 1);
-    writeFileSync(out, text);
+    if (repair) writeFileSync(out, text);
   }
   const lines = text.split("\n").filter((l) => l !== "");
   if (lines[0] !== HEADER) throw new Error(`${out} is not an output of this script`);
@@ -218,7 +218,7 @@ function probe(
   sample: number,
 ): void {
   const mine = shardOf(all, shard);
-  const done = doneIds(out);
+  const done = doneIds(out, false);
   const todo = mine.filter(({ s }) => !done.has(s.id));
   const cells = new Map<string, number>();
   for (const { s } of todo) cells.set(s.cell, (cells.get(s.cell) ?? 0) + 1);
