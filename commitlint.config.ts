@@ -17,7 +17,7 @@ export default {
         "repo",
         "ci",
         "deps",
-        // Dependabot names development dependency updates `deps-dev`.
+        // Earlier Dependabot commits on `main` use `deps-dev`. Renovate writes `deps`.
         "deps-dev",
         "examples",
       ],
