@@ -1,0 +1,122 @@
+name: Release
+
+# A maintainer starts a pre-release by hand, on main, with its tag `v0.<minor>.<patch>`. The
+# workflow creates the tag itself: no pushed tag starts a release. The build job has read access
+# only. It checks that the commit is on main, runs the checks, packs every package once, and writes
+# the SBOM, the checksums and the notes. The release job runs in the `release` environment. It
+# attests the tarballs, creates the tag with the release deploy key and publishes the GitHub
+# release. Nothing is published to a registry. MAINTAINERS.md § Releases has the procedure, and
+# § Repository settings the settings that this workflow relies on.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release, v0.<minor>.<patch>. It must equal the version of every package on main."
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: build and check
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          # A release restores no cache, so that no other run's files can enter it.
+          package-manager-cache: false
+      - name: The commit is on main
+        run: node scripts/check-on-main.ts "$GITHUB_REF" "$GITHUB_SHA"
+      - name: Versions match the tag
+        env:
+          TAG: ${{ inputs.tag }}
+        run: node scripts/check-release-versions.ts "$TAG"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run check
+      - run: pnpm run build
+      - name: Pack every package
+        run: pnpm -r --filter './packages/*' exec pnpm pack --pack-destination "$GITHUB_WORKSPACE/release"
+      - name: Smoke test the packed tarballs
+        run: node scripts/smoke-tarballs.ts release
+      - name: SBOM of what the tarballs install
+        run: |
+          node scripts/release-sbom.ts release release/sbom.cdx.json
+          node scripts/check-sbom.ts release/sbom.cdx.json release
+      - name: Checksums
+        working-directory: release
+        run: sha256sum -- *.tgz > SHA256SUMS
+      - name: Release notes
+        env:
+          TAG: ${{ inputs.tag }}
+        run: node scripts/release-notes.ts "$TAG" > release-notes.md
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release
+          path: |
+            release/
+            release-notes.md
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    name: attest, tag and publish
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Only main may deploy to this environment, and a maintainer approves each run. It holds the
+    # deploy key, the only actor that the tag ruleset lets create a v* tag.
+    environment: release
+    permissions:
+      contents: write # create the GitHub release
+      id-token: write # sign the attestations with the workflow's identity
+      attestations: write # store the attestations
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release
+      - name: The tarballs are the ones that the build job checked
+        working-directory: release
+        run: sha256sum --check SHA256SUMS
+      - name: Attest build provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: release/*.tgz
+      - name: Attest the SBOM
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: release/*.tgz
+          sbom-path: release/sbom.cdx.json
+      # Checked out last, so that the deploy key is on the runner only for the two steps that need it.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: repository
+          ssh-key: ${{ secrets.RELEASE_DEPLOY_KEY }}
+          # The tag push needs the key. This job uploads no artifact, and the post-job step removes it.
+          persist-credentials: true # zizmor: ignore[artipacked]
+      - name: Tag the released commit
+        working-directory: repository
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          git tag "$TAG" "$GITHUB_SHA"
+          git push origin "refs/tags/$TAG"
+      - name: Publish the pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ inputs.tag }}
+        run: gh release create "$TAG" release/* --prerelease --verify-tag --title "$TAG" --notes-file release-notes.md

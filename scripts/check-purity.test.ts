@@ -16,11 +16,20 @@ describe("framework purity check", () => {
     expect(findViolations([{ path: "packages/x/src/a.ts", text: line }])).toHaveLength(1);
   });
 
-  it("allows the npm scope", () => {
-    expect(
-      findViolations([{ path: "p.json", text: '"@hephaestus-build/ichnaea-contracts"' }]),
-    ).toEqual([]);
+  it.each([
+    ["the npm scope", '"@hephaestus-build/ichnaea-contracts"'],
+    ["a tarball name", "hephaestus-build-ichnaea-core-0.1.0.tgz"],
+    ["the organisation in a URL", "https://github.com/hephaestus-build/ichnaea"],
+  ])("allows %s", (_, line) => {
+    expect(findViolations([{ path: "p.json", text: line }])).toEqual([]);
   });
+
+  it.each(["hephaestus-builder", "hephaestus-build_x", "hephaestus-buildkit"])(
+    "fails on a longer word that starts with the organisation name: %s",
+    (word) => {
+      expect(findViolations([{ path: "p.ts", text: word }])).toHaveLength(1);
+    },
+  );
 });
 
 // The samples are assembled from parts so that this file does not contain a private reference.

@@ -4,7 +4,22 @@
 
 Report vulnerabilities privately through GitHub's
 [private vulnerability reporting](https://github.com/hephaestus-build/ichnaea/security/advisories/new).
-Do not open a public issue. We aim to acknowledge a report within five working days.
+Do not open a public issue. If the form is not available, ask a maintainer in
+[MAINTAINERS.md](MAINTAINERS.md) on GitHub for a private channel, and give no details in public.
+We aim to acknowledge a report within five working days.
+
+A weakness in the release process is in scope too: the release workflow, the attestations, the
+SBOM or the checksums.
+
+## Supported versions
+
+Before 1.0, releases are pre-releases `v0.<minor>.<patch>`: tarballs on
+[GitHub releases](https://github.com/hephaestus-build/ichnaea/releases), not npm packages. All
+packages have the same version. Only the latest pre-release receives security fixes. A fix ships
+as a new pre-release. We do not patch older pre-releases.
+
+Verify each tarball with `gh attestation verify` before you use it, as the
+[README](README.md#verify) shows.
 
 ## Scope and trust model
 
@@ -28,8 +43,3 @@ Three workflows check the supply chain in addition to CI:
 Their results go to code scanning, in the repository's Security tab. These features need a public
 repository, so while the repository is private each workflow skips its check and says so in a
 notice.
-
-## Supported versions
-
-Nothing is released yet. Once releases exist, the latest minor version of each package receives
-security fixes.
