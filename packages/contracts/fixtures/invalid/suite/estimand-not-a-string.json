@@ -32,8 +32,7 @@
   "policy": {
     "onRegression": "block",
     "onInconclusive": "report",
-    "onEstimateOnly": "report",
-    "onInvalid": "block"
+    "onEstimateOnly": "report"
   },
   "measureReviewDate": "2027-05-01"
 }

@@ -197,6 +197,70 @@
         "retention": "record"
       }
     },
+    "replicatesFor": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "slice": {
+            "type": "string",
+            "minLength": 1,
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
+            }
+          },
+          "value": {
+            "type": "string",
+            "minLength": 1,
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
+            }
+          },
+          "replicates": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
+            }
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
+            }
+          }
+        },
+        "required": [
+          "slice",
+          "value",
+          "replicates",
+          "reason"
+        ],
+        "additionalProperties": false
+      }
+    },
     "alpha": {
       "type": "number",
       "exclusiveMinimum": 0,
@@ -422,28 +486,12 @@
             ],
             "retention": "record"
           }
-        },
-        "onInvalid": {
-          "type": "string",
-          "enum": [
-            "block",
-            "report"
-          ],
-          "x-ichnaea-data": {
-            "class": "none",
-            "identifier": "none",
-            "egress": [
-              "*"
-            ],
-            "retention": "record"
-          }
         }
       },
       "required": [
         "onRegression",
         "onInconclusive",
-        "onEstimateOnly",
-        "onInvalid"
+        "onEstimateOnly"
       ],
       "additionalProperties": false
     },

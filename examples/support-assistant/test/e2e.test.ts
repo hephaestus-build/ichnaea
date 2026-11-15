@@ -46,6 +46,9 @@ async function flow(
         "2026-11-15T10:00:00Z",
         "--seed",
         "7",
+        // The candidate is a new model with a new prompt: the comparison is the change itself.
+        "--trigger",
+        "new-model",
       ],
       log,
     ),

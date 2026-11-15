@@ -3,9 +3,9 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 
-import { RECORD_CONTRACTS, toJsonSchema } from "@hephaestus-build/ichnaea-contracts";
+import { RECORD_CONTRACTS, toJsonSchema, TriggerKind } from "@hephaestus-build/ichnaea-contracts";
 
-import { createHost, type Host } from "./host.ts";
+import { CORE_COMMANDS, createHost, type Host } from "./host.ts";
 import { importRun } from "./import.ts";
 import { testMeasure } from "./measures.ts";
 import type { Config } from "./plugin.ts";
@@ -37,16 +37,26 @@ Commands from the core:
   help                Show this help
 
 Plugins in the configuration add commands (for example decide and report).
-Options: --config <file> (default ichnaea.config.ts)`;
+Options: --config <file> (default ichnaea.config.ts)
+Exit codes: 0 success, 1 a CI policy blocks, 2 an error (usage, configuration or records).`;
 
 /**
- * Runs the CLI. Returns the exit code: 0 on success, 1 when a command's policy blocks, 2 on a
- * usage or configuration error.
+ * Runs the CLI. Returns the exit code: 0 on success, 1 when a command's policy blocks, 2 on any
+ * error, so an error never reads as a policy result.
  */
 export async function main(
   argv: readonly string[],
   out: (text: string) => void = (t) => process.stdout.write(`${t}\n`),
 ): Promise<number> {
+  try {
+    return await dispatch(argv, out);
+  } catch (error) {
+    out(`error: ${error instanceof Error ? error.message : String(error)}`);
+    return 2;
+  }
+}
+
+async function dispatch(argv: readonly string[], out: (text: string) => void): Promise<number> {
   const [command, ...rest] = argv;
   if (!command || command === "help" || command === "--help") {
     out(HELP);
@@ -75,6 +85,7 @@ export async function main(
       { core: CORE_VERSION, contracts: await contractsVersion() },
       (m) => out(`warning: ${m}`),
     );
+    await host.configResolved();
   } catch (error) {
     out(`configuration error: ${(error as Error).message}`);
     return 2;
@@ -84,7 +95,7 @@ export async function main(
   const definition = host.commands.get(command);
   if (!definition) {
     out(
-      `unknown command '${command}'. Commands: schema, doctor${[...host.commands.keys()].map((c) => `, ${c}`).join("")}`,
+      `unknown command '${command}'. Commands: ${[...CORE_COMMANDS, ...host.commands.keys()].join(", ")}`,
     );
     return 2;
   }
@@ -165,16 +176,29 @@ async function importCommand(
     );
     return 2;
   }
-  const arms = values.arm.map((spec) => {
+  const trigger = TriggerKind.safeParse(values.trigger ?? "code");
+  if (!trigger.success) {
+    out(`import: --trigger must be one of ${TriggerKind.options.join(", ")}`);
+    return 2;
+  }
+  const seed = values.seed ?? "1";
+  if (!/^(0|[1-9][0-9]{0,8})$/.test(seed)) {
+    out("import: --seed must be a non-negative integer below 10^9");
+    return 2;
+  }
+  const arms = [];
+  for (const spec of values.arm) {
     const [name, role, ...path] = spec.split(":");
-    if (!name || !role || path.length === 0 || !["base", "candidate", "reference"].includes(role))
-      throw new Error(`--arm '${spec}' is not <name>:<role>:<file>`);
-    return {
+    if (!name || !role || path.length === 0 || !["base", "candidate", "reference"].includes(role)) {
+      out(`import: --arm '${spec}' is not <name>:<role>:<file>`);
+      return 2;
+    }
+    arms.push({
       name,
       role: role as "base" | "candidate" | "reference",
       configuration: path.join(":"),
-    };
-  });
+    });
+  }
   const result = await importRun({
     host,
     store: values.store ?? ".ichnaea",
@@ -185,8 +209,8 @@ async function importCommand(
     cases: values.cases as string,
     arms,
     files: values.file ?? [],
-    trigger: (values.trigger ?? "code") as never,
-    seed: Number(values.seed ?? "1"),
+    trigger: trigger.data,
+    seed: Number(seed),
     now: values.now ?? new Date().toISOString(),
     ichnaea: CORE_VERSION,
   });

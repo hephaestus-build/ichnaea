@@ -1,11 +1,18 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { type CommandDefinition, FileStore, type Plugin } from "@hephaestus-build/ichnaea-core";
+import {
+  type CommandDefinition,
+  FileStore,
+  packageVersion,
+  type Plugin,
+} from "@hephaestus-build/ichnaea-core";
 
 import { recompute } from "./recompute.ts";
-import { lintReport, renderHtml, renderMarkdown } from "./render.ts";
+import { lintReport, neutralView, renderHtml, renderMarkdown } from "./render.ts";
 import { decisionView } from "./view.ts";
+
+const VERSION = packageVersion(import.meta.url);
 
 const command: CommandDefinition = {
   name: "report",
@@ -34,10 +41,15 @@ const command: CommandDefinition = {
       );
       return 1;
     }
-    const view = decisionView(stored.decision, stored.plan.suite);
+    const view = decisionView(stored.decision, stored.plan.suite, stored.run.lineage);
     const markdown = renderMarkdown(view);
     const html = renderHtml(view);
-    const problems = [...lintReport(markdown), ...lintReport(html)];
+    const neutral = neutralView(view);
+    const problems = [
+      ...lintReport(renderMarkdown(neutral)),
+      ...lintReport(renderHtml(neutral)),
+      ...(/Lineage/.test(markdown) && /Lineage/.test(html) ? [] : ["no lineage footer"]),
+    ];
     if (problems.length > 0) {
       host.out(`report: ${problems.join("; ")}`);
       return 1;
@@ -57,9 +69,10 @@ const command: CommandDefinition = {
 export function reportPlugin(): Plugin<"report"> {
   return {
     id: "report",
-    version: "0.0.0",
+    version: VERSION,
     stability: "alpha",
-    requires: { core: "^0.0.0" },
+    // The packages release in lockstep, so a plugin needs the core of its own version.
+    requires: { core: `^${VERSION}` },
     commands: [command],
   };
 }

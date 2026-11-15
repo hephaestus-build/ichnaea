@@ -3,16 +3,22 @@ import { readFile } from "node:fs/promises";
 import {
   Case,
   CaseSet,
+  canonicalize,
   Configuration,
   digest,
+  type GateResult,
+  type MeasureValue,
   type Plan,
+  proportionProblem,
+  Run,
   Suite,
+  type Trial,
 } from "@hephaestus-build/ichnaea-contracts";
 
 import type { Host } from "./host.ts";
 import { scoreTrials } from "./measures.ts";
 import { createPlan } from "./planner.ts";
-import { FileStore } from "./store.ts";
+import { FileStore, recordProblems } from "./store.ts";
 
 /** What `ichnaea import` needs. */
 export interface ImportRunInput {
@@ -35,37 +41,74 @@ export interface ImportRunInput {
   readonly ichnaea: string;
 }
 
+/** Thrown when an importer's records cannot be stored. The message names the record. */
+export class ImportError extends Error {
+  override readonly name = "ImportError";
+}
+
 async function json(path: string): Promise<unknown> {
-  return JSON.parse(await readFile(path, "utf8"));
+  try {
+    return JSON.parse(await readFile(path, "utf8"));
+  } catch (error) {
+    throw new ImportError(`${path}: ${(error as Error).message}`);
+  }
+}
+
+/**
+ * Marks a trial whose configuration differs from its arm, or whose observations differ from what
+ * the configuration expects (REQ-15), as an invalid configuration. Its outputs stay recorded; it
+ * gives no value, so it counts as missing.
+ */
+function checkConfiguration(trial: Trial, identity: string | undefined): Trial {
+  if (trial.outcome === "invalid_configuration") return trial;
+  const mismatch =
+    identity !== trial.configuration
+      ? `the trial ran configuration ${trial.configuration}, not its arm's ${identity ?? "(no arm)"}`
+      : trial.observed
+          ?.filter(
+            (o) => o.expected !== undefined && canonicalize(o.value) !== canonicalize(o.expected),
+          )
+          .map((o) => `observed ${o.name} differs from the expected value`)[0];
+  if (mismatch === undefined) return trial;
+  return {
+    ...trial,
+    outcome: "invalid_configuration",
+    error: { kind: "configuration-mismatch", message: mismatch },
+  };
 }
 
 /**
  * Import mode (REQ-22): resolves the plan, runs an importer over another runner's result files,
- * scores the measures Ichnaea computes, and stores plan, trials, values, gates and the run with its
- * ledger. Import mode makes no model call, so its worst-case calls are zero. Every trial must be a
- * planned trial, and a planned trial the importer does not return is recorded as not run.
+ * scores the measures Ichnaea computes, runs the hard gates that have a check, and stores plan,
+ * trials, values, gates and the run with its ledger in one atomic write. Every record is checked
+ * before anything is written. Import mode makes no model call, so its worst-case calls are zero.
  */
 export async function importRun(
   input: ImportRunInput,
 ): Promise<{ plan: Plan; trials: number; values: number }> {
-  const importer = input.host.importers.get(input.importer);
+  const { host } = input;
+  const importer = host.importers.get(input.importer);
   if (!importer)
-    throw new Error(
-      `no importer '${input.importer}'; the plugins provide: ${[...input.host.importers.keys()].join(", ") || "none"}`,
+    throw new ImportError(
+      `no importer '${input.importer}'; the plugins provide: ${[...host.importers.keys()].join(", ") || "none"}`,
     );
   const suite = Suite.parse(await json(input.suite));
   const caseSet = CaseSet.parse(await json(input.caseSet));
-  const cases = (await readFile(input.cases, "utf8"))
-    .split("\n")
-    .filter((l) => l.trim() !== "")
-    .map((l, i) => {
-      const parsed = Case.safeParse(JSON.parse(l));
-      if (!parsed.success)
-        throw new Error(
-          `${input.cases}:${i + 1}: invalid case: ${parsed.error.issues[0]?.message ?? ""}`,
-        );
-      return parsed.data;
-    });
+  const cases = (await readFile(input.cases, "utf8")).split("\n").flatMap((line, i) => {
+    if (line.trim() === "") return [];
+    let value: unknown;
+    try {
+      value = JSON.parse(line);
+    } catch (error) {
+      throw new ImportError(`${input.cases}:${i + 1}: not JSON (${(error as Error).message})`);
+    }
+    const parsed = Case.safeParse(value);
+    if (!parsed.success)
+      throw new ImportError(
+        `${input.cases}:${i + 1}: invalid case: ${parsed.error.issues[0]?.message ?? ""}`,
+      );
+    return [parsed.data];
+  });
   const arms = await Promise.all(
     input.arms.map(async (a) => ({
       name: a.name,
@@ -73,19 +116,21 @@ export async function importRun(
       configuration: Configuration.parse(await json(a.configuration)),
     })),
   );
-  const planned = await createPlan({
-    suite,
-    caseSet,
-    cases,
-    arms,
-    armsToRun: [],
-    measures: input.host.measures,
-    trigger: input.trigger,
-    seed: input.seed,
-    now: input.now,
-    ichnaea: input.ichnaea,
-  });
-  const plan = await input.host.planCreated(planned);
+  const plan = await host.planCreated(
+    await createPlan({
+      suite,
+      caseSet,
+      cases,
+      arms,
+      armsToRun: [],
+      measures: host.measures,
+      gates: host.gates,
+      trigger: input.trigger,
+      seed: input.seed,
+      now: input.now,
+      ichnaea: input.ichnaea,
+    }),
+  );
 
   const result = await importer.run({
     files: input.files,
@@ -94,30 +139,99 @@ export async function importRun(
       run: input.run,
     },
   });
-  const plannedIds = new Set(plan.trials.map((t) => t.id as string));
-  const unplanned = result.trials.filter((t) => !plannedIds.has(t.id));
-  if (unplanned.length > 0)
-    throw new Error(
-      `the importer returned ${unplanned.length} trial(s) the plan does not list, for example '${unplanned[0]?.id}'`,
-    );
+
+  // Trials: each one a planned trial, with the planned case, arm and replicate.
+  const planned = new Map(plan.trials.map((t) => [t.id as string, t]));
   const identities = new Map(plan.arms.map((a) => [a.name as string, a.identity as string]));
-  for (const t of result.trials) {
-    if (t.arm === undefined || identities.get(t.arm) !== t.configuration)
-      throw new Error(`trial '${t.id}' does not carry the identity of its arm '${t.arm ?? "?"}'`);
+  const trials = result.trials.map((t) => {
+    const p = planned.get(t.id);
+    if (!p)
+      throw new ImportError(`the importer returned trial '${t.id}', which the plan does not list`);
+    if (t.case !== p.case || t.arm !== p.arm || t.replicate !== p.replicate)
+      throw new ImportError(
+        `trial '${t.id}' is planned as case '${p.case}', arm '${p.arm}', replicate ${p.replicate}`,
+      );
+    return checkConfiguration(t, identities.get(p.arm));
+  });
+  const byTrial = new Map(trials.map((t) => [t.id as string, t]));
+
+  // Values: imported ones for measures the application computes, scored ones for Ichnaea's.
+  const planMeasures = new Set(plan.measures.map((m) => m.id));
+  for (const v of result.values) {
+    const measure = host.measures.get(v.measure);
+    if (!measure || !planMeasures.has(v.measure))
+      throw new ImportError(`value for measure '${v.measure}', which the plan does not use`);
+    if (measure.card.computedBy === "ichnaea")
+      throw new ImportError(
+        `measure '${v.measure}' is computed by Ichnaea; do not import its values`,
+      );
+    if (v.version !== measure.card.version)
+      throw new ImportError(
+        `value for '${v.measure}' on '${v.trial}' has version ${v.version}, but the card is ${measure.card.version}`,
+      );
+    if (!byTrial.has(v.trial))
+      throw new ImportError(
+        `value for '${v.measure}' names trial '${v.trial}', which was not imported`,
+      );
+    if (!v.applicable) continue;
+    if (v.value === undefined)
+      throw new ImportError(`value for '${v.measure}' on '${v.trial}' is applicable but empty`);
+    if (v.value.type !== measure.card.valueType)
+      throw new ImportError(
+        `value for '${v.measure}' on '${v.trial}' is ${v.value.type}, but the card says ${measure.card.valueType} (REQ-31)`,
+      );
+    const problem = proportionProblem(v.value);
+    if (problem) throw new ImportError(`value for '${v.measure}' on '${v.trial}': ${problem}`);
   }
   const byCase = new Map(cases.map((c) => [c.id as string, c]));
-  const values = [
+  const valid = new Set(
+    trials.filter((t) => t.outcome !== "invalid_configuration").map((t) => t.id),
+  );
+  const values: MeasureValue[] = [
     ...result.values,
-    ...scoreTrials([...input.host.measures.values()], result.trials, byCase),
-  ];
+    ...scoreTrials(
+      [...host.measures.values()].filter((m) => planMeasures.has(m.card.id)),
+      trials,
+      byCase,
+    ),
+  ].filter((v) => valid.has(v.trial));
 
-  const store = new FileStore(input.store);
-  await store.writePlan(input.run, plan);
-  await store.appendTrials(input.run, result.trials);
-  await store.appendValues(input.run, values);
-  await store.appendGates(input.run, result.gates ?? []);
-  const recorded = new Map(result.trials.map((t) => [t.id as string, t.outcome]));
-  await store.writeRun({
+  // Gates: a gate with a check is computed here; the importer reports only gates without one.
+  const gates: GateResult[] = [];
+  for (const g of result.gates ?? []) {
+    const definition = host.gates.get(g.gate);
+    if (!definition || !plan.hardGates.includes(g.gate))
+      throw new ImportError(`gate result for '${g.gate}', which the plan does not use`);
+    if (definition.check)
+      throw new ImportError(`gate '${g.gate}' is computed by its check; do not import its result`);
+    gates.push(g);
+  }
+  for (const id of plan.hardGates) {
+    const check = host.gates.get(id)?.check;
+    if (check) gates.push({ ...check({ trials, cases }), gate: id });
+  }
+  for (const g of gates)
+    if (g.passed === g.failures > 0)
+      throw new ImportError(
+        `gate '${g.gate}': passed is ${g.passed} with ${g.failures} failure(s)`,
+      );
+
+  const problems = recordProblems({ trials, values, gates });
+  if (problems.length > 0) throw new ImportError(problems.join("; "));
+
+  const recorded = new Map(trials.map((t) => [t.id as string, t.outcome]));
+  const lineage: Run["lineage"] = [
+    ...host.plugins.map((p) => ({ kind: "plugin" as const, id: p.id, version: p.version })),
+    { kind: "plugin", id: importer.id, version: importer.version },
+    ...plan.measures,
+    ...plan.hardGates.map((id) => ({
+      kind: "gate" as const,
+      id,
+      version: host.gates.get(id)?.version ?? "unknown",
+    })),
+    { kind: "package", id: "@hephaestus-build/ichnaea-core", version: input.ichnaea },
+  ];
+  const run = Run.parse({
     schema: "ichnaea.run/1",
     id: input.run,
     plan: await digest(plan),
@@ -128,23 +242,20 @@ export async function importRun(
       ichnaea: input.ichnaea,
     },
     arms: plan.arms,
-    lineage: [
-      ...input.host.plugins.map((p) => ({ kind: "plugin" as const, id: p.id, version: p.version })),
-      { kind: "plugin" as const, id: importer.id, version: importer.version },
-      ...[...input.host.measures.values()].map((m) => ({
-        kind: "measure" as const,
-        id: m.card.id,
-        version: m.card.version,
-      })),
-    ],
+    lineage,
     ledger: plan.trials.map((t) => {
       const outcome = recorded.get(t.id);
+      // A planned trial the importer did not return never ran.
       return outcome
         ? { trial: t.id, state: "recorded", outcome }
-        : { trial: t.id, state: "recorded", outcome: "not_run" };
+        : { trial: t.id, state: "planned", outcome: "not_run" };
     }),
     startedAt: input.now,
     completedAt: input.now,
-  } as never);
-  return { plan, trials: result.trials.length, values: values.length };
+  });
+
+  await new FileStore(input.store).createRun({ plan, run, trials, values, gates });
+  for (const t of trials) await host.trialRecorded(t);
+  await host.runCompleted(run);
+  return { plan, trials: trials.length, values: values.length };
 }

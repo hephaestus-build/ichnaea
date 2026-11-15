@@ -52,10 +52,11 @@ export const Arm = z.strictObject({
   configuration: Configuration,
 });
 
-/** One planned trial. */
+/** One planned trial. `family` groups related cases (from the case set) for sampled-cases. */
 export const PlannedTrial = z.strictObject({
   id: none(TrialId),
   case: none(CaseId),
+  family: none(Text).optional(),
   arm: none(ArmName),
   replicate: none(z.int().min(0)),
   batch: none(z.int().min(0)),
@@ -87,6 +88,8 @@ export const Plan = z.strictObject({
   caseSetDigest: none(Digest),
   trigger: none(TriggerKind),
   mode: none(z.enum(["decision", "estimate-only"])),
+  /** Why the plan runs estimate-only. Empty in decision mode. */
+  modeReasons: none(z.array(Text)),
   estimand: none(Estimand),
   alpha: none(z.number().gt(0).lt(0.5)),
   replicates: none(z.int().min(1)),

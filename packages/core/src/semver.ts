@@ -27,8 +27,9 @@ function compare(a: Version, b: Version): number {
 }
 
 /**
- * Whether a version satisfies a range. Supported: an exact version, `^x.y.z` (same major; below 1.0
- * same minor), `~x.y.z` (same minor), and `>=x.y.z`. This is the subset peer ranges need.
+ * Whether a version satisfies a range, as npm reads it. Supported: an exact version, `^x.y.z` (same
+ * major; below 1.0 same minor; below 0.1 the same patch), `~x.y.z` (same minor), and `>=x.y.z`.
+ * This is the subset peer ranges need.
  */
 export function satisfies(version: string, range: string): boolean {
   const v = parse(version);
@@ -38,7 +39,9 @@ export function satisfies(version: string, range: string): boolean {
     const base = parse(r.slice(1));
     if (compare(v, base) < 0) return false;
     if (base.major > 0) return v.major === base.major;
-    return v.major === 0 && v.minor === base.minor;
+    // As in npm: ^0.y.z allows patches of 0.y; ^0.0.z allows only 0.0.z.
+    if (base.minor > 0) return v.major === 0 && v.minor === base.minor;
+    return v.major === 0 && v.minor === 0 && v.patch === base.patch;
   }
   if (r.startsWith("~")) {
     const base = parse(r.slice(1));

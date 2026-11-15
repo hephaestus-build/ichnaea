@@ -80,7 +80,6 @@ const suite = {
     onRegression: "block",
     onInconclusive: "report",
     onEstimateOnly: "report",
-    onInvalid: "block",
   },
   measureReviewDate: "2027-05-01",
 };

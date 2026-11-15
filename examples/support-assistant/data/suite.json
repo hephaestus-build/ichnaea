@@ -11,7 +11,7 @@
   "caseSet": {
     "id": "support-answers",
     "path": "data/cases.jsonl",
-    "digest": "sha256:241daede1c4eea0fee98116491999d8e384d2ac0f310ead2dced98a11049c6aa"
+    "digest": "sha256:4fd06f95e312306faa290892348cd36b27931012434f5db4e352dc14314a5521"
   },
   "replicates": 3,
   "primary": [
@@ -29,8 +29,7 @@
   "policy": {
     "onRegression": "block",
     "onInconclusive": "report",
-    "onEstimateOnly": "report",
-    "onInvalid": "block"
+    "onEstimateOnly": "report"
   },
   "measureReviewDate": "2027-05-01"
 }

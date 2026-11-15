@@ -52,10 +52,11 @@ export interface GateDefinition<Id extends string = string> {
   readonly id: Id;
   readonly version: string;
   readonly description: string;
+  /** The check itself. Core runs it over the run's trials and records the result under `id`. */
   readonly check?: (input: {
     readonly trials: readonly Trial[];
     readonly cases: readonly Case[];
-  }) => GateResult;
+  }) => Omit<GateResult, "gate">;
 }
 
 /** What an importer reads and returns. */
@@ -88,7 +89,10 @@ export interface EgressRequest {
   readonly pointers: readonly string[];
 }
 
-/** A plugin's answer to an egress request. */
+/**
+ * A plugin's answer to an egress request. Any plugin can refuse; only a plugin that declares
+ * `governance: true` can allow data above class `none` to leave.
+ */
 export type EgressAnswer =
   | { readonly allow: true }
   | { readonly allow: false; readonly reason: string }
@@ -99,8 +103,14 @@ export interface HookContext {
   readonly log: (message: string) => void;
 }
 
-/** What a `planCreated` hook may add to a plan before any call. */
-export type PlanAdditions = Partial<Pick<Plan, "power" | "mode">> & { readonly refuse?: string };
+/**
+ * What a `planCreated` hook may add to a plan before any call: a power statement, or a switch to
+ * estimate-only with its reasons. A hook can never turn an estimate-only plan into a decision.
+ */
+export type PlanAdditions = Partial<Pick<Plan, "power" | "modeReasons">> & {
+  readonly mode?: "estimate-only";
+  readonly refuse?: string;
+};
 
 /**
  * The seven lifecycle hooks. Sequential hooks run in plugin order (with `pre` and `post`
@@ -175,7 +185,10 @@ export interface CommandHost {
 
 /** Runs hooks across plugins. */
 export interface HookRunner {
+  configResolved(): Promise<void>;
   planCreated(plan: Plan): Promise<Plan>;
+  trialRecorded(trial: Trial): Promise<void>;
+  runCompleted(run: Run): Promise<void>;
   decisionMade(decision: Decision): Promise<void>;
   reportRendered(files: readonly string[]): Promise<void>;
   beforeEgress(request: EgressRequest): Promise<{ allow: boolean; reasons: string[] }>;
@@ -193,6 +206,11 @@ export interface Plugin<Id extends string = string> {
   readonly importers?: readonly Importer<`${Id}/${string}`>[];
   readonly commands?: readonly CommandDefinition[];
   readonly hooks?: Partial<Hooks>;
+  /**
+   * The plugin decides data egress for the deployment (REQ-126). Only a governance plugin's
+   * `beforeEgress` can allow data above class `none` to leave; any plugin can refuse.
+   */
+  readonly governance?: true;
   /** `pre` runs before plugins without placement, `post` after. */
   readonly placement?: "pre" | "post";
   readonly deprecated?: {

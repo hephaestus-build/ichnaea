@@ -76,6 +76,13 @@ export const Comparison = z.strictObject({
   nonInferiorityP: none(Real),
   regressionP: none(Real),
   regressionPAdjusted: none(Real),
+  /** The stable name of the regression test's method. */
+  regressionMethod: none(Text),
+  /**
+   * Whether the comparison lies inside the validated domain of its methods. A verdict never rests
+   * on one that does not (DN-8); the measure's notes say why.
+   */
+  validated: none(z.boolean()),
   flips: z.array(Flip),
 });
 
@@ -122,6 +129,11 @@ export const Decision = z.strictObject({
   mode: none(z.enum(["decision", "estimate-only"])),
   verdict: none(Verdict.nullable()),
   reason: none(Text),
+  /**
+   * What the verdict is about, stated next to it in every output: under fixed-cases "on these N
+   * cases, beyond run-to-run noise", never a claim about new inputs.
+   */
+  scope: none(Text),
   plan: none(PlanDigest),
   run: none(RunId),
   runDigest: none(Digest),

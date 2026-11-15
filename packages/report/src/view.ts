@@ -1,4 +1,4 @@
-import type { Decision, Real } from "@hephaestus-build/ichnaea-contracts";
+import type { Decision, Real, Run } from "@hephaestus-build/ichnaea-contracts";
 
 /** A number as reports show it: a percentage with one decimal, or a dash when undefined. */
 export function percent(value: Real | number): string {
@@ -36,6 +36,8 @@ export interface MeasureRow {
     readonly method: string;
     readonly negativeFlips: number;
     readonly positiveFlips: number;
+    /** The numbers behind the difference axis, when the bound is finite. */
+    readonly axis?: { readonly estimate: number; readonly lower: number; readonly margin: number };
   };
   readonly notes: readonly string[];
 }
@@ -44,8 +46,11 @@ export interface MeasureRow {
 export interface DecisionView {
   readonly title: string;
   readonly verdict: string;
+  /** What the verdict is about, shown next to it: "on these 60 cases, beyond run-to-run noise". */
+  readonly claim: string;
   readonly reason: string;
-  readonly scope: string;
+  /** How the verdict was reached: estimand, bounds and adjustments. */
+  readonly method: string;
   readonly measures: readonly MeasureRow[];
   readonly gates: ReadonlyArray<{ readonly gate: string; readonly result: string }>;
   readonly flips: ReadonlyArray<{
@@ -75,14 +80,19 @@ export interface DecisionView {
  * Builds the view model from a decision record alone. It computes nothing new: every number comes
  * from the record (REQ-82, REQ-128).
  */
-export function decisionView(decision: Decision, suite: string): DecisionView {
+export function decisionView(
+  decision: Decision,
+  suite: string,
+  lineage: Run["lineage"] = [],
+): DecisionView {
   const verdict = decision.verdict ?? "ESTIMATE-ONLY";
   const level = Math.round((1 - decision.alpha) * 100);
   return {
     title: `Ichnaea decision: ${suite}`,
     verdict,
+    claim: decision.scope,
     reason: decision.reason,
-    scope:
+    method:
       decision.mode === "estimate-only"
         ? `Estimate-only (${decision.measures[0]?.estimand ?? "fixed-cases"}): no inferential verdict. Rates carry ${95}% Wilson intervals; differences are descriptive.`
         : `Estimand ${decision.measures[0]?.estimand ?? "fixed-cases"}; one-sided ${level}% lower bounds for differences (candidate minus base); intersection-union over primary measures; Holm across regression tests.`,
@@ -106,10 +116,24 @@ export function decisionView(decision: Decision, suite: string): DecisionView {
                 bound: comparison.difference.method.startsWith("descriptive")
                   ? "no interval (estimate-only)"
                   : `≥ ${points(comparison.difference.lower)}`,
-                margin: `−${(comparison.margin * 100).toFixed(1)} pts${comparison.safetyMargin > 0 ? ` (safety ${(comparison.safetyMargin * 100).toFixed(1)})` : ""}`,
+                // A secondary measure has no margin: it is descriptive.
+                margin:
+                  m.tier === "secondary"
+                    ? "–"
+                    : `−${(comparison.margin * 100).toFixed(1)} pts${comparison.safetyMargin > 0 ? ` (safety ${(comparison.safetyMargin * 100).toFixed(1)})` : ""}`,
                 method: comparison.difference.method,
                 negativeFlips: comparison.flips.filter((f) => f.direction === "negative").length,
                 positiveFlips: comparison.flips.filter((f) => f.direction === "positive").length,
+                ...(typeof comparison.difference.estimate === "number" &&
+                typeof comparison.difference.lower === "number"
+                  ? {
+                      axis: {
+                        estimate: comparison.difference.estimate,
+                        lower: comparison.difference.lower,
+                        margin: comparison.margin,
+                      },
+                    }
+                  : {}),
               },
             }
           : {}),
@@ -156,6 +180,16 @@ export function decisionView(decision: Decision, suite: string): DecisionView {
         `Arm ${a.name} (${a.role})`,
         a.identity,
       ]),
+      ...decision.measures.map((m): readonly [string, string] => [
+        `Measure ${m.measure}`,
+        m.version,
+      ]),
+      ...lineage
+        .filter((l) => l.kind !== "measure")
+        .map((l): readonly [string, string] => [
+          `${l.kind[0]?.toUpperCase() ?? ""}${l.kind.slice(1)} ${l.id}`,
+          l.digest ? `${l.version} (${l.digest})` : l.version,
+        ]),
       ["Seed", `${decision.seed.algorithm} ${decision.seed.value}`],
       ["Ichnaea", decision.ichnaea],
       ["Decided", decision.decidedAt],

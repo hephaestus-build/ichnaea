@@ -55,13 +55,6 @@ export const factsStated = defineMeasure({
     unitOfEvaluation: "turn",
     establishes: "Literal agreement with the gold facts, not helpfulness.",
     computedBy: "ichnaea",
-    validation: {
-      tester: {
-        status: "passed",
-        digest: `sha256:${"1".repeat(64)}`,
-        ranAt: "2026-11-15T00:00:00Z",
-      },
-    },
   },
   appliesTo: (c) => facts(c).length > 0,
   score: (trial, c) => {
@@ -128,17 +121,8 @@ const results: Importer<"support/results"> = {
         );
       }
     }
-    return {
-      trials,
-      values: [] as MeasureValue[],
-      gates: [
-        {
-          gate: "support/answers-present",
-          passed: trials.every((t) => t.outcome !== "completed" || t.output !== undefined),
-          failures: 0,
-        },
-      ] as never,
-    };
+    // The answers-present gate has a check, so Ichnaea computes it from these trials.
+    return { trials, values: [] as MeasureValue[] };
   },
 };
 
@@ -153,6 +137,12 @@ export const support = definePlugin({
       id: "support/answers-present",
       version: "1.0.0",
       description: "Every completed trial has an answer.",
+      check: ({ trials }) => {
+        const failures = trials.filter(
+          (t) => t.outcome === "completed" && t.output === undefined,
+        ).length;
+        return { passed: failures === 0, failures };
+      },
     },
   ],
 });

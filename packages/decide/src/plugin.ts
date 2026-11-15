@@ -1,32 +1,69 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { canonicalize, type Decision } from "@hephaestus-build/ichnaea-contracts";
-import { type CommandDefinition, FileStore, type Plugin } from "@hephaestus-build/ichnaea-core";
+import { canonicalize, type Decision, type Plan } from "@hephaestus-build/ichnaea-contracts";
+import { sampledCasesFloor, zeroNoiseFloor } from "@hephaestus-build/ichnaea-stats";
+import {
+  type CommandDefinition,
+  FileStore,
+  packageVersion,
+  type PlanAdditions,
+  type Plugin,
+} from "@hephaestus-build/ichnaea-core";
 
-import { decide } from "./decide.ts";
+import { decide, describeCounts, plannedTrialsPerCase } from "./decide.ts";
 
-/** The exit code a CI policy gives a decision (REQ-26, REQ-27). */
-export function exitCode(
-  decision: Decision,
-  policy: {
-    onRegression: string;
-    onInconclusive: string;
-    onEstimateOnly: string;
-    onInvalid: string;
-  },
-): number {
+const VERSION = packageVersion(import.meta.url);
+
+/**
+ * The exit code a CI policy gives a decision (REQ-26, REQ-27): 1 blocks, 0 lets the change pass.
+ * PASS never blocks, and INVALID always does: it never maps to a pass (REQ-53).
+ */
+export function exitCode(decision: Decision, policy: Plan["policy"]): number {
+  if (decision.verdict === "INVALID") return 1;
+  if (decision.verdict === "PASS") return 0;
   const action =
     decision.verdict === null
       ? policy.onEstimateOnly
       : decision.verdict === "REGRESSION"
         ? policy.onRegression
-        : decision.verdict === "INCONCLUSIVE"
-          ? policy.onInconclusive
-          : decision.verdict === "INVALID"
-            ? policy.onInvalid
-            : "report";
+        : policy.onInconclusive;
   return action === "block" ? 1 : 0;
+}
+
+/**
+ * The planning power statement (REQ-27, REQ-54): per primary measure, the zero-noise floor of the
+ * fixed-cases bound for the plan's cases and trials. The floor is a lower bound on the minimum
+ * detectable effect, so a margin below it can never be shown: the plan then runs estimate-only.
+ */
+export function planningPower(plan: Plan): PlanAdditions {
+  if (plan.mode !== "decision" || plan.estimand !== "fixed-cases") return {};
+  const base = plan.arms.find((a) => a.role === "base")?.name ?? plan.arms[0]?.name ?? "";
+  const counts = [...plannedTrialsPerCase(plan, base).values()];
+  const floor = zeroNoiseFloor(counts, plan.alpha);
+  const reasons: string[] = [];
+  const power = plan.primary.map((p) => {
+    const effective = p.margin - (p.safetyMargin ?? 0);
+    const decidable = floor < effective;
+    if (!decidable)
+      reasons.push(
+        `measure '${p.measure}': the zero-noise floor of ${(floor * 100).toFixed(1)} points is not below the margin of ${(effective * 100).toFixed(1)} points, so no run of this plan can show it non-inferior`,
+      );
+    return {
+      measure: p.measure,
+      applicableCases: counts.length,
+      replicates: Math.min(...counts),
+      margin: p.margin,
+      mde: floor,
+      floor,
+      sampledCasesFloor: sampledCasesFloor(counts.length, plan.alpha),
+      assumption: `planning: no noise, every case applicable, trials per case ${describeCounts(counts)} (a lower bound on the MDE)`,
+      decidable,
+    };
+  });
+  return reasons.length > 0
+    ? { power, mode: "estimate-only", modeReasons: [...plan.modeReasons, ...reasons] }
+    : { power };
 }
 
 const command: CommandDefinition = {
@@ -83,9 +120,11 @@ const command: CommandDefinition = {
 export function decidePlugin(): Plugin<"decide"> {
   return {
     id: "decide",
-    version: "0.0.0",
+    version: VERSION,
     stability: "alpha",
-    requires: { core: "^0.0.0" },
+    // The packages release in lockstep, so a plugin needs the core of its own version.
+    requires: { core: `^${VERSION}` },
     commands: [command],
+    hooks: { planCreated: (_ctx, plan) => planningPower(plan) },
   };
 }

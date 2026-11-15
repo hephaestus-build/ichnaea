@@ -3,6 +3,7 @@
   "mode": "decision",
   "verdict": "PASS",
   "reason": "Every primary measure is non-inferior and every hard gate passed.",
+  "scope": "on these 2 cases, beyond run-to-run noise",
   "plan": "sha256:1313131313131313131313131313131313131313131313131313131313131313",
   "run": "run-2026-11-15-a",
   "runDigest": "sha256:1414141414141414141414141414141414141414141414141414141414141414",
@@ -81,6 +82,8 @@
           "nonInferiorityP": 0.004,
           "regressionP": 0.71,
           "regressionPAdjusted": 0.71,
+          "regressionMethod": "exact-stratified-conditional",
+          "validated": true,
           "flips": [
             {
               "case": "refund-window-de",

@@ -11,7 +11,7 @@ import {
 } from "@hephaestus-build/ichnaea-contracts";
 
 import { testMeasure } from "./measures.ts";
-import type { MeasureDefinition } from "./plugin.ts";
+import type { GateDefinition, MeasureDefinition } from "./plugin.ts";
 
 /** Thrown when a suite cannot be resolved into a valid plan. The message names the fix. */
 export class PlanError extends Error {
@@ -31,6 +31,7 @@ export interface PlanInput {
   /** Arms whose trials will be run (not imported); their calls count against the budget. */
   readonly armsToRun?: readonly string[];
   readonly measures: ReadonlyMap<string, MeasureDefinition>;
+  readonly gates: ReadonlyMap<string, GateDefinition>;
   readonly trigger: Plan["trigger"];
   readonly seed: number;
   readonly now: string;
@@ -39,12 +40,21 @@ export interface PlanInput {
   readonly monthlyRemaining?: number;
 }
 
+/** Fewest cases a fixed-cases decision is validated for (VALIDATED_FIXED_CASES in stats). */
+export const MIN_DECISION_CASES = 5;
+
+/** Arm names become part of trial IDs, so they cannot contain the separator. */
+const ARM_NAME = /^[A-Za-z0-9][A-Za-z0-9._@+-]*$/;
+
 /**
  * Resolves a suite into a locked plan (REQ-16, REQ-19, REQ-21, REQ-49): every planned trial is
- * listed before the first call, the worst-case calls are computed, and the estimand's conditions
- * are checked. `sampled-cases` on curated or promoted cases is refused. A `fixed-cases` suite
- * with one replicate, or a plan with one arm, runs estimate-only. Primary measures must be known
- * and must have passed their tester (REQ-33).
+ * listed before the first call, with each case's trial count (the suite's, or more for the cases of
+ * a `replicatesFor` slice), the worst-case calls are computed, and the estimand's conditions
+ * are checked. What cannot be resolved is refused with a PlanError that names the fix. What can
+ * be measured but not decided runs estimate-only, and `modeReasons` says why: no base and
+ * candidate, no primary measure, a primary measure with values no validated method decides yet
+ * (DN-8), `sampled-cases` (no validated method yet), one trial per case and arm, or fewer than 5
+ * cases.
  */
 export async function createPlan(input: PlanInput): Promise<Plan> {
   const { suite } = input;
@@ -64,39 +74,76 @@ export async function createPlan(input: PlanInput): Promise<Plan> {
     if (!c) throw new PlanError(`case '${entry.id}' is listed in the case set but missing`);
     if ((await caseDigest(c)) !== entry.digest)
       throw new PlanError(`case '${entry.id}' does not match its digest in the case set`);
+    if (entry.pool !== c.pool)
+      throw new PlanError(
+        `case '${entry.id}' is in pool '${c.pool}', but the case set lists it in '${entry.pool}'`,
+      );
+    if (entry.family !== c.family)
+      throw new PlanError(
+        `case '${entry.id}' has family '${c.family ?? "none"}', but the case set lists '${entry.family ?? "none"}'`,
+      );
   }
-  const selected = entries.filter((e) => pools.has(e.pool)).map((e) => byId.get(e.id) as Case);
-  if (selected.some((c) => c.pool === "sealed"))
+  const selected = entries.filter((e) => pools.has(e.pool));
+  if (selected.some((e) => e.pool === "sealed"))
     throw new PlanError(
       "a sealed pool runs only in a locked confirmatory plan, which this plan is not",
     );
   if (selected.length === 0) throw new PlanError(`suite '${suite.id}' selects no case`);
+  const selectedCases = selected.map((e) => byId.get(e.id) as Case);
 
   if (suite.estimand === "sampled-cases") {
-    const curated = selected.filter((c) => c.provenance.selection !== "random");
+    const curated = selectedCases.filter((c) => c.provenance.selection !== "random");
     if (curated.length > 0) {
       throw new PlanError(
         `sampled-cases needs a randomly drawn pool, but ${curated.length} case(s) are ${curated[0]?.provenance.selection}; use fixed-cases`,
       );
     }
   }
+
+  const names = input.arms.map((a) => a.name);
+  for (const name of names)
+    if (!ARM_NAME.test(name))
+      throw new PlanError(`arm name '${name}' may hold only letters, digits and . _ @ + -`);
+  if (new Set(names).size !== names.length) throw new PlanError("arm names must be unique");
+  if (input.arms.filter((a) => a.role === "base").length > 1)
+    throw new PlanError("a plan has at most one base arm");
+  if (input.arms.filter((a) => a.role === "candidate").length > 1)
+    throw new PlanError(
+      "more than one candidate arm is not supported yet (REQ-57); compare one candidate per run",
+    );
+
+  const reasons: string[] = [];
   for (const primary of suite.primary) {
+    const safety = primary.safetyMargin ?? 0;
+    if (!(primary.margin < 1 && safety <= primary.margin))
+      throw new PlanError(
+        `primary measure '${primary.measure}': the margin must be below 1 and at least the safety margin (${primary.margin}, safety ${safety})`,
+      );
     const measure = input.measures.get(primary.measure);
     if (!measure)
       throw new PlanError(`primary measure '${primary.measure}' is not provided by any plugin`);
-    // A measure with examples is tested here, now. One without (computed by the application)
-    // must carry the application's tester result on its card.
-    const status = measure.examples
-      ? (await testMeasure(measure)).status
-      : measure.card.validation?.tester?.status;
+    // A measure Ichnaea computes is tested here, now, whatever its card says. A measure the
+    // application computes carries the application's tester result on its card.
+    const status =
+      measure.card.computedBy === "ichnaea"
+        ? (await testMeasure(measure)).status
+        : measure.card.validation?.tester?.status;
     if (status !== "passed") {
       throw new PlanError(
         `primary measure '${primary.measure}' has no passing known-good and known-bad test; run 'ichnaea doctor' to see why`,
       );
     }
+    if (measure.card.valueType !== "binary")
+      reasons.push(
+        `primary measure '${primary.measure}' has ${measure.card.valueType} values, which no validated method decides yet (DN-8)`,
+      );
   }
-  if (input.arms.filter((a) => a.role === "base").length > 1)
-    throw new PlanError("a plan has at most one base arm");
+  for (const id of suite.secondary ?? [])
+    if (!input.measures.has(id))
+      throw new PlanError(`secondary measure '${id}' is not provided by any plugin`);
+  for (const id of suite.hardGates ?? [])
+    if (!input.gates.has(id))
+      throw new PlanError(`hard gate '${id}' is not provided by any plugin`);
 
   const arms = await Promise.all(
     input.arms.map(async (a) => ({
@@ -106,34 +153,60 @@ export async function createPlan(input: PlanInput): Promise<Plan> {
       configuration: a.configuration,
     })),
   );
-  const comparing = arms.some((a) => a.role === "base") && arms.some((a) => a.role === "candidate");
-  const decidable = comparing && (suite.estimand === "sampled-cases" || suite.replicates >= 2);
+  if (!(arms.some((a) => a.role === "base") && arms.some((a) => a.role === "candidate")))
+    reasons.push("the plan has no base and candidate arm to compare");
+  if (suite.primary.length === 0) reasons.push("the suite declares no primary measure");
+  if (suite.estimand === "sampled-cases")
+    reasons.push("no sampled-cases method is validated yet (DC-5, DC-6)");
+  // Trials per case and arm: the suite's count, or the largest `replicatesFor` entry that matches.
+  const overrides = suite.replicatesFor ?? [];
+  for (const o of overrides)
+    if (!selectedCases.some((c) => c.slices?.[o.slice] === o.value))
+      throw new PlanError(
+        `replicatesFor ${o.slice}=${o.value} matches no selected case; check the slice name and value`,
+      );
+  const trialsOf = (c: Case): number =>
+    Math.max(
+      suite.replicates,
+      ...overrides.filter((o) => c.slices?.[o.slice] === o.value).map((o) => o.replicates),
+    );
+  const counts = selectedCases.map(trialsOf);
+  if (suite.estimand === "fixed-cases" && Math.min(...counts) < 2)
+    reasons.push("one trial per case and arm is outside the validated domain");
+  if (selected.length < MIN_DECISION_CASES)
+    reasons.push(
+      `${selected.length} case(s); a decision is validated from ${MIN_DECISION_CASES} cases`,
+    );
 
-  const trials: Array<{ id: string; case: string; arm: string; replicate: number; batch: number }> =
-    [];
-  for (let replicate = 0; replicate < suite.replicates; replicate++) {
-    for (const c of selected) {
+  const trials: Plan["trials"] = [];
+  for (let replicate = 0; replicate < Math.max(...counts); replicate++) {
+    for (const [i, entry] of selected.entries()) {
+      const c = selectedCases[i] as Case;
+      if (replicate >= (counts[i] as number)) continue;
       for (const [k, arm] of arms.entries()) {
         // Alternating batches: replicate r runs every case under every arm before r + 1 (REQ-25).
         trials.push({
-          id: `${c.id}/${arm.name}/r${replicate}`,
+          id: `${c.id}/${arm.name}/r${replicate}` as Plan["trials"][number]["id"],
           case: c.id,
-          arm: arm.name,
+          ...(entry.family === undefined ? {} : { family: entry.family }),
+          arm: arm.name as Plan["trials"][number]["arm"],
           replicate,
           batch: replicate * arms.length + k,
         });
       }
     }
   }
+  if (new Set(trials.map((t) => t.id)).size !== trials.length)
+    throw new PlanError("two planned trials share an ID; case IDs and arm names collide");
   const running = new Set(input.armsToRun ?? arms.map((a) => a.name));
   const worstCaseCalls =
     trials.filter((t) => running.has(t.arm)).length * suite.budget.callsPerTrial;
 
-  const measures = [...suite.primary.map((p) => p.measure), ...(suite.secondary ?? [])].map(
-    (id) => {
-      const card = input.measures.get(id)?.card;
-      return { kind: "measure" as const, id, version: card?.version ?? "unknown" };
-    },
+  const measures = await Promise.all(
+    [...suite.primary.map((p) => p.measure), ...(suite.secondary ?? [])].map(async (id) => {
+      const card = (input.measures.get(id) as MeasureDefinition).card;
+      return { kind: "measure" as const, id, version: card.version, digest: await digest(card) };
+    }),
   );
 
   return Plan.parse({
@@ -144,7 +217,8 @@ export async function createPlan(input: PlanInput): Promise<Plan> {
     caseSet: input.caseSet.id,
     caseSetDigest: input.caseSet.digest,
     trigger: input.trigger,
-    mode: decidable ? "decision" : "estimate-only",
+    mode: reasons.length === 0 ? "decision" : "estimate-only",
+    modeReasons: reasons,
     estimand: suite.estimand,
     alpha: suite.alpha ?? 0.05,
     replicates: suite.replicates,

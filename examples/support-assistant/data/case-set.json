@@ -2,77 +2,77 @@
   "schema": "ichnaea.caseSet/1",
   "id": "support-answers",
   "version": "1",
-  "digest": "sha256:241daede1c4eea0fee98116491999d8e384d2ac0f310ead2dced98a11049c6aa",
+  "digest": "sha256:4fd06f95e312306faa290892348cd36b27931012434f5db4e352dc14314a5521",
   "cases": [
     {
       "id": "support-01",
-      "digest": "sha256:d0415153c914c65aff6cf3a27dedd77283c0da073554c1c96862ae38e4f31c9d",
+      "digest": "sha256:f0107f6c63bf3c9e18ee17b113e60cc2570e8ca59ea17250a751c1ec388cf0b9",
       "pool": "development",
       "family": "return-window"
     },
     {
       "id": "support-02",
-      "digest": "sha256:accb72b570ac0bfbc0b29ac9b537927b54941cd4093d43b35379ae37d9f4387f",
+      "digest": "sha256:c028842a363bb2040298a0323555c03c1880e75f6c28072c629af8f165a85f18",
       "pool": "development",
       "family": "refund-method"
     },
     {
       "id": "support-03",
-      "digest": "sha256:d42dbcc91d6be3c6d5574cf9674bfc700e6745d86c612cf08ebcf65703c750aa",
+      "digest": "sha256:0482ed3559e30a0ee940be79bf5cd4e840811ebec9f0a89e8ea041adfb35dca7",
       "pool": "development",
       "family": "exchange-fee"
     },
     {
       "id": "support-04",
-      "digest": "sha256:763e8e6f560dcabf43dbfd598eab385434091fd6c11e5a7872d84add2c5467d7",
+      "digest": "sha256:8430a0698c99a98ca00b39ec6b4b7f52636cda73c123f67422dc93b3bfce5fc8",
       "pool": "development",
       "family": "warranty"
     },
     {
       "id": "support-05",
-      "digest": "sha256:c02d581209415345f3a85bf38a135ebc68992bf58f7eaffd67919a7c18028e5d",
+      "digest": "sha256:36b251999ad98aa65cd7bf50701da26fd39df2519590f8de841b20cb888a3548",
       "pool": "development",
       "family": "shipping-time"
     },
     {
       "id": "support-06",
-      "digest": "sha256:a981104a430f6891a6ee59d66b4c7d4ecda967900d4a36d513ee23525226301d",
+      "digest": "sha256:82c36f365e64e9172a718238e5d76f898d511172f1c98cd605631b2c6f9f5f16",
       "pool": "development",
       "family": "opened-items"
     },
     {
       "id": "support-07",
-      "digest": "sha256:3ed6fa25b76764573901ec7e24731b73e5d3442a259421f24cdfa7d4fb237873",
+      "digest": "sha256:aadf6fe3fdabe4336d2159ec9e41baf6f4a0143828f7f007d316ff07eee0e2f4",
       "pool": "development",
       "family": "gift-receipt"
     },
     {
       "id": "support-08",
-      "digest": "sha256:757753153361040330859b565484ddfc56bb688cc9f35e195bf2230eba910f10",
+      "digest": "sha256:7c09c55673369a8df9ea0b18e0450639195edd30c20c2c0a6f00f2bfdf74fce0",
       "pool": "development",
       "family": "sale-items"
     },
     {
       "id": "support-09",
-      "digest": "sha256:d3ab44f43aec4d7c5d80e44accec478fb07fb35e5c584bf0806aaff9535ce98a",
+      "digest": "sha256:deb7589f1a516887aaf7fcdf9d4a1755ba8e0b45766f04ce877193db847cf1cc",
       "pool": "development",
       "family": "damaged-parcel"
     },
     {
       "id": "support-10",
-      "digest": "sha256:49c6f8a63cd621ac2c518889f0bf518628e3e3c7a87bbe496092bcf5706c85b3",
+      "digest": "sha256:e81ab913046e3ff21fa1da83dcb2eb98370f5818b16f22a3b4327563563ae3d3",
       "pool": "development",
       "family": "missing-parts"
     },
     {
       "id": "support-11",
-      "digest": "sha256:128d96e5cf840e33de37b0aa0ca56c7aa8a146c7e1419111af0081e4b91241db",
+      "digest": "sha256:d1b840c6c40082513ca6a41a121e905c940c6c9d825b7e5626e069b74ff0fdab",
       "pool": "development",
       "family": "international-returns"
     },
     {
       "id": "support-12",
-      "digest": "sha256:59a7021ebc4e426ac6f09469ebd74d133733929f20f37e6991caca1aff7dd707",
+      "digest": "sha256:3cf1c8df3c2dbf3f9febb5d38e15f132ce63d639cb613a4401a04628dd2a8a17",
       "pool": "development",
       "family": "price-match"
     }

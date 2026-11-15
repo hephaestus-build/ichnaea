@@ -593,10 +593,6 @@ export const CiPolicy: z.ZodObject<{
         block: "block";
         report: "report";
     }>;
-    onInvalid: z.ZodEnum<{
-        block: "block";
-        report: "report";
-    }>;
 }, z.core.$strict>;
 
 // @public
@@ -662,6 +658,8 @@ export const Comparison: z.ZodObject<{
             nan: "nan";
         }>;
     }, z.core.$strict>]>;
+    regressionMethod: z.ZodString;
+    validated: z.ZodBoolean;
     flips: z.ZodArray<z.ZodObject<{
         case: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
         direction: z.ZodEnum<{
@@ -818,6 +816,7 @@ export const Decision: z.ZodObject<{
         REGRESSION: "REGRESSION";
     }>>;
     reason: z.ZodString;
+    scope: z.ZodString;
     plan: z.core.$ZodBranded<z.ZodString, "PlanDigest", "out">;
     run: z.core.$ZodBranded<z.ZodString, "RunId", "out">;
     runDigest: z.ZodString;
@@ -938,6 +937,8 @@ export const Decision: z.ZodObject<{
                     nan: "nan";
                 }>;
             }, z.core.$strict>]>;
+            regressionMethod: z.ZodString;
+            validated: z.ZodBoolean;
             flips: z.ZodArray<z.ZodObject<{
                 case: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
                 direction: z.ZodEnum<{
@@ -1233,6 +1234,9 @@ export const GateResult: z.ZodObject<{
 }, z.core.$strict>;
 
 // @public
+export type GateResult = z.infer<typeof GateResult>;
+
+// @public
 export const IDENTIFIER_KINDS: readonly ["none", "direct", "quasi", "content"];
 
 // @public
@@ -1445,11 +1449,9 @@ export const LineageItem: z.ZodObject<{
 // @public
 export interface LinkError {
     // (undocumented)
-    readonly computed: string | null;
+    readonly computed: string;
     // (undocumented)
     readonly path: string;
-    // (undocumented)
-    readonly problem?: string;
     // (undocumented)
     readonly stored: string;
 }
@@ -1668,6 +1670,8 @@ export const MeasureOutcome: z.ZodObject<{
                 nan: "nan";
             }>;
         }, z.core.$strict>]>;
+        regressionMethod: z.ZodString;
+        validated: z.ZodBoolean;
         flips: z.ZodArray<z.ZodObject<{
             case: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
             direction: z.ZodEnum<{
@@ -1923,6 +1927,7 @@ export const Plan: z.ZodObject<{
         decision: "decision";
         "estimate-only": "estimate-only";
     }>;
+    modeReasons: z.ZodArray<z.ZodString>;
     estimand: z.ZodEnum<{
         "fixed-cases": "fixed-cases";
         "sampled-cases": "sampled-cases";
@@ -2056,10 +2061,6 @@ export const Plan: z.ZodObject<{
             block: "block";
             report: "report";
         }>;
-        onInvalid: z.ZodEnum<{
-            block: "block";
-            report: "report";
-        }>;
     }, z.core.$strict>;
     power: z.ZodArray<z.ZodObject<{
         measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
@@ -2098,6 +2099,7 @@ export const Plan: z.ZodObject<{
     trials: z.ZodArray<z.ZodObject<{
         id: z.core.$ZodBranded<z.ZodString, "TrialId", "out">;
         case: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
+        family: z.ZodOptional<z.ZodString>;
         arm: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
         replicate: z.ZodInt;
         batch: z.ZodInt;
@@ -2123,6 +2125,7 @@ export type PlanDigest = z.infer<typeof PlanDigest>;
 export const PlannedTrial: z.ZodObject<{
     id: z.core.$ZodBranded<z.ZodString, "TrialId", "out">;
     case: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
+    family: z.ZodOptional<z.ZodString>;
     arm: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
     replicate: z.ZodInt;
     batch: z.ZodInt;
@@ -2275,6 +2278,14 @@ export const RecordDataClass: z.ZodEnum<{
     pseudonymous: "pseudonymous";
     special: "special";
 }>;
+
+// @public
+export const ReplicatesFor: z.ZodObject<{
+    slice: z.ZodString;
+    value: z.ZodString;
+    replicates: z.ZodInt;
+    reason: z.ZodString;
+}, z.core.$strict>;
 
 // @public
 export const RETENTION_RULES: readonly ["record", "subject"];
@@ -2507,6 +2518,12 @@ export const Suite: z.ZodObject<{
         validation: "validation";
     }>>>;
     replicates: z.ZodInt;
+    replicatesFor: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        slice: z.ZodString;
+        value: z.ZodString;
+        replicates: z.ZodInt;
+        reason: z.ZodString;
+    }, z.core.$strict>>>;
     alpha: z.ZodOptional<z.ZodNumber>;
     primary: z.ZodArray<z.ZodObject<{
         measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
@@ -2533,10 +2550,6 @@ export const Suite: z.ZodObject<{
             report: "report";
         }>;
         onEstimateOnly: z.ZodEnum<{
-            block: "block";
-            report: "report";
-        }>;
-        onInvalid: z.ZodEnum<{
             block: "block";
             report: "report";
         }>;

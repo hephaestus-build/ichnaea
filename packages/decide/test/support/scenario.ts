@@ -16,7 +16,7 @@ import {
 import { createPlan, type MeasureDefinition } from "@hephaestus-build/ichnaea-core";
 import { createRng } from "@hephaestus-build/ichnaea-stats";
 
-export const configuration = (model: string): Configuration => ({
+export const configuration = (model: string, commit = "a1"): Configuration => ({
   schema: "ichnaea.configuration/1",
   description: "A synthetic answer assistant",
   models: [
@@ -28,16 +28,19 @@ export const configuration = (model: string): Configuration => ({
   ],
   parameters: [{ name: "temperature", value: 0, status: "pinned", origin: "explicit" }],
   prompts: [],
-  factors: {},
+  factors: { "code.commit": { value: commit, status: "pinned", part: "code" } },
 });
 
-const card = (id: string): MeasureDefinition => ({
+export const card = (
+  id: string,
+  valueType: MeasureDefinition["card"]["valueType"] = "binary",
+): MeasureDefinition => ({
   card: {
     id,
     version: "1.0.0",
     construct: "c",
     operationalDefinition: "o",
-    valueType: "binary",
+    valueType,
     unit: "proportion",
     direction: "higher",
     justification: "j",
@@ -78,6 +81,16 @@ export interface ScenarioOptions {
   readonly selection?: "curated" | "random";
   readonly seed?: number;
   readonly maxCalls?: number;
+  readonly trigger?: Plan["trigger"];
+  /** The candidate's model; the base runs model-a. Default: the same model, another commit. */
+  readonly candidateModel?: string;
+  /** Families by case index (sampled-cases clustering). */
+  readonly family?: (i: number) => string;
+  readonly secondary?: readonly string[];
+  readonly coverageFloor?: number;
+  /** Slices by case index, and more trials for the cases of a slice. */
+  readonly slices?: (i: number) => Record<string, string> | undefined;
+  readonly replicatesFor?: Suite["replicatesFor"];
 }
 
 export interface Scenario {
@@ -107,9 +120,16 @@ export async function scenario(o: ScenarioOptions): Promise<Scenario> {
       exposure: "public",
     },
     pool: "development",
+    ...(o.family ? { family: o.family(i) } : {}),
+    ...(o.slices?.(i) ? { slices: o.slices(i) } : {}),
   })).map((c) => Case.parse(c));
   const entries = await Promise.all(
-    cases.map(async (c) => ({ id: c.id, digest: await caseDigest(c), pool: c.pool })),
+    cases.map(async (c) => ({
+      id: c.id,
+      digest: await caseDigest(c),
+      pool: c.pool,
+      ...(c.family === undefined ? {} : { family: c.family }),
+    })),
   );
   const caseSet = {
     schema: "ichnaea.caseSet/1",
@@ -129,19 +149,21 @@ export async function scenario(o: ScenarioOptions): Promise<Scenario> {
     estimand: o.estimand ?? "fixed-cases",
     caseSet: { id: "synthetic", path: "cases.jsonl" },
     replicates: o.replicates,
+    ...(o.replicatesFor ? { replicatesFor: o.replicatesFor } : {}),
     primary: measureIds.map((m) => ({
       measure: m,
       margin: o.margin ?? 0.1,
       marginReason: "test",
       ...(o.safetyMargin === undefined ? {} : { safetyMargin: o.safetyMargin }),
+      ...(o.coverageFloor === undefined ? {} : { coverageFloor: o.coverageFloor }),
     })),
+    secondary: o.secondary ?? [],
     hardGates: o.hardGates ?? [],
     budget: { maxCalls: o.maxCalls ?? 100_000, callsPerTrial: 1 },
     policy: {
       onRegression: "block",
       onInconclusive: "report",
       onEstimateOnly: "report",
-      onInvalid: "block",
     },
     measureReviewDate: "2027-01-01",
   } as Suite;
@@ -150,11 +172,18 @@ export async function scenario(o: ScenarioOptions): Promise<Scenario> {
     caseSet,
     cases,
     arms: [
-      { name: "base", role: "base", configuration: configuration("model-a") },
-      { name: "candidate", role: "candidate", configuration: configuration("model-b") },
+      { name: "base", role: "base", configuration: configuration("model-a", "a1") },
+      {
+        name: "candidate",
+        role: "candidate",
+        configuration: configuration(o.candidateModel ?? "model-a", "b2"),
+      },
     ],
-    measures: new Map(measureIds.map((m) => [m, card(m)])),
-    trigger: "code",
+    measures: new Map([...measureIds, ...(o.secondary ?? [])].map((m) => [m, card(m)])),
+    gates: new Map(
+      (o.hardGates ?? []).map((id) => [id, { id, version: "1.0.0", description: "a check" }]),
+    ),
+    trigger: o.trigger ?? "code",
     seed: o.seed ?? 7,
     now: "2026-11-15T10:00:00Z",
     ichnaea: "0.0.0",
@@ -182,7 +211,7 @@ export async function scenario(o: ScenarioOptions): Promise<Scenario> {
     } as Trial);
     if (outcome !== "completed" && outcome !== "abstained") continue;
     const p = t.arm === "base" ? o.base(index) : o.candidate(index);
-    for (const m of measureIds) {
+    for (const m of [...measureIds, ...(o.secondary ?? [])]) {
       values.push({
         schema: "ichnaea.measureValue/1",
         trial: t.id,

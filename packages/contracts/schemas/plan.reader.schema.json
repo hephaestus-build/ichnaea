@@ -118,6 +118,21 @@
         "estimate-only"
       ]
     },
+    "modeReasons": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
+      }
+    },
     "estimand": {
       "type": "string",
       "x-ichnaea-data": {
@@ -883,28 +898,12 @@
             "block",
             "report"
           ]
-        },
-        "onInvalid": {
-          "type": "string",
-          "x-ichnaea-data": {
-            "class": "none",
-            "identifier": "none",
-            "egress": [
-              "*"
-            ],
-            "retention": "record"
-          },
-          "x-ichnaea-known": [
-            "block",
-            "report"
-          ]
         }
       },
       "required": [
         "onRegression",
         "onInconclusive",
-        "onEstimateOnly",
-        "onInvalid"
+        "onEstimateOnly"
       ]
     },
     "power": {
@@ -1195,6 +1194,18 @@
               "retention": "record"
             }
           },
+          "family": {
+            "type": "string",
+            "minLength": 1,
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
+            }
+          },
           "arm": {
             "type": "string",
             "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
@@ -1311,6 +1322,7 @@
     "caseSetDigest",
     "trigger",
     "mode",
+    "modeReasons",
     "estimand",
     "alpha",
     "replicates",

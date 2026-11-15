@@ -69,6 +69,18 @@
         "retention": "record"
       }
     },
+    "scope": {
+      "type": "string",
+      "minLength": 1,
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
+      }
+    },
     "plan": {
       "type": "string",
       "pattern": "^sha256:[0-9a-f]{64}$",
@@ -870,6 +882,29 @@
                     "retention": "record"
                   }
                 },
+                "regressionMethod": {
+                  "type": "string",
+                  "minLength": 1,
+                  "x-ichnaea-data": {
+                    "class": "none",
+                    "identifier": "none",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "record"
+                  }
+                },
+                "validated": {
+                  "type": "boolean",
+                  "x-ichnaea-data": {
+                    "class": "none",
+                    "identifier": "none",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "record"
+                  }
+                },
                 "flips": {
                   "type": "array",
                   "items": {
@@ -948,6 +983,8 @@
                 "nonInferiorityP",
                 "regressionP",
                 "regressionPAdjusted",
+                "regressionMethod",
+                "validated",
                 "flips"
               ],
               "additionalProperties": false
@@ -1491,6 +1528,7 @@
     "mode",
     "verdict",
     "reason",
+    "scope",
     "plan",
     "run",
     "runDigest",
