@@ -614,14 +614,29 @@ describe("what compareCounts refuses or does not validate", () => {
 
   it("validates no non-inferiority result while the margin floor is not set, at any margin from 0.05 to 0.30", () => {
     expect(VALIDATED_MARGIN_FLOOR_SET).toBe(false);
+    expect(MARGIN_FLOOR_NOT_SET).toBe("the validated margin floor is not set yet");
     for (let i = 0; i <= 50; i++) {
-      const margin = 0.05 + i * 0.005;
+      const margin = Number((0.05 + i * 0.005).toFixed(3));
       const result = compareCounts({ ...input, margin });
       expect(result.nonInferiority.validated, `margin ${margin}`).toBe(false);
-      expect(result.nonInferiority.limitations).toContain(MARGIN_FLOOR_NOT_SET);
+      // Inside the range the floor is the only reason, so a moved floor or ceiling fails here.
+      expect(result.nonInferiority.limitations, `margin ${margin}`).toEqual([
+        "the validated margin floor is not set yet",
+      ]);
       // The regression test does not depend on the margin.
       expect(result.regression).toEqual({ validated: true, limitations: [] });
     }
+  });
+
+  it("puts the margin range at 0.05 to 0.30, both ends inside", () => {
+    expect(compareCounts({ ...input, margin: 0.0499 }).nonInferiority.limitations).toEqual([
+      "the validated margin floor is not set yet",
+      "margin 0.0499 is below the validated margin floor 0.05",
+    ]);
+    expect(compareCounts({ ...input, margin: 0.3001 }).nonInferiority.limitations).toEqual([
+      "the validated margin floor is not set yet",
+      "margin 0.3001 is above the validated margin ceiling 0.3",
+    ]);
   });
 
   it("never validates a claim that the candidate is better: it tests at a margin below any floor", () => {
@@ -717,6 +732,39 @@ describe("what compareCounts refuses or does not validate", () => {
       expect(result.validated).toBe(false);
       expect(result.limitations.join(" ")).toMatch(/more than 3 trials per case and arm/);
     }
+  });
+
+  it("caps each arm on its own: 4 trials in one arm of one case is outside the domain", () => {
+    // 16 cases at 3 of 3 against 2 of 3, and one case with 4 trials in one arm only.
+    const rest = counts(16, 3, 2);
+    for (const odd of [
+      { base: { successes: 4, trials: 4 }, candidate: { successes: 3, trials: 3 } },
+      { base: { successes: 3, trials: 3 }, candidate: { successes: 4, trials: 4 } },
+    ]) {
+      const result = compareCounts({
+        ...input,
+        cases: [...rest, { id: "z", ...odd }],
+        rng: createRng(1),
+      });
+      for (const validity of [result.regression, result.nonInferiority])
+        expect(validity.limitations).toContain(
+          "more than 3 trials per case and arm is outside the studied grid",
+        );
+      expect(result.regression.validated).toBe(false);
+    }
+  });
+
+  it("needs 5 cases with unequal trial counts too", () => {
+    const four = [
+      ...counts(3, 2, 2, 2),
+      { id: "z", base: { successes: 2, trials: 2 }, candidate: { successes: 3, trials: 3 } },
+    ];
+    const result = compareCounts({ ...input, cases: four, rng: createRng(1) });
+    expect(result.regressionMethod).toBe("within-case-permutation");
+    expect(result.regression).toEqual({
+      validated: false,
+      limitations: ["4 case(s); the validated domain starts at 5"],
+    });
   });
 
   it("refuses a margin of 1 or more, and a negative one", () => {

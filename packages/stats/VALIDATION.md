@@ -24,10 +24,12 @@ test whose size is just under 0.05 makes most points candidates. Every run print
 thresholds in effect (`test:sim` runs Vitest with `--silent=false`, so CI logs show them).
 
 `test/validation-rule.test.ts` pins every threshold at its edge with exact points and Bernoulli
-experiments of known rate, in the unit suite: exact 0.9399 fails and 0.94 passes; a true 0.936 and
-0.937 fail and 0.9395 passes after confirmation; a grid mean of 0.945 fails; exact type-I 0.0501
-fails; a true 0.0527 fails and 0.0505 passes; confirmation uses the seed plus 100,000.
-`scripts/mutants.ts` changes each threshold, the confirmation and the cap, 13 changes in all, and
+experiments of known rate, in the unit suite: exact 0.9399 and 0.94 − 1e-9 fail and 0.94 passes; a
+true 0.936 and 0.937 fail and 0.9395 passes after confirmation; a grid mean of 0.945 fails; nine
+screened points at 0.9465 fail on the grid mean (3·SE of the mean, the SEs added in quadrature) and
+nine at 0.949 pass; exact type-I 0.0501 fails; a true 0.0527 fails and 0.0505 passes; confirmation
+uses the seed plus 100,000.
+`scripts/mutants.ts` changes each threshold, the confirmation and the cap, 16 changes in all, and
 the unit suite detects each one.
 
 ## Reference values

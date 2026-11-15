@@ -33,6 +33,7 @@ describe("the coverage rule", () => {
     const pad = [exact("a", 0.99), exact("b", 0.99), exact("c", 0.99)];
     const low = judge([exact("low", 0.9399), ...pad], COVERAGE, "probe");
     expect(low.failures).toEqual(["low: exact 0.9399"]);
+    expect(fails([exact("just below", 0.94 - 1e-9), ...pad], COVERAGE)).toBe(true);
     expect(fails([exact("edge", 0.94), ...pad], COVERAGE)).toBe(false);
   });
 
@@ -62,6 +63,25 @@ describe("the coverage rule", () => {
   it("fails a grid whose mean is below 0.95, though every point passes", () => {
     expect(fails([exact("a", 0.945), exact("b", 0.945)], COVERAGE)).toBe(true);
     expect(fails([exact("a", 0.95), exact("b", 0.95)], COVERAGE)).toBe(false);
+  });
+
+  it("gives the grid mean an allowance of 3·SE of the mean, the SEs added in quadrature", () => {
+    // A screened point that covers on exactly `hits` of every 2,000 repetitions (REPS is a
+    // multiple of 2,000), so its estimate and SE are known.
+    const fixed = (label: string, hits: number): Point => {
+      let i = 0;
+      return { label, seed: 1, run: () => i++ % 2000 < hits };
+    };
+    expect(REPS % 2000).toBe(0);
+    const grid = (hits: number) => Array.from({ length: 9 }, (_, j) => fixed(`#${j}`, hits));
+    // Nine points at 0.9465 each clear the screen. The mean's SE is a third of one point's, and
+    // mean + 3·SE is below 0.95. A 6·SE allowance, or SEs added linearly, would pass the grid.
+    const low = judge(grid(1893), COVERAGE, "probe");
+    expect(low.estimates.every((e) => e.stage === "screen" && e.value === 0.9465)).toBe(true);
+    expect(low.failures).toHaveLength(1);
+    expect(low.failures[0]).toMatch(/^grid mean 0\.9465 ± 0\.00\d\d below 0\.95$/);
+    // At 0.949 the allowance carries the mean over 0.95.
+    expect(judge(grid(1898), COVERAGE, "probe").failures).toEqual([]);
   });
 
   it("fails a coverage grid with more than 12 candidates without confirming them", () => {
