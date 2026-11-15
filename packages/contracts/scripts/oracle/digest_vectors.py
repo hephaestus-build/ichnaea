@@ -39,7 +39,7 @@ declared = dict(config, prompts=[dict(p, digest=text_digest(template)) for p in 
 vectors.append({"kind": "configurationIdentity", "name": "prompt-template-and-uri-recorded", "input": resolved, "digest": P.configuration_identity(resolved)})
 vectors.append({"kind": "configurationIdentity", "name": "prompt-digest-only", "input": declared, "digest": P.configuration_identity(declared)})
 assert P.configuration_identity(resolved) == P.configuration_identity(declared)
-for name, bad in [("unknown-top-level-member", dict(config, tools=["search"])), ("unknown-prompt-member", dict(config, prompts=[dict(p, templat="x") for p in config["prompts"]]))]:
+for name, bad in [("unknown-top-level-member", dict(config, tools=["search"])), ("unknown-prompt-member", dict(config, prompts=[dict(p, templat="x") for p in config["prompts"]])), ("template-contradicts-digest", dict(config, prompts=[dict(p, template="not the digested text") for p in config["prompts"]]))]:
     if P.compute({"kind": "configurationIdentityRefused", "input": bad}) == "":
         vectors.append({"kind": "configurationIdentityRefused", "name": name, "input": bad, "digest": ""})
 

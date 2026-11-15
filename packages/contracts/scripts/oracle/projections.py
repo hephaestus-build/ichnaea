@@ -41,6 +41,9 @@ class Projections:
 
     def configuration_identity(self, config):
         projection = self.pick(config, "configuration")
+        for prompt in config["prompts"]:
+            if "template" in prompt and text_digest(prompt["template"]) != prompt["digest"]:
+                raise ValueError(f"template of prompt {prompt['name']} does not match its digest")
         for key, field in (("models", "role"), ("parameters", "name"), ("prompts", "name")):
             names = [item[field] for item in config[key]]
             if len(set(names)) != len(names):

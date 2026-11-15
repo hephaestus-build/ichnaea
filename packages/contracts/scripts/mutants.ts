@@ -224,8 +224,14 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "DN7 verifyArms skips templates",
     file: "src/identity.ts",
-    from: "    errors.push(...(await verifyConfiguration(arm.configuration, `${at}/${i}/configuration`)));",
+    from: "    errors.push(...templates);",
     to: "",
+  },
+  {
+    id: "DN7 identity of a contradicting template",
+    file: "src/identity.ts",
+    from: "  if (mismatch)\n",
+    to: "  if (false)\n",
   },
   {
     id: "m20 digits left as \\d",

@@ -16,7 +16,7 @@
       "pool"
     ],
     "excluded": {
-      "schema": "The major version. These rules are defined for /1; a new major version states its own.",
+      "schema": "The major version. A major that keeps this projection keeps identities; one that changes it is listed in majors.json, and its migration recomputes them.",
       "validation": "The review status. Reviewing a case does not change what it asks or grades."
     }
   },
@@ -53,7 +53,7 @@
       "factors"
     ],
     "excluded": {
-      "schema": "The major version. These rules are defined for /1; a new major version states its own.",
+      "schema": "The major version. A major that keeps this projection keeps identities; one that changes it is listed in majors.json, and its migration recomputes them.",
       "description": "Prose for people. Behaviour is pinned by models, parameters, prompts and factors.",
       "label": "A name for people.",
       "informational": "Values that do not decide behaviour, such as a provider fingerprint seen at resolution."

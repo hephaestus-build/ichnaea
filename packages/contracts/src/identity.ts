@@ -48,7 +48,7 @@ export const DIGEST_RULES: {
     ],
     excluded: {
       schema:
-        "The major version. These rules are defined for /1; a new major version states its own.",
+        "The major version. A major that keeps this projection keeps identities; one that changes it is listed in majors.json, and its migration recomputes them.",
       validation: "The review status. Reviewing a case does not change what it asks or grades.",
     },
   },
@@ -76,7 +76,7 @@ export const DIGEST_RULES: {
     members: ["models", "parameters", "prompts", "factors"],
     excluded: {
       schema:
-        "The major version. These rules are defined for /1; a new major version states its own.",
+        "The major version. A major that keeps this projection keeps identities; one that changes it is listed in majors.json, and its migration recomputes them.",
       description:
         "Prose for people. Behaviour is pinned by models, parameters, prompts and factors.",
       label: "A name for people.",
@@ -136,7 +136,8 @@ function sortedUnique(items: unknown, key: string, what: string): unknown[] {
 /**
  * Returns the configuration identity (REQ-148). Normative rule, the same in every language:
  *
- * 1. The record must validate against `ichnaea.configuration/1`.
+ * 1. The record must validate against `ichnaea.configuration/1`, and every recorded template must
+ *    match its digest (`verifyConfiguration`).
  * 2. Keep the members in `DIGEST_RULES.configuration` as written, and of each prompt the members
  *    in `DIGEST_RULES.prompt`. The excluded members and their reasons are listed there.
  * 3. Sort `models` by `role`, and `parameters` and `prompts` by `name` (UTF-16 code units).
@@ -146,7 +147,11 @@ function sortedUnique(items: unknown, key: string, what: string): unknown[] {
  * The writer computes the identity and stores it in plans and trials.
  */
 export async function configurationIdentity(input: unknown): Promise<ConfigurationIdentity> {
-  Configuration.parse(input);
+  const [mismatch] = await verifyConfiguration(input);
+  if (mismatch)
+    throw new IdentityError(
+      `the template at ${mismatch.path.replace(/\/digest$/, "/template")} does not match its digest`,
+    );
   const projection = pick(input, DIGEST_RULES.configuration.members);
   projection["models"] = sortedUnique(projection["models"], "role", "model role");
   projection["parameters"] = sortedUnique(projection["parameters"], "name", "parameter");
@@ -217,10 +222,12 @@ export async function verifyArms(
 ): Promise<LinkError[]> {
   const errors: LinkError[] = [];
   for (const [i, arm] of arms.entries()) {
+    const templates = await verifyConfiguration(arm.configuration, `${at}/${i}/configuration`);
+    errors.push(...templates);
+    if (templates.length > 0) continue;
     const computed = await configurationIdentity(arm.configuration);
     if (computed !== arm.identity)
       errors.push({ path: `${at}/${i}/identity`, stored: arm.identity, computed });
-    errors.push(...(await verifyConfiguration(arm.configuration, `${at}/${i}/configuration`)));
   }
   return errors;
 }

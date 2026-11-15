@@ -37,7 +37,8 @@ function dedupe(config: Configuration): Configuration {
     ...config,
     models: uniq(config.models, (m) => m.role),
     parameters: uniq(config.parameters, (p) => p.name),
-    prompts: uniq(config.prompts, (p) => p.name),
+    // A generated template does not match its generated digest; templates have their own test.
+    prompts: uniq(config.prompts, (p) => p.name).map(({ template: _t, ...p }) => p),
   };
 }
 
@@ -113,7 +114,10 @@ describe("configuration identity", () => {
         computed: await sha256(edited.prompts[0]!.template!),
       },
     ]);
-    const identity = await configurationIdentity(edited);
+    await expect(configurationIdentity(edited)).rejects.toThrow(
+      "the template at /prompts/0/template does not match its digest",
+    );
+    const identity = await configurationIdentity(resolved);
     expect(await verifyArms([{ identity, configuration: edited }])).toEqual([
       {
         path: "/arms/0/configuration/prompts/0/digest",
@@ -385,7 +389,10 @@ describe("digest rules", () => {
     async (kind, schema, digestOf) => {
       await fc.assert(
         fc.asyncProperty(arbitraryFor(schema), fc.nat(), async (generated, pick) => {
-          const record = schema.parse(generated) as unknown as Json;
+          const parsed = schema.parse(generated);
+          const record = (kind === "configuration"
+            ? dedupe(parsed as Configuration)
+            : parsed) as unknown as Json;
           let before: string;
           try {
             before = await digestOf(record);
