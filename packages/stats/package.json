@@ -1,0 +1,42 @@
+{
+  "name": "@hephaestus-build/ichnaea-stats",
+  "version": "0.0.0",
+  "description": "Ichnaea statistics: score intervals, paired and stratified tests, a within-case permutation test, power, validated by simulation.",
+  "keywords": [
+    "confidence-interval",
+    "evaluation",
+    "non-inferiority",
+    "score-interval",
+    "statistics"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hephaestus-build/ichnaea.git",
+    "directory": "packages/stats"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test:sim": "vitest run --config vitest.sim.config.ts --silent=false"
+  },
+  "engines": {
+    "node": ">=22.12"
+  }
+}

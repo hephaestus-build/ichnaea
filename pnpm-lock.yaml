@@ -164,6 +164,8 @@ importers:
         specifier: 4.6.6
         version: 4.6.6
 
+  packages/stats: {}
+
 packages:
 
   '@andrewbranch/untar.js@1.0.4':
