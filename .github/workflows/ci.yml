@@ -67,8 +67,7 @@ jobs:
         run: |
           python3 -m venv /tmp/oracle
           /tmp/oracle/bin/pip install --quiet --require-hashes -r packages/contracts/scripts/oracle/requirements.txt
-          /tmp/oracle/bin/python packages/contracts/scripts/oracle/digest_vectors.py packages/contracts/fixtures
-          git diff --exit-code -- packages/contracts/fixtures/digests.json packages/contracts/fixtures/digests-generated.json
+          /tmp/oracle/bin/python packages/contracts/scripts/oracle/verify_vectors.py packages/contracts/fixtures
 
   commits:
     name: commits
