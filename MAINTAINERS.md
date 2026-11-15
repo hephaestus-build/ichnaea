@@ -75,7 +75,7 @@ commands from a checkout of `main`.
    organisation, so it cannot be lowered for this repository alone. The maintainers keep that role.
    The protection is a rule, not a removal: the code owner ruleset of step 6 requires a code owner's
    approval for every change to `main`, and only the `maintainer` team may bypass it. The `v*` tag
-   rules of step 10 let only the release deploy key create a release tag.
+   rules below let only the release deploy key create a release tag.
 
    Remove a direct collaborator without a row with
    `gh api --method DELETE repos/hephaestus-build/ichnaea/collaborators/<login>`, then read the
