@@ -100,13 +100,15 @@ commands from a checkout of `main`.
 
 3. **Public visibility, squash merges only, and no wiki or projects.** Attestations, the required
    reviewer of the `release` environment and the free security features need a public repository.
-   A squash merge makes the pull request title the commit on `main`, and CI checks that title. The
-   ruleset requires an up-to-date branch, so the button that updates a branch is on:
+   A squash merge makes the pull request title and body the commit on `main`. CI lints the title
+   and checks both for private records.
+   The ruleset requires an up-to-date branch, so the button that updates a branch is on:
 
    ```sh
    gh api --method PATCH repos/hephaestus-build/ichnaea -f visibility=public -F has_wiki=false \
      -F has_projects=false -F allow_rebase_merge=false -F allow_merge_commit=false \
-     -F allow_update_branch=true
+     -F allow_update_branch=true -f squash_merge_commit_title=PR_TITLE \
+     -f squash_merge_commit_message=PR_BODY
    ```
 
 4. **Security features.** Secret scanning with push protection, Dependabot alerts, and private
@@ -123,11 +125,14 @@ commands from a checkout of `main`.
    ```
 
 5. **Actions.** The workflow token is read-only by default, and a workflow cannot create or approve
-   a pull request:
+   a pull request. A maintainer approves the workflow runs of every pull request from a fork by an
+   outside contributor. The last setting exists only for a public repository:
 
    ```sh
    gh api --method PUT repos/hephaestus-build/ichnaea/actions/permissions/workflow \
      -f default_workflow_permissions=read -F can_approve_pull_request_reviews=false
+   gh api --method PUT repos/hephaestus-build/ichnaea/actions/permissions/fork-pr-contributor-approval \
+     -f approval_policy=all_external_contributors
    ```
 
 6. **The `main` ruleset.** Squash merges only, linear history and resolved threads. It requires
@@ -168,34 +173,53 @@ commands from a checkout of `main`.
 
 9. **The `v*` tags and the releases.** Only deploy keys may create a release tag, nobody may move
    or delete one, and a published release cannot change. Keep the release key the only deploy key
-   of the repository:
+   of the repository. Apply the tag rules in two parts, with a probe between them, so that a probe
+   that creates a tag by mistake cannot leave a tag that nobody can delete:
+   1. Apply the rule that only deploy keys create a release tag. Then list the tag rulesets: the
+      list must have only this ruleset.
 
-   ```sh
-   gh api --method POST repos/hephaestus-build/ichnaea/rulesets \
-     --input .github/rulesets/release-tags-create.json
-   gh api --method POST repos/hephaestus-build/ichnaea/rulesets \
-     --input .github/rulesets/release-tags-fixed.json
-   gh api --method PUT repos/hephaestus-build/ichnaea/immutable-releases
-   ```
+      ```sh
+      gh api --method POST repos/hephaestus-build/ichnaea/rulesets \
+        --input .github/rulesets/release-tags-create.json
+      gh api repos/hephaestus-build/ichnaea/rulesets --jq '.[] | select(.target == "tag") | .name'
+      ```
 
-10. **Check.** A person cannot create a release tag. Both commands must fail with a rule
-    violation:
+   2. Probe the rule. A person cannot create a release tag, so both commands must fail with a rule
+      violation:
+
+      ```sh
+      git push origin "$(git rev-parse origin/main):refs/tags/v0.0.0-probe"
+      gh api --method POST repos/hephaestus-build/ichnaea/git/refs \
+        -f ref=refs/tags/v0.0.0-probe -f sha="$(git rev-parse origin/main)"
+      ```
+
+      If a command creates the tag, the rule is wrong. No rule forbids the deletion of a tag yet,
+      so delete it with `git push origin :refs/tags/v0.0.0-probe`, correct the ruleset and probe
+      again. Go on only when `git ls-remote origin refs/tags/v0.0.0-probe` prints nothing.
+
+   3. Apply the rule that nobody moves or deletes a release tag, and immutable releases:
+
+      ```sh
+      gh api --method POST repos/hephaestus-build/ichnaea/rulesets \
+        --input .github/rulesets/release-tags-fixed.json
+      gh api --method PUT repos/hephaestus-build/ichnaea/immutable-releases
+      ```
+
+10. **Read back.** Read the settings of steps 3 to 9 back. Step 1 has its own read-back:
 
     ```sh
-    git push origin "$(git rev-parse origin/main):refs/tags/v0.0.0-probe"
-    gh api --method POST repos/hephaestus-build/ichnaea/git/refs \
-      -f ref=refs/tags/v0.0.0-probe -f sha="$(git rev-parse origin/main)"
-    ```
-
-    Read the other settings back:
-
-    ```sh
-    gh api repos/hephaestus-build/ichnaea --jq '{visibility, has_wiki, security_and_analysis}'
+    gh api repos/hephaestus-build/ichnaea --jq '{visibility, has_wiki, has_projects,
+      allow_merge_commit, allow_rebase_merge, allow_update_branch, squash_merge_commit_title,
+      squash_merge_commit_message, security_and_analysis}'
     gh api repos/hephaestus-build/ichnaea/private-vulnerability-reporting
     gh api repos/hephaestus-build/ichnaea/automated-security-fixes # enabled: false
     gh api repos/hephaestus-build/ichnaea/actions/permissions/workflow
+    gh api repos/hephaestus-build/ichnaea/actions/permissions/fork-pr-contributor-approval
     gh api repos/hephaestus-build/ichnaea/rulesets --jq '.[] | .name'
     gh api repos/hephaestus-build/ichnaea/environments/release
+    gh api repos/hephaestus-build/ichnaea/environments/release/deployment-branch-policies \
+      --jq '.branch_policies[] | {name, type}' # only main, as a branch
+    gh api repos/hephaestus-build/ichnaea/keys --jq '.[] | {title, read_only}' # only the release key
     gh api repos/hephaestus-build/ichnaea/immutable-releases
     ```
 
