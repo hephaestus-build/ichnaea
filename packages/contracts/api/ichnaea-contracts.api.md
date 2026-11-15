@@ -1449,9 +1449,11 @@ export const LineageItem: z.ZodObject<{
 // @public
 export interface LinkError {
     // (undocumented)
-    readonly computed: string;
+    readonly computed: string | null;
     // (undocumented)
     readonly path: string;
+    // (undocumented)
+    readonly problem?: string;
     // (undocumented)
     readonly stored: string;
 }
