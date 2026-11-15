@@ -1,0 +1,89 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:best-practices", ":semanticCommitTypeAll(chore)", ":pinDevDependencies"],
+  "semanticCommits": "enabled",
+  "semanticCommitScope": "deps",
+  "labels": ["dependencies"],
+  "prBodyNotes": [
+    "**Human review required:** Passing CI checks does not approve this dependency update. A maintainer with write access must approve it before it can merge; Renovate is not auto-approved. See the [contribution workflow](https://github.com/hephaestus-build/ichnaea/blob/main/CONTRIBUTING.md#workflow)."
+  ],
+  "timezone": "Europe/Berlin",
+  "schedule": ["before 7am on monday"],
+  "minimumReleaseAge": "7 days",
+  "dependencyDashboard": true,
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 7am on the first day of the month"]
+  },
+  "postUpdateOptions": ["pnpmDedupe"],
+  "prConcurrentLimit": 3,
+  "packageRules": [
+    {
+      "matchFileNames": [".github/**"],
+      "matchUpdateTypes": ["minor", "patch", "digest", "pin", "pinDigest"],
+      "groupName": "CI"
+    },
+    {
+      "matchManagers": ["npm"],
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "development dependencies"
+    },
+    {
+      "description": "A library widens its peer ranges; it never narrows them for a consumer",
+      "matchDepTypes": ["peerDependencies"],
+      "rangeStrategy": "widen"
+    },
+    {
+      "description": "The Node floor is a support decision, not an update",
+      "matchDepTypes": ["engines"],
+      "enabled": false
+    },
+    {
+      "description": "A breaking update waits for approval in its own pull request, so it does not hold a group",
+      "matchUpdateTypes": ["major"],
+      "addLabels": ["breaking"],
+      "groupName": null,
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "Before 1.0 a minor can break; it waits for approval in its own pull request",
+      "matchCurrentVersion": "/^v?0\\./",
+      "matchUpdateTypes": ["minor"],
+      "addLabels": ["breaking"],
+      "groupName": null,
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "A new oracle can move a reference value, so a maintainer starts each oracle update",
+      "matchManagers": ["pip_requirements"],
+      "groupName": "test oracles",
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "The oracle images move with the oracle packages that are hashed for them",
+      "matchDepNames": ["rocker/r-ver", "python"],
+      "groupName": "test oracles",
+      "dependencyDashboardApproval": true
+    }
+  ],
+  "customManagers": [
+    {
+      "description": "Digest-pinned images in workflow env, written NAME_IMAGE: repo:tag@sha256:…",
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github/workflows/.+\\.ya?ml$/"],
+      "matchStrings": [
+        "[A-Z_]+_IMAGE: (?<depName>[^:@\\s]+):(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]{64})"
+      ],
+      "datasourceTemplate": "docker"
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "minimumReleaseAge": null,
+    "dependencyDashboardApproval": false,
+    "automerge": false,
+    "labels": ["security", "dependencies"]
+  },
+  "osvVulnerabilityAlerts": true
+}

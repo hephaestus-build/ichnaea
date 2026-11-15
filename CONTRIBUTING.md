@@ -22,7 +22,9 @@ Thank you for helping. Ichnaea is a general framework: it must work for any GenA
    from `commitlint.config.ts`, for example `feat(contracts): case sets record their pools`.
 3. Run `pnpm check` before you push.
 4. Add a changeset (`pnpm changeset`) for every change to a published package, written for its users.
-5. Open a pull request. CI must be green and a maintainer must approve it.
+5. Open a pull request. Its title becomes the squash commit on `main`, so it follows the same
+   commit rule; the `pull request text` check lints it. CI must be green and a maintainer must
+   approve it.
 
 ## Regenerate artefacts
 

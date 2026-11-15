@@ -1,0 +1,59 @@
+name: Scorecard
+
+# OpenSSF Scorecard scores the repository's supply-chain practices and publishes the result
+# (api.scorecard.dev and the README badge). The findings also go to code scanning.
+#
+# The Scorecard API accepts published results only from a workflow without top-level `env` or
+# `defaults`, and only from a job whose steps are all on its list of approved actions. The notice
+# for a private repository is therefore a job of its own.
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "41 3 * * 1"
+  # Changes to classic branch protection. A ruleset change waits for the weekly run.
+  branch_protection_rule:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scorecard-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  analysis:
+    name: scorecard
+    # Scorecard and code scanning need a public repository, or a private one with GitHub Advanced
+    # Security.
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      # Check out the repository.
+      contents: read
+      # Upload the SARIF results to code scanning.
+      security-events: write
+      # The OIDC token that proves to the Scorecard API where the published results come from.
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ossf/scorecard-action@fa7117db83c52d787ae5a89f350999701505d78e # v2.5.0
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+      - uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        with:
+          sarif_file: results.sarif
+
+  private-repository:
+    name: scorecard (not available)
+    if: ${{ github.event.repository.private }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - run: echo "::notice title=Scorecard skipped::Scorecard and code scanning need a public repository or GitHub Advanced Security."

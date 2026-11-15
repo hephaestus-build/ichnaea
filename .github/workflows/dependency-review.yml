@@ -1,0 +1,46 @@
+name: Dependency review
+
+# Fails a pull request that adds or changes a dependency with a known high or critical
+# vulnerability, or with a licence outside the allowlist. It reads the dependency graph, so it
+# checks out no code.
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-review-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dependency-review:
+    name: dependency review
+    # The API answers 403 for a private repository without GitHub Advanced Security, and the action
+    # fails.
+    if: ${{ !github.event.repository.private }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+          # Development tools run in CI and on contributors' machines, so they count too.
+          fail-on-scopes: runtime, development, unknown
+          # The licences in today's dependency tree, all compatible with an MIT project. MPL-2.0 is
+          # file-level copyleft and comes only through the test runner (lightningcss, through vite).
+          # Python-2.0 (the npm argparse) is permissive. Zlib comes from numpy, a test-only Python
+          # oracle. A dependency without a licence is reported and does not fail.
+          allow-licenses: >-
+            MIT, ISC, Apache-2.0, BSD-3-Clause, BlueOak-1.0.0, MPL-2.0, Python-2.0, Zlib
+
+  private-repository:
+    name: dependency review (not available)
+    if: ${{ github.event.repository.private }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - run: echo "::notice title=Dependency review skipped::Dependency review needs a public repository or GitHub Advanced Security."
