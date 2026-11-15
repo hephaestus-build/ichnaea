@@ -37,6 +37,7 @@ export interface Estimate {
 
 /** The verdict on a grid. */
 export interface Verdict {
+  readonly title: string;
   readonly failures: string[];
   readonly estimates: readonly Estimate[];
 }
@@ -75,7 +76,7 @@ function confirm(point: Point): Estimate {
 }
 
 /** The two-stage rule for one kind of grid. */
-interface Rule {
+export interface Rule {
   readonly kind: "coverage" | "type-I";
   readonly nominal: number;
   /** Passes at screening. */
@@ -154,7 +155,7 @@ export function judge(points: readonly Point[], rule: Rule, title: string): Verd
       failures.length === 0 ? "  passes" : `  FAILS: ${failures.join("; ")}`,
     ].join("\n"),
   );
-  return { failures, estimates };
+  return { title, failures, estimates };
 }
 
 /** A binomial draw by summing Bernoulli trials (small n only). */

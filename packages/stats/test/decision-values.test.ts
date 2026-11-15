@@ -14,6 +14,7 @@ import {
   EstimandError,
   exactStratifiedTest,
   fixedCasesFloor,
+  fixedCasesInterval,
   fixedCasesMde,
   qnorm,
   restrictedMle,
@@ -613,13 +614,94 @@ describe("what compareCounts refuses or does not validate", () => {
 
   it("validates no non-inferiority result while the margin floor is not set, at any margin from 0.05 to 0.30", () => {
     expect(VALIDATED_MARGIN_FLOOR_SET).toBe(false);
+    expect(MARGIN_FLOOR_NOT_SET).toBe("the validated margin floor is not set yet");
     for (let i = 0; i <= 50; i++) {
-      const margin = 0.05 + i * 0.005;
+      const margin = Number((0.05 + i * 0.005).toFixed(3));
       const result = compareCounts({ ...input, margin });
       expect(result.nonInferiority.validated, `margin ${margin}`).toBe(false);
-      expect(result.nonInferiority.limitations).toContain(MARGIN_FLOOR_NOT_SET);
+      // Inside the range the floor is the only reason, so a moved floor or ceiling fails here.
+      expect(result.nonInferiority.limitations, `margin ${margin}`).toEqual([
+        "the validated margin floor is not set yet",
+      ]);
       // The regression test does not depend on the margin.
       expect(result.regression).toEqual({ validated: true, limitations: [] });
+    }
+  });
+
+  it("puts the margin range at 0.05 to 0.30, both ends inside", () => {
+    expect(compareCounts({ ...input, margin: 0.0499 }).nonInferiority.limitations).toEqual([
+      "the validated margin floor is not set yet",
+      "margin 0.0499 is below the validated margin floor 0.05",
+    ]);
+    expect(compareCounts({ ...input, margin: 0.3001 }).nonInferiority.limitations).toEqual([
+      "the validated margin floor is not set yet",
+      "margin 0.3001 is above the validated margin ceiling 0.3",
+    ]);
+  });
+
+  it("never validates a claim that the candidate is better: it tests at a margin below any floor", () => {
+    // A better candidate: the lower bound lies above 0, which is the non-inferiority test at 0.
+    const better = counts(17, 2, 3).map((c, i) =>
+      i % 2 === 0 ? { ...c, base: { successes: 1, trials: 3 } } : c,
+    );
+    const result = compareCounts({ ...input, cases: better, margin: 0 });
+    expect(result.difference.lower).toBeGreaterThan(0);
+    expect(result.nonInferiorityP).toBeLessThan(0.05);
+    expect(result.regression.validated).toBe(true);
+    expect(result.nonInferiority.validated).toBe(false);
+    expect(result.nonInferiority.limitations).toContain(
+      "margin 0 is below the validated margin floor 0.05",
+    );
+    // Any input, any margin below the floor: the reason is the margin itself, not the pending floor,
+    // so it still holds once the floor is set.
+    expect(VALIDATED_MARGIN_FLOOR).toBeGreaterThan(0);
+    const cell = fc
+      .integer({ min: 1, max: 3 })
+      .chain((trials) =>
+        fc.record({ successes: fc.integer({ min: 0, max: trials }), trials: fc.constant(trials) }),
+      );
+    fc.assert(
+      fc.property(
+        fc.array(fc.record({ base: cell, candidate: cell }), { minLength: 5, maxLength: 20 }),
+        fc.oneof(
+          fc.constant(0),
+          fc.double({ min: 0, max: VALIDATED_MARGIN_FLOOR, maxExcluded: true, noNaN: true }),
+        ),
+        (arms, margin) => {
+          const cases = arms.map((a, i) => ({ id: `c${String(i).padStart(2, "0")}`, ...a }));
+          const { nonInferiority } = compareCounts({ ...input, cases, margin, rng: createRng(1) });
+          expect(nonInferiority.validated).toBe(false);
+          expect(nonInferiority.limitations).toContain(
+            `margin ${margin} is below the validated margin floor ${VALIDATED_MARGIN_FLOOR}`,
+          );
+        },
+      ),
+      { seed: 20261115, numRuns: 100 },
+    );
+  });
+
+  it("takes no score options, so no caller can select a variant outside the validated method", () => {
+    // 17 cases at 2 of 2 in both arms; the candidate passes 1 of 2 in 2 cases.
+    const cases = counts(17, 2, 2, 2).map((c, i) =>
+      i < 2 ? { ...c, candidate: { successes: 1, trials: 2 } } : c,
+    );
+    const validated = compareCounts({ ...input, cases });
+    expect(validated.difference.method).toBe("stratified-score-rd-bc");
+    expect(validated.difference.lower).toBeCloseTo(-0.1934, 4);
+    // The variant without the N/(N−1) factor gives another bound, so an option that reached the
+    // method would show.
+    const { strata } = fixedCasesInterval(cases, 0.95);
+    const variant = { biasCorrection: false, weights: "equal" } as const;
+    expect(scoreDifferenceInterval(strata, 0.95, "lower", variant).lower).toBeCloseTo(-0.1717, 4);
+    for (const score of [
+      { biasCorrection: false },
+      { skewnessCorrection: true },
+      { biasCorrection: false, skewnessCorrection: true },
+      { weights: "mantel-haenszel" },
+    ]) {
+      // An untyped caller can still pass them; compareCounts reads none of them.
+      // @ts-expect-error ComparisonInput has no score options.
+      expect(compareCounts({ ...input, cases, score })).toEqual(validated);
     }
   });
 
@@ -650,6 +732,39 @@ describe("what compareCounts refuses or does not validate", () => {
       expect(result.validated).toBe(false);
       expect(result.limitations.join(" ")).toMatch(/more than 3 trials per case and arm/);
     }
+  });
+
+  it("caps each arm on its own: 4 trials in one arm of one case is outside the domain", () => {
+    // 16 cases at 3 of 3 against 2 of 3, and one case with 4 trials in one arm only.
+    const rest = counts(16, 3, 2);
+    for (const odd of [
+      { base: { successes: 4, trials: 4 }, candidate: { successes: 3, trials: 3 } },
+      { base: { successes: 3, trials: 3 }, candidate: { successes: 4, trials: 4 } },
+    ]) {
+      const result = compareCounts({
+        ...input,
+        cases: [...rest, { id: "z", ...odd }],
+        rng: createRng(1),
+      });
+      for (const validity of [result.regression, result.nonInferiority])
+        expect(validity.limitations).toContain(
+          "more than 3 trials per case and arm is outside the studied grid",
+        );
+      expect(result.regression.validated).toBe(false);
+    }
+  });
+
+  it("needs 5 cases with unequal trial counts too", () => {
+    const four = [
+      ...counts(3, 2, 2, 2),
+      { id: "z", base: { successes: 2, trials: 2 }, candidate: { successes: 3, trials: 3 } },
+    ];
+    const result = compareCounts({ ...input, cases: four, rng: createRng(1) });
+    expect(result.regressionMethod).toBe("within-case-permutation");
+    expect(result.regression).toEqual({
+      validated: false,
+      limitations: ["4 case(s); the validated domain starts at 5"],
+    });
   });
 
   it("refuses a margin of 1 or more, and a negative one", () => {

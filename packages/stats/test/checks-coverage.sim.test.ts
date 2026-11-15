@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import { fixedCasesInterval, scoreDifferenceInterval } from "../src/index.ts";
 import { draw, LEVEL, rates } from "./support/grid.ts";
+import { documented } from "./support/documented.ts";
 import { COVERAGE, judge, type Point } from "./support/simulate.ts";
 
 describe("the coverage check detects methods that miss the bar (REQ-111)", () => {
@@ -21,7 +22,11 @@ describe("the coverage check detects methods that miss the bar (REQ-111)", () =>
           0.02 <=
         0,
     };
-    expect(judge([point], COVERAGE, "biased bound (must fail)").failures.length).toBeGreaterThan(0);
+    const verdict = judge([point], COVERAGE, "biased bound (must fail)");
+    expect(verdict.failures.length).toBeGreaterThan(0);
+    // VALIDATION.md, "Results of the CI gate", states this result.
+    const { run, page } = documented(COVERAGE, verdict);
+    expect(run).toEqual(page);
   });
 
   it("fails the variant without the N/(N−1) factor at 2 trials per case and arm", () => {
@@ -40,8 +45,10 @@ describe("the coverage check detects methods that miss the bar (REQ-111)", () =>
           { biasCorrection: false, weights: "equal" },
         ).lower <= 0,
     };
-    expect(
-      judge([point], COVERAGE, "variant without the factor (must fail)").failures.length,
-    ).toBeGreaterThan(0);
+    const verdict = judge([point], COVERAGE, "variant without the factor (must fail)");
+    expect(verdict.failures.length).toBeGreaterThan(0);
+    // VALIDATION.md, "Results of the CI gate", states this result.
+    const { run, page } = documented(COVERAGE, verdict);
+    expect(run).toEqual(page);
   });
 });
