@@ -1,0 +1,44 @@
+name: Pull request
+
+# The title and body become the squash commit on main, so they are public text. This check runs
+# apart from CI, so an edit to the title or body runs only this job. It runs the rules and scripts
+# of the base commit, so a pull request cannot loosen the rules for its own title.
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pull-request-${{ github.event.pull_request.number }}
+  # Only a new commit supersedes a result. A run for an edit completes.
+  cancel-in-progress: ${{ github.event.action == 'synchronize' }}
+
+jobs:
+  text:
+    name: pull request text
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # The values reach the commands through the environment and are never part of the shell text.
+      - name: The title is a conventional commit subject
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: printf '%s\n' "$PR_TITLE" | pnpm exec commitlint
+      - name: No private record in the title and body
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: node scripts/check-purity.ts --env PR_TITLE --env PR_BODY
