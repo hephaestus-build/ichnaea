@@ -14,6 +14,7 @@ import {
   rebuild,
   structureOf,
   worstRows,
+  countByKAndMargin,
 } from "../scripts/embed-worst.ts";
 import { coverageRun, readStructures, seedOf } from "../scripts/simulate-structures.ts";
 import { groupsOf, type Structure } from "../scripts/study-heterogeneous.ts";
@@ -241,6 +242,17 @@ describe("embedding in K cases", () => {
       ok: false,
       reason: expect.stringMatching(/stable candidate rate -0\.77\d+ is below 0/),
     });
+  });
+
+  it("counts the structures that cannot keep their truth per size and margin", () => {
+    expect(
+      countByKAndMargin([
+        { K: 60, margin: 0.3 },
+        { K: 60, margin: 0.3 },
+        { K: 30, margin: 0.3 },
+        { K: 60, margin: 0.05 },
+      ]),
+    ).toEqual({ "K60|0.300": 2, "K30|0.300": 1, "K60|0.050": 1 });
   });
 
   it("round-trips into the runner", () => {

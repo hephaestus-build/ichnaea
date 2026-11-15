@@ -183,6 +183,21 @@ export function rebuild(row: Row, margin: number, oneTrialColumn: boolean): Rebu
   return { s, margin, groups, coverage, resolved };
 }
 
+/**
+ * The structures that cannot keep their truth, counted per size and margin (`K60|0.300`), as the
+ * summary reports them beside the simulated ones.
+ */
+export function countByKAndMargin(
+  skipped: ReadonlyArray<{ readonly K: number; readonly margin: number }>,
+): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const { K, margin } of skipped) {
+    const key = `K${K}|${margin.toFixed(3)}`;
+    counts[key] = (counts[key] ?? 0) + 1;
+  }
+  return counts;
+}
+
 /** The trials of a padding case: the cell's count, and 2 under mixed counts. */
 export const padTrials = (r: 2 | 3 | "2/3"): number => (r === 3 ? 3 : 2);
 
@@ -342,7 +357,7 @@ function main(): void {
       for (const mode of ["dilute", "keep-truth"] as const) {
         const e = embed(b, K, mode);
         if (!e.ok) {
-          impossible.push({ worst: i + 1, K, mode, reason: e.reason });
+          impossible.push({ worst: i + 1, K, margin, mode, reason: e.reason });
           continue;
         }
         lines.push(
@@ -363,6 +378,9 @@ function main(): void {
       }
   });
   writeFileSync(out, lines.map((l) => `${l}\n`).join(""));
+  const impossibleByKAndMargin = countByKAndMargin(
+    impossible as Array<{ K: number; margin: number }>,
+  );
   writeMeta(out, p, true, {
     kind: "embedded",
     inputs: inputs.map((f) => ({ path: path.basename(f), sha256: sha256(readFileSync(f)) })),
@@ -372,6 +390,7 @@ function main(): void {
     structures: lines.length,
     resolved,
     keepTruthImpossible: impossible.length,
+    impossibleByKAndMargin,
     impossible,
     sources,
   });
