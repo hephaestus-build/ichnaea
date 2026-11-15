@@ -101,7 +101,7 @@ export const MUTANTS: readonly Mutant[] = [
     from: 'alternative === "less" ? t <= observed : t >= observed',
     to: 'alternative === "less" ? t < observed : t > observed',
   },
-  // Mutants that survived a review, and the missing-trial rules (decision 0007).
+  // Mutants that survived a review, and the missing-trial rules (decision 0009).
   {
     id: "M40 permutation wrong tail",
     file: "src/randomisation.ts",

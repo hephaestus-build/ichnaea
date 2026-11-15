@@ -98,7 +98,7 @@ describe("fixed-cases: the one-sided lower bound compareCounts reports", () => {
       het.map((p, i) => clamp(p + (i % 2 === 0 ? 0.1 : -0.2))),
       () => 2,
     );
-    // Missingness tied to the drop: degraded cases keep only one candidate trial (decision 0007).
+    // Missingness tied to the drop: degraded cases keep only one candidate trial (decision 0009).
     const high = rates(60, "0.95");
     mc(
       "k=60 r=3, 6 cases drop by 0.6 and lose 2 of 3",

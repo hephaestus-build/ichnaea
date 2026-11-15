@@ -99,7 +99,7 @@ export class EstimandError extends Error {
   override readonly name = "EstimandError";
 }
 
-/** The fixed-cases domain the simulation studies cover (VALIDATION.md, decision 0007). */
+/** The fixed-cases domain the simulation studies cover (VALIDATION.md, decision 0009). */
 export const VALIDATED_FIXED_CASES: {
   readonly minCases: number;
   readonly maxTrials: number;
@@ -186,7 +186,7 @@ export const VALIDATED_MARGIN_CEILING = 0.3;
 export function compareCounts(input: ComparisonInput): Comparison {
   if (input.valueType !== "binary")
     throw new EstimandError(
-      `a ${input.valueType} measure has no validated method yet, so it is estimate-only; only binary outcomes, one per trial, can be compared`,
+      `the value type "${input.valueType}" has no validated method yet, so it is estimate-only; only binary outcomes, one per trial, can be compared`,
     );
   if (!(input.margin >= 0 && input.margin < 1))
     throw new RangeError(`margin must be in [0, 1), got ${input.margin}`);

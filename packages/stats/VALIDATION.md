@@ -97,7 +97,7 @@ term of the subnormal expansion moves the result by at most 0.84 ε·|v|. That i
 ## fixed-cases: what counts
 
 `compareCounts` takes binary outcomes: per case and arm, the completed trials that passed, of all
-completed trials. Every completed trial counts (decision 0007). A case with at least one completed
+completed trials. Every completed trial counts (decision 0009). A case with at least one completed
 trial in each arm enters the analysis with equal weight; a case with none in an arm is excluded,
 reported in `excludedCases`, and counts against coverage in the decision. Dropping cases with fewer
 than two trials, as an earlier version did, hid a regression: losing 6 of 60 cases' remaining
@@ -133,7 +133,7 @@ skewness correction (decision 0004), chosen by a 252-point study at 10,000 repet
 | Skewness-corrected, no factor       | 0.8819           | 0.9432        | 166                   |
 | Skewness-corrected with the factor  | 0.9207           | 0.9598        | 2                     |
 
-## The validated domain (decision 0007)
+## The validated domain (decision 0009)
 
 Every `fixed-cases` comparison has two results of the same shape, `{ validated, limitations }`.
 `regression` covers the regression test: it is validated only when every condition below holds,

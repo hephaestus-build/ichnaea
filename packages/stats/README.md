@@ -10,9 +10,11 @@ saying whether it is validated and, if not, why: `regression` for the regression
 validated. Score, proportion and ordinal measures have no validated method yet, so they are
 estimate-only.
 
-**No non-inferiority result is validated yet.** The validated margin floor is not set: a search
-found coverage below the bar at small margins (see [VALIDATION.md](VALIDATION.md)). Until the floor
-is set, a comparison can show a regression, but it cannot show non-inferiority.
+**No non-inferiority result is validated yet.** The validated margin floor is not set. Exact
+searches found coverage below the bar at margins from 0.05 to 0.185, with 5 to 8 cases and 3 trials
+in a first search, and at 9 and 10 cases with mixed trial counts in a second (see
+[VALIDATION.md](VALIDATION.md)). The change that sets the floor lists each point. Until the floor is
+set, a comparison can show a regression, but it cannot show non-inferiority.
 
 The package has no runtime dependency, and no Python or R at runtime. Its methods
 are checked against an independent implementation and by simulation: see
