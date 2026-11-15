@@ -6,22 +6,20 @@ import {
   type ScoreOptions,
   type Stratum,
 } from "./score-difference.ts";
-import { signFlipTest, withinCasePermutationTest } from "./randomisation.ts";
+import { withinCasePermutationTest } from "./randomisation.ts";
 import { tangoInterval, tangoTest, type PairedTable } from "./tango.ts";
-import type { Interval } from "./types.ts";
+import { assertCount, type Count, type Interval } from "./types.ts";
 
 /** The question an estimate answers. */
 export type Estimand = "fixed-cases" | "sampled-cases";
 
-/** One arm's outcomes on one case: successes of trials over its replicates. */
-export interface ArmCounts {
-  readonly successes: number;
-  readonly trials: number;
-  /** Trials (runs) with a value, at least 1. A binary measure has trials === replicates. */
-  readonly replicates: number;
-}
+/**
+ * One arm's binary outcomes on one case: the completed trials that passed, of all completed trials.
+ * A trial with no value (an infrastructure failure, a trial not run) is not a trial here.
+ */
+export type ArmCounts = Count;
 
-/** Counts of one case under both arms. An arm without replicates is missing. */
+/** Counts of one case under both arms. An arm without trials is missing. */
 export interface CaseCounts {
   readonly id: string;
   readonly family?: string;
@@ -29,16 +27,12 @@ export interface CaseCounts {
   readonly candidate: ArmCounts;
 }
 
-/** Counts for a binary measure from its 0 and 1 outcomes per replicate. */
+/** Counts from the 0 and 1 outcomes of an arm's completed trials. */
 export function countsFromOutcomes(outcomes: readonly (0 | 1)[]): ArmCounts {
-  return {
-    successes: outcomes.reduce<number>((a, b) => a + b, 0),
-    trials: outcomes.length,
-    replicates: outcomes.length,
-  };
+  return { successes: outcomes.reduce<number>((a, b) => a + b, 0), trials: outcomes.length };
 }
 
-/** A paired comparison for one binary or proportion measure. */
+/** A paired comparison for one binary measure. */
 export interface ComparisonInput {
   readonly estimand: Estimand;
   readonly cases: readonly CaseCounts[];
@@ -59,13 +53,19 @@ export interface Comparison {
   readonly nonInferiorityP: number;
   /** p-value of H0: difference >= 0 (unadjusted). */
   readonly regressionP: number;
+  /** The stable name of the regression test's method, recorded in decisions. */
+  readonly regressionMethod: string;
+  /** Cases with at least one completed trial in each arm: all of them enter the analysis. */
   readonly usedCases: number;
-  readonly droppedCases: number;
+  /** Cases with no completed trial in an arm. They are missing and count against coverage. */
+  readonly excludedCases: number;
   /**
-   * Whether the method has passed the simulation bar (VALIDATION.md). A decision built on an
-   * unvalidated method states it as a limitation.
+   * Whether the call lies inside the domain the simulation studies validate (VALIDATION.md). No
+   * verdict may rest on a result that is not validated (DN-8).
    */
   readonly validated: boolean;
+  /** Why the result is not validated. Empty when it is. */
+  readonly limitations: readonly string[];
 }
 
 /** Thrown when the data cannot support the estimand. The decision then runs estimate-only. */
@@ -73,27 +73,62 @@ export class EstimandError extends Error {
   override readonly name = "EstimandError";
 }
 
-const mean = (v: readonly number[]): number => v.reduce((a, b) => a + b, 0) / v.length;
-const rate = (a: ArmCounts): number => a.successes / a.trials;
-
-/** Below this many items, sampled-cases uses randomisation, never an asymptotic score method (REQ-50). */
-export const SCORE_METHOD_MIN_ITEMS = 300;
+/** The fixed-cases domain the simulation studies cover (VALIDATION.md, DC-6). */
+export const VALIDATED_FIXED_CASES: {
+  readonly minCases: number;
+  readonly maxTrials: number;
+  readonly minShareWithTwoTrials: number;
+} = {
+  /** Fewest cases. At 3 and 4 cases with 2 trials, exact coverage dips to 0.9385. */
+  minCases: 5,
+  /** Most completed trials per case and arm that the grid covers. */
+  maxTrials: 5,
+  /** Smallest share of case-arm cells with at least 2 completed trials (missingness studied). */
+  minShareWithTwoTrials: 0.9,
+};
 
 /**
- * Chooses and runs the paired method for a binary or proportion measure.
+ * The fixed-cases case selection and lower bound, as `compareCounts` computes them: every case with
+ * at least one completed trial in each arm, equal case weights, the stratified Miettinen–Nurminen
+ * score interval with the N/(N−1) factor. The simulation studies call this function, so they test
+ * the decision path itself.
+ */
+export function fixedCasesInterval(
+  cases: readonly CaseCounts[],
+  level: number,
+  score: ScoreOptions = {},
+): { interval: Interval; strata: Stratum[]; options: ScoreOptions } {
+  const strata: Stratum[] = cases
+    .filter((c) => c.base.trials > 0 && c.candidate.trials > 0)
+    .map((c) => ({ candidate: c.candidate, base: c.base }));
+  const options: ScoreOptions = { ...score, weights: "equal" };
+  return {
+    interval: {
+      ...scoreDifferenceInterval(strata, level, "lower", options),
+      estimand: "fixed-cases",
+    },
+    strata,
+    options,
+  };
+}
+
+/** Fewest cases, and families, for a sampled-cases method (DC-6). Below it: estimate-only. */
+export const SAMPLED_CASES_MIN_CASES = 300;
+/** Fewest families for a sampled-cases method (DC-6). */
+export const SAMPLED_CASES_MIN_FAMILIES = 30;
+
+/**
+ * Chooses and runs the paired method for a binary measure. Proportion, score and ordinal measures
+ * have no validated method yet (DN-8) and never reach it.
  *
- * - `fixed-cases`: the stratified Miettinen–Nurminen score interval and test over cases with equal
- *   case weights, so the estimate is the mean of per-case differences. A case with fewer than 2
- *   replicates in either arm leaves the analysis and is counted. The regression test is the exact
- *   stratified conditional test when every case has the same replicate counts and binary values,
- *   and a within-case permutation test otherwise.
- * - `sampled-cases`, one binary trial per case and arm, one case per family, at least 300 cases:
- *   Tango's score interval, skewness-corrected.
- * - `sampled-cases` otherwise: the sign-flip randomisation test of no difference on family-level
- *   differences, for the regression test only. No validated non-inferiority method exists for
- *   this path yet, so non-inferiority is never shown (the bound is −1).
- *
- * `validated` is true only inside the domain the simulation studies cover (VALIDATION.md).
+ * - `fixed-cases`: every completed trial counts. A case with at least one completed trial in each
+ *   arm enters the stratified Miettinen–Nurminen score interval and test with equal case weight, so
+ *   the estimate is the mean of per-case differences. A case with no completed trial in an arm is
+ *   excluded and counted. The regression test is the exact stratified conditional test when every
+ *   case and arm has the same number of trials, and a within-case permutation test otherwise.
+ * - `sampled-cases`, one trial per case and arm, one case per family, at least 300 cases: Tango's
+ *   skewness-corrected score interval. It is experimental, so never validated.
+ * - `sampled-cases` otherwise: no method; an EstimandError makes the measure estimate-only.
  */
 export function compareCounts(input: ComparisonInput): Comparison {
   if (!(input.margin >= 0 && input.margin < 1))
@@ -102,118 +137,89 @@ export function compareCounts(input: ComparisonInput): Comparison {
     throw new RangeError(`alpha must be in (0, 0.5), got ${input.alpha}`);
   const level = 1 - input.alpha;
   for (const c of input.cases) {
-    for (const [arm, counts] of [
-      ["base", c.base],
-      ["candidate", c.candidate],
-    ] as const) {
-      const { successes, trials, replicates } = counts;
-      if (
-        ![successes, trials, replicates].every(Number.isInteger) ||
-        successes < 0 ||
-        successes > trials ||
-        replicates > trials ||
-        (replicates === 0) !== (trials === 0)
-      ) {
-        throw new RangeError(
-          `case '${c.id}' ${arm}: invalid counts ${successes}/${trials} over ${replicates} replicates`,
-        );
-      }
-    }
+    assertCount(c.base, `case '${c.id}' base`);
+    assertCount(c.candidate, `case '${c.id}' candidate`);
   }
   const ids = new Set(input.cases.map((c) => c.id));
   if (ids.size !== input.cases.length) throw new RangeError("case IDs must be unique");
   // A canonical case order, so the result never depends on the order of the input.
   const ordered = input.cases.toSorted((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const used = ordered.filter((c) => c.base.trials > 0 && c.candidate.trials > 0);
+  const excludedCases = ordered.length - used.length;
+  if (used.length === 0) throw new EstimandError("no case has a completed trial in both arms");
 
   if (input.estimand === "fixed-cases") {
-    const used = ordered.filter((c) => c.base.replicates >= 2 && c.candidate.replicates >= 2);
-    const droppedCases = ordered.length - used.length;
-    if (used.length === 0)
-      throw new EstimandError(
-        "fixed-cases needs at least 2 replicates per case and arm, and no case has them",
-      );
-    const strata: Stratum[] = used.map((c) => ({
-      candidate: { successes: c.candidate.successes, trials: c.candidate.trials },
-      base: { successes: c.base.successes, trials: c.base.trials },
-    }));
-    const options: ScoreOptions = { ...input.score, weights: "equal" };
-    const binary = used.every(
-      (c) => c.base.trials === c.base.replicates && c.candidate.trials === c.candidate.replicates,
-    );
-    const counts = new Set(used.flatMap((c) => [c.base.trials, c.candidate.trials]));
-    const balanced = binary && counts.size === 1;
-    let regressionP: number;
+    const { interval, strata, options } = fixedCasesInterval(used, level, input.score);
+    const cells = used.flatMap((c) => [c.base.trials, c.candidate.trials]);
+    const balanced = new Set(cells).size === 1;
+    let regression: { p: number; method: string };
     if (balanced) {
-      regressionP = exactStratifiedTest(strata, "less").p;
+      regression = exactStratifiedTest(strata, "less");
     } else {
       if (!input.rng)
         throw new EstimandError(
-          "unequal replicate counts need a seeded generator for the within-case permutation test",
+          "unequal trial counts need a seeded generator for the within-case permutation test",
         );
-      regressionP = withinCasePermutationTest(strata, input.rng).p;
+      regression = withinCasePermutationTest(strata, input.rng);
     }
+    const domain = VALIDATED_FIXED_CASES;
+    const limitations = [
+      ...(used.length < domain.minCases
+        ? [`${used.length} case(s); the validated domain starts at ${domain.minCases}`]
+        : []),
+      ...(excludedCases > 0
+        ? [`${excludedCases} case(s) have no completed trial in an arm and are excluded`]
+        : []),
+      ...(Math.max(...cells) > domain.maxTrials
+        ? [`more than ${domain.maxTrials} trials per case and arm is outside the studied grid`]
+        : []),
+      ...(cells.filter((n) => n >= 2).length < domain.minShareWithTwoTrials * cells.length
+        ? [
+            `fewer than ${domain.minShareWithTwoTrials * 100}% of case-arm cells have 2 or more completed trials`,
+          ]
+        : []),
+    ];
     return {
       estimand: input.estimand,
-      difference: {
-        ...scoreDifferenceInterval(strata, level, "lower", options),
-        estimand: "fixed-cases",
-      },
+      difference: interval,
       nonInferiorityP: scoreDifferenceTest(strata, -input.margin, "greater", options).p,
-      regressionP,
+      regressionP: regression.p,
+      regressionMethod: regression.method,
       usedCases: used.length,
-      droppedCases,
-      // The studied domain: binary values, the same replicate count for every case, 3 or more cases.
-      validated: balanced && used.length >= 3,
+      excludedCases,
+      validated: limitations.length === 0,
+      limitations,
     };
   }
 
-  const paired = ordered.filter((c) => c.base.replicates > 0 && c.candidate.replicates > 0);
-  const droppedCases = ordered.length - paired.length;
-  if (paired.length === 0) throw new EstimandError("no case has trials in both arms");
-  const singleTrials = paired.every((c) => c.base.trials === 1 && c.candidate.trials === 1);
-  const families = new Map<string, CaseCounts[]>();
-  for (const c of paired)
-    families.set(c.family ?? c.id, [...(families.get(c.family ?? c.id) ?? []), c]);
-  if (singleTrials && families.size === paired.length && paired.length >= SCORE_METHOD_MIN_ITEMS) {
-    const table: PairedTable = {
-      both: paired.filter((c) => c.base.successes === 1 && c.candidate.successes === 1).length,
-      candidateOnly: paired.filter((c) => c.base.successes === 0 && c.candidate.successes === 1)
-        .length,
-      baseOnly: paired.filter((c) => c.base.successes === 1 && c.candidate.successes === 0).length,
-      neither: paired.filter((c) => c.base.successes === 0 && c.candidate.successes === 0).length,
-    };
-    return {
-      estimand: input.estimand,
-      difference: { ...tangoInterval(table, level, "lower", true), estimand: "sampled-cases" },
-      nonInferiorityP: tangoTest(table, -input.margin, "greater", true).p,
-      regressionP: tangoTest(table, 0, "less", true).p,
-      usedCases: paired.length,
-      droppedCases,
-      validated: false,
-    };
+  const singleTrials = used.every((c) => c.base.trials === 1 && c.candidate.trials === 1);
+  const families = new Set(used.map((c) => c.family ?? c.id));
+  if (
+    !singleTrials ||
+    families.size !== used.length ||
+    used.length < SAMPLED_CASES_MIN_CASES ||
+    families.size < SAMPLED_CASES_MIN_FAMILIES
+  ) {
+    throw new EstimandError(
+      `sampled-cases needs at least ${SAMPLED_CASES_MIN_CASES} cases and ${SAMPLED_CASES_MIN_FAMILIES} families, one trial per case and arm and one case per family; this comparison has ${used.length} case(s) in ${families.size} famil${families.size === 1 ? "y" : "ies"}, so it is estimate-only`,
+    );
   }
-  // Family-level differences in a canonical order (families sorted by name).
-  const names = [...families.keys()].toSorted();
-  const diffs = names.map((name) =>
-    mean((families.get(name) as CaseCounts[]).map((c) => rate(c.candidate) - rate(c.base))),
-  );
-  const options = input.rng ? { rng: input.rng } : {};
-  const estimate = mean(diffs);
+  const table: PairedTable = {
+    both: used.filter((c) => c.base.successes === 1 && c.candidate.successes === 1).length,
+    candidateOnly: used.filter((c) => c.base.successes === 0 && c.candidate.successes === 1).length,
+    baseOnly: used.filter((c) => c.base.successes === 1 && c.candidate.successes === 0).length,
+    neither: used.filter((c) => c.base.successes === 0 && c.candidate.successes === 0).length,
+  };
+  const regression = tangoTest(table, 0, "less", true);
   return {
     estimand: input.estimand,
-    difference: {
-      estimate,
-      lower: -1,
-      upper: 1,
-      level,
-      sided: "lower",
-      method: "sign-flip (regression test only; no validated non-inferiority method)",
-      estimand: "sampled-cases",
-    },
-    nonInferiorityP: 1,
-    regressionP: signFlipTest(diffs, 0, "less", options).p,
-    usedCases: paired.length,
-    droppedCases,
+    difference: { ...tangoInterval(table, level, "lower", true), estimand: "sampled-cases" },
+    nonInferiorityP: tangoTest(table, -input.margin, "greater", true).p,
+    regressionP: regression.p,
+    regressionMethod: regression.method,
+    usedCases: used.length,
+    excludedCases,
     validated: false,
+    limitations: ["Tango's skewness-corrected interval is experimental (VALIDATION.md)"],
   };
 }

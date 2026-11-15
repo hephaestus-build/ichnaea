@@ -49,18 +49,17 @@ const reference = JSON.parse(
 const toCases = (r: { x1: number[]; n1: number[]; x2: number[]; n2: number[] }): CaseCounts[] =>
   r.x1.map((x1, i) => ({
     id: `c${String(i).padStart(3, "0")}`,
-    candidate: { successes: x1, trials: r.n1[i] as number, replicates: r.n1[i] as number },
+    candidate: { successes: x1, trials: r.n1[i] as number },
     base: {
       successes: r.x2[i] as number,
       trials: r.n2[i] as number,
-      replicates: r.n2[i] as number,
     },
   }));
 
 const one = (base: number, candidate: number, i: number): CaseCounts => ({
   id: `c${String(i).padStart(3, "0")}`,
-  base: { successes: base, trials: 1, replicates: 1 },
-  candidate: { successes: candidate, trials: 1, replicates: 1 },
+  base: { successes: base, trials: 1 },
+  candidate: { successes: candidate, trials: 1 },
 });
 
 describe("decision values against R", () => {
@@ -95,8 +94,8 @@ describe("decision values against R", () => {
         (strata, margin) => {
           const cases = strata.map(({ n, a, b }, i) => ({
             id: `c${i}`,
-            candidate: { successes: a, trials: n, replicates: n },
-            base: { successes: b, trials: n, replicates: n },
+            candidate: { successes: a, trials: n },
+            base: { successes: b, trials: n },
           }));
           const r = compareCounts({
             estimand: "fixed-cases",
@@ -367,11 +366,20 @@ describe("exact test and restricted MLE properties", () => {
   });
 });
 
+const at = (input: CaseCounts[]): ReturnType<typeof compareCounts> =>
+  compareCounts({
+    estimand: "fixed-cases",
+    cases: input,
+    alpha: 0.05,
+    margin: 0.1,
+    rng: createRng(1),
+  });
+
 describe("input validation", () => {
   const ok = {
     id: "a",
-    base: { successes: 1, trials: 2, replicates: 2 },
-    candidate: { successes: 1, trials: 2, replicates: 2 },
+    base: { successes: 1, trials: 2 },
+    candidate: { successes: 1, trials: 2 },
   };
   it.each([
     ["alpha 0.5", { alpha: 0.5, margin: 0.1, cases: [ok] }],
@@ -382,7 +390,7 @@ describe("input validation", () => {
       {
         alpha: 0.05,
         margin: 0.1,
-        cases: [{ ...ok, base: { successes: 0.5, trials: 2, replicates: 2 } }],
+        cases: [{ ...ok, base: { successes: 0.5, trials: 2 } }],
       },
     ],
     ["duplicate case IDs", { alpha: 0.05, margin: 0.1, cases: [ok, ok] }],
@@ -390,49 +398,88 @@ describe("input validation", () => {
     expect(() => compareCounts({ estimand: "fixed-cases", ...input })).toThrow(RangeError);
   });
 
-  it("drops cases with fewer than two replicates instead of failing the measure", () => {
+  it("keeps a case with one completed trial in an arm, and excludes one with none (DC-6)", () => {
     const thin = {
       id: "b",
-      base: { successes: 1, trials: 1, replicates: 1 },
-      candidate: { successes: 1, trials: 1, replicates: 1 },
+      base: { successes: 1, trials: 1 },
+      candidate: { successes: 1, trials: 1 },
+    };
+    const empty = {
+      id: "e",
+      base: { successes: 1, trials: 2 },
+      candidate: { successes: 0, trials: 0 },
     };
     const result = compareCounts({
       estimand: "fixed-cases",
-      cases: [ok, { ...ok, id: "c" }, { ...ok, id: "d" }, thin],
+      cases: [ok, { ...ok, id: "c" }, { ...ok, id: "d" }, thin, empty],
       alpha: 0.05,
       margin: 0.1,
+      rng: createRng(1),
     });
-    expect(result.droppedCases).toBe(1);
+    expect(result.usedCases).toBe(4);
+    expect(result.excludedCases).toBe(1);
+    expect(result.validated).toBe(false);
+    expect(result.limitations).toContain(
+      "1 case(s) have no completed trial in an arm and are excluded",
+    );
     expect(() =>
-      compareCounts({ estimand: "fixed-cases", cases: [thin], alpha: 0.05, margin: 0.1 }),
+      compareCounts({ estimand: "fixed-cases", cases: [empty], alpha: 0.05, margin: 0.1 }),
     ).toThrow(EstimandError);
   });
 
-  it("marks results outside the validated domain", () => {
-    expect(
-      compareCounts({ estimand: "fixed-cases", cases: [ok], alpha: 0.05, margin: 0.1 }).validated,
-    ).toBe(false);
-    const three = [ok, { ...ok, id: "b" }, { ...ok, id: "c" }];
-    expect(
-      compareCounts({ estimand: "fixed-cases", cases: three, alpha: 0.05, margin: 0.1 }).validated,
-    ).toBe(true);
+  it("a regression in a case's only remaining trial stays in the evidence (the DC-6 example)", () => {
+    // 60 cases at 3 of 3 in both arms. In 6, two candidate trials are missing and the third fails.
+    const full = { successes: 3, trials: 3 };
+    const input: CaseCounts[] = Array.from({ length: 60 }, (_, i) => ({
+      id: `c${String(i).padStart(2, "0")}`,
+      base: full,
+      candidate: i < 6 ? { successes: 0, trials: 1 } : full,
+    }));
+    const result = compareCounts({
+      estimand: "fixed-cases",
+      cases: input,
+      alpha: 0.05,
+      margin: 0.05,
+      rng: createRng(1),
+    });
+    expect(result.difference.estimate).toBeCloseTo(-0.1, 12);
+    expect(result.usedCases).toBe(60);
+    expect(result.nonInferiorityP).toBeGreaterThan(0.05);
+    expect(result.regressionP).toBeLessThan(0.001);
+    expect(result.regressionMethod).toBe("within-case-permutation");
+  });
+
+  it("marks results outside the validated domain, naming each reason (DC-6)", () => {
+    const five = ["a", "b", "c", "d", "e"].map((id) => ({ ...ok, id }));
+    expect(at(five)).toMatchObject({ validated: true, limitations: [] });
+    expect(at(five.slice(0, 4)).limitations).toEqual([
+      "4 case(s); the validated domain starts at 5",
+    ]);
+    // Unequal binary trial counts are inside the grid.
     const unequal = [
-      ...three,
-      {
-        id: "d",
-        base: { successes: 2, trials: 3, replicates: 3 },
-        candidate: { successes: 3, trials: 3, replicates: 3 },
-      },
+      ...five,
+      { id: "f", base: { successes: 2, trials: 3 }, candidate: { successes: 3, trials: 5 } },
     ];
-    expect(
-      compareCounts({
-        estimand: "fixed-cases",
-        cases: unequal,
-        alpha: 0.05,
-        margin: 0.1,
-        rng: createRng(1),
-      }).validated,
-    ).toBe(false);
+    expect(at(unequal)).toMatchObject({
+      validated: true,
+      regressionMethod: "within-case-permutation",
+    });
+    const many = [
+      ...five,
+      { id: "f", base: { successes: 6, trials: 6 }, candidate: { successes: 6, trials: 6 } },
+    ];
+    expect(at(many).limitations).toEqual([
+      "more than 5 trials per case and arm is outside the studied grid",
+    ]);
+    // 2 of 12 cells with one trial: below 90% with two or more.
+    const thin = { successes: 1, trials: 1 };
+    const sparse = [...five, { id: "f", base: thin, candidate: thin }];
+    expect(at(sparse).limitations).toEqual([
+      "fewer than 90% of case-arm cells have 2 or more completed trials",
+    ]);
+    // 1 of 10 cells with one trial: exactly 90%, inside.
+    const edge = [...five.slice(0, 4), { id: "e", base: ok.base, candidate: thin }];
+    expect(at(edge).validated).toBe(true);
   });
 });
 
@@ -442,13 +489,13 @@ describe("the fixed-cases estimand with unequal replicates (equal case weights)"
     const cases: CaseCounts[] = [
       {
         id: "a",
-        base: { successes: 8, trials: 8, replicates: 8 },
-        candidate: { successes: 0, trials: 8, replicates: 8 },
+        base: { successes: 8, trials: 8 },
+        candidate: { successes: 0, trials: 8 },
       },
       {
         id: "b",
-        base: { successes: 0, trials: 2, replicates: 2 },
-        candidate: { successes: 2, trials: 2, replicates: 2 },
+        base: { successes: 0, trials: 2 },
+        candidate: { successes: 2, trials: 2 },
       },
     ];
     expect(

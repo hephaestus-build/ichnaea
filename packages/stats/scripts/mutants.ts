@@ -26,14 +26,14 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "regression tail (fixed-cases)",
     file: "src/compare.ts",
-    from: 'regressionP = exactStratifiedTest(strata, "less").p;',
-    to: 'regressionP = exactStratifiedTest(strata, "greater").p;',
+    from: 'regression = exactStratifiedTest(strata, "less");',
+    to: 'regression = exactStratifiedTest(strata, "greater");',
   },
   {
     id: "regression tail (Tango)",
     file: "src/compare.ts",
-    from: 'regressionP: tangoTest(table, 0, "less", true).p,',
-    to: 'regressionP: tangoTest(table, 0, "greater", true).p,',
+    from: 'const regression = tangoTest(table, 0, "less", true);',
+    to: 'const regression = tangoTest(table, 0, "greater", true);',
   },
   {
     id: "score test tails swapped",
@@ -86,14 +86,99 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "validated everywhere",
     file: "src/compare.ts",
-    from: "validated: balanced && used.length >= 3,",
-    to: "validated: true,",
+    from: "      validated: limitations.length === 0,",
+    to: "      validated: true,",
   },
   {
     id: "exact test counts ties out",
     file: "src/exact-conditional.ts",
     from: 'alternative === "less" ? t <= observed : t >= observed',
     to: 'alternative === "less" ? t < observed : t > observed',
+  },
+  // Re-review of 23ac6ca: the surviving mutants and the DC-6 rules.
+  {
+    id: "M40 permutation wrong tail",
+    file: "src/randomisation.ts",
+    from: "if (statistic(x1) <= observed + tolerance) extreme++;",
+    to: "if (statistic(x1) >= observed - tolerance) extreme++;",
+  },
+  {
+    id: "M41 permutation p without +1",
+    file: "src/randomisation.ts",
+    from: "p: (1 + extreme) / (1 + resamples),",
+    to: "p: extreme / resamples,",
+  },
+  {
+    id: "M42 permutation with replacement",
+    file: "src/randomisation.ts",
+    from: "      picked++;\n      good--;\n    }\n    left--;",
+    to: "      picked++;\n    }",
+  },
+  {
+    id: "M43 permutation base rate over candidate trials",
+    file: "src/randomisation.ts",
+    from: "(s.candidate.successes + s.base.successes - (x1[i] as number)) / s.base.trials,",
+    to: "(s.candidate.successes + s.base.successes - (x1[i] as number)) / s.candidate.trials,",
+  },
+  {
+    id: "M44 Tango from 30 cases",
+    file: "src/compare.ts",
+    from: "export const SAMPLED_CASES_MIN_CASES = 300;",
+    to: "export const SAMPLED_CASES_MIN_CASES = 30;",
+  },
+  {
+    id: "M45 skew no-root returns infinity",
+    file: "src/score-difference.ts",
+    from: "if (discriminant < 0) return score;",
+    to: "if (discriminant < 0) return score > 0 ? Infinity : -Infinity;",
+  },
+  {
+    id: "M36 sampled-cases floor at alpha/2",
+    file: "src/power.ts",
+    from: '    1 - alpha,\n    "lower",\n    true,',
+    to: '    1 - alpha / 2,\n    "lower",\n    true,',
+  },
+  {
+    id: "DC-6 cases with one trial dropped",
+    file: "src/compare.ts",
+    from: "    .filter((c) => c.base.trials > 0 && c.candidate.trials > 0)\n    .map(",
+    to: "    .filter((c) => c.base.trials > 1 && c.candidate.trials > 1)\n    .map(",
+  },
+  {
+    id: "DC-6 gate from 3 cases",
+    file: "src/compare.ts",
+    from: "  minCases: 5,",
+    to: "  minCases: 3,",
+  },
+  {
+    id: "DC-6 excluded cases still validated",
+    file: "src/compare.ts",
+    from: "      ...(excludedCases > 0\n",
+    to: "      ...(false\n",
+  },
+  {
+    id: "DC-6 more than 5 trials validated",
+    file: "src/compare.ts",
+    from: "  maxTrials: 5,",
+    to: "  maxTrials: 6,",
+  },
+  {
+    id: "DC-6 sparse cells validated",
+    file: "src/compare.ts",
+    from: "  minShareWithTwoTrials: 0.9,",
+    to: "  minShareWithTwoTrials: 0.8,",
+  },
+  {
+    id: "DC-6 sampled-cases families ignored",
+    file: "src/compare.ts",
+    from: "    families.size !== used.length ||",
+    to: "    false ||",
+  },
+  {
+    id: "unequal counts sent to the exact test",
+    file: "src/compare.ts",
+    from: "const balanced = new Set(cells).size === 1;",
+    to: "const balanced = true;",
   },
 ];
 

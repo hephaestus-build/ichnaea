@@ -12,15 +12,18 @@ import {
   EstimandError,
   exactStratifiedTest,
   fixedCasesFloor,
+  fixedCasesMde,
+  zeroNoiseFloor,
   holm,
   sampledCasesFloor,
   sampledCasesNeeded,
   scoreDifferenceInterval,
-  signFlipInterval,
-  signFlipTest,
+  skewCorrected,
   tangoInterval,
   wilson,
+  withinCasePermutationTest,
 } from "../src/index.ts";
+import type { Count } from "../src/index.ts";
 
 const TOL = 1e-9;
 
@@ -79,26 +82,6 @@ describe("exact stratified conditional test", () => {
   it("is 1 when every stratum is uninformative", () => {
     const stable = { candidate: { successes: 2, trials: 2 }, base: { successes: 2, trials: 2 } };
     expect(exactStratifiedTest([stable, stable, stable], "less").p).toBeCloseTo(1, 12);
-  });
-});
-
-describe("sign-flip randomisation", () => {
-  it("enumerates every pattern for few families", () => {
-    expect(signFlipTest([1, 2, 3], 0, "greater").p).toBeCloseTo(1 / 8, 12);
-    expect(signFlipTest([1, 2, 3], 0, "greater").method).toBe("sign-flip-exact");
-  });
-
-  it("samples with a seeded generator for many families and never returns p = 0", () => {
-    const diffs = Array.from({ length: 40 }, () => 1);
-    const result = signFlipTest(diffs, 0, "greater", { rng: createRng(7), resamples: 999 });
-    expect(result.p).toBeCloseTo(1 / 1000, 12);
-    expect(() => signFlipTest(diffs, 0, "greater")).toThrow("seeded generator");
-  });
-
-  it("inverts into an interval that contains the estimate", () => {
-    const i = signFlipInterval([0.1, -0.2, 0.05, 0, 0.3, -0.1, 0.2], 0.95, "two");
-    expect(i.lower).toBeLessThanOrEqual(i.estimate);
-    expect(i.upper).toBeGreaterThanOrEqual(i.estimate);
   });
 });
 
@@ -191,10 +174,45 @@ describe("power", () => {
     expect(fixedCasesFloor(60, 2)).toBeGreaterThan(0);
   });
 
+  it("the zero-noise floor takes a trial count per case", () => {
+    expect(zeroNoiseFloor(Array.from({ length: 17 }, () => 3))).toBe(fixedCasesFloor(17, 3));
+    const mixed = zeroNoiseFloor([
+      ...Array.from({ length: 43 }, () => 2),
+      ...Array.from({ length: 17 }, () => 3),
+    ]);
+    expect(mixed).toBeLessThan(fixedCasesFloor(60, 2));
+    expect(mixed).toBeGreaterThan(fixedCasesFloor(60, 3));
+    // The closed form with the mean of (r − ½) over cases, as the equal-weight bound implies.
+    const z2 = 1.6448536269514722 ** 2;
+    expect(Math.abs(mixed - z2 / (43 * 1.5 + 17 * 2.5 + z2))).toBeLessThan(2e-3);
+  });
+
+  it("the MDE simulation draws each case's own trial count", () => {
+    const rates = [0.9, 0.8, 0.95, 0.7, 0.85, 0.9];
+    const a = fixedCasesMde({
+      rates,
+      replicates: [2, 3, 2, 3, 2, 3],
+      simulations: 200,
+      rng: createRng(5),
+    });
+    const b = fixedCasesMde({ rates, replicates: 2, simulations: 200, rng: createRng(5) });
+    expect(a.floor).toBe(zeroNoiseFloor([2, 3, 2, 3, 2, 3]));
+    expect(a.mde).not.toBe(b.mde);
+    expect(b.floor).toBe(fixedCasesFloor(6, 2));
+  });
+
   it("the sampled-cases floor is near z^2 / (n + z^2) and the sample-size rule matches 6.18 d / delta^2", () => {
     const z2 = 1.6448536269514722 ** 2;
     expect(Math.abs(sampledCasesFloor(60) - z2 / (60 + z2))).toBeLessThan(0.01);
     expect(sampledCasesNeeded(0.1, 0.05)).toBe(Math.ceil((6.182557 * 0.1) / 0.0025));
+  });
+
+  it("the sampled-cases floor uses the stated alpha", () => {
+    const z2 = 1.2815515655446004 ** 2;
+    expect(Math.abs(sampledCasesFloor(60, 0.1) - z2 / (60 + z2))).toBeLessThan(0.01);
+    const concordant = { both: 60, candidateOnly: 0, baseOnly: 0, neither: 0 };
+    expect(sampledCasesFloor(60, 0.1)).toBe(-tangoInterval(concordant, 0.9, "lower", true).lower);
+    expect(sampledCasesFloor(60)).toBe(-tangoInterval(concordant, 0.95, "lower", true).lower);
   });
 });
 
@@ -206,51 +224,146 @@ const cases = (r: number, n: number): CaseCounts[] =>
   }));
 
 describe("method choice per estimand", () => {
-  it("fixed-cases needs at least two replicates per case and arm", () => {
-    expect(() =>
-      compareCounts({ estimand: "fixed-cases", cases: cases(1, 20), alpha: 0.05, margin: 0.1 }),
-    ).toThrow(EstimandError);
-    const result = compareCounts({
-      estimand: "fixed-cases",
-      cases: cases(2, 20),
+  it("fixed-cases uses the stratified score interval, also for one trial per case and arm", () => {
+    for (const r of [1, 2]) {
+      const result = compareCounts({
+        estimand: "fixed-cases",
+        cases: cases(r, 20),
+        alpha: 0.05,
+        margin: 0.1,
+      });
+      expect(result.difference.method).toMatch(/^stratified-score-rd/);
+      expect(result.difference.sided).toBe("lower");
+      expect(result.regressionMethod).toBe("exact-stratified-conditional");
+    }
+    // One trial per case and arm is outside the studied grid.
+    expect(
+      compareCounts({ estimand: "fixed-cases", cases: cases(1, 20), alpha: 0.05, margin: 0.1 })
+        .validated,
+    ).toBe(false);
+  });
+
+  it("sampled-cases uses Tango from 300 single-trial cases in as many families, and is estimate-only below (DC-6)", () => {
+    const tango = compareCounts({
+      estimand: "sampled-cases",
+      cases: cases(1, 300),
       alpha: 0.05,
       margin: 0.1,
     });
-    expect(result.difference.method).toMatch(/^stratified-score-rd/);
-    expect(result.difference.sided).toBe("lower");
+    expect(tango.difference.method).toMatch(/^tango/);
+    expect(tango.regressionMethod).toBe("tango-score-skew");
+    expect(tango.validated).toBe(false);
+    for (const input of [
+      cases(1, 299),
+      cases(2, 400),
+      cases(1, 300).map((c, i) => ({ ...c, family: `f${i % 150}` })),
+    ]) {
+      expect(() =>
+        compareCounts({ estimand: "sampled-cases", cases: input, alpha: 0.05, margin: 0.1 }),
+      ).toThrow(EstimandError);
+    }
   });
 
-  it("sampled-cases uses Tango from 300 single-trial cases, and the sign-flip regression test otherwise", () => {
-    expect(
-      compareCounts({ estimand: "sampled-cases", cases: cases(1, 300), alpha: 0.05, margin: 0.1 })
-        .difference.method,
-    ).toMatch(/^tango/);
-    const small = compareCounts({
-      estimand: "sampled-cases",
-      cases: cases(1, 20),
-      alpha: 0.05,
-      margin: 0.5,
-      rng: createRng(3),
-    });
-    expect(small.difference.method).toMatch(/^sign-flip/);
-    // No validated non-inferiority method exists for this path: it never shows non-inferiority.
-    expect(small.difference.lower).toBe(-1);
-    expect(small.nonInferiorityP).toBe(1);
-    const families = cases(1, 20).map((c, i) => ({ ...c, family: `f${i % 5}` }));
-    expect(
-      compareCounts({ estimand: "sampled-cases", cases: families, alpha: 0.05, margin: 0.1 })
-        .difference.method,
-    ).toMatch(/^sign-flip/);
-  });
-
-  it("drops cases with one arm missing and reports them", () => {
+  it("excludes only cases with an arm missing, and reports them", () => {
     const input = [
       ...cases(2, 5),
       { id: "x", base: countsFromOutcomes([1, 1]), candidate: countsFromOutcomes([]) },
     ];
     expect(
       compareCounts({ estimand: "fixed-cases", cases: input, alpha: 0.05, margin: 0.1 })
-        .droppedCases,
+        .excludedCases,
     ).toBe(1);
+  });
+});
+
+describe("skewness correction", () => {
+  it("falls back to the uncorrected score when the corrected equation has no real root", () => {
+    // 1 + 4c(s + c) < 0 in both cases.
+    expect(skewCorrected(2, -1)).toBe(2);
+    expect(skewCorrected(-3, 0.5)).toBe(-3);
+    // With a root it corrects: the root of s = S + c(S² − 1).
+    const corrected = skewCorrected(2, 0.1);
+    expect(corrected + 0.1 * (corrected ** 2 - 1)).toBeCloseTo(2, 12);
+  });
+});
+
+const choose = (n: number, k: number): number => {
+  let r = 1;
+  for (let i = 1; i <= k; i++) r = (r * (n - k + i)) / i;
+  return r;
+};
+
+describe("within-case permutation test", () => {
+  type Strata = Array<{ candidate: Count; base: Count }>;
+  const meanDiff = (strata: Strata, x1: readonly number[]): number =>
+    strata.reduce(
+      (acc, s, i) =>
+        acc +
+        (x1[i] as number) / s.candidate.trials -
+        (s.candidate.successes + s.base.successes - (x1[i] as number)) / s.base.trials,
+      0,
+    ) / strata.length;
+  /** The exact conditional p-value P(statistic <= observed), enumerating every arm relabelling. */
+  const exactP = (strata: Strata): number => {
+    const observed = meanDiff(
+      strata,
+      strata.map((s) => s.candidate.successes),
+    );
+    let p = 0;
+    const walk = (i: number, x1: number[], prob: number): void => {
+      if (i === strata.length) {
+        if (meanDiff(strata, x1) <= observed + 1e-12) p += prob;
+        return;
+      }
+      const s = strata[i] as Strata[number];
+      const total = s.candidate.successes + s.base.successes;
+      const n = s.candidate.trials + s.base.trials;
+      for (
+        let k = Math.max(0, total - s.base.trials);
+        k <= Math.min(total, s.candidate.trials);
+        k++
+      ) {
+        const h =
+          (choose(s.candidate.trials, k) * choose(s.base.trials, total - k)) / choose(n, total);
+        walk(i + 1, [...x1, k], prob * h);
+      }
+    };
+    walk(0, [], 1);
+    return p;
+  };
+  // Unequal arm sizes in every case, so a wrong denominator or sampling with replacement shows.
+  const strata: Strata = [
+    { candidate: { successes: 1, trials: 3 }, base: { successes: 1, trials: 1 } },
+    { candidate: { successes: 2, trials: 5 }, base: { successes: 2, trials: 2 } },
+    { candidate: { successes: 1, trials: 2 }, base: { successes: 3, trials: 4 } },
+  ];
+
+  it("agrees with the exact conditional p-value", () => {
+    const exact = exactP(strata);
+    const resamples = 200_000;
+    const { p, method } = withinCasePermutationTest(strata, createRng(11), resamples);
+    expect(method).toBe("within-case-permutation");
+    expect(exact).toBeGreaterThan(0.05);
+    expect(exact).toBeLessThan(0.6);
+    expect(Math.abs(p - exact)).toBeLessThan(4 * Math.sqrt((exact * (1 - exact)) / resamples));
+  });
+
+  it("tests for a drop: a gain gives a large p-value", () => {
+    const gain: Strata = strata.map((s) => ({ candidate: s.base, base: s.candidate }));
+    const exact = exactP(gain);
+    const { p } = withinCasePermutationTest(gain, createRng(12), 100_000);
+    expect(Math.abs(p - exact)).toBeLessThan(0.01);
+    expect(withinCasePermutationTest(gain, createRng(12), 2000).p).toBeGreaterThan(
+      withinCasePermutationTest(strata, createRng(12), 2000).p,
+    );
+  });
+
+  it("counts the observed relabelling, so p is never 0", () => {
+    const extreme: Strata = Array.from({ length: 8 }, () => ({
+      candidate: { successes: 0, trials: 4 },
+      base: { successes: 4, trials: 4 },
+    }));
+    expect(exactP(extreme)).toBeLessThan(1e-12);
+    expect(withinCasePermutationTest(extreme, createRng(13), 9).p).toBe(0.1);
   });
 });

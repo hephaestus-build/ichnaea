@@ -1,7 +1,7 @@
 {
   "name": "@hephaestus-build/ichnaea-stats",
   "version": "0.0.0",
-  "description": "Ichnaea statistics: score intervals, paired and stratified tests, randomisation tests, power, validated by simulation.",
+  "description": "Ichnaea statistics: score intervals, paired and stratified tests, a within-case permutation test, power, validated by simulation.",
   "keywords": [
     "confidence-interval",
     "evaluation",
@@ -34,7 +34,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "test:sim": "vitest run --config vitest.sim.config.ts"
+    "test:sim": "vitest run --config vitest.sim.config.ts --silent=false"
   },
   "dependencies": {
     "@stdlib/random-base-mt19937": "0.2.3",
