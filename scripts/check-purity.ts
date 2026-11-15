@@ -10,9 +10,12 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
 
-/** Terms that identify one application. The npm scope `@hephaestus-build/` is allowed. */
+/**
+ * Terms that identify one application. Only the whole word `hephaestus-build`, the organisation and
+ * npm scope, is allowed: it also appears in tarball names such as `hephaestus-build-ichnaea-core`.
+ */
 export const TERMS: ReadonlyArray<readonly [RegExp, string]> = [
-  [/hephaestus(?!-build\/)/i, "an application name"],
+  [/hephaestus(?!-build\b)/i, "an application name"],
   [/\bheph\b/i, "an application name"],
   [/compositioneval|feedback-eval|gradlew/i, "an application path"],
   [/\bwithhold(ing)?\b|practice review/i, "an application concept"],
