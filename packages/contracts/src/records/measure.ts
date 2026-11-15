@@ -21,7 +21,7 @@ export const MeasureCard = z.object({
   version: none(SemVer),
   construct: none(Text),
   operationalDefinition: none(Text),
-  valueType: none(z.enum(["binary", "score", "level", "preference"])),
+  valueType: none(z.enum(["binary", "proportion", "score", "level", "preference"])),
   levels: none(z.array(Text).min(2)).optional(),
   unit: none(Text),
   direction: none(z.enum(["higher", "lower"])),

@@ -117,11 +117,18 @@ export const DigestRef = z.object({
 
 /**
  * The result of one measurement or annotation, tagged by kind: a pass or fail, a score, a level
- * of an anchored scale, or a preference between two outputs.
+ * of an anchored scale, a preference between two outputs, or a proportion of items inside one
+ * trial (for example the expected findings an output raised: 3 of 4). A proportion's successes
+ * must not exceed its trials; readers check it, because a schema cannot compare two fields.
  */
 export const MeasuredValue = z.discriminatedUnion("type", [
   z.object({ type: none(z.literal("binary")), pass: none(z.boolean()) }),
   z.object({ type: none(z.literal("score")), value: none(Real) }),
+  z.object({
+    type: none(z.literal("proportion")),
+    successes: none(z.int().min(0)),
+    trials: none(z.int().min(1)),
+  }),
   z.object({ type: none(z.literal("level")), level: none(Text) }),
   z.object({
     type: none(z.literal("preference")),

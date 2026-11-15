@@ -78,6 +78,7 @@
       },
       "x-ichnaea-known": [
         "binary",
+        "proportion",
         "score",
         "level",
         "preference"

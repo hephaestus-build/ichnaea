@@ -70,6 +70,7 @@
       "type": "string",
       "enum": [
         "binary",
+        "proportion",
         "score",
         "level",
         "preference"
