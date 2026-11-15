@@ -57,13 +57,41 @@ commands from a checkout of `main`.
    the history as it is.
 
 1. **People.** Everyone with write access or more has a row in the table at the top, with an area.
-   Remove write access from anyone without a row. The two lists must be equal:
+   Nothing with write access or more stays outside the table. Access comes from a direct
+   collaborator role or from a team, so list both. The first list includes the members of each
+   team, with the role that the team gives them:
 
    ```sh
    gh api repos/hephaestus-build/ichnaea/collaborators --paginate \
      --jq '.[] | select(.role_name != "read" and .role_name != "triage") | .login'
-   gh api --method DELETE repos/hephaestus-build/ichnaea/collaborators/<login>
+   gh api repos/hephaestus-build/ichnaea/teams --paginate \
+     --jq '.[] | select(.permission != "pull" and .permission != "triage") | .slug'
+   gh api orgs/hephaestus-build --jq .default_repository_permission # read or none
    ```
+
+   A team keeps write access or more only if every member has a row. List the members with
+   `gh api orgs/hephaestus-build/teams/<team>/members --paginate --jq '.[].login'`. For each other
+   team, the maintainers choose one of two options, and decide on the accounts that have write
+   access and no row at the same time:
+   - **Remove the team from the repository.** Its members keep only the organisation's base
+     permission:
+
+     ```sh
+     gh api --method DELETE orgs/hephaestus-build/teams/<team>/repos/hephaestus-build/ichnaea
+     ```
+
+   - **Lower the team to triage.** Its members can still label, assign and close issues and pull
+     requests, but cannot push or merge:
+
+     ```sh
+     gh api --method PUT orgs/hephaestus-build/teams/<team>/repos/hephaestus-build/ichnaea \
+       -f permission=triage
+     ```
+
+   Remove a direct collaborator without a row with
+   `gh api --method DELETE repos/hephaestus-build/ichnaea/collaborators/<login>`. Then run the
+   first two commands again. The first list must equal the GitHub column of the table, and every
+   team in the second list must have only members with a row.
 
 2. **Code owners.** `.github/CODEOWNERS` is on `main` and names the maintainers in the table. With
    one maintainer it only routes review requests. Before step 6 applies variant A, every path has
