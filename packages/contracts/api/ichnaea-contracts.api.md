@@ -659,7 +659,20 @@ export const Comparison: z.ZodObject<{
         }>;
     }, z.core.$strict>]>;
     regressionMethod: z.ZodString;
-    validated: z.ZodBoolean;
+    regression: z.ZodDiscriminatedUnion<[z.ZodObject<{
+        validated: z.ZodLiteral<true>;
+        limitations: z.ZodArray<z.ZodString>;
+    }, z.core.$strict>, z.ZodObject<{
+        validated: z.ZodLiteral<false>;
+        limitations: z.ZodArray<z.ZodString>;
+    }, z.core.$strict>], "validated">;
+    nonInferiority: z.ZodDiscriminatedUnion<[z.ZodObject<{
+        validated: z.ZodLiteral<true>;
+        limitations: z.ZodArray<z.ZodString>;
+    }, z.core.$strict>, z.ZodObject<{
+        validated: z.ZodLiteral<false>;
+        limitations: z.ZodArray<z.ZodString>;
+    }, z.core.$strict>], "validated">;
     flips: z.ZodArray<z.ZodObject<{
         case: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
         direction: z.ZodEnum<{
@@ -938,7 +951,20 @@ export const Decision: z.ZodObject<{
                 }>;
             }, z.core.$strict>]>;
             regressionMethod: z.ZodString;
-            validated: z.ZodBoolean;
+            regression: z.ZodDiscriminatedUnion<[z.ZodObject<{
+                validated: z.ZodLiteral<true>;
+                limitations: z.ZodArray<z.ZodString>;
+            }, z.core.$strict>, z.ZodObject<{
+                validated: z.ZodLiteral<false>;
+                limitations: z.ZodArray<z.ZodString>;
+            }, z.core.$strict>], "validated">;
+            nonInferiority: z.ZodDiscriminatedUnion<[z.ZodObject<{
+                validated: z.ZodLiteral<true>;
+                limitations: z.ZodArray<z.ZodString>;
+            }, z.core.$strict>, z.ZodObject<{
+                validated: z.ZodLiteral<false>;
+                limitations: z.ZodArray<z.ZodString>;
+            }, z.core.$strict>], "validated">;
             flips: z.ZodArray<z.ZodObject<{
                 case: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
                 direction: z.ZodEnum<{
@@ -1005,7 +1031,20 @@ export const Decision: z.ZodObject<{
                     nan: "nan";
                 }>;
             }, z.core.$strict>]>;
-            validated: z.ZodBoolean;
+            regression: z.ZodDiscriminatedUnion<[z.ZodObject<{
+                validated: z.ZodLiteral<true>;
+                limitations: z.ZodArray<z.ZodString>;
+            }, z.core.$strict>, z.ZodObject<{
+                validated: z.ZodLiteral<false>;
+                limitations: z.ZodArray<z.ZodString>;
+            }, z.core.$strict>], "validated">;
+            nonInferiority: z.ZodDiscriminatedUnion<[z.ZodObject<{
+                validated: z.ZodLiteral<true>;
+                limitations: z.ZodArray<z.ZodString>;
+            }, z.core.$strict>, z.ZodObject<{
+                validated: z.ZodLiteral<false>;
+                limitations: z.ZodArray<z.ZodString>;
+            }, z.core.$strict>], "validated">;
             verdict: z.ZodEnum<{
                 "ESTIMATE-ONLY": "ESTIMATE-ONLY";
                 INCONCLUSIVE: "INCONCLUSIVE";
@@ -1760,7 +1799,20 @@ export const MeasureOutcome: z.ZodObject<{
             }>;
         }, z.core.$strict>]>;
         regressionMethod: z.ZodString;
-        validated: z.ZodBoolean;
+        regression: z.ZodDiscriminatedUnion<[z.ZodObject<{
+            validated: z.ZodLiteral<true>;
+            limitations: z.ZodArray<z.ZodString>;
+        }, z.core.$strict>, z.ZodObject<{
+            validated: z.ZodLiteral<false>;
+            limitations: z.ZodArray<z.ZodString>;
+        }, z.core.$strict>], "validated">;
+        nonInferiority: z.ZodDiscriminatedUnion<[z.ZodObject<{
+            validated: z.ZodLiteral<true>;
+            limitations: z.ZodArray<z.ZodString>;
+        }, z.core.$strict>, z.ZodObject<{
+            validated: z.ZodLiteral<false>;
+            limitations: z.ZodArray<z.ZodString>;
+        }, z.core.$strict>], "validated">;
         flips: z.ZodArray<z.ZodObject<{
             case: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
             direction: z.ZodEnum<{
@@ -1827,7 +1879,20 @@ export const MeasureOutcome: z.ZodObject<{
                 nan: "nan";
             }>;
         }, z.core.$strict>]>;
-        validated: z.ZodBoolean;
+        regression: z.ZodDiscriminatedUnion<[z.ZodObject<{
+            validated: z.ZodLiteral<true>;
+            limitations: z.ZodArray<z.ZodString>;
+        }, z.core.$strict>, z.ZodObject<{
+            validated: z.ZodLiteral<false>;
+            limitations: z.ZodArray<z.ZodString>;
+        }, z.core.$strict>], "validated">;
+        nonInferiority: z.ZodDiscriminatedUnion<[z.ZodObject<{
+            validated: z.ZodLiteral<true>;
+            limitations: z.ZodArray<z.ZodString>;
+        }, z.core.$strict>, z.ZodObject<{
+            validated: z.ZodLiteral<false>;
+            limitations: z.ZodArray<z.ZodString>;
+        }, z.core.$strict>], "validated">;
         verdict: z.ZodEnum<{
             "ESTIMATE-ONLY": "ESTIMATE-ONLY";
             INCONCLUSIVE: "INCONCLUSIVE";
@@ -2667,7 +2732,20 @@ export const SensitivityResult: z.ZodObject<{
             nan: "nan";
         }>;
     }, z.core.$strict>]>;
-    validated: z.ZodBoolean;
+    regression: z.ZodDiscriminatedUnion<[z.ZodObject<{
+        validated: z.ZodLiteral<true>;
+        limitations: z.ZodArray<z.ZodString>;
+    }, z.core.$strict>, z.ZodObject<{
+        validated: z.ZodLiteral<false>;
+        limitations: z.ZodArray<z.ZodString>;
+    }, z.core.$strict>], "validated">;
+    nonInferiority: z.ZodDiscriminatedUnion<[z.ZodObject<{
+        validated: z.ZodLiteral<true>;
+        limitations: z.ZodArray<z.ZodString>;
+    }, z.core.$strict>, z.ZodObject<{
+        validated: z.ZodLiteral<false>;
+        limitations: z.ZodArray<z.ZodString>;
+    }, z.core.$strict>], "validated">;
     verdict: z.ZodEnum<{
         "ESTIMATE-ONLY": "ESTIMATE-ONLY";
         INCONCLUSIVE: "INCONCLUSIVE";
@@ -2964,6 +3042,15 @@ export const Usage: z.ZodObject<{
     costUnit: z.ZodOptional<z.ZodString>;
     wallMs: z.ZodOptional<z.ZodNumber>;
 }, z.core.$strict>;
+
+// @public
+export const Validity: z.ZodDiscriminatedUnion<[z.ZodObject<{
+    validated: z.ZodLiteral<true>;
+    limitations: z.ZodArray<z.ZodString>;
+}, z.core.$strict>, z.ZodObject<{
+    validated: z.ZodLiteral<false>;
+    limitations: z.ZodArray<z.ZodString>;
+}, z.core.$strict>], "validated">;
 
 // @public
 export const Verdict: z.ZodEnum<{

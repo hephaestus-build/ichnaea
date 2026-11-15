@@ -1,8 +1,9 @@
 // REQ-82, REQ-83, REQ-128, REQ-129: reports from records only, byte-identical, recomputed, linted.
 import { describe, expect, it } from "vitest";
 
-import { decide } from "@hephaestus-build/ichnaea-decide";
+import { decide, FLOOR_NOT_SET_REASON } from "@hephaestus-build/ichnaea-decide";
 
+import { decideFloorSet } from "../../decide/test/support/floor-set.ts";
 import { scenario } from "../../decide/test/support/scenario.ts";
 import {
   decisionView,
@@ -94,7 +95,7 @@ describe("reports", () => {
     const md = renderMarkdown(view);
     expect(md).toContain("**ESTIMATE-ONLY** estimates on these 40 cases, without a verdict: ");
     expect(md).not.toMatch(/beyond run-to-run noise/);
-    expect(view.measures[0]?.difference?.bound).toMatch(/^≥ [+−]?\d+\.\d pts$/);
+    expect(view.measures[0]?.difference?.bound).toMatch(/^≥ [+−]?\d+\.\d pts \(not validated\)$/);
     expect(lintReport(md)).toEqual([]);
     expect(lintReport(renderHtml(view))).toEqual([]);
   });
@@ -103,7 +104,7 @@ describe("reports", () => {
     const { decision } = await decided({ secondary: ["app/extra"] });
     const md = renderMarkdown(decisionView(decision, "synthetic"));
     const row = md.split("\n").find((l) => l.startsWith("| app/extra"));
-    expect(row).toMatch(/\| [+−]?\d+\.\d pts \| ≥ [+−]?\d+\.\d pts \| – \|$/);
+    expect(row).toMatch(/\| [+−]?\d+\.\d pts \| ≥ [+−]?\d+\.\d pts \(not validated\) \| – \|$/);
   });
 
   it("the lint finds a rate or a difference without its interval, in Markdown and HTML", async () => {
@@ -249,6 +250,61 @@ describe("reports", () => {
     ]);
     expect(view.lineage).toContainEqual(["Measure app/correct", "1.0.0"]);
     expect(view.lineage).toContainEqual(["Plugin app", "1.2.3"]);
+  });
+
+  it("labels a bound 'not validated' unless the non-inferiority result is validated (decision 0015)", async () => {
+    const stable = { cases: 60, replicates: 3, base: () => 0.97, candidate: () => 0.97 } as const;
+    const s = await scenario(stable);
+    const unset = await decide({ ...s, decidedAt: "2026-11-15T12:00:00Z", ichnaea: "0.0.0" });
+    // The regression result is validated, and never vouches for the interval.
+    expect(unset.measures[0]?.comparisons[0]?.regression.validated).toBe(true);
+    expect(unset.measures[0]?.comparisons[0]?.nonInferiority.validated).toBe(false);
+    const view = decisionView(unset, "synthetic");
+    expect(view.measures[0]?.difference?.bound).toMatch(/^≥ [+−]?\d+\.\d pts \(not validated\)$/);
+    const html = renderHtml(view);
+    expect(html).toMatch(/data-col="bound" data-validated="false"[^>]*>≥ [^<]* \(not validated\)</);
+    expect(html).toContain(
+      "Non-inferiority needs the bound to the right of the margin. The bound is not validated.",
+    );
+    expect(lintReport(html)).toEqual([]);
+    expect(lintReport(renderMarkdown(view))).toEqual([]);
+    const set = decisionView(await decideFloorSet(s), "synthetic");
+    expect(set.verdict).toBe("PASS");
+    expect(set.measures[0]?.difference?.bound).toMatch(/^≥ [+−]?\d+\.\d pts$/);
+    expect(renderHtml(set)).not.toContain("not validated");
+  });
+
+  it("labels each sensitivity bound by its own non-inferiority result", async () => {
+    const { decision } = await decided({
+      outcome: (t) =>
+        t.case === "case-001" && t.replicate === 0 ? "infrastructure_failure" : undefined,
+    });
+    const view = decisionView(decision, "synthetic");
+    expect(view.sensitivity).toHaveLength(2);
+    for (const row of view.sensitivity) {
+      expect(row.validated).toBe(false);
+      expect(row.bound).toMatch(/ \(not validated\)$/);
+    }
+  });
+
+  it("the lint finds an HTML bound marked not validated without its label", async () => {
+    const { decision } = await decided();
+    const html = renderHtml(decisionView(decision, "synthetic")).replace(" (not validated)<", "<");
+    expect(lintReport(html)).toEqual([
+      expect.stringMatching(
+        /^an estimate without its interval: a bound \(≥ [^)]*\) that is not validated, without its label$/,
+      ),
+    ]);
+  });
+
+  it("says in plain words why an unchanged candidate is INCONCLUSIVE while the floor is not set", async () => {
+    const s = await scenario({ cases: 60, replicates: 3, base: () => 0.97, candidate: () => 0.97 });
+    const decision = await decide({ ...s, decidedAt: "2026-11-15T12:00:00Z", ichnaea: "0.0.0" });
+    const view = decisionView(decision, "synthetic");
+    expect(renderMarkdown(view)).toContain(
+      `**INCONCLUSIVE** on these 60 cases, beyond run-to-run noise: ${FLOOR_NOT_SET_REASON}`,
+    );
+    expect(renderHtml(view)).toContain(FLOOR_NOT_SET_REASON);
   });
 
   it("shows no margin for a secondary measure, which is descriptive", async () => {

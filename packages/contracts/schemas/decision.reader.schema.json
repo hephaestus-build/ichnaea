@@ -880,16 +880,187 @@
                     "retention": "record"
                   }
                 },
-                "validated": {
-                  "type": "boolean",
-                  "x-ichnaea-data": {
-                    "class": "none",
-                    "identifier": "none",
-                    "egress": [
-                      "*"
-                    ],
-                    "retention": "record"
-                  }
+                "regression": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "validated": {
+                          "type": "boolean",
+                          "const": true,
+                          "x-ichnaea-data": {
+                            "class": "none",
+                            "identifier": "none",
+                            "egress": [
+                              "*"
+                            ],
+                            "retention": "record"
+                          }
+                        },
+                        "limitations": {
+                          "maxItems": 0,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "x-ichnaea-data": {
+                            "class": "none",
+                            "identifier": "none",
+                            "egress": [
+                              "*"
+                            ],
+                            "retention": "record"
+                          }
+                        }
+                      },
+                      "required": [
+                        "validated",
+                        "limitations"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "validated": {
+                          "type": "boolean",
+                          "const": false,
+                          "x-ichnaea-data": {
+                            "class": "none",
+                            "identifier": "none",
+                            "egress": [
+                              "*"
+                            ],
+                            "retention": "record"
+                          }
+                        },
+                        "limitations": {
+                          "minItems": 1,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "x-ichnaea-data": {
+                            "class": "none",
+                            "identifier": "none",
+                            "egress": [
+                              "*"
+                            ],
+                            "retention": "record"
+                          }
+                        }
+                      },
+                      "required": [
+                        "validated",
+                        "limitations"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "validated": {
+                          "type": "string",
+                          "pattern": "^(?!(?:true|false)$)"
+                        }
+                      },
+                      "required": [
+                        "validated"
+                      ],
+                      "x-ichnaea-unknown-kind": true
+                    }
+                  ]
+                },
+                "nonInferiority": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "validated": {
+                          "type": "boolean",
+                          "const": true,
+                          "x-ichnaea-data": {
+                            "class": "none",
+                            "identifier": "none",
+                            "egress": [
+                              "*"
+                            ],
+                            "retention": "record"
+                          }
+                        },
+                        "limitations": {
+                          "maxItems": 0,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "x-ichnaea-data": {
+                            "class": "none",
+                            "identifier": "none",
+                            "egress": [
+                              "*"
+                            ],
+                            "retention": "record"
+                          }
+                        }
+                      },
+                      "required": [
+                        "validated",
+                        "limitations"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "validated": {
+                          "type": "boolean",
+                          "const": false,
+                          "x-ichnaea-data": {
+                            "class": "none",
+                            "identifier": "none",
+                            "egress": [
+                              "*"
+                            ],
+                            "retention": "record"
+                          }
+                        },
+                        "limitations": {
+                          "minItems": 1,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "x-ichnaea-data": {
+                            "class": "none",
+                            "identifier": "none",
+                            "egress": [
+                              "*"
+                            ],
+                            "retention": "record"
+                          }
+                        }
+                      },
+                      "required": [
+                        "validated",
+                        "limitations"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "validated": {
+                          "type": "string",
+                          "pattern": "^(?!(?:true|false)$)"
+                        }
+                      },
+                      "required": [
+                        "validated"
+                      ],
+                      "x-ichnaea-unknown-kind": true
+                    }
+                  ]
                 },
                 "flips": {
                   "type": "array",
@@ -969,7 +1140,8 @@
                 "regressionP",
                 "regressionPAdjusted",
                 "regressionMethod",
-                "validated",
+                "regression",
+                "nonInferiority",
                 "flips"
               ]
             }
@@ -1278,16 +1450,187 @@
                     "retention": "record"
                   }
                 },
-                "validated": {
-                  "type": "boolean",
-                  "x-ichnaea-data": {
-                    "class": "none",
-                    "identifier": "none",
-                    "egress": [
-                      "*"
-                    ],
-                    "retention": "record"
-                  }
+                "regression": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "validated": {
+                          "type": "boolean",
+                          "const": true,
+                          "x-ichnaea-data": {
+                            "class": "none",
+                            "identifier": "none",
+                            "egress": [
+                              "*"
+                            ],
+                            "retention": "record"
+                          }
+                        },
+                        "limitations": {
+                          "maxItems": 0,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "x-ichnaea-data": {
+                            "class": "none",
+                            "identifier": "none",
+                            "egress": [
+                              "*"
+                            ],
+                            "retention": "record"
+                          }
+                        }
+                      },
+                      "required": [
+                        "validated",
+                        "limitations"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "validated": {
+                          "type": "boolean",
+                          "const": false,
+                          "x-ichnaea-data": {
+                            "class": "none",
+                            "identifier": "none",
+                            "egress": [
+                              "*"
+                            ],
+                            "retention": "record"
+                          }
+                        },
+                        "limitations": {
+                          "minItems": 1,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "x-ichnaea-data": {
+                            "class": "none",
+                            "identifier": "none",
+                            "egress": [
+                              "*"
+                            ],
+                            "retention": "record"
+                          }
+                        }
+                      },
+                      "required": [
+                        "validated",
+                        "limitations"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "validated": {
+                          "type": "string",
+                          "pattern": "^(?!(?:true|false)$)"
+                        }
+                      },
+                      "required": [
+                        "validated"
+                      ],
+                      "x-ichnaea-unknown-kind": true
+                    }
+                  ]
+                },
+                "nonInferiority": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "validated": {
+                          "type": "boolean",
+                          "const": true,
+                          "x-ichnaea-data": {
+                            "class": "none",
+                            "identifier": "none",
+                            "egress": [
+                              "*"
+                            ],
+                            "retention": "record"
+                          }
+                        },
+                        "limitations": {
+                          "maxItems": 0,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "x-ichnaea-data": {
+                            "class": "none",
+                            "identifier": "none",
+                            "egress": [
+                              "*"
+                            ],
+                            "retention": "record"
+                          }
+                        }
+                      },
+                      "required": [
+                        "validated",
+                        "limitations"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "validated": {
+                          "type": "boolean",
+                          "const": false,
+                          "x-ichnaea-data": {
+                            "class": "none",
+                            "identifier": "none",
+                            "egress": [
+                              "*"
+                            ],
+                            "retention": "record"
+                          }
+                        },
+                        "limitations": {
+                          "minItems": 1,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "x-ichnaea-data": {
+                            "class": "none",
+                            "identifier": "none",
+                            "egress": [
+                              "*"
+                            ],
+                            "retention": "record"
+                          }
+                        }
+                      },
+                      "required": [
+                        "validated",
+                        "limitations"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "validated": {
+                          "type": "string",
+                          "pattern": "^(?!(?:true|false)$)"
+                        }
+                      },
+                      "required": [
+                        "validated"
+                      ],
+                      "x-ichnaea-unknown-kind": true
+                    }
+                  ]
                 },
                 "verdict": {
                   "type": "string",
@@ -1323,7 +1666,8 @@
                 "difference",
                 "nonInferiorityP",
                 "regressionPAdjusted",
-                "validated",
+                "regression",
+                "nonInferiority",
                 "verdict",
                 "changesVerdict"
               ]

@@ -36,8 +36,18 @@ export interface MeasureRow {
     readonly method: string;
     readonly negativeFlips: number;
     readonly positiveFlips: number;
+    /**
+     * Whether the bound is validated: only the comparison's non-inferiority result vouches for it
+     * (decision 0015). A bound that is not validated is labelled so.
+     */
+    readonly validated: boolean;
     /** The numbers behind the difference axis, when the bound is finite. */
-    readonly axis?: { readonly estimate: number; readonly lower: number; readonly margin: number };
+    readonly axis?: {
+      readonly estimate: number;
+      readonly lower: number;
+      readonly margin: number;
+      readonly validated: boolean;
+    };
   };
   readonly notes: readonly string[];
 }
@@ -64,6 +74,8 @@ export interface SensitivityRow {
   readonly imputation: string;
   readonly difference: string;
   readonly bound: string;
+  /** Whether the bound is validated, as in `MeasureRow`. */
+  readonly validated: boolean;
   readonly verdict: string;
   readonly changes: string;
 }
@@ -94,20 +106,27 @@ export interface DecisionView {
   readonly lineage: ReadonlyArray<readonly [string, string]>;
 }
 
+/** The label of a bound that its comparison's non-inferiority result does not vouch for. */
+export const NOT_VALIDATED = "(not validated)";
+
 /**
- * Builds the view model from a decision record alone. It computes nothing new: every number comes
- * from the record (REQ-82, REQ-128).
+ * A difference and its one-sided bound, or dashes when there is no interval to show. A bound is
+ * labelled "not validated" unless the non-inferiority result is validated; the regression result
+ * never vouches for it (decision 0015).
  */
-/** A difference and its one-sided bound, or dashes when there is no interval to show. */
 function differenceCells(
   difference: Decision["measures"][number]["comparisons"][number]["difference"],
+  nonInferiority: Decision["measures"][number]["comparisons"][number]["nonInferiority"],
 ): {
   estimate: string;
   bound: string;
 } {
   // An estimate is never shown without its interval (REQ-129); the notes say why there is none.
   if (typeof difference.lower !== "number") return { estimate: "–", bound: "–" };
-  return { estimate: points(difference.estimate), bound: `≥ ${points(difference.lower)}` };
+  return {
+    estimate: points(difference.estimate),
+    bound: `≥ ${points(difference.lower)}${nonInferiority.validated ? "" : ` ${NOT_VALIDATED}`}`,
+  };
 }
 
 function powerRow(statement: PowerRow["statement"], p: PowerEntry): PowerRow {
@@ -134,6 +153,10 @@ const IMPUTATION: Readonly<Record<string, string>> = {
   "against-regression": "missing candidate trials pass, missing base trials fail",
 };
 
+/**
+ * Builds the view model from a decision record alone. It computes nothing new: every number comes
+ * from the record (REQ-82, REQ-128).
+ */
 export function decisionView(
   decision: Decision,
   suite: string,
@@ -166,7 +189,7 @@ export function decisionView(
         ...(comparison
           ? {
               difference: {
-                ...differenceCells(comparison.difference),
+                ...differenceCells(comparison.difference, comparison.nonInferiority),
                 // A secondary measure has no margin: it is descriptive.
                 margin:
                   m.tier === "secondary"
@@ -175,6 +198,7 @@ export function decisionView(
                 method: comparison.difference.method,
                 negativeFlips: comparison.flips.filter((f) => f.direction === "negative").length,
                 positiveFlips: comparison.flips.filter((f) => f.direction === "positive").length,
+                validated: comparison.nonInferiority.validated,
                 ...(typeof comparison.difference.estimate === "number" &&
                 typeof comparison.difference.lower === "number"
                   ? {
@@ -182,6 +206,7 @@ export function decisionView(
                         estimate: comparison.difference.estimate,
                         lower: comparison.difference.lower,
                         margin: comparison.margin,
+                        validated: comparison.nonInferiority.validated,
                       },
                     }
                   : {}),
@@ -213,7 +238,8 @@ export function decisionView(
         m.sensitivity.map((s) => ({
           measure: m.measure,
           imputation: IMPUTATION[s.imputation] ?? s.imputation,
-          ...differenceCells(s.difference),
+          ...differenceCells(s.difference, s.nonInferiority),
+          validated: s.nonInferiority.validated,
           verdict: s.verdict,
           changes: s.changesVerdict ? "yes" : "no",
         })),

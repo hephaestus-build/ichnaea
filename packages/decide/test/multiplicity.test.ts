@@ -1,9 +1,16 @@
 // REQ-51: non-inferiority per measure at the unadjusted level (intersection-union), Holm only over
 // the tests that can produce REGRESSION.
-import { type CaseCounts, VALIDATED_MARGIN_FLOOR } from "@hephaestus-build/ichnaea-stats";
+import {
+  type CaseCounts,
+  holm,
+  MARGIN_FLOOR_NOT_SET,
+  VALIDATED_MARGIN_FLOOR,
+} from "@hephaestus-build/ichnaea-stats";
 import { describe, expect, it } from "vitest";
 
+import { decidePrimariesWith } from "../src/decide.ts";
 import { decidePrimaries, type PrimaryCounts } from "../src/index.ts";
+import { floorSet } from "./support/floor-set.ts";
 
 /** n cases with r trials; the base passes every trial, the candidate fails one in `fails` cases. */
 const counts = (n: number, r: number, fails: number): CaseCounts[] =>
@@ -20,22 +27,45 @@ const measure = (id: string, cases: CaseCounts[], margin: number): PrimaryCounts
 });
 const decideAll = (measures: PrimaryCounts[], alpha = 0.05) =>
   decidePrimaries({ estimand: "fixed-cases", alpha, seed: 1, measures });
+/** The same rule, as if the margin floor were set. */
+const decideFloorSet = (measures: PrimaryCounts[], alpha = 0.05) =>
+  decidePrimariesWith({ estimand: "fixed-cases", alpha, seed: 1, measures }, floorSet);
+const four = (margin: number) =>
+  ["app/a", "app/b", "app/c", "app/d"].map((id) => measure(id, counts(60, 3, 6), margin));
 
 describe("intersection-union and Holm (REQ-51)", () => {
-  it("four primaries, each non-inferior at α but not at α/4, PASS", () => {
+  it("four primaries, each non-inferior at α but not at α/4, PASS once non-inferiority is validated", () => {
     const margin = 0.08;
     expect(margin).toBeGreaterThanOrEqual(VALIDATED_MARGIN_FLOOR);
-    const verdicts = decideAll(
-      ["app/a", "app/b", "app/c", "app/d"].map((id) => measure(id, counts(60, 3, 6), margin)),
-    );
+    const verdicts = decideFloorSet(four(margin));
     for (const v of verdicts.values()) {
-      expect(v.comparison?.validated).toBe(true);
+      expect(v.comparison?.regression.validated).toBe(true);
+      expect(v.comparison?.nonInferiority.validated).toBe(true);
       expect(v.comparison?.nonInferiorityP).toBeGreaterThan(0.05 / 4);
       expect(v.comparison?.nonInferiorityP).toBeLessThan(0.05);
       // The raw regression p-value rejects; Holm across the four does not.
       expect(v.comparison?.regressionP).toBeLessThan(0.05);
       expect(v.regressionPAdjusted).toBeGreaterThan(0.05);
       expect(v.verdict).toBe("NON-INFERIOR");
+    }
+  });
+
+  it("while the margin floor is not set, the same four are INCONCLUSIVE, and Holm still covers them", () => {
+    const verdicts = decideAll(four(0.08));
+    const raw = [...verdicts.values()].map((v) => v.comparison?.regressionP as number);
+    // The family is the comparisons whose regression result is validated: all four.
+    expect([...verdicts.values()].map((v) => v.regressionPAdjusted)).toEqual(holm(raw));
+    for (const v of verdicts.values()) {
+      expect(v.comparison?.regression.validated).toBe(true);
+      expect(v.comparison?.nonInferiority).toEqual({
+        validated: false,
+        limitations: [MARGIN_FLOOR_NOT_SET],
+      });
+      expect(v).toMatchObject({
+        verdict: "INCONCLUSIVE",
+        cause: "non-inferiority-unvalidated",
+        notes: [`the non-inferiority result is not validated: ${MARGIN_FLOOR_NOT_SET}`],
+      });
     }
   });
 

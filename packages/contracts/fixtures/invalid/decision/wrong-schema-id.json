@@ -83,7 +83,14 @@
           "regressionP": 0.71,
           "regressionPAdjusted": 0.71,
           "regressionMethod": "exact-stratified-conditional",
-          "validated": true,
+          "regression": {
+            "validated": true,
+            "limitations": []
+          },
+          "nonInferiority": {
+            "validated": true,
+            "limitations": []
+          },
           "flips": [
             {
               "case": "refund-window-de",
@@ -109,7 +116,14 @@
           },
           "nonInferiorityP": 0.006,
           "regressionPAdjusted": 0.62,
-          "validated": true,
+          "regression": {
+            "validated": true,
+            "limitations": []
+          },
+          "nonInferiority": {
+            "validated": true,
+            "limitations": []
+          },
           "verdict": "NON-INFERIOR",
           "changesVerdict": false
         },
@@ -125,7 +139,14 @@
           },
           "nonInferiorityP": 0.003,
           "regressionPAdjusted": 0.78,
-          "validated": true,
+          "regression": {
+            "validated": true,
+            "limitations": []
+          },
+          "nonInferiority": {
+            "validated": true,
+            "limitations": []
+          },
           "verdict": "NON-INFERIOR",
           "changesVerdict": false
         }

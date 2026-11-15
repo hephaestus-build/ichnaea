@@ -10,13 +10,20 @@ A run verdict is reached in this order (decision 0011):
 2. **REGRESSION** when a hard gate failed, in either mode.
 3. **No verdict** when the plan is estimate-only or the run is exploratory. Every difference still
    has its interval.
-4. Otherwise, per primary measure:
-   - NON-INFERIOR when the one-sided bound clears the margin less its safety margin, each measure
-     at the unadjusted level.
-   - REGRESSION when the regression test rejects after Holm across the validated comparisons.
-   - INCONCLUSIVE otherwise.
+4. Otherwise, per primary measure (decision 0015):
+   - NON-INFERIOR when both results of the comparison, `regression` and `nonInferiority`, are
+     validated, and the one-sided bound clears the margin less its safety margin. Each measure is
+     tested at the unadjusted level.
+   - REGRESSION when the regression result is validated and the regression test rejects after Holm
+     across the comparisons whose regression result is validated.
+   - INCONCLUSIVE otherwise, with the reason.
 
    The run is PASS only when every primary measure is non-inferior.
+
+**No run passes yet.** The statistics package has not set the validated margin floor, so no
+non-inferiority result is validated. A real drop still gives REGRESSION. A candidate that does not
+regress gives INCONCLUSIVE, and the reason says that no candidate can PASS until the floor is set
+(`FLOOR_NOT_SET_REASON`).
 
 Whenever a primary measure misses a trial in either arm, each verdict is tested against the
 imputation that works against it. A verdict that this changes becomes INCONCLUSIVE (decision 0010).

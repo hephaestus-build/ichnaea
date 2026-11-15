@@ -316,7 +316,8 @@ export const VALID: Record<string, Record<string, unknown>> = {
             regressionP: 0.71,
             regressionPAdjusted: 0.71,
             regressionMethod: "exact-stratified-conditional",
-            validated: true,
+            regression: { validated: true, limitations: [] },
+            nonInferiority: { validated: true, limitations: [] },
             flips: [{ case: "refund-window-de", direction: "negative", base: 1, candidate: 0.33 }],
           },
         ],
@@ -335,7 +336,8 @@ export const VALID: Record<string, Record<string, unknown>> = {
             },
             nonInferiorityP: 0.006,
             regressionPAdjusted: 0.62,
-            validated: true,
+            regression: { validated: true, limitations: [] },
+            nonInferiority: { validated: true, limitations: [] },
             verdict: "NON-INFERIOR",
             changesVerdict: false,
           },
@@ -351,7 +353,8 @@ export const VALID: Record<string, Record<string, unknown>> = {
             },
             nonInferiorityP: 0.003,
             regressionPAdjusted: 0.78,
-            validated: true,
+            regression: { validated: true, limitations: [] },
+            nonInferiority: { validated: true, limitations: [] },
             verdict: "NON-INFERIOR",
             changesVerdict: false,
           },
@@ -580,6 +583,26 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
     "not-computed-without-reason": (r) => {
       const power = r["power"] as { run: Array<Record<string, unknown>> };
       power.run[0] = { ...power.run[0], computed: false };
+    },
+    "unnamed-validated": (r) => {
+      const comparison = (
+        r["measures"] as Array<{ comparisons: Array<Record<string, unknown>> }>
+      )[0]!.comparisons[0]!;
+      delete comparison["regression"];
+      delete comparison["nonInferiority"];
+      comparison["validated"] = true;
+    },
+    "not-validated-without-reason": (r) => {
+      const comparison = (
+        r["measures"] as Array<{ comparisons: Array<Record<string, unknown>> }>
+      )[0]!.comparisons[0]!;
+      comparison["nonInferiority"] = { validated: false, limitations: [] };
+    },
+    "validated-with-a-limitation": (r) => {
+      const comparison = (
+        r["measures"] as Array<{ comparisons: Array<Record<string, unknown>> }>
+      )[0]!.comparisons[0]!;
+      comparison["regression"] = { validated: true, limitations: ["fewer than 5 cases"] };
     },
   },
   judge: {

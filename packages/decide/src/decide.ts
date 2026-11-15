@@ -17,11 +17,13 @@ import { recordProblems, TRIGGER_VARIES } from "@hephaestus-build/ichnaea-core";
 import {
   type CaseCounts,
   type Comparison,
+  type ComparisonInput,
   compareCounts,
   createRng,
   EstimandError,
   fixedCasesMde,
   holm,
+  MARGIN_FLOOR_NOT_SET,
   sampledCasesFloor,
   type ValueType,
   wilson,
@@ -44,6 +46,13 @@ type MeasureResult = DecisionInput["measures"][number];
 type ComparisonResult = MeasureResult["comparisons"][number];
 type SensitivityResult = MeasureResult["sensitivity"][number];
 type PowerEntry = DecisionInput["power"]["run"][number];
+type ValidityResult = ComparisonResult["regression"];
+
+/**
+ * The comparison of one measure's counts. Every decision uses `compareCounts`; a test of the rule
+ * may pass results of its own (`decideWith`, `decidePrimariesWith`).
+ */
+export type Compare = (input: ComparisonInput) => Comparison;
 type FactorPartName = z.infer<typeof FactorPart>;
 
 /** Outcomes that leave a planned trial without a value: they are missing, never a failure. */
@@ -54,6 +63,14 @@ const MISSING = new Set(["infrastructure_failure", "not_run", "invalid_configura
  */
 const FAILED = new Set(["system_failure", "budget_exceeded"]);
 const DEFAULT_COVERAGE_FLOOR = 0.9;
+
+/**
+ * The reason of an INCONCLUSIVE run whose measures did not regress while the validated margin
+ * floor is not set (decision 0015). Today an unchanged candidate gets it, so it must not read as a
+ * broken setup.
+ */
+export const FLOOR_NOT_SET_REASON =
+  "No primary measure regressed, but no candidate can PASS yet: the validated margin floor for non-inferiority is not set.";
 /** The statistics package's name for a value type. A type it has no name for has no method. */
 const STATS_VALUE_TYPE: Partial<Record<MeasuredValue["type"], ValueType>> = {
   binary: "binary",
@@ -440,28 +457,55 @@ export interface PrimaryVerdict {
   readonly regressionPAdjusted?: number;
   /**
    * Why an INCONCLUSIVE measure is not non-inferior: the cases cannot tell, the comparison is
-   * outside the validated domain, or there is no comparison.
+   * outside the validated domain, its non-inferiority result alone is not validated, or there is no
+   * comparison.
    */
-  readonly cause?: "cannot-tell" | "unvalidated" | "no-comparison";
+  readonly cause?: "cannot-tell" | "unvalidated" | "non-inferiority-unvalidated" | "no-comparison";
   readonly notes: readonly string[];
 }
 
-/**
- * Per-measure verdicts for the primary measures (DESIGN § 6.3, REQ-51): NON-INFERIOR when the
- * one-sided lower bound exceeds −(δ − s), each at the unadjusted level (intersection-union, so a
- * PASS needs no adjustment); otherwise REGRESSION when the regression test rejects Δ ≥ 0 after Holm
- * across the validated comparisons; otherwise INCONCLUSIVE. Holm covers only the tests that can
- * produce REGRESSION, and a comparison outside the validated domain cannot (decision 0008), so it
- * stays out of the family. Whether a comparison is validated depends on the cases and trials it
- * has, not on its outcomes, so the family still holds the error rate at α. The measures are
- * decided in order with one generator from `seed`, so the same counts give the same verdicts.
- */
-export function decidePrimaries(input: {
+/** What `decidePrimaries` decides from. */
+export interface PrimariesInput {
   readonly estimand: Plan["estimand"];
   readonly alpha: number;
   readonly seed: number;
   readonly measures: readonly PrimaryCounts[];
-}): Map<string, PrimaryVerdict> {
+}
+
+/** The limitations of a comparison's non-inferiority result that its regression result lacks. */
+function nonInferiorityOnly(comparison: Comparison): string[] {
+  const domain = new Set(comparison.regression.limitations);
+  return comparison.nonInferiority.limitations.filter((l) => !domain.has(l));
+}
+
+/** Whether the unset margin floor alone keeps a measure from NON-INFERIOR. */
+function onlyTheFloor(v: PrimaryVerdict | undefined): boolean {
+  if (v?.cause !== "non-inferiority-unvalidated" || !v.comparison) return false;
+  const limitations = nonInferiorityOnly(v.comparison);
+  return limitations.length === 1 && limitations[0] === MARGIN_FLOOR_NOT_SET;
+}
+
+/**
+ * Per-measure verdicts for the primary measures (DESIGN § 6.3, REQ-51, decision 0015):
+ * NON-INFERIOR when both results of the comparison are validated and the one-sided lower bound
+ * exceeds −(δ − s), each at the unadjusted level (intersection-union, so a PASS needs no
+ * adjustment); otherwise REGRESSION when the regression result is validated and the regression test
+ * rejects Δ ≥ 0 after Holm across the comparisons whose regression result is validated; otherwise
+ * INCONCLUSIVE. Holm covers only the tests that can produce REGRESSION, and a comparison whose
+ * regression result is not validated cannot (decision 0008), so it stays out of the family. Whether
+ * a result is validated depends on the cases, trials and margin, not on the outcomes, so the family
+ * still holds the error rate at α. The measures are decided in order with one generator from
+ * `seed`, so the same counts give the same verdicts.
+ */
+export function decidePrimaries(input: PrimariesInput): Map<string, PrimaryVerdict> {
+  return decidePrimariesWith(input, compareCounts);
+}
+
+/** `decidePrimaries` with the comparison given, so a test can decide from results of its own. */
+export function decidePrimariesWith(
+  input: PrimariesInput,
+  compare: Compare,
+): Map<string, PrimaryVerdict> {
   const verdicts = new Map<string, PrimaryVerdict>();
   const rng = createRng(input.seed);
   for (const p of input.measures) {
@@ -479,7 +523,7 @@ export function decidePrimaries(input: {
       const valueType = STATS_VALUE_TYPE[p.valueType];
       if (valueType === undefined)
         throw new EstimandError(`a ${p.valueType} measure has no paired method`);
-      const comparison = compareCounts({
+      const comparison = compare({
         estimand: input.estimand,
         valueType,
         cases: p.cases,
@@ -487,12 +531,27 @@ export function decidePrimaries(input: {
         margin: effective,
         rng,
       });
-      if (!comparison.validated) {
+      const notValidated = nonInferiorityOnly(comparison).map(
+        (l) => `the non-inferiority result is not validated: ${l}`,
+      );
+      if (!comparison.regression.validated) {
         verdicts.set(p.measure, {
           verdict: "INCONCLUSIVE",
           comparison,
           cause: "unvalidated",
-          notes: comparison.limitations.map((l) => `outside the validated domain: ${l}`),
+          notes: [
+            ...comparison.regression.limitations.map((l) => `outside the validated domain: ${l}`),
+            ...notValidated,
+          ],
+        });
+        continue;
+      }
+      if (!comparison.nonInferiority.validated) {
+        verdicts.set(p.measure, {
+          verdict: "INCONCLUSIVE",
+          comparison,
+          cause: "non-inferiority-unvalidated",
+          notes: notValidated,
         });
         continue;
       }
@@ -512,7 +571,9 @@ export function decidePrimaries(input: {
       });
     }
   }
-  const family = [...verdicts.entries()].filter(([, v]) => v.comparison?.validated === true);
+  const family = [...verdicts.entries()].filter(
+    ([, v]) => v.comparison?.regression.validated === true,
+  );
   const pAdjusted = holm(family.map(([, v]) => (v.comparison as Comparison).regressionP));
   family.forEach(([id, v], i) => {
     const pa = pAdjusted[i] as number;
@@ -540,22 +601,26 @@ export function decidePrimaries(input: {
 function primaryVerdicts(
   plan: Plan,
   tallies: ReadonlyMap<string, Tally>,
+  compare: Compare,
 ): Map<string, PrimaryVerdict> {
-  return decidePrimaries({
-    estimand: plan.estimand,
-    alpha: plan.alpha,
-    seed: seedOf(plan),
-    measures: plan.primary.map((p) => {
-      const t = tallies.get(p.measure) as Tally;
-      return {
-        measure: p.measure,
-        margin: p.margin,
-        ...(p.safetyMargin === undefined ? {} : { safetyMargin: p.safetyMargin }),
-        valueType: t.valueType,
-        cases: [...t.cases.values()],
-      };
-    }),
-  });
+  return decidePrimariesWith(
+    {
+      estimand: plan.estimand,
+      alpha: plan.alpha,
+      seed: seedOf(plan),
+      measures: plan.primary.map((p) => {
+        const t = tallies.get(p.measure) as Tally;
+        return {
+          measure: p.measure,
+          margin: p.margin,
+          ...(p.safetyMargin === undefined ? {} : { safetyMargin: p.safetyMargin }),
+          valueType: t.valueType,
+          cases: [...t.cases.values()],
+        };
+      }),
+    },
+    compare,
+  );
 }
 
 function estimateOf(difference: Comparison["difference"]): ComparisonResult["difference"] {
@@ -567,6 +632,23 @@ function estimateOf(difference: Comparison["difference"]): ComparisonResult["dif
     sided: "lower",
     method: difference.method,
   };
+}
+
+/** One result of a comparison, as the decision records it. */
+const recorded = (v: Comparison["regression"]): ValidityResult =>
+  v.validated
+    ? { validated: true, limitations: [] }
+    : { validated: false, limitations: [...v.limitations] };
+
+/** Both results of a comparison, as the decision records them. */
+function validityOf(c: Comparison): Pick<ComparisonResult, "regression" | "nonInferiority"> {
+  return { regression: recorded(c.regression), nonInferiority: recorded(c.nonInferiority) };
+}
+
+/** Both results of a comparison that could not be made, for the reason given. */
+function noValidity(reason: string): Pick<ComparisonResult, "regression" | "nonInferiority"> {
+  const result: ValidityResult = { validated: false, limitations: [reason] };
+  return { regression: result, nonInferiority: result };
 }
 
 /** A difference of rates without an interval, for a measure that has no comparison. */
@@ -604,6 +686,7 @@ function descriptiveComparison(
   pair: { readonly base: string; readonly candidate: string },
   margin: number,
   safetyMargin: number,
+  compare: Compare,
 ): { comparison: ComparisonResult; notes: string[] } {
   const common = {
     base: pair.base,
@@ -620,7 +703,7 @@ function descriptiveComparison(
     const valueType = STATS_VALUE_TYPE[t.valueType];
     if (valueType === undefined)
       throw new EstimandError(`a ${t.valueType} measure has no paired method`);
-    const c = compareCounts({
+    const c = compare({
       estimand: plan.estimand,
       valueType,
       cases: [...t.cases.values()],
@@ -629,8 +712,9 @@ function descriptiveComparison(
       rng: createRng(seedOf(plan)),
     });
     return {
-      comparison: { ...common, difference: estimateOf(c.difference), validated: c.validated },
-      notes: c.limitations.map((l) => `descriptive interval outside the validated domain: ${l}`),
+      comparison: { ...common, difference: estimateOf(c.difference), ...validityOf(c) },
+      // regression.validated never vouches for the interval: only nonInferiority does.
+      notes: c.nonInferiority.limitations.map((l) => `the interval is not validated: ${l}`),
     };
   } catch (error) {
     if (!(error instanceof EstimandError)) throw error;
@@ -638,7 +722,7 @@ function descriptiveComparison(
       comparison: {
         ...common,
         difference: rateDifference(t, pair.base, pair.candidate, 1 - plan.alpha),
-        validated: false,
+        ...noValidity(error.message),
       },
       notes: [`no interval: ${error.message}`],
     };
@@ -665,7 +749,7 @@ function sensitivityResult(
         },
     nonInferiorityP: v.comparison?.nonInferiorityP ?? NAN,
     regressionPAdjusted: v.regressionPAdjusted ?? NAN,
-    validated: v.comparison?.validated ?? false,
+    ...(v.comparison ? validityOf(v.comparison) : noValidity(v.notes[0] ?? "no comparison")),
     verdict: v.verdict,
     changesVerdict,
   };
@@ -724,7 +808,15 @@ function scopeOf(
  * tested against the imputation that works against it, and a verdict that changes is INCONCLUSIVE
  * (decision 0010).
  */
-export async function decide(input: DecideInput): Promise<Decision> {
+export function decide(input: DecideInput): Promise<Decision> {
+  return decideWith(input, compareCounts);
+}
+
+/**
+ * `decide` with the comparison given, so a test can decide from results of its own. Not exported
+ * by the package: every decision Ichnaea makes uses `compareCounts`.
+ */
+export async function decideWith(input: DecideInput, compare: Compare): Promise<Decision> {
   const { plan, run } = input;
   const invalid = await recordChecks(input);
   const trials = new Map(input.trials.map((t) => [t.id as string, t]));
@@ -774,7 +866,7 @@ export async function decide(input: DecideInput): Promise<Decision> {
       );
   }
 
-  const tested = decision && pair ? primaryVerdicts(plan, tallies) : undefined;
+  const tested = decision && pair ? primaryVerdicts(plan, tallies, compare) : undefined;
   // The sensitivity analysis for missing trials (REQ-56, decision 0010): whenever a primary measure
   // misses a trial in either arm, each verdict is tested against the imputation that works
   // against it.
@@ -798,6 +890,7 @@ export async function decide(input: DecideInput): Promise<Decision> {
             tally(plan, trials, values, p.measure, pair, imputation),
           ]),
         ),
+        compare,
       );
     const againstNonInferiority = again(AGAINST_NON_INFERIORITY);
     const againstRegression = again(AGAINST_REGRESSION);
@@ -860,7 +953,7 @@ export async function decide(input: DecideInput): Promise<Decision> {
     const margin = p?.margin ?? 0;
     const safetyMargin = p?.safetyMargin ?? 0;
     if (!result) {
-      const described = descriptiveComparison(plan, t, pair, margin, safetyMargin);
+      const described = descriptiveComparison(plan, t, pair, margin, safetyMargin, compare);
       return {
         ...outcome,
         comparisons: [described.comparison],
@@ -897,7 +990,7 @@ export async function decide(input: DecideInput): Promise<Decision> {
           regressionP: c ? c.regressionP : NAN,
           regressionPAdjusted: result.regressionPAdjusted ?? NAN,
           regressionMethod: c ? c.regressionMethod : "none (no comparison)",
-          validated: c?.validated ?? false,
+          ...(c ? validityOf(c) : noValidity(result.notes[0] ?? "no comparison")),
           flips: flipsOf(t.cases),
         },
       ],
@@ -941,6 +1034,10 @@ export async function decide(input: DecideInput): Promise<Decision> {
   } else if (primaries.length > 0 && primaries.every((m) => m.verdict === "NON-INFERIOR")) {
     verdict = "PASS";
     reason = "Every primary measure is non-inferior and every hard gate passed.";
+  } else if (primaries.every((m) => onlyTheFloor(tested?.get(m.measure)))) {
+    // The floor alone keeps every measure from NON-INFERIOR: say so in plain words.
+    verdict = "INCONCLUSIVE";
+    reason = FLOOR_NOT_SET_REASON;
   } else {
     verdict = "INCONCLUSIVE";
     const open = primaries.find((m) => m.verdict !== "NON-INFERIOR");
@@ -950,9 +1047,11 @@ export async function decide(input: DecideInput): Promise<Decision> {
         ? "imputing its missing trials against the verdict changes it"
         : result?.cause === "unvalidated"
           ? "its comparison is outside the validated domain"
-          : result?.cause === "no-comparison"
-            ? `it has no comparison (${result.notes[0] ?? "no data"})`
-            : "the cases cannot tell yet";
+          : result?.cause === "non-inferiority-unvalidated" && result.comparison
+            ? `its non-inferiority result is not validated, because ${nonInferiorityOnly(result.comparison).join("; ")}`
+            : result?.cause === "no-comparison"
+              ? `it has no comparison (${result.notes[0] ?? "no data"})`
+              : "the cases cannot tell yet";
     reason = `Measure ${open?.measure ?? "?"} could not be shown non-inferior: ${cause}. This is not a pass.`;
   }
 

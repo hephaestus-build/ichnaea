@@ -7,6 +7,7 @@ import { rm } from "node:fs/promises";
 import { join } from "node:path";
 
 import { main } from "@hephaestus-build/ichnaea-core";
+import { FLOOR_NOT_SET_REASON } from "@hephaestus-build/ichnaea-decide";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const here = join(import.meta.dirname, "..");
@@ -64,15 +65,18 @@ describe("the example's README", () => {
     expect(commands.map((c) => c.exit)).toEqual([0, 0, 0, 0, 1, 0]);
   });
 
-  it("runs as written: PASS for the same candidate, REGRESSION for the regressed one", async () => {
+  it("runs as written: INCONCLUSIVE for the same candidate, REGRESSION for the regressed one", async () => {
     const out: string[] = [];
     for (const { argv, exit } of commands) {
       const code = await main(argv, (t) => void out.push(t));
       expect(code, `${argv.join(" ")}\n${out.join("\n")}`).toBe(exit);
     }
-    expect(verdictOf("same")).toBe("PASS");
+    expect(verdictOf("same")).toBe("INCONCLUSIVE");
     expect(verdictOf("regressed")).toBe("REGRESSION");
-    expect(out.join("\n")).toMatch(/^PASS/m);
+    // The README quotes the line decide prints for the same candidate, word for word.
+    const printed = `INCONCLUSIVE: ${FLOOR_NOT_SET_REASON}`;
+    expect(out).toContain(printed);
+    expect(readme.replaceAll(/\s+/g, " ")).toContain(`\`${printed}\``);
     expect(out.join("\n")).toMatch(/^REGRESSION/m);
     // Each file the README says a run writes exists for both runs.
     for (const file of [

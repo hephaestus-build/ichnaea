@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
 import { main } from "@hephaestus-build/ichnaea-core";
+import { FLOOR_NOT_SET_REASON } from "@hephaestus-build/ichnaea-decide";
 import { describe, expect, it } from "vitest";
 
 const here = join(import.meta.dirname, "..");
@@ -65,23 +66,33 @@ async function flow(
 }
 
 describe("example application, end to end", () => {
-  it("passes when the candidate answers as well as the base", async () => {
+  it("an unchanged candidate is INCONCLUSIVE while the margin floor is not set, and says why", async () => {
     const { store, out, codes } = await flow("results/candidate-same.json");
+    // The suite reports an INCONCLUSIVE verdict without blocking.
     expect(codes).toEqual([0, 0, 0]);
-    expect(out.join("\n")).toMatch(/PASS/);
+    // The line decide prints names the floor, so a first run does not read as a broken setup.
+    expect(out).toContain(`INCONCLUSIVE: ${FLOOR_NOT_SET_REASON}`);
+    expect(out.join("\n")).not.toMatch(/^PASS/m);
     // The planner prints what a run of the plan can detect at best (REQ-54).
     expect(out.join("\n")).toMatch(
       /power: support\/facts-stated: smallest detectable drop \d+\.\d points \(planning: .*\), margin 15\.0 points, can decide/,
     );
     const verdict = JSON.parse(
       await readFile(join(store, "runs", "run-1", "verdict.json"), "utf8"),
-    ) as { verdict: string };
-    expect(verdict.verdict).toBe("PASS");
+    ) as { verdict: string; reason: string };
+    expect(verdict).toMatchObject({ verdict: "INCONCLUSIVE", reason: FLOOR_NOT_SET_REASON });
+    // The report gives the same reason next to the verdict, and labels the bound.
+    const summary = await readFile(join(store, "runs", "run-1", "report", "summary.md"), "utf8");
+    expect(summary).toContain(
+      `**INCONCLUSIVE** on these 12 cases, beyond run-to-run noise: ${FLOOR_NOT_SET_REASON}`,
+    );
+    expect(summary).toMatch(/≥ [+−]?\d+\.\d pts \(not validated\)/);
   });
 
   it("blocks a regression and names the broken cases in the report", async () => {
-    const { store, codes } = await flow("results/candidate-regressed.json");
+    const { store, codes, out } = await flow("results/candidate-regressed.json");
     expect(codes[1]).toBe(1);
+    expect(out.join("\n")).toMatch(/^REGRESSION: /m);
     const summary = await readFile(join(store, "runs", "run-1", "report", "summary.md"), "utf8");
     expect(summary).toMatch(/REGRESSION/);
     expect(summary).toContain("support-03");

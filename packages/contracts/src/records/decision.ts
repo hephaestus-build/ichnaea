@@ -66,6 +66,15 @@ export const ArmEstimate = z.strictObject({
   availability: Availability,
 });
 
+/**
+ * Whether one result of a comparison lies inside the validated domain of its method, and why not
+ * (decision 0015). A result that is not validated names at least one reason.
+ */
+export const Validity = z.discriminatedUnion("validated", [
+  z.strictObject({ validated: none(z.literal(true)), limitations: none(z.array(Text).max(0)) }),
+  z.strictObject({ validated: none(z.literal(false)), limitations: none(z.array(Text).min(1)) }),
+]);
+
 /** The comparison of one candidate with the base for one measure. None in estimate-only mode. */
 export const Comparison = z.strictObject({
   base: none(ArmName),
@@ -79,10 +88,16 @@ export const Comparison = z.strictObject({
   /** The stable name of the regression test's method. */
   regressionMethod: none(Text),
   /**
-   * Whether the comparison lies inside the validated domain of its methods. A verdict never rests
-   * on one that does not (decision 0008); the measure's notes say why.
+   * Whether the regression test lies inside the domain where its type-I error is shown. REGRESSION
+   * needs it. It does not depend on the margin, and it never vouches for the interval.
    */
-  validated: none(z.boolean()),
+  regression: Validity,
+  /**
+   * Whether the non-inferiority result, the interval against the margin, lies inside the domain
+   * where its coverage is shown. NON-INFERIOR, and so PASS, needs it and `regression` (decision
+   * 0015).
+   */
+  nonInferiority: Validity,
   flips: z.array(Flip),
 });
 
@@ -96,7 +111,8 @@ export const SensitivityResult = z.strictObject({
   difference: Estimate,
   nonInferiorityP: none(Real),
   regressionPAdjusted: none(Real),
-  validated: none(z.boolean()),
+  regression: Validity,
+  nonInferiority: Validity,
   verdict: none(MeasureVerdict),
   /** Whether this imputation changes the measure's verdict, which then becomes INCONCLUSIVE. */
   changesVerdict: none(z.boolean()),

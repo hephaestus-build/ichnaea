@@ -67,7 +67,7 @@ describe("REQ-51: false REGRESSION verdicts under no change", () => {
         if (
           all.some(
             (v) =>
-              v.comparison?.validated === true &&
+              v.comparison?.regression.validated === true &&
               v.verdict !== "NON-INFERIOR" &&
               v.comparison.regressionP <= ALPHA,
           )

@@ -3,6 +3,7 @@ import type { Decision } from "@hephaestus-build/ichnaea-contracts";
 import { describe, expect, it } from "vitest";
 
 import { decide } from "../src/index.ts";
+import { decideFloorSet } from "./support/floor-set.ts";
 import { type Scenario, type ScenarioOptions, scenario } from "./support/scenario.ts";
 
 const run = (s: Scenario): Promise<Decision> =>
@@ -75,7 +76,8 @@ describe("trigger factors (REQ-15)", () => {
     const same = await run(
       await scenario({ ...stable, observed: () => [{ name: "model.digest", value: "sha-a" }] }),
     );
-    expect(same.verdict).toBe("PASS");
+    expect(same.verdict).toBe("INCONCLUSIVE");
+    expect(same.invalidReasons).toEqual([]);
   });
 
   it("a configuration change that varies what it does not declare is INVALID; declared, it decides", async () => {
@@ -120,6 +122,6 @@ describe("trigger factors (REQ-15)", () => {
       candidateConfig: prompt,
       varies: ["prompt.answer", "factor.code.commit"],
     });
-    expect((await run(declared)).verdict).toBe("PASS");
+    expect((await decideFloorSet(declared)).verdict).toBe("PASS");
   });
 });

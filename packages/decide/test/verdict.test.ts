@@ -3,6 +3,7 @@ import { type Decision, type GateResult } from "@hephaestus-build/ichnaea-contra
 import { describe, expect, it } from "vitest";
 
 import { decide, exitCode, planningPower } from "../src/index.ts";
+import { decideFloorSet, FLOOR_REASON } from "./support/floor-set.ts";
 import { type Scenario, scenario } from "./support/scenario.ts";
 
 const run = (s: Scenario): Promise<Decision> =>
@@ -128,8 +129,35 @@ describe("the INCONCLUSIVE reason names its cause", () => {
     );
   });
 
-  it("cases that cannot tell", async () => {
+  it("a non-inferiority result that is not validated: the margin floor is not set yet", async () => {
     const d = await run(
+      await scenario({ cases: 60, replicates: 3, base: () => 0.97, candidate: () => 0.97 }),
+    );
+    // In plain words, so a first run of an unchanged candidate does not read as a broken setup.
+    expect(d.reason).toBe(
+      "No primary measure regressed, but no candidate can PASS yet: the validated margin floor for non-inferiority is not set.",
+    );
+    expect(d.reason).toBe(FLOOR_REASON);
+  });
+
+  it("a non-inferiority result that is not validated for more than the floor names each reason", async () => {
+    // The planner refuses this margin; the rule still says why if a plan reaches it.
+    const d = await run(
+      await scenario({
+        cases: 60,
+        replicates: 3,
+        base: () => 0.97,
+        candidate: () => 0.97,
+        margin: 0.35,
+      }),
+    );
+    expect(d.reason).toBe(
+      "Measure app/correct could not be shown non-inferior: its non-inferiority result is not validated, because the validated margin floor is not set yet; margin 0.35 is above the validated margin ceiling 0.3. This is not a pass.",
+    );
+  });
+
+  it("cases that cannot tell", async () => {
+    const d = await decideFloorSet(
       await scenario({
         cases: 10,
         replicates: 2,

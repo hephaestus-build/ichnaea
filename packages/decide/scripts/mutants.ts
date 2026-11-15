@@ -303,8 +303,67 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "unvalidated comparison decides",
     file: D,
-    from: "      if (!comparison.validated) {",
+    from: "      if (!comparison.regression.validated) {",
     to: "      if (false) {",
+  },
+  // Two validity results (decision 0015).
+  {
+    id: "validity: PASS from regression.validated alone",
+    file: D,
+    from: "      if (!comparison.nonInferiority.validated) {",
+    to: "      if (false) {",
+  },
+  {
+    id: "validity: REGRESSION gate reads nonInferiority.validated",
+    file: D,
+    from: "      if (!comparison.regression.validated) {",
+    to: "      if (!comparison.nonInferiority.validated) {",
+  },
+  {
+    id: "validity: Holm family over non-inferiority validity",
+    file: D,
+    from: "    ([, v]) => v.comparison?.regression.validated === true,",
+    to: "    ([, v]) => v.comparison?.nonInferiority.validated === true,",
+  },
+  {
+    id: "validity: the record copies the regression result into nonInferiority",
+    file: D,
+    from: "  return { regression: recorded(c.regression), nonInferiority: recorded(c.nonInferiority) };",
+    to: "  return { regression: recorded(c.regression), nonInferiority: recorded(c.regression) };",
+  },
+  {
+    id: "validity: the floor's plain reason dropped",
+    file: D,
+    from: "  } else if (primaries.every((m) => onlyTheFloor(tested?.get(m.measure)))) {",
+    to: "  } else if (false) {",
+    projects: CORE,
+  },
+  {
+    id: "validity: the floor's plain reason hides another limitation",
+    file: D,
+    from: "  return limitations.length === 1 && limitations[0] === MARGIN_FLOOR_NOT_SET;",
+    to: "  return limitations.length > 0;",
+  },
+  {
+    id: "validity: report does not label an interval that is not validated",
+    file: "../report/src/view.ts",
+    from: '${nonInferiority.validated ? "" : ` ${NOT_VALIDATED}`}',
+    to: "",
+    projects: CORE,
+  },
+  {
+    id: "validity: report labels by the regression result",
+    file: "../report/src/view.ts",
+    from: "                ...differenceCells(comparison.difference, comparison.nonInferiority),",
+    to: "                ...differenceCells(comparison.difference, comparison.regression),",
+    projects: CORE,
+  },
+  {
+    id: "validity: lint misses an unlabelled bound",
+    file: "../report/src/render.ts",
+    from: '  if (cells.get("validated") === "false" && !bound.endsWith(NOT_VALIDATED))',
+    to: "  if (false)",
+    projects: CORE,
   },
   {
     id: "NI at the bound",
@@ -333,8 +392,8 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "Holm over unvalidated comparisons too",
     file: D,
-    from: "const family = [...verdicts.entries()].filter(([, v]) => v.comparison?.validated === true);",
-    to: "const family = [...verdicts.entries()].filter(([, v]) => v.comparison !== undefined);",
+    from: "    ([, v]) => v.comparison?.regression.validated === true,",
+    to: "    ([, v]) => v.comparison !== undefined,",
   },
   {
     id: "Holm boundary",
@@ -358,8 +417,8 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "descriptive difference without an interval",
     file: D,
-    from: "      comparison: { ...common, difference: estimateOf(c.difference), validated: c.validated },",
-    to: "      comparison: {\n        ...common,\n        difference: rateDifference(t, pair.base, pair.candidate, 1 - plan.alpha),\n        validated: c.validated,\n      },",
+    from: "      comparison: { ...common, difference: estimateOf(c.difference), ...validityOf(c) },",
+    to: "      comparison: {\n        ...common,\n        difference: rateDifference(t, pair.base, pair.candidate, 1 - plan.alpha),\n        ...validityOf(c),\n      },",
   },
   {
     id: "report lint misses an estimate without its interval",

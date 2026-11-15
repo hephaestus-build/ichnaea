@@ -1,4 +1,4 @@
-import type { DecisionView } from "./view.ts";
+import { type DecisionView, NOT_VALIDATED } from "./view.ts";
 
 /**
  * Escapes text for Markdown: every string in a summary may come from a configuration or a case,
@@ -132,12 +132,12 @@ const signedPoints = (v: number): string =>
  */
 function axisFigure(
   measure: string,
-  axis: { estimate: number; lower: number; margin: number },
+  axis: { estimate: number; lower: number; margin: number; validated: boolean },
 ): string {
   const reach = Math.max(Math.abs(axis.lower), Math.abs(axis.estimate), axis.margin, 0.05) * 1.25;
   const width = 480;
   const x = (v: number): number => Math.round(((v + reach) / (2 * reach)) * width * 10) / 10;
-  const text = `${measure}: difference ${signedPoints(axis.estimate)} points, one-sided lower bound ${signedPoints(axis.lower)}, margin −${(axis.margin * 100).toFixed(1)} points. Non-inferiority needs the bound to the right of the margin.`;
+  const text = `${measure}: difference ${signedPoints(axis.estimate)} points, one-sided lower bound ${signedPoints(axis.lower)}, margin −${(axis.margin * 100).toFixed(1)} points. Non-inferiority needs the bound to the right of the margin.${axis.validated ? "" : " The bound is not validated."}`;
   return `<figure><svg viewBox="0 0 ${width} 60" width="100%" role="img" aria-label="${escape(text)}"><title>${escape(text)}</title>
 <line x1="0" y1="30" x2="${width}" y2="30" class="axis"/>
 <line x1="${x(0)}" y1="12" x2="${x(0)}" y2="48" class="zero"/>
@@ -148,9 +148,12 @@ function axisFigure(
 </svg><figcaption>${escape(text)}</figcaption></figure>`;
 }
 
-/** A numeric table cell. `col` names what it holds, so the lint can check each row. */
-const num = (col: string, value: string | number, rowspan?: number): string =>
-  `<td class="num" data-col="${col}"${rowspan === undefined ? "" : ` rowspan="${rowspan}"`}>${escape(value)}</td>`;
+/**
+ * A numeric table cell. `col` names what it holds, so the lint can check each row. A bound that is
+ * not validated carries `data-validated="false"`, so the lint can check its label.
+ */
+const num = (col: string, value: string | number, rowspan?: number, validated = true): string =>
+  `<td class="num" data-col="${col}"${validated ? "" : ' data-validated="false"'}${rowspan === undefined ? "" : ` rowspan="${rowspan}"`}>${escape(value)}</td>`;
 
 /**
  * Renders the static HTML report: one file, no JavaScript, no external resources. Colour never
@@ -165,7 +168,7 @@ export function renderHtml(view: DecisionView): string {
     .flatMap((m) =>
       m.arms.map(
         (a, i) =>
-          `<tr>${i === 0 ? `<th scope="row" rowspan="${m.arms.length}">${escape(m.measure)}${m.tier === "secondary" ? " <small>(secondary)</small>" : ""}</th><td rowspan="${m.arms.length}">${badge(m.verdict)}</td>` : ""}<td>${escape(a.arm)}</td>${num("rate", a.rate)}${num("interval", a.interval)}${num("n", a.n)}${num("missing", a.missing)}${i === 0 ? `${num("difference", m.difference?.estimate ?? "–", m.arms.length)}${num("bound", m.difference?.bound ?? "–", m.arms.length)}${num("margin", m.difference?.margin ?? "–", m.arms.length)}` : ""}</tr>`,
+          `<tr>${i === 0 ? `<th scope="row" rowspan="${m.arms.length}">${escape(m.measure)}${m.tier === "secondary" ? " <small>(secondary)</small>" : ""}</th><td rowspan="${m.arms.length}">${badge(m.verdict)}</td>` : ""}<td>${escape(a.arm)}</td>${num("rate", a.rate)}${num("interval", a.interval)}${num("n", a.n)}${num("missing", a.missing)}${i === 0 ? `${num("difference", m.difference?.estimate ?? "–", m.arms.length)}${num("bound", m.difference?.bound ?? "–", m.arms.length, m.difference?.validated ?? true)}${num("margin", m.difference?.margin ?? "–", m.arms.length)}` : ""}</tr>`,
       ),
     )
     .join("\n");
@@ -186,7 +189,7 @@ export function renderHtml(view: DecisionView): string {
   const sensitivityRows = view.sensitivity
     .map(
       (s) =>
-        `<tr><td>${escape(s.measure)}</td><td>${escape(s.imputation)}</td>${num("difference", s.difference)}${num("bound", s.bound)}<td>${badge(s.verdict)}</td><td>${escape(s.changes)}</td></tr>`,
+        `<tr><td>${escape(s.measure)}</td><td>${escape(s.imputation)}</td>${num("difference", s.difference)}${num("bound", s.bound, undefined, s.validated)}<td>${badge(s.verdict)}</td><td>${escape(s.changes)}</td></tr>`,
     )
     .join("\n");
   return `<!doctype html>
@@ -265,7 +268,7 @@ export function neutralView(view: DecisionView): DecisionView {
 const RATE = /^\d+\.\d%$/;
 const DIFFERENCE = /^[+−]?\d+\.\d pts$/;
 const INTERVAL = /^\d+\.\d% to \d+\.\d%$/;
-const BOUND = /^≥ [+−]?\d+\.\d pts$/;
+const BOUND = /^≥ [+−]?\d+\.\d pts( \(not validated\))?$/;
 
 /** The problem of one table row whose estimates lack their intervals, if any. */
 function rowProblem(cells: ReadonlyMap<string, string>): string | undefined {
@@ -273,12 +276,11 @@ function rowProblem(cells: ReadonlyMap<string, string>): string | undefined {
   const difference = cells.get("difference");
   if (rate !== undefined && RATE.test(rate) && !INTERVAL.test(cells.get("interval") ?? ""))
     return `a rate (${rate}) without its interval`;
-  if (
-    difference !== undefined &&
-    DIFFERENCE.test(difference) &&
-    !BOUND.test(cells.get("bound") ?? "")
-  )
+  const bound = cells.get("bound") ?? "";
+  if (difference !== undefined && DIFFERENCE.test(difference) && !BOUND.test(bound))
     return `a difference (${difference}) without its bound`;
+  if (cells.get("validated") === "false" && !bound.endsWith(NOT_VALIDATED))
+    return `a bound (${bound}) that is not validated, without its label`;
   return undefined;
 }
 
@@ -314,14 +316,22 @@ function markdownRows(text: string): Array<Map<string, string>> {
   return rows;
 }
 
-/** HTML table rows as maps from the `data-col` of each numeric cell to its text. */
+/**
+ * HTML table rows as maps from the `data-col` of each numeric cell to its text, and `validated` to
+ * "false" when a cell is marked not validated.
+ */
 function htmlRows(text: string): Array<Map<string, string>> {
   return [...text.matchAll(/<tr>([\s\S]*?)<\/tr>/g)].map(
     (row) =>
       new Map(
-        [...(row[1] ?? "").matchAll(/data-col="([a-z]+)"[^>]*>([^<]*)</g)].map((m) => [
-          m[1] ?? "",
-          (m[2] ?? "").replaceAll("&amp;", "&").replaceAll("&gt;", ">").replaceAll("&lt;", "<"),
+        [...(row[1] ?? "").matchAll(/data-col="([a-z]+)"([^>]*)>([^<]*)</g)].flatMap((m) => [
+          [
+            m[1] ?? "",
+            (m[3] ?? "").replaceAll("&amp;", "&").replaceAll("&gt;", ">").replaceAll("&lt;", "<"),
+          ] as const,
+          ...((m[2] ?? "").includes('data-validated="false"')
+            ? [["validated", "false"] as const]
+            : []),
         ]),
       ),
   );
@@ -330,7 +340,8 @@ function htmlRows(text: string): Array<Map<string, string>> {
 /**
  * Problems a rendered output must not have (REQ-129). Returns one message per problem. Run it on
  * the output of `neutralView`, so a case named "significant" cannot block a report. Every rate and
- * every difference in a table must stand next to its interval.
+ * every difference in a table must stand next to its interval, and an HTML bound marked not
+ * validated must say so (decision 0015).
  */
 export function lintReport(text: string): string[] {
   const problems: string[] = [];
