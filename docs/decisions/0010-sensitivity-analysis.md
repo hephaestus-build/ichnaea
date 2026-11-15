@@ -6,7 +6,7 @@
 ## Context
 
 A validated comparison assumes that missingness within a case does not depend on the outcome
-(decision 0007). That cannot be checked from the records. Missing trials can hide a drop: a
+(decision 0009). That cannot be checked from the records. Missing trials can hide a drop: a
 candidate's lost trials may be the trials that failed.
 
 Comparing only the counts of missing trials between the arms misses this. In one fixture, each of

@@ -209,7 +209,7 @@ export async function createPlan(input: PlanInput): Promise<Plan> {
     reasons.push("the plan has no base and candidate arm to compare");
   if (suite.primary.length === 0) reasons.push("the suite declares no primary measure");
   if (suite.estimand === "sampled-cases")
-    reasons.push("no sampled-cases method is validated yet (decision 0007)");
+    reasons.push("no sampled-cases method is validated yet (decision 0009)");
   // Trials per case and arm: the suite's count, or the largest `replicatesFor` entry that matches.
   const overrides = suite.replicatesFor ?? [];
   for (const o of overrides)

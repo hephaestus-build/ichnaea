@@ -773,7 +773,7 @@ describe("planner (REQ-16, REQ-19, REQ-27, REQ-33, REQ-49, decision 0008)", asyn
     );
   });
 
-  it("runs estimate-only, and says why, where no validated method can decide (decisions 0007, 0008)", async () => {
+  it("runs estimate-only, and says why, where no validated method can decide (decisions 0008, 0009)", async () => {
     expect(
       await reasonsOf({ measures: new Map([["app/correct", card("app/correct", "proportion")]]) }),
     ).toEqual([
