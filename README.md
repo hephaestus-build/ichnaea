@@ -1,5 +1,9 @@
 # Ichnaea
 
+[![CI status on main](https://github.com/hephaestus-build/ichnaea/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/hephaestus-build/ichnaea/actions/workflows/ci.yml?query=branch%3Amain)
+[![OpenSSF Scorecard](https://img.shields.io/ossf-scorecard/github.com/hephaestus-build/ichnaea?label=OpenSSF%20Scorecard&style=flat)](https://scorecard.dev/viewer/?uri=github.com/hephaestus-build/ichnaea)
+[![MIT licence](https://img.shields.io/github/license/hephaestus-build/ichnaea?style=flat)](./LICENSE)
+
 Ichnaea evaluates GenAI features whenever their configuration changes: code, prompts, the model,
 its parameters or the application's settings. It gives each change a clear verdict from paired
 statistics, and says plainly when the cases cannot decide.
