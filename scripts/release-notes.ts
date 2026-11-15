@@ -57,7 +57,7 @@ registry. With pnpm, in \`pnpm-workspace.yaml\`:
 
 ${overrides(tag, names)}
 
-Then add the packages you use by the same URLs, and zod. The lockfile then pins each tarball's
+Then add the packages you import by the same URLs, and zod. The lockfile then pins each tarball's
 integrity hash.
 
 ## Verify

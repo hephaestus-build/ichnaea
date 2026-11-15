@@ -1,14 +1,17 @@
-// Installs the packed tarballs into an empty project, as a consumer would, and imports each one.
-// Proves that the artefact we release installs and loads without a registry, that each tarball has
-// its README, and that the README's example runs end to end on it with the verdicts it states. Usage: node scripts/smoke-tarballs.ts <directory with .tgz files>
+// Installs the packed tarballs into an empty project with the README's install, as a consumer would,
+// and imports each package that the install adds. Proves that the artefact we release installs and
+// loads without a registry, that each tarball has its README, and that the README's example runs
+// end to end on it with the verdicts it states. Usage: node scripts/smoke-tarballs.ts <directory with .tgz files>
 import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { delimiter, join } from "node:path";
 
-import { installTarballs } from "./consumer-project.ts";
-import { decides, readmeExample } from "./readme-example.ts";
+import { installAsReadme } from "./consumer-project.ts";
+import { decides, readmeExample, readmeInstall } from "./readme-example.ts";
 
-const { project, tarballs } = installTarballs(process.argv[2] ?? "release");
+const repository = join(import.meta.dirname, "..");
+const readme = readFileSync(join(repository, "README.md"), "utf8");
+const { project, tarballs } = installAsReadme(process.argv[2] ?? "release");
 try {
   // The README is the package's page on a registry.
   for (const t of tarballs)
@@ -18,10 +21,13 @@ try {
         .includes("package/README.md")
     )
       throw new Error(`${t.file} has no README.md`);
-  const imports = tarballs.map((t) => `await import(${JSON.stringify(t.name)});`).join("\n");
+  // The project can import only what the install adds; the other tarballs load as their
+  // dependencies.
+  const added = readmeInstall(readme).added.filter((n) => tarballs.some((t) => t.name === n));
+  const imports = added.map((n) => `await import(${JSON.stringify(n)});`).join("\n");
   writeFileSync(
     join(project, "smoke.mjs"),
-    `${imports}\nconsole.log("loaded ${tarballs.length} packages");\n`,
+    `${imports}\nconsole.log("loaded ${added.length} packages");\n`,
   );
   execFileSync("node", ["smoke.mjs"], { cwd: project, stdio: "inherit" });
   execFileSync(
@@ -34,8 +40,7 @@ try {
   // Its config and plugin import the packages by name, so they resolve to the installed tarballs,
   // not to src. The block runs as written. Only its clone is replaced: a `git` on PATH links this
   // checkout as the clone. A marker after each command records the command's exit code.
-  const repository = join(import.meta.dirname, "..");
-  const example = readmeExample(readFileSync(join(repository, "README.md"), "utf8"));
+  const example = readmeExample(readme);
   const shim = join(project, ".shim");
   mkdirSync(shim);
   writeFileSync(

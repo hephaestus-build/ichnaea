@@ -62,6 +62,8 @@ The commands here install v0.1.0. For another release, replace the version. The 
 release give its snippet. With pnpm, first map every Ichnaea package to its tarball in
 `pnpm-workspace.yaml`, so that the dependencies between them resolve without a registry:
 
+<!-- The tarball smoke test writes this file, with each release URL changed to its tarball. -->
+
 ```yaml
 overrides:
   "@hephaestus-build/ichnaea-contracts": "https://github.com/hephaestus-build/ichnaea/releases/download/v0.1.0/hephaestus-build-ichnaea-contracts-0.1.0.tgz"
@@ -71,12 +73,15 @@ overrides:
   "@hephaestus-build/ichnaea-stats": "https://github.com/hephaestus-build/ichnaea/releases/download/v0.1.0/hephaestus-build-ichnaea-stats-0.1.0.tgz"
 ```
 
-Then add the packages that you use, by the same URLs, and zod. The CLI loads `ichnaea.config.ts`
-as an ES module:
+Then add the packages that you import, by the same URLs, and zod. The five-minute example below
+imports contracts, core, decide and report. The CLI loads `ichnaea.config.ts` as an ES module:
+
+<!-- The tarball smoke test runs this block, with each release URL changed to its tarball. -->
 
 ```sh
 pnpm pkg set type=module
 pnpm add zod@4.6.7 \
+  https://github.com/hephaestus-build/ichnaea/releases/download/v0.1.0/hephaestus-build-ichnaea-contracts-0.1.0.tgz \
   https://github.com/hephaestus-build/ichnaea/releases/download/v0.1.0/hephaestus-build-ichnaea-core-0.1.0.tgz \
   https://github.com/hephaestus-build/ichnaea/releases/download/v0.1.0/hephaestus-build-ichnaea-decide-0.1.0.tgz \
   https://github.com/hephaestus-build/ichnaea/releases/download/v0.1.0/hephaestus-build-ichnaea-report-0.1.0.tgz
