@@ -3,7 +3,7 @@ quantile at 60 significant digits (mpmath), rounded to the nearest double, on a 
 extra points on both sides of every branch boundary of src/normal.ts. Test-only oracle. Run in a
 container:
   docker run --rm --platform linux/amd64 -v "$PWD":/w -w /w python:3.13-slim \
-    sh -c "pip install -q mpmath==1.3.0 && python scripts/reference-normal-mpmath.py"
+    sh -c "pip install -q --require-hashes -r scripts/oracle-requirements.txt && python scripts/reference-normal-mpmath.py"
 """
 import json
 import math
@@ -32,7 +32,11 @@ xs += near([-38.4674, 8.2924], 0.01, 0.001)
 sample = random.Random(20261115)
 for lo, hi in [(0.4, 0.95), (5.3, 6.0)]:
     xs += [s * sample.uniform(lo, hi) for s in (1, -1) for _ in range(2000)]
-xs = sorted(set(x for x in xs if -38.4674 < x < 8.2924))
+# Small |x|, where the first branch's polynomial matters least and a wrong cutoff hides.
+xs += [s * 10 ** (-12 + (12 + math.log10(0.25)) * i / 300) for s in (1, -1) for i in range(301)]
+# Beyond R's tail bounds, where pnorm returns 0 or 1.
+xs += grid(-40, -38.4674, 0.05) + grid(8.2924, 10, 0.05)
+xs = sorted(set(x for x in xs if -40 <= x <= 10))
 
 ps = [10 ** (-323.3 + (math.log10(0.5) + 323.3) * i / 1500) for i in range(1501)]
 ps += [1 - 10 ** (-16 + (16 + math.log10(0.5)) * i / 300) for i in range(301)]

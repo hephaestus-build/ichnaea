@@ -11,7 +11,12 @@ import { describe, expect, it } from "vitest";
 
 import { createRng, pnorm, qnorm } from "../src/index.ts";
 import { mt19937 } from "../src/mt19937.ts";
-import { PNORM_COEFFICIENTS, QNORM_COEFFICIENTS } from "../src/normal-coefficients.ts";
+import {
+  PNORM_BOUNDS,
+  PNORM_COEFFICIENTS,
+  QNORM_BOUNDS,
+  QNORM_COEFFICIENTS,
+} from "../src/normal-coefficients.ts";
 
 const read = (name: string): unknown =>
   JSON.parse(readFileSync(join(import.meta.dirname, name), "utf8"));
@@ -32,21 +37,26 @@ const mpmath = read("reference-mpmath-normal.json") as {
 const coefficients = read("reference-normal-coefficients.json") as {
   pnorm: Record<"a" | "b" | "c" | "d" | "p" | "q", string[]>;
   qnorm: Record<"central" | "low" | "far", { numerator: string[]; denominator: string[] }>;
+  pnormBounds: Record<keyof typeof PNORM_BOUNDS, string>;
+  qnormBounds: Record<keyof typeof QNORM_BOUNDS, string>;
 };
 
 const parse = (xs: readonly string[]): number[] => xs.map(Number);
+const slack = (v: number): number => 4 * Number.EPSILON * Math.abs(v);
+const numbers = (o: Record<string, string>): Record<string, number> =>
+  Object.fromEntries(Object.entries(o).map(([k, v]) => [k, Number(v)]));
 
 const value = (v: number | "inf" | "-inf"): number =>
   v === "inf" ? Number.POSITIVE_INFINITY : v === "-inf" ? Number.NEGATIVE_INFINITY : v;
 
 /**
- * Within `ulps` units in the last place; subnormal results keep fewer significant bits. Against the
- * 60-digit values the worst measured are 2.16 ulps for pnorm with |x| <= 1, 3.30 elsewhere, and
- * 2.82 for qnorm, so the bounds are 2.5 and 4.
+ * Within `bound` times ε·|expected| (ε = 2^-52, so between `bound` and 2·`bound` units in the last
+ * place), plus 4 subnormal steps for results near the bottom of the double range. Against the
+ * 60-digit values the worst measured are given in VALIDATION.md.
  */
-function expectClose(actual: number, expected: number, ulps = 4): void {
+function expectClose(actual: number, expected: number, bound = 4): void {
   if (actual === expected) return;
-  const tolerance = ulps * Number.EPSILON * Math.abs(expected) + 2 ** -1060;
+  const tolerance = bound * Number.EPSILON * Math.abs(expected) + 4 * Number.MIN_VALUE;
   expect(Math.abs(actual - expected), `${actual} vs ${expected}`).toBeLessThanOrEqual(tolerance);
 }
 
@@ -81,12 +91,13 @@ describe("normal functions: R's pnorm and qnorm", () => {
     expect(Math.min(...r.qnorm.map(([p]) => p))).toBeLessThanOrEqual(1e-300);
   });
 
-  it.each(r.pnorm)("pnorm(%d) matches R", (x, expected) => {
-    expectClose(pnorm(x), expected);
+  // Same algorithm, same order of operations: only the libm functions differ from R's.
+  it.each(r.pnorm)("pnorm(%d) matches R within 2 ε·|v|", (x, expected) => {
+    expectClose(pnorm(x), expected, 2);
   });
 
-  it.each(r.qnorm)("qnorm(%d) matches R", (p, expected) => {
-    expectClose(qnorm(p), value(expected));
+  it.each(r.qnorm)("qnorm(%d) matches R within 2 ε·|v|", (p, expected) => {
+    expectClose(qnorm(p), value(expected), 2);
   });
 
   it("uses exactly the coefficients printed in R's source", () => {
@@ -103,6 +114,11 @@ describe("normal functions: R's pnorm and qnorm", () => {
     }
   });
 
+  it("uses exactly the branch bounds printed in R's source", () => {
+    expect(PNORM_BOUNDS).toEqual(numbers(coefficients.pnormBounds));
+    expect(QNORM_BOUNDS).toEqual(numbers(coefficients.qnormBounds));
+  });
+
   it("uses the correctly rounded constants", () => {
     const source = readFileSync(join(import.meta.dirname, "../src/normal.ts"), "utf8");
     for (const constant of Object.values(mpmath.constants)) {
@@ -117,13 +133,13 @@ describe("normal functions: R's pnorm and qnorm", () => {
     expect(r.qnorm.some(([p]) => p < 2.5e-317)).toBe(true);
   });
 
-  it("pnorm is within 2.5 ulps of the 60-digit value for |x| <= 1, and 4 elsewhere", () => {
+  it("pnorm is within 2.5 ε·|v| of the 60-digit value for |x| <= 1, and 4 ε·|v| elsewhere", () => {
     for (const [x, expected] of mpmath.pnorm) {
       expectClose(pnorm(x), expected, Math.abs(x) <= 1 ? 2.5 : 4);
     }
   });
 
-  it("qnorm is within 4 ulps of the 60-digit value everywhere on the grid", () => {
+  it("qnorm is within 4 ε·|v| of the 60-digit value everywhere on the grid", () => {
     for (const [p, expected] of mpmath.qnorm) expectClose(qnorm(p), expected);
   });
 
@@ -151,11 +167,21 @@ describe("normal functions: R's pnorm and qnorm", () => {
     for (const p of [-1e-12, 1 + 1e-12, Number.NaN]) expect(qnorm(p)).toBeNaN();
   });
 
-  it("is symmetric", () => {
+  it("is non-decreasing", () => {
     fc.assert(
-      fc.property(fc.double({ min: -8, max: 8, noNaN: true }), (x) => {
-        expect(Math.abs(pnorm(-x) - (1 - pnorm(x)))).toBeLessThanOrEqual(4 * Number.EPSILON);
-      }),
+      fc.property(
+        fc.double({ min: -40, max: 10, noNaN: true }),
+        fc.double({ min: -40, max: 10, noNaN: true }),
+        (a, b) => {
+          const [lo, hi] = a <= b ? [a, b] : [b, a];
+          // Rounding makes neighbouring doubles wobble by up to 2.4 ε·|v| (measured across every
+          // branch boundary), so a decrease counts only beyond 4 ε·|v|.
+          expect(pnorm(lo)).toBeLessThanOrEqual(pnorm(hi) + slack(pnorm(hi)));
+          const [qlo, qhi] = [qnorm(pnorm(lo)), qnorm(pnorm(hi))];
+          // pnorm is 0 below -38.4674, where qnorm gives -Infinity and a slack is undefined.
+          expect(qlo <= qhi || qlo - qhi <= slack(qhi)).toBe(true);
+        },
+      ),
     );
   });
 

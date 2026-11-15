@@ -43,35 +43,47 @@ each is pinned against an independent implementation:
 - `test/reference-numpy-mt19937.json` comes from numpy 2.3.4 (`scripts/reference-mt19937.py`):
   `MT19937` with legacy integer seeding, for seeds 1, 42, 5489, 2026 and 2^32 − 1. Ichnaea gives
   the same 1,300 raw 32-bit outputs per seed (two state regenerations) and the same 700
-  `random_sample` doubles, bit for bit. This is the sequence that every seeded result before this
-  change used, so no recorded result changes.
+  `random_sample` doubles, bit for bit. The old library gave the same sequence, so every seeded
+  stream is unchanged. Values derived through the normal functions are not bit for bit the same:
+  the old library's `pnorm` and `qnorm` differed from R's in the last digits, so critical values,
+  bounds, p-values and the simulated MDE can move by a few units in the last place. For example,
+  `critical(0.9, "two")` was 1.6448536269514724 and is now 1.6448536269514715.
 - `src/normal.ts` uses the same algorithms as R 4.5.2: Cody for `pnorm` and AS 241 for `qnorm`,
   with R's tail bounds (−38.4674 and 8.2924) and R's asymptotic expansion for subnormal p.
-  `test/reference-normal-coefficients.json` holds every coefficient of `src/normal-coefficients.ts` as printed in R's source at
-  the tag R-4-5-2 (`scripts/reference-normal-coefficients.ts`), and a test requires the code to
-  use exactly those values. This check is needed because a wrong digit in a coefficient can be
-  invisible in every output: the independent review found `5226.495278852546` for R's
+  `test/reference-normal-coefficients.json` holds every coefficient and branch bound of
+  `src/normal-coefficients.ts` as printed in R's source at the tag R-4-5-2
+  (`scripts/reference-normal-coefficients.ts`), and a test requires the code to use exactly those
+  values. This check is needed because a wrong literal can stay inside every accuracy bound: moving
+  qnorm's central bound from 0.425 to 0.42 costs at most 2.8 ε·|v|. A wrong digit in a coefficient
+  can be invisible in every output: the independent review found `5226.495278852546` for R's
   `5226.4952788528545610`, a change of about 1e-19 relative, which no reference value detects.
 - `test/reference-mpmath-normal.json` holds the true values, from mpmath 1.3.0 at 60 digits and
-  rounded to the nearest double (`scripts/reference-normal-mpmath.py`). It has `pnorm` at 12,363
-  points and `qnorm` at 3,930 probabilities from 5e-324 to 1 − 1e-16: a regular grid, extra points
-  on both sides of every branch boundary, and 9,000 seeded random points across the branch regions.
-  Ichnaea is within 2.5 ulps for `pnorm` with |x| ≤ 1 and within 4 ulps elsewhere. The worst
-  measured errors are 2.16, 3.30 and, for `qnorm`, 2.82 ulps.
-- `test/reference-r-normal.json` comes from R 4.5.2 (`scripts/reference-normal.R`): `pnorm` at 342
-  points from −38.47 to 38 and `qnorm` at 326 probabilities, 182 of them subnormal. Ichnaea is
-  within 4 ulps of R; the worst measured differences are 1.8 for `pnorm` and 1.7 for `qnorm`. For
-  subnormal p it is within 1 ulp of R, since it ports R's expansion operation for operation.
-  The library used before was up to 774 ulps from R for `pnorm`.
-- The oracles run on linux/amd64. R on arm64 gives slightly different last digits. Each committed
-  reference file is the oracle's output byte for byte: the formatter skips them.
+  rounded to the nearest double (`scripts/reference-normal-mpmath.py`). It has `pnorm` at 13,052
+  points from −40 to 10 and `qnorm` at 3,930 probabilities from 5e-324 to 1 − 1e-16: a regular
+  grid, small |x| down to 1e-12, extra points on both sides of every branch boundary and beyond
+  R's tail bounds, and 9,000 seeded random points across the branch regions. Errors are stated in
+  ε·|v| (ε = 2^-52, so 1 ε·|v| is between 1 and 2 units in the last place). Ichnaea is within
+  2.5 ε·|v| for `pnorm` with |x| ≤ 1 and within 4 elsewhere, plus 4 subnormal steps near the
+  bottom of the double range. The worst measured errors are 2.16 and 2.98 for `pnorm`, 2.82 for
+  `qnorm`, and one subnormal step.
+- `test/reference-r-normal.json` comes from R 4.5.2 (`scripts/reference-normal.R`): `pnorm` at 356
+  points from −39 to 38 and `qnorm` at 326 probabilities, 182 of them subnormal. Ichnaea follows
+  R's order of operations, so only the libm functions differ: it equals R exactly at 339 and 325
+  of those points and is within 2 ε·|v| everywhere (worst 1.39 and 1.72). For subnormal p it is
+  within 1 ε·|v|. Below −38.4674 R returns 0 where the correctly rounded value is the smallest
+  subnormal double; Ichnaea follows R. The library used before was up to 774 ε·|v| from R.
+- The oracles run on linux/amd64, in images pinned by digest, with hash-pinned Python packages.
+  R on arm64 gives slightly different last digits. Each committed reference file is the oracle's
+  output byte for byte: the formatter skips them, and the `stats oracle` CI job reruns every oracle
+  and fails if a file changes. The ratesci values come from an R package build and are not rerun.
 
-Property tests add symmetry, `pnorm(−x) = 1 − pnorm(x)`, and the inverse,
-`qnorm(pnorm(x)) = x`, at or below the median, where p keeps its full relative precision.
+Property tests add that both functions never decrease by more than 4 ε·|v| (rounding makes
+neighbouring doubles wobble by up to 2.4 ε·|v|), and that `qnorm(pnorm(x)) = x` at or below the
+median, where p keeps its full relative precision.
 
-`scripts/mutants.ts` changes each coefficient table, each branch boundary, each tail bound and the
-generator, and the tests detect every change. One change is not detectable: a change to the fifth-order
-term of the subnormal expansion moves the result by at most 0.84 ulps. That is below rounding.
+`scripts/mutants.ts` changes coefficients, every branch bound and cutoff, the tail bounds and the
+generator: 49 mutants of the statistics, and the tests detect every one. One change is not detectable: a change to the fifth-order
+term of the subnormal expansion moves the result by at most 0.84 ε·|v|. That is below rounding.
 
 ## fixed-cases: what counts
 

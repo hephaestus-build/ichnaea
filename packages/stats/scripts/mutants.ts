@@ -201,20 +201,20 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "pnorm square not split",
     file: "src/normal.ts",
-    from: "Math.trunc(x * 16) / 16",
+    from: "Math.trunc(x * SPLIT) / SPLIT",
     to: "x",
   },
   {
     id: "pnorm branch boundary moved",
-    file: "src/normal.ts",
-    from: "y <= 0.67448975",
-    to: "y <= 0.5",
+    file: "src/normal-coefficients.ts",
+    from: "central: 0.67448975",
+    to: "central: 0.5",
   },
   {
     id: "pnorm branch boundary typo",
-    file: "src/normal.ts",
-    from: "y <= 0.67448975",
-    to: "y <= 0.067448975",
+    file: "src/normal-coefficients.ts",
+    from: "central: 0.67448975",
+    to: "central: 0.067448975",
   },
   {
     id: "qnorm central coefficient typo",
@@ -236,19 +236,61 @@ export const MUTANTS: readonly Mutant[] = [
   },
   {
     id: "pnorm tail bound of R 4.4",
-    file: "src/normal.ts",
-    from: "x > -38.4674",
-    to: "x > -37.5193",
+    file: "src/normal-coefficients.ts",
+    from: "lowerTail: -38.4674",
+    to: "lowerTail: -37.5193",
   },
   {
     id: "qnorm subnormal p on the far rational",
-    file: "src/normal.ts",
-    from: "} else if (r <= 27) {",
-    to: "} else if (r <= 30) {",
+    file: "src/normal-coefficients.ts",
+    from: "far: 27",
+    to: "far: 30",
   },
   // Not a mutant: changing the fifth-order term of qnorm's asymptotic expansion, (5 - 9 / (8 + x2))
-  // to (5 - 9 / (6 + x2)), moves the result by at most 0.84 ulps, on 1 % of 2,000,000 subnormal p.
+  // to (5 - 9 / (6 + x2)), moves the result by at most 0.84 ε·|v|, on 1 % of 2,000,000 subnormal p.
   // That is below rounding, so no reference value can detect it.
+  {
+    id: "pnorm small-x cutoff",
+    file: "src/normal.ts",
+    from: "const HALF_EPSILON = Number.EPSILON / 2;",
+    to: "const HALF_EPSILON = 1e-3;",
+  },
+  {
+    id: "pnorm tail cutoff too early",
+    file: "src/normal-coefficients.ts",
+    from: "lowerTail: -38.4674",
+    to: "lowerTail: -38.2",
+  },
+  {
+    id: "pnorm second boundary lower",
+    file: "src/normal.ts",
+    from: "const SQRT_32 = 5.656854249492381;",
+    to: "const SQRT_32 = 5.5;",
+  },
+  {
+    id: "pnorm second boundary higher",
+    file: "src/normal.ts",
+    from: "const SQRT_32 = 5.656854249492381;",
+    to: "const SQRT_32 = 6;",
+  },
+  {
+    id: "pnorm first boundary higher",
+    file: "src/normal-coefficients.ts",
+    from: "central: 0.67448975",
+    to: "central: 0.8",
+  },
+  {
+    id: "pnorm square split coarser",
+    file: "src/normal-coefficients.ts",
+    from: "splitExponent: 4",
+    to: "splitExponent: 3",
+  },
+  {
+    id: "qnorm central boundary lower",
+    file: "src/normal-coefficients.ts",
+    from: "central: 0.425",
+    to: "central: 0.42",
+  },
   {
     id: "mt19937 shift",
     file: "src/mt19937.ts",

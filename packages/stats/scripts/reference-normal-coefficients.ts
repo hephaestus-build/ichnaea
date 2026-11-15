@@ -1,5 +1,6 @@
-// Writes test/reference-normal-coefficients.json: the coefficients of R 4.5.2's pnorm (Cody) and
-// qnorm (AS 241), as printed in R's source, so a test can pin src/normal-coefficients.ts to them. Test-only:
+// Writes test/reference-normal-coefficients.json: the coefficients and branch bounds of R 4.5.2's
+// pnorm (Cody) and qnorm (AS 241), as printed in R's source, so a test can pin
+// src/normal-coefficients.ts to them. Test-only:
 //   node scripts/reference-normal-coefficients.ts
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -46,7 +47,45 @@ const rational = (at: number) => ({
 });
 const qnorm = { central: rational(0), low: rational(15), far: rational(30) };
 
+/** The one capture of a pattern that must occur exactly once in the source. */
+function single(text: string, pattern: RegExp, what: string): string {
+  const matches = [...text.matchAll(new RegExp(pattern.source, "g"))];
+  if (matches.length !== 1) throw new Error(`${what}: expected one match, found ${matches.length}`);
+  return matches[0]![1]!;
+}
+const pnormBounds = {
+  central: single(pnormSource, /if \(y <= ([\d.]+)\)/, "pnorm central bound"),
+  lowerTail: single(pnormSource, /lower && (-[\d.]+) < x/, "pnorm lower tail bound"),
+  upperTail: single(
+    pnormSource,
+    /lower && -[\d.]+ < x\s*&&\s*x < ([\d.]+)/,
+    "pnorm upper tail bound",
+  ),
+  splitExponent: single(pnormSource, /trunc\(ldexp\(X, (\d+)\)\)/, "pnorm split exponent"),
+};
+const shifts = [...as241.matchAll(/r \+= -([\d.]+);/g)].map((m) => m[1]!);
+if (shifts.length !== 2)
+  throw new Error(`qnorm.c: expected two shifts of r, found ${shifts.length}`);
+const qnormBounds = {
+  central: single(as241, /fabs\(q\) <= ([\d.]+)\)/, "qnorm central bound"),
+  centralSquare: single(as241, /r = ([\d.]+) - q \* q/, "qnorm central square"),
+  low: single(as241, /if \(r <= ([\d.]+)\)/, "qnorm low bound"),
+  lowShift: shifts[0]!,
+  far: single(as241, /else if\(r <= ([\d.]+)\)/, "qnorm far bound"),
+  farShift: shifts[1]!,
+};
+
 writeFileSync(
   join(import.meta.dirname, "..", "test", "reference-normal-coefficients.json"),
-  `${JSON.stringify({ oracle: `R source, wch/r-source tag ${TAG}, src/nmath`, pnorm, qnorm }, null, 2)}\n`,
+  `${JSON.stringify(
+    {
+      oracle: `R source, wch/r-source tag ${TAG}, src/nmath`,
+      pnorm,
+      qnorm,
+      pnormBounds,
+      qnormBounds,
+    },
+    null,
+    2,
+  )}\n`,
 );

@@ -1,19 +1,26 @@
 // Cody's rational Chebyshev approximations for the standard normal distribution function and
 // Wichura's algorithm AS 241 (PPND16) for its quantile, as R 4.5.2 implements them (nmath pnorm.c
-// and qnorm.c), with the coefficients in normal-coefficients.ts. The value tests pin the functions
-// against R and against mpmath at 60 digits.
+// and qnorm.c), in R's order of operations, with the coefficients in normal-coefficients.ts. The
+// value tests pin the functions against R and against mpmath at 60 digits.
 
-import { PNORM_COEFFICIENTS, QNORM_COEFFICIENTS, type Rational } from "./normal-coefficients.ts";
+import {
+  PNORM_BOUNDS,
+  PNORM_COEFFICIENTS,
+  QNORM_BOUNDS,
+  QNORM_COEFFICIENTS,
+  type Rational,
+} from "./normal-coefficients.ts";
 
 const { a: A, b: B, c: C, d: D, p: P, q: Q } = PNORM_COEFFICIENTS;
 const ONE_OVER_SQRT_2PI = 0.3989422804014327;
 const SQRT_32 = 5.656854249492381;
 const TWO_PI = 6.283185307179586;
 const HALF_EPSILON = Number.EPSILON / 2;
+const SPLIT = 2 ** PNORM_BOUNDS.splitExponent;
 
 /** exp(-x^2 / 2), split so that the square loses no precision (Cody's `do_del`). */
 function gaussianFactor(x: number): number {
-  const xsq = Math.trunc(x * 16) / 16;
+  const xsq = Math.trunc(x * SPLIT) / SPLIT;
   const del = (x - xsq) * (x + xsq);
   return Math.exp(-xsq * xsq * 0.5) * Math.exp(-del * 0.5);
 }
@@ -22,7 +29,7 @@ function gaussianFactor(x: number): number {
 export function pnorm(x: number): number {
   if (Number.isNaN(x)) return Number.NaN;
   const y = Math.abs(x);
-  if (y <= 0.67448975) {
+  if (y <= PNORM_BOUNDS.central) {
     let xnum = 0;
     let xden = 0;
     if (y > HALF_EPSILON) {
@@ -44,8 +51,8 @@ export function pnorm(x: number): number {
       xnum = (xnum + C[i]!) * y;
       xden = (xden + D[i]!) * y;
     }
-    tail = (gaussianFactor(y) * (xnum + C[7]!)) / (xden + D[7]!);
-  } else if (x > -38.4674 && x < 8.2924) {
+    tail = gaussianFactor(y) * ((xnum + C[7]!) / (xden + D[7]!));
+  } else if (x > PNORM_BOUNDS.lowerTail && x < PNORM_BOUNDS.upperTail) {
     const xsq = 1 / (x * x);
     let xnum = P[5]! * xsq;
     let xden = xsq;
@@ -54,10 +61,10 @@ export function pnorm(x: number): number {
       xden = (xden + Q[i]!) * xsq;
     }
     const ratio = (xsq * (xnum + P[4]!)) / (xden + Q[4]!);
-    tail = (gaussianFactor(y) * (ONE_OVER_SQRT_2PI - ratio)) / y;
+    tail = gaussianFactor(y) * ((ONE_OVER_SQRT_2PI - ratio) / y);
   } else {
-    // R's bounds: below -38.4674 the lower tail is under the smallest subnormal double, and above
-    // 8.2924 the distribution function rounds to 1.
+    // Beyond R's bounds the lower tail is under the smallest subnormal double (x < -38.4674), or the
+    // distribution function rounds to 1 (x > 8.2924).
     return x > 0 ? 1 : 0;
   }
   return x > 0 ? 1 - tail : tail;
@@ -80,18 +87,18 @@ export function qnorm(p: number): number {
   if (p === 0) return Number.NEGATIVE_INFINITY;
   if (p === 1) return Number.POSITIVE_INFINITY;
   const q = p - 0.5;
-  if (Math.abs(q) <= 0.425) {
-    const r = 0.180625 - q * q;
+  if (Math.abs(q) <= QNORM_BOUNDS.central) {
+    const r = QNORM_BOUNDS.centralSquare - q * q;
     const { numerator, denominator } = QNORM_COEFFICIENTS.central;
     return (q * horner(numerator, r)) / (horner(denominator, r) * r + 1);
   }
   const lp = Math.log(q < 0 ? p : 1 - p);
   const r = Math.sqrt(-lp);
   let value: number;
-  if (r <= 5) {
-    value = rational(QNORM_COEFFICIENTS.low, r - 1.6);
-  } else if (r <= 27) {
-    value = rational(QNORM_COEFFICIENTS.far, r - 5);
+  if (r <= QNORM_BOUNDS.low) {
+    value = rational(QNORM_COEFFICIENTS.low, r - QNORM_BOUNDS.lowShift);
+  } else if (r <= QNORM_BOUNDS.far) {
+    value = rational(QNORM_COEFFICIENTS.far, r - QNORM_BOUNDS.farShift);
   } else {
     // Only a subnormal p (below about 2.5e-317) gets here, and there r < 28. R's asymptotic
     // expansion for 27 < r < 55, to the fifth order.

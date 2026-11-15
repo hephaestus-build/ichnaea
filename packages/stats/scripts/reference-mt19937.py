@@ -3,7 +3,7 @@ init_genrand (numpy's legacy integer seeding), as raw 32-bit outputs and as genr
 The raw sequences cross two state regenerations (624 outputs each). Test-only oracle. Run in a
 container:
   docker run --rm --platform linux/amd64 -v "$PWD":/w -w /w python:3.13-slim \
-    sh -c "pip install -q numpy==2.3.4 && python scripts/reference-mt19937.py"
+    sh -c "pip install -q --require-hashes -r scripts/oracle-requirements.txt && python scripts/reference-mt19937.py"
 """
 import json
 

@@ -115,5 +115,19 @@
         ".59983220655588793769"
       ]
     }
+  },
+  "pnormBounds": {
+    "central": "0.67448975",
+    "lowerTail": "-38.4674",
+    "upperTail": "8.2924",
+    "splitExponent": "4"
+  },
+  "qnormBounds": {
+    "central": ".425",
+    "centralSquare": ".180625",
+    "low": "5.",
+    "lowShift": "1.6",
+    "far": "27",
+    "farShift": "5."
   }
 }

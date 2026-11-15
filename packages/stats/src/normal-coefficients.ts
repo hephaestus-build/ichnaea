@@ -1,6 +1,6 @@
-// The coefficients of R 4.5.2's pnorm (Cody) and qnorm (AS 241), each written as the shortest
-// literal of the same double. Internal: test/reference-normal-coefficients.json pins every value
-// against R's source.
+// The coefficients and branch bounds of R 4.5.2's pnorm (Cody) and qnorm (AS 241), each written
+// as the shortest literal of the same double. Internal: test/reference-normal-coefficients.json
+// pins every value against R's source.
 
 /** Cody's coefficients, in R's array order. */
 export const PNORM_COEFFICIENTS: {
@@ -79,3 +79,21 @@ export const QNORM_COEFFICIENTS: {
     ],
   },
 };
+
+/** pnorm's branch bounds and the exponent of its exact split of x (`ldexp(trunc(ldexp(x, 4)), -4)`). */
+export const PNORM_BOUNDS: {
+  readonly central: number;
+  readonly lowerTail: number;
+  readonly upperTail: number;
+  readonly splitExponent: number;
+} = { central: 0.67448975, lowerTail: -38.4674, upperTail: 8.2924, splitExponent: 4 };
+
+/** qnorm's branch bounds, and the shifts of r in its two tail branches. */
+export const QNORM_BOUNDS: {
+  readonly central: number;
+  readonly centralSquare: number;
+  readonly low: number;
+  readonly lowShift: number;
+  readonly far: number;
+  readonly farShift: number;
+} = { central: 0.425, centralSquare: 0.180625, low: 5, lowShift: 1.6, far: 27, farShift: 5 };

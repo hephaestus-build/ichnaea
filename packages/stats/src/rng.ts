@@ -6,8 +6,6 @@ export interface Rng {
   readonly seed: number;
   /** A uniform number in [0, 1). */
   uniform(): number;
-  /** A uniform integer in [0, n). */
-  integer(n: number): number;
 }
 
 /** Creates the one seeded generator that every resampling method uses (32-bit Mersenne Twister). */
@@ -18,10 +16,5 @@ export function createRng(seed: number): Rng {
   const next = mt19937(seed);
   // genrand_res53 of the reference implementation: a uniform double with 53 random bits.
   const uniform = (): number => ((next() >>> 5) * 67108864 + (next() >>> 6)) / 9007199254740992;
-  return {
-    algorithm: "mt19937",
-    seed,
-    uniform,
-    integer: (n: number): number => Math.floor(uniform() * n),
-  };
+  return { algorithm: "mt19937", seed, uniform };
 }
