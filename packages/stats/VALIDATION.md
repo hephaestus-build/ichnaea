@@ -155,11 +155,12 @@ result lists every condition that fails in its `limitations`.
   design is not studied; missingness that leaves some cells with one trial is).
 
 - for `nonInferiority` only: an established margin floor, and an effective margin (the declared
-  margin minus any safety margin) from that floor up to 0.30, the validated margin ceiling. A margin of 0 is not a
-  non-inferiority test. A claim that the candidate is better (a lower bound above 0) tests the
+  margin minus any safety margin) from that floor up to 0.30, the validated margin ceiling. A
+  declared 0.10 with a safety margin of 0.06 is tested at 0.04. The range covers only this
+  `fixed-cases` interval; every other method states its own validated domain. A margin of 0 is not
+  a non-inferiority test. A claim that the candidate is better (a lower bound above 0) tests the
   interval at a margin of 0, below any floor, so it stays descriptive and is never validated. A
-  unit test checks this on random inputs at every margin below the floor. A declared 0.10 with a safety margin of 0.06 is tested at 0.04. The range
-  covers only this `fixed-cases` interval; every other method states its own validated domain.
+  unit test checks this on random inputs at every margin below the floor.
 
 **No non-inferiority result is validated: the margin floor is not set yet.** Every
 `nonInferiority` result is `validated: false` with the reason "the validated margin floor is not
@@ -218,38 +219,68 @@ one trial per case and arm and one case per family, so it needs as many families
   The unit suite computes the first value by exact enumeration and requires the rule to fail it.
 - **Unequal counts:** a within-case permutation test of the equal-weight mean difference: arm labels
   are permuted within each case (hypergeometric draws without replacement), by Monte Carlo with the
-  seeded generator, p = (1 + count) / (1 + resamples). It is exact under the sharp null for every
-  number of resamples B with (1 + B)·0.05 a whole number, so the type-I study uses 99 resamples and
-  the decision 10,000. A unit test
-  checks it against the exact conditional p-value by enumeration.
+  seeded generator, p = (1 + count) / (1 + resamples). Under the sharp null it is valid for every
+  number of resamples B: the chance of p ≤ 0.05 is at most 0.05, and it equals 0.05 only when
+  (1 + B)·0.05 is a whole number. The type-I study uses 99 resamples, that worst case. The decision
+  uses 10,000, where (1 + B)·0.05 is 500.05, so the test is valid and its level is 500/10,001, just
+  under 0.05. A unit test checks it against the exact conditional p-value by enumeration.
 
 Each result names its regression method in `regressionMethod`.
 
 ## Results of the CI gate
 
-Commit of the study: the head of this pull request. Screening at 6,000 and at 10,000 repetitions,
-both on the same grid. The 6,000-repetition run takes about 30 minutes on four cores; the six study
-files run in parallel.
+Two workflows run the studies with `pnpm --filter ./packages/stats run test:sim`:
 
-| Grid                                                  | Points | Exact | Confirmed (6,000 / 10,000) | Minimum or maximum                   | Mean   |
-| ----------------------------------------------------- | ------ | ----- | -------------------------- | ------------------------------------ | ------ |
-| Lower bound coverage                                  | 287    | 217   | 8 / 0                      | minimum 0.9435 (exact, k = 5, r = 3) | 0.9633 |
-| Exact stratified test, type-I                         | 45     | 28    | 0 / 0                      | maximum 0.0395 (6,000), exact 0.0258 | 0.0222 |
-| Within-case permutation test (unequal counts), type-I | 12     | 0     | — / 3                      | maximum 0.0505 ± 0.0005 (confirmed)  | 0.0383 |
+- The `CI` workflow (`.github/workflows/ci.yml`), job `simulation`: on every pull request, every
+  push to `main` and in the merge queue, with `ICHNAEA_SIM_REPS=6000` and a limit of 60 minutes.
+- The `Nightly` workflow (`.github/workflows/nightly.yml`), job `simulation`: every day at 02:17
+  UTC and on demand, with `ICHNAEA_SIM_REPS=10000` and a limit of 120 minutes.
 
-The coverage grid: exact points for 5 to 9 cases (r = 2, and r = 3 up to 6 cases) at rates 0.05
-to 0.99 and shifts +0.1 to −0.3; simulated points for 17 and 60 cases at r = 2, 3 and 5, rates 0.7,
-0.9, 0.97, a mixture of stable and noisy cases and low rates from 0.03 to 0.3, true differences 0
-and −0.05; heterogeneous effects; missingness tied to the drop (6 and 12 of 60 cases lose 2 of 3
-candidate trials), through the same case selection as `compareCounts`; missingness not tied to it;
-and unequal trial counts (2 to 5) with and without a drop on the cases with fewest trials, for 8, 17
-and 60 cases. The confirmed coverage points at 6,000 repetitions all passed, the lowest at 0.9437 ±
-0.0005 (k = 17, r = 5, rate 0.97).
+`test:sim` runs five study files in parallel: `test/coverage.sim.test.ts`,
+`test/checks-coverage.sim.test.ts`, `test/type-i-exact.sim.test.ts`,
+`test/type-i-permutation-17.sim.test.ts` and `test/type-i-permutation-60.sim.test.ts`. Candidates
+are confirmed in the same run.
 
-The checks of the check, each confirmed: a lower bound shifted up by 2 points fails (0.9289 ± 0.0005 at 17 cases, r = 2, rate 0.9); the
-variant without the N/(N−1) factor fails (0.9224 ± 0.0005 at 17 cases, r = 2, rate 0.9); the score
-test at 0 without the factor, used as a regression test, fails (type-I 0.0771 ± 0.0005 at 60 cases,
-r = 2, low rates).
+The results at 6,000 repetitions, by the grid title that the CI log prints. Each study compares its
+result with its row here and fails if they differ, so a change to a grid or to its results changes
+this table in the same commit. At 10,000 repetitions a study compares only the points and the exact
+points; the nightly log has the rest. A unit test (`test/validation-page.test.ts`) checks that the
+table has one row per study and that the workflows use the repetitions above. "Confirmed" counts
+the candidates that screening sent to confirmation. A grid marked "must fail" is a check of the
+check: its study requires it to fail.
+
+| Grid                                                   | Points | Exact | Confirmed | Minimum or maximum                                                                           | Mean   |
+| ------------------------------------------------------ | ------ | ----- | --------- | -------------------------------------------------------------------------------------------- | ------ |
+| `fixed-cases lower bound`                              | 622    | 558   | 3         | minimum 0.9431 (exact), k=5, candidate 2 trials against base 5 p=0.2 shift=0                 | 0.9648 |
+| `unequal arms in every case (must fail)`               | 6      | 4     | 2         | minimum 0.9361 ± 0.0005 (confirmed), k=17, candidate 3 trials against base 2, p=0.95 shift=0 | 0.9375 |
+| `biased bound (must fail)`                             | 1      | 0     | 1         | minimum 0.9289 ± 0.0005 (confirmed), bound + 0.02, k=17 r=2 p=0.9                            | 0.9289 |
+| `variant without the factor (must fail)`               | 1      | 0     | 1         | minimum 0.9224 ± 0.0005 (confirmed), Mee, k=17 r=2 p=0.9                                     | 0.9224 |
+| `exact stratified test, type-I error`                  | 45     | 28    | 0         | maximum 0.0395 ± 0.0025 (screen), k=60 r=3 0.7                                               | 0.0222 |
+| `within-case permutation test, 17 cases, type-I error` | 6      | 0     | 1         | maximum 0.0414 ± 0.0004 (confirmed), k=17 r=2..3 0.7                                         | 0.0287 |
+| `within-case permutation test, 60 cases, type-I error` | 6      | 0     | 1         | maximum 0.0454 ± 0.0005 (confirmed), k=60 r=2..3 0.7                                         | 0.0392 |
+
+The coverage grid has exact points for 5 to 9, 12 and 13 cases at r = 2 and for 5 to 8 cases at
+r = 3, at rates 0.05 to 0.99 and shifts +0.1 to −0.3. It has exact points with one-trial cells (5, 9
+and 10 cases), with mixed counts (6 cases, 3 at r = 2 and 3 at r = 3) and with 2 candidate trials
+against 5 base trials (5 cases). Its simulated points are:
+
+- 17 and 60 cases at r = 2 and 3, with rates 0.7, 0.9 and 0.97, a mixture of stable and noisy
+  cases, and low rates from 0.03 to 0.3, at true differences 0 and −0.05;
+- heterogeneous effects (40 cases);
+- missingness tied to the drop (6 and 12 of 60 cases lose 2 of 3 candidate trials), and missingness
+  not tied to it;
+- unequal trial counts (2 or 3 per case), with and without a drop on the cases with fewest trials,
+  for 8, 17 and 60 cases, and 3 trials on 17 of 60 cases;
+- 12 cases at r = 3 and at r = 2 to 3, and 17 cases where 3 cases keep 1 candidate trial.
+
+The three confirmed coverage points pass, each at a difference of 0: 0.9514 ± 0.0005 (17 cases,
+r = 2, rate 0.7), 0.9489 ± 0.0005 (17 cases, r = 3, rate 0.7) and 0.9472 ± 0.0004 (12 cases, r = 2
+to 3, rate 0.9). The grid mean is 0.9648, above 0.95.
+
+The checks of the check, each confirmed: a lower bound shifted up by 2 points fails, and so does the
+variant without the N/(N−1) factor, both at 17 cases with r = 2 and rate 0.9. No simulation runs the
+score test at 0 as a regression test any more. Instead the unit suite computes its type-I error
+exactly (0.0525, see above) and requires the rule to fail it.
 
 Seeds 1–999 serve coverage points, 1000–1999 type-I points, 9000 and above the checks of the check;
 confirmations add 100,000.

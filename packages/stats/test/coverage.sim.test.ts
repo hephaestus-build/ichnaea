@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { fixedCasesInterval } from "../src/index.ts";
 import { exactCoverage, exactPatternCoverage, type Pattern } from "./support/exact.ts";
 import { clamp, draw, LEVEL, rates, truthOf } from "./support/grid.ts";
+import { documented } from "./support/documented.ts";
 import { binomial, COVERAGE, judge, type Point, REPS } from "./support/simulate.ts";
 
 const pattern = (count: number, candidateTrials: number, baseTrials: number): Pattern => ({
@@ -13,6 +14,40 @@ const pattern = (count: number, candidateTrials: number, baseTrials: number): Pa
   candidateTrials,
   baseTrials,
 });
+
+/** Every case with the same unequal trial counts in its arms and rate p in both: exact, or simulated. */
+const unequalExact = (
+  k: number,
+  candidateTrials: number,
+  baseTrials: number,
+  p: number,
+): Point => ({
+  label: `k=${k}, candidate ${candidateTrials} trials against base ${baseTrials}, p=${p} shift=0`,
+  seed: 0,
+  exact: exactPatternCoverage([pattern(k, candidateTrials, baseTrials)], p, p, LEVEL),
+});
+const unequalSimulated = (
+  k: number,
+  candidateTrials: number,
+  baseTrials: number,
+  p: number,
+  seed: number,
+): Point => {
+  const base = rates(k, String(p));
+  return {
+    label: `k=${k}, candidate ${candidateTrials} trials against base ${baseTrials}, p=${p} shift=0`,
+    seed,
+    run: (rng) =>
+      fixedCasesInterval(
+        base.map((q, j) => ({
+          id: `c${j}`,
+          candidate: { successes: binomial(rng, candidateTrials, q), trials: candidateTrials },
+          base: { successes: binomial(rng, baseTrials, q), trials: baseTrials },
+        })),
+        LEVEL,
+      ).interval.lower <= 1e-12,
+  };
+};
 
 describe("fixed-cases: the one-sided lower bound compareCounts reports", () => {
   it(`holds coverage under the validation rule (screening at ${REPS} repetitions)`, () => {
@@ -172,46 +207,22 @@ describe("fixed-cases: the one-sided lower bound compareCounts reports", () => {
     }
     const verdict = judge(points, COVERAGE, "fixed-cases lower bound");
     expect(verdict.failures).toEqual([]);
+    // VALIDATION.md, "Results of the CI gate", states this result.
+    const { run, page } = documented(COVERAGE, verdict);
+    expect(run).toEqual(page);
   });
 
   it("misses the bar when every case has 2 trials in one arm and 3 in the other", () => {
     // Outside the gate above, and outside every validated result until the margin floor is set
     // (VALIDATION.md, "The validated domain"). The bound sits too high at a difference of 0. If a
     // change to the method makes these points pass, move the pattern into the gate.
-    const at = (k: number, candidateTrials: number, baseTrials: number, p: number): Point => ({
-      label: `k=${k}, candidate ${candidateTrials} trials against base ${baseTrials}, p=${p} shift=0`,
-      seed: 0,
-      exact: exactPatternCoverage([pattern(k, candidateTrials, baseTrials)], p, p, LEVEL),
-    });
-    const unequal = (
-      k: number,
-      candidateTrials: number,
-      baseTrials: number,
-      p: number,
-      seed: number,
-    ): Point => {
-      const base = rates(k, String(p));
-      return {
-        label: `k=${k}, candidate ${candidateTrials} trials against base ${baseTrials}, p=${p} shift=0`,
-        seed,
-        run: (rng) =>
-          fixedCasesInterval(
-            base.map((q, j) => ({
-              id: `c${j}`,
-              candidate: { successes: binomial(rng, candidateTrials, q), trials: candidateTrials },
-              base: { successes: binomial(rng, baseTrials, q), trials: baseTrials },
-            })),
-            LEVEL,
-          ).interval.lower <= 1e-12,
-      };
-    };
     const points = [
-      at(5, 3, 2, 0.9),
-      at(6, 3, 2, 0.9),
-      at(7, 3, 2, 0.9),
-      at(9, 2, 3, 0.05),
-      unequal(17, 2, 3, 0.05, 900),
-      unequal(17, 3, 2, 0.95, 901),
+      unequalExact(5, 3, 2, 0.9),
+      unequalExact(6, 3, 2, 0.9),
+      unequalExact(7, 3, 2, 0.9),
+      unequalExact(9, 2, 3, 0.05),
+      unequalSimulated(17, 2, 3, 0.05, 900),
+      unequalSimulated(17, 3, 2, 0.95, 901),
     ];
     const verdict = judge(points, COVERAGE, "unequal arms in every case (must fail)");
     for (const point of points)
@@ -219,5 +230,8 @@ describe("fixed-cases: the one-sided lower bound compareCounts reports", () => {
         verdict.failures.some((f) => f.startsWith(`${point.label}:`)),
         point.label,
       ).toBe(true);
+    // VALIDATION.md, "Results of the CI gate", states this result.
+    const { run, page } = documented(COVERAGE, verdict);
+    expect(run).toEqual(page);
   });
 });
