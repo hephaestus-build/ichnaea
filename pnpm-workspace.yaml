@@ -1,0 +1,12 @@
+packages:
+  - packages/*
+  - examples/*
+
+# Supply-chain policy: a version must be seven days old,
+# install scripts are blocked unless listed, and a lockfile never downgrades trust.
+minimumReleaseAge: 10080
+trustPolicy: no-downgrade
+strictDepBuilds: true
+allowBuilds: {}
+linkWorkspacePackages: true
+saveExact: true

@@ -1,0 +1,73 @@
+{
+  "case": {
+    "members": [
+      "unit",
+      "dataClass",
+      "input",
+      "turns",
+      "fixtures",
+      "references",
+      "family",
+      "slices",
+      "criticality",
+      "provenance"
+    ],
+    "excluded": {
+      "schema": "The major version. A major that keeps this projection keeps identities; one that changes it is listed in majors.json, and its migration recomputes them.",
+      "id": "Where the case sits in its set. A case copied under a new ID keeps its digest, so a screened case cannot pass as new; the set entry hashes the ID.",
+      "pool": "Where the case sits in its set. Moving a screened case into another pool keeps its digest; the set entry hashes the pool.",
+      "caseSet": "A pointer to the set that holds the case. The same case in another set, or in a renamed set, keeps its digest, so a case is traced by its digest across sets. The set's own digest covers its membership.",
+      "validation": "The review status. Reviewing a case does not change what it asks or grades."
+    }
+  },
+  "provenance": {
+    "members": [
+      "source",
+      "selection",
+      "created",
+      "collected",
+      "licence",
+      "exposure",
+      "generator",
+      "reusedDataset",
+      "finding"
+    ],
+    "excluded": {
+      "author": "A pointer to a person, erased with them. Erasing it keeps the case's digest."
+    }
+  },
+  "caseSetEntry": {
+    "members": [
+      "id",
+      "digest",
+      "pool",
+      "family"
+    ],
+    "excluded": {}
+  },
+  "configuration": {
+    "members": [
+      "models",
+      "parameters",
+      "prompts",
+      "factors"
+    ],
+    "excluded": {
+      "schema": "The major version. A major that keeps this projection keeps identities; one that changes it is listed in majors.json, and its migration recomputes them.",
+      "description": "Prose for people. Behaviour is pinned by models, parameters, prompts and factors.",
+      "label": "A name for people.",
+      "informational": "Values that do not decide behaviour, such as a provider fingerprint seen at resolution."
+    }
+  },
+  "prompt": {
+    "members": [
+      "name",
+      "digest",
+      "status"
+    ],
+    "excluded": {
+      "template": "The text that `digest` pins. A configuration with the text and one without it are the same configuration; verifyConfiguration checks the text against the digest.",
+      "uri": "Where the template was resolved from. Two resolutions of one template give one identity."
+    }
+  }
+}

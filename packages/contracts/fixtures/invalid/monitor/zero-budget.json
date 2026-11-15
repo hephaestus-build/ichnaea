@@ -1,0 +1,17 @@
+{
+  "schema": "ichnaea.monitor/1",
+  "id": "support-refusal-rate",
+  "measure": "support/refused",
+  "sampling": "census",
+  "statistic": "bernoulli-cusum",
+  "parameters": {
+    "k": 0.02,
+    "h": 4.1
+  },
+  "reference": 0.03,
+  "falseAlarmsPerYear": 0,
+  "practicalMargin": 0.02,
+  "owner": "support on-call",
+  "action": "Check the help-centre sync, then the model route.",
+  "severity": "warning"
+}

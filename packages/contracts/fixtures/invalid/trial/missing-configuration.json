@@ -1,0 +1,49 @@
+{
+  "schema": "ichnaea.trial/1",
+  "id": "t-0001",
+  "source": "offline",
+  "run": "run-2026-11-15-a",
+  "case": "refund-window-de",
+  "unit": "session",
+  "arm": "candidate",
+  "replicate": 0,
+  "outcome": "completed",
+  "dataClass": "none",
+  "input": {
+    "question": "Kann ich nach 40 Tagen noch zurückgeben?"
+  },
+  "output": {
+    "text": "Nein, die Frist beträgt 30 Tage.",
+    "sources": [
+      "policy.md"
+    ]
+  },
+  "steps": [
+    {
+      "kind": "model_call",
+      "model": "example-model-2026-10",
+      "outcome": "ok",
+      "inputTokens": 812,
+      "outputTokens": 64
+    }
+  ],
+  "usage": {
+    "calls": 1,
+    "inputTokens": 812,
+    "outputTokens": 64,
+    "wallMs": 1830
+  },
+  "observed": [
+    {
+      "name": "model.answer.returnedId",
+      "value": "example-model-2026-10",
+      "expected": "example-model-2026-10"
+    }
+  ],
+  "cache": {
+    "hit": false
+  },
+  "startedAt": "2026-11-15T10:01:00Z",
+  "endedAt": "2026-11-15T10:01:02Z",
+  "caseDigest": "sha256:16c10801970f1dc96e275b5349b2892834dee2c8c89d6b2087171edc3ffceaa0"
+}

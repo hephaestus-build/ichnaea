@@ -1,0 +1,14 @@
+{
+  "schema": "ichnaea.label/1",
+  "trial": "t-0001",
+  "measure": "support/grounded",
+  "value": {
+    "type": "binary",
+    "pass": true
+  },
+  "raterRole": "expert",
+  "source": "bundle",
+  "rubricDigest": "sha256:1616161616161616161616161616161616161616161616161616161616161616",
+  "labelledAt": "2026-11-15T12:00:00Z",
+  "dataClass": "none"
+}

@@ -1,0 +1,41 @@
+{
+  "schema": "ichnaea.calibration/1",
+  "judge": "support/grounded",
+  "judgeDigest": "sha256:1717171717171717171717171717171717171717171717171717171717171717",
+  "measure": "support/grounded",
+  "calibrationSet": "sha256:1818181818181818181818181818181818181818181818181818181818181818",
+  "humanHuman": [
+    {
+      "statistic": "cohen-kappa",
+      "estimate": 0.71,
+      "lower": 0.6,
+      "upper": 0.81,
+      "n": 120
+    }
+  ],
+  "judgeHuman": [
+    {
+      "statistic": "cohen-kappa",
+      "estimate": 0.68,
+      "lower": 0.56,
+      "upper": 0.79,
+      "n": 120
+    }
+  ],
+  "confusion": [
+    [
+      70,
+      8
+    ],
+    [
+      9,
+      33
+    ]
+  ],
+  "tolerance": 0.1,
+  "expiry": [
+    "judge change",
+    "output distribution shift"
+  ],
+  "createdAt": "2026-11-15T13:00:00Z"
+}

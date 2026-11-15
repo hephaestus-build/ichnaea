@@ -1,0 +1,13 @@
+{
+  "schema": "ichnaea.measureValue/2",
+  "trial": "t-0001",
+  "measure": "support/facts-correct",
+  "version": "1.0.0",
+  "applicable": true,
+  "value": {
+    "type": "binary",
+    "pass": true
+  },
+  "source": "ichnaea",
+  "dataClass": "none"
+}

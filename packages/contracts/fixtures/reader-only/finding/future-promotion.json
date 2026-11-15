@@ -1,0 +1,15 @@
+{
+  "schema": "ichnaea.finding/1",
+  "id": "f-0001",
+  "source": "canary",
+  "trials": [
+    "t-0001"
+  ],
+  "pointers": [
+    "run-2026-11-15-a/t-0001"
+  ],
+  "failureClass": "wrong return window",
+  "confirmedAt": "2026-11-15T14:00:00Z",
+  "confirmerRole": "suite maintainer",
+  "promotion": "auto"
+}

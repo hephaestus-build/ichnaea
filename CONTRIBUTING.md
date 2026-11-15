@@ -29,6 +29,14 @@ Thank you for helping. Ichnaea is a general framework: it must work for any GenA
 `pnpm generate` rewrites the JSON Schema files and the shared fixtures from their sources. Commit
 the result. Never edit generated files by hand.
 
+## Requirements and decisions
+
+- `REQ-n` in code, tests and docs refers to [`docs/requirements.md`](docs/requirements.md). The
+  maintainers generate that file from their requirements record and replace it as a whole. Never
+  edit it by hand. To propose a change to a requirement, open an issue.
+- Framework decisions are recorded in [`docs/decisions/`](docs/decisions/README.md). Code cites
+  them by number.
+
 ## Licence of contributions
 
 By contributing you agree that your code is licensed under MIT and your prose under CC BY 4.0, as
