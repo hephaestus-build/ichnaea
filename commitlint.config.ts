@@ -17,6 +17,8 @@ export default {
         "repo",
         "ci",
         "deps",
+        // Dependabot names development dependency updates `deps-dev`.
+        "deps-dev",
         "examples",
       ],
     ],
