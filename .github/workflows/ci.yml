@@ -38,8 +38,16 @@ jobs:
       - run: pnpm run lint
       - run: pnpm run typecheck
       - run: pnpm run check:generated
-      - name: Package correctness (publint, are the types wrong)
+      - name: Package correctness (publint, are the types wrong, API report)
         run: pnpm run check:package
+      - name: The packed tarballs install, load and run the README's example without a registry
+        run: |
+          pnpm -r --filter './packages/*' exec pnpm pack --pack-destination "$RUNNER_TEMP/tarballs"
+          node scripts/smoke-tarballs.ts "$RUNNER_TEMP/tarballs"
+      - name: The release SBOM of the packed tarballs lists what they ship
+        run: |
+          node scripts/release-sbom.ts "$RUNNER_TEMP/tarballs" "$RUNNER_TEMP/sbom.cdx.json"
+          node scripts/check-sbom.ts "$RUNNER_TEMP/sbom.cdx.json" "$RUNNER_TEMP/tarballs"
 
   test:
     name: test (node ${{ matrix.node }})
@@ -48,7 +56,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: [22, 24, 26]
+        # 22.18.0 is the floor: the first Node that loads ichnaea.config.ts without a flag. `22`
+        # resolves to the newest 22.x, so it never tests the floor.
+        node: [22.18.0, 22, 24, 26]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -60,6 +70,12 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
+      - name: At the floor, the packed tarballs run the README's example with the CLI
+        if: matrix.node == '22.18.0'
+        run: |
+          pnpm run build
+          pnpm -r --filter './packages/*' exec pnpm pack --pack-destination "$RUNNER_TEMP/tarballs"
+          node scripts/smoke-tarballs.ts "$RUNNER_TEMP/tarballs"
 
   simulation:
     name: simulation
@@ -123,6 +139,23 @@ jobs:
           git diff --exit-code -- test/reference-r-normal.json test/reference-numpy-mt19937.json \
             test/reference-mpmath-normal.json test/reference-normal-coefficients.json
 
+  workflows:
+    name: workflows
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # actionlint (with shellcheck) and zizmor run in pinned images, offline, with no token.
+      - name: Workflows lint clean and pass the security audit
+        env:
+          ACTIONLINT_IMAGE: rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667
+          ZIZMOR_IMAGE: ghcr.io/zizmorcore/zizmor:1.32.0@sha256:3014cc8f68f663935f69b3c3e0e41f5ce102b268d97db13db0f62208747f860d
+        run: |
+          docker run --rm -v "$PWD":/w -w /w "$ACTIONLINT_IMAGE" -color
+          docker run --rm -v "$PWD":/w -w /w "$ZIZMOR_IMAGE" --offline .github/workflows
+
   commits:
     name: commits
     if: github.event_name == 'pull_request'
@@ -148,7 +181,7 @@ jobs:
   ok:
     name: ok
     if: always()
-    needs: [check, test, simulation, oracle, stats-oracle, commits]
+    needs: [check, test, simulation, oracle, stats-oracle, workflows, commits]
     runs-on: ubuntu-slim
     steps:
       - name: All required jobs passed
