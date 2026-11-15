@@ -103,7 +103,12 @@ commands from a checkout of `main`.
 
 4. **Security features.** Secret scanning with push protection, Dependabot alerts, and private
    vulnerability reporting, the channel that `SECURITY.md` gives. Dependabot security updates stay
-   off: Renovate opens the pull requests for vulnerable dependencies.
+   off: Renovate opens the pull requests for vulnerable dependencies. CodeQL runs as GitHub's
+   default setup, which the organisation's security configuration turns on for every public
+   repository and enforces, so the repository has no CodeQL workflow of its own: GitHub refuses the
+   results of a CodeQL workflow while default setup is on. Read it back with
+   `gh api repos/hephaestus-build/ichnaea/code-scanning/default-setup --jq .state`, which gives
+   `configured`.
 
    ```sh
    gh api --method PATCH repos/hephaestus-build/ichnaea --input - <<'JSON'
@@ -252,20 +257,25 @@ commands from a checkout of `main`.
         | jq -S '{name, target, enforcement, conditions, rules, bypass_actors}')
     ```
 
-12. **Security scan checks.** CodeQL, dependency review and Scorecard run only on a public
-    repository; while the repository is private they skip and write a notice. After the flip, once
-    each has run on a pull request, make the three scan checks required in the `main` ruleset. Do
-    not do it before: a check that never runs blocks every pull request. Keep CodeQL's default
-    setup off, because it refuses results from these workflows. The Scorecard badge goes into the
-    README in the pull request that follows the flip.
+12. **Security scan checks.** CodeQL (the organisation's default setup), dependency review and
+    Scorecard run only on a public repository. After the flip, once dependency review has run on a
+    pull request, make it a required check in the `main` ruleset. Do not do it before: a check that
+    never runs blocks every pull request. Dependency review runs on every pull request, forks
+    included.
+
+    CodeQL is not a required check. Default setup scans every push to `main` and every pull request
+    from a branch of this repository, but not a pull request from a fork. A required check that
+    never reports would block every outside contribution, and nothing bypasses the `main` ruleset.
+    Its alerts appear in the repository's Security tab, and a maintainer reads them before the
+    merge of a fork's pull request. Scorecard runs on pushes to `main` and weekly, not on pull
+    requests, so it is not a required check either. The Scorecard badge goes into the README in the
+    pull request that follows the flip.
 
     ```sh
     id="$(gh api repos/hephaestus-build/ichnaea/rulesets --jq '.[] | select(.name == "main") | .id')"
     gh api "repos/hephaestus-build/ichnaea/rulesets/$id" \
       | jq '{name, target, enforcement, conditions, bypass_actors, rules: [.rules[]
           | if .type == "required_status_checks" then .parameters.required_status_checks += [
-              {context: "dependency review", integration_id: 15368},
-              {context: "codeql (actions)", integration_id: 15368},
-              {context: "codeql (javascript-typescript)", integration_id: 15368}] else . end]}' \
+              {context: "dependency review", integration_id: 15368}] else . end]}' \
       | gh api --method PUT "repos/hephaestus-build/ichnaea/rulesets/$id" --input -
     ```
