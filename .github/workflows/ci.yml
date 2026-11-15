@@ -55,6 +55,25 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
 
+  simulation:
+    name: simulation
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Coverage and type-I error studies (6,000 repetitions per point)
+        env:
+          ICHNAEA_SIM_REPS: "6000"
+        run: pnpm --filter ./packages/stats run test:sim
+
   oracle:
     name: oracle
     runs-on: ubuntu-latest
@@ -68,6 +87,34 @@ jobs:
           python3 -m venv /tmp/oracle
           /tmp/oracle/bin/pip install --quiet --require-hashes -r packages/contracts/scripts/oracle/requirements.txt
           /tmp/oracle/bin/python packages/contracts/scripts/oracle/verify_vectors.py packages/contracts/fixtures
+
+  stats-oracle:
+    name: stats oracle
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      # numpy, mpmath and R rerun as test-only oracles in pinned images, and the coefficients are
+      # read again from R's source. A committed reference file that its script no longer produces
+      # fails the job.
+      - name: The stats reference values are what their oracles write
+        working-directory: packages/stats
+        env:
+          R_IMAGE: rocker/r-ver@sha256:fd4ccdd3a4a6f7ef805e2daeee2a0fe3bf126bc231f36351223baecf5a595a4c
+          PYTHON_IMAGE: python@sha256:e48f59cdba69a3cbd9ed2cf0f348d90d45a8d350d98134cf1070bc106ee9ed90
+        run: |
+          docker run --rm -v "$PWD":/w -w /w "$R_IMAGE" Rscript scripts/reference-normal.R
+          docker run --rm -v "$PWD":/w -w /w "$PYTHON_IMAGE" sh -c \
+            "pip install --quiet --root-user-action=ignore --require-hashes -r scripts/oracle-requirements.txt \
+            && python scripts/reference-mt19937.py && python scripts/reference-normal-mpmath.py"
+          node scripts/reference-normal-coefficients.ts
+          git diff --exit-code -- test/reference-r-normal.json test/reference-numpy-mt19937.json \
+            test/reference-mpmath-normal.json test/reference-normal-coefficients.json
 
   commits:
     name: commits
@@ -94,7 +141,7 @@ jobs:
   ok:
     name: ok
     if: always()
-    needs: [check, test, oracle, commits]
+    needs: [check, test, simulation, oracle, stats-oracle, commits]
     runs-on: ubuntu-latest
     steps:
       - name: All required jobs passed
