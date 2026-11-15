@@ -1,5 +1,5 @@
-// REQ-54, decision 0014: the power statement of a decision.
-import type { Decision } from "@hephaestus-build/ichnaea-contracts";
+// REQ-54, decision 0017: the power statement of a decision.
+import { type Decision, notComputedReason } from "@hephaestus-build/ichnaea-contracts";
 import { describe, expect, it } from "vitest";
 
 import { decide, planningPower } from "../src/index.ts";
@@ -159,6 +159,112 @@ describe("the power statement (REQ-54)", () => {
     const s = await planned(o);
     expect(s.plan.power[0]).toMatchObject({ computed: true, decidable: false });
     expect(s.plan.modeReasons).toEqual((await scenario(o)).plan.modeReasons);
+  });
+
+  it("a plan made without the decide plugin gets its planning statement from the plan", async () => {
+    const s = await scenario(stable);
+    expect(s.plan.power).toEqual([]);
+    const d = await run(s);
+    expect(d.power.planning).toEqual(planningPower(s.plan).power);
+    expect(d.power.planning).toEqual([
+      expect.objectContaining({
+        computed: true,
+        measure: "app/correct",
+        applicableCases: 60,
+        replicates: 3,
+        decidable: true,
+        assumption: expect.stringMatching(/^planning: no noise/),
+      }),
+    ]);
+    // The planning floor is computed too. It never changes the mode after the calls.
+    const narrow = await scenario({
+      cases: 12,
+      replicates: 2,
+      base: () => 1,
+      candidate: () => 1,
+      margin: 0.05,
+    });
+    const floored = await run(narrow);
+    expect(floored.power.planning).toEqual([
+      expect.objectContaining({ computed: true, decidable: false }),
+    ]);
+    expect(planningPower(narrow.plan).mode).toBe("estimate-only");
+    expect(floored.mode).toBe("decision");
+  });
+
+  it("a plan without a statement whose margin is refused carries the refusal", async () => {
+    // The plugin refuses a margin above the validated ceiling, so it states no power for it.
+    const s = await scenario({ ...stable, margin: 0.35 });
+    const { power, refuse } = planningPower(s.plan);
+    expect(power).toBeUndefined();
+    expect(refuse).toBe(
+      "primary measure 'app/correct': its margin of 0.35 less its safety margin of 0 is above the validated margin ceiling of 0.3, where no non-inferiority result is validated",
+    );
+    const d = await run(s);
+    expect(d.power.planning).toEqual([
+      {
+        computed: false,
+        measure: "app/correct",
+        applicableCases: 60,
+        replicates: 3,
+        margin: 0.35,
+        reason: "the plan carries no planning statement, and its margin is refused",
+        refusal: refuse,
+      },
+    ]);
+    expect(d.power.planning.map((p) => !p.computed && notComputedReason(p))).toEqual([
+      "the plan carries no planning statement, and its margin is refused: primary measure 'app/correct': its margin of 0.35 less its safety margin of 0 is above the validated margin ceiling of 0.3, where no non-inferiority result is validated",
+    ]);
+  });
+
+  it("a plan without a statement that plans no base-arm trial says none can be computed", async () => {
+    const s = await scenario(stable);
+    const plan = { ...s.plan, trials: s.plan.trials.filter((t) => t.arm !== "base") };
+    expect(planningPower(plan)).toEqual({});
+    const d = await run({ ...s, plan });
+    expect(d.power.planning).toEqual([
+      {
+        computed: false,
+        measure: "app/correct",
+        applicableCases: 60,
+        replicates: 3,
+        margin: 0.1,
+        reason: "the plan carries no planning statement, and none can be computed from it",
+      },
+    ]);
+  });
+
+  it("no decision carries an empty planning statement, with or without the plugin", async () => {
+    const fixtures: readonly ScenarioOptions[] = [
+      stable,
+      { ...stable, maxCalls: 1 },
+      { ...stable, marginStatus: "placeholder" },
+      { ...stable, margin: 0.35 },
+      { ...stable, measures: ["app/correct", "app/grounded"] },
+      { ...stable, marginStatus: "placeholder", applies: () => false },
+      { cases: 20, replicates: 1, base: () => 0.9, candidate: () => 0.9 },
+      { cases: 6, replicates: 2, base: () => 1, candidate: () => 1, margin: 0.05 },
+      {
+        cases: 40,
+        replicates: 1,
+        base: () => 1,
+        candidate: () => 1,
+        estimand: "sampled-cases",
+        selection: "random",
+        family: (i) => `f${i}`,
+      },
+    ];
+    for (const o of fixtures) {
+      const bare = await scenario(o);
+      // The plugin refuses a margin outside the validated margins: that plan exists only without it.
+      const made = planningPower(bare.plan).refuse ? [bare] : [bare, await planned(o)];
+      for (const s of made) {
+        const d = await run(s);
+        expect(d.power.planning).toHaveLength(s.plan.primary.length);
+        expect(d.power.planning.length).toBeGreaterThan(0);
+        expect(JSON.stringify(d.power.planning)).not.toMatch(/nonFinite|null/);
+      }
+    }
   });
 
   it("estimate-only and INCONCLUSIVE decisions keep the run-time estimate", async () => {

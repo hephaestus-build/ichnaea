@@ -214,7 +214,7 @@ one trial per case and arm and one case per family, so it needs as many families
 - **Equal trial counts in every case and arm:** the exact stratified conditional test (Fisher's
   exact test per case, combined by convolution). It equals R's exact Mantel–Haenszel test, also with
   unequal arms (`test/reference-r-extra.json`). The Miettinen–Nurminen score test at 0 is not a
-  regression test (decision 0005): its type-I error exceeds 0.05, exactly 0.0525 at 17 cases with 2
+  regression test (decision 0016): its type-I error exceeds 0.05, exactly 0.0525 at 17 cases with 2
   trials (12 cases at rate 1, 3 at 0.8, 2 at 0.3) and 0.0559 at 5 cases with 5 trials and rate 0.1.
   The unit suite computes the first value by exact enumeration and requires the rule to fail it.
 - **Unequal counts:** a within-case permutation test of the equal-weight mean difference: arm labels

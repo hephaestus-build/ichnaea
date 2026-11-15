@@ -185,6 +185,17 @@ describe("reports", () => {
     );
   });
 
+  it("prints a refused margin's reason with the refusal", async () => {
+    const { decision } = await decided({ margin: 0.35 });
+    const view = decisionView(decision, "synthetic");
+    const sentence =
+      "the plan carries no planning statement, and its margin is refused: primary measure 'app/correct': its margin of 0.35 less its safety margin of 0 is above the validated margin ceiling of 0.3, where no non-inferiority result is validated";
+    expect(view.power.filter((p) => p.statement === "planning").map((p) => p.assumption)).toEqual([
+      sentence,
+    ]);
+    expect(renderMarkdown(view)).toContain(`| unknown | ${sentence} |`);
+  });
+
   it("escapes every string from records, so a configuration cannot write the summary (REQ-129)", async () => {
     const { decision } = await decided();
     const hostile =

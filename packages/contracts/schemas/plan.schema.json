@@ -1162,7 +1162,8 @@
                 "enum": [
                   "run invalid",
                   "no applicable case with a base value",
-                  "fixed-cases needs at least 2 trials per case and arm"
+                  "fixed-cases needs at least 2 trials per case and arm",
+                  "the plan carries no planning statement, and none can be computed from it"
                 ],
                 "x-ichnaea-data": {
                   "class": "none",
@@ -1181,6 +1182,107 @@
               "replicates",
               "margin",
               "reason"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "computed": {
+                "type": "boolean",
+                "const": false,
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              },
+              "measure": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]*\\/[a-z0-9][a-z0-9._-]*$",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              },
+              "applicableCases": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              },
+              "replicates": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991,
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              },
+              "margin": {
+                "type": "number",
+                "minimum": 0,
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              },
+              "reason": {
+                "type": "string",
+                "const": "the plan carries no planning statement, and its margin is refused",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              },
+              "refusal": {
+                "type": "string",
+                "minLength": 1,
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              }
+            },
+            "required": [
+              "computed",
+              "measure",
+              "applicableCases",
+              "replicates",
+              "margin",
+              "reason",
+              "refusal"
             ],
             "additionalProperties": false
           }

@@ -1073,7 +1073,7 @@ export const Decision: z.ZodObject<{
             sampledCasesFloor: z.ZodOptional<z.ZodNumber>;
             assumption: z.ZodString;
             decidable: z.ZodBoolean;
-        }, z.core.$strict>, z.ZodObject<{
+        }, z.core.$strict>, z.ZodDiscriminatedUnion<[z.ZodObject<{
             computed: z.ZodLiteral<false>;
             measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
             applicableCases: z.ZodInt;
@@ -1083,8 +1083,17 @@ export const Decision: z.ZodObject<{
                 "fixed-cases needs at least 2 trials per case and arm": "fixed-cases needs at least 2 trials per case and arm";
                 "no applicable case with a base value": "no applicable case with a base value";
                 "run invalid": "run invalid";
+                "the plan carries no planning statement, and none can be computed from it": "the plan carries no planning statement, and none can be computed from it";
             }>;
-        }, z.core.$strict>], "computed">>;
+        }, z.core.$strict>, z.ZodObject<{
+            computed: z.ZodLiteral<false>;
+            measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+            applicableCases: z.ZodInt;
+            replicates: z.ZodInt;
+            margin: z.ZodNumber;
+            reason: z.ZodLiteral<"the plan carries no planning statement, and its margin is refused">;
+            refusal: z.ZodString;
+        }, z.core.$strict>], "reason">], "computed">>;
         run: z.ZodArray<z.ZodDiscriminatedUnion<[z.ZodObject<{
             computed: z.ZodLiteral<true>;
             measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
@@ -1096,7 +1105,7 @@ export const Decision: z.ZodObject<{
             sampledCasesFloor: z.ZodOptional<z.ZodNumber>;
             assumption: z.ZodString;
             decidable: z.ZodBoolean;
-        }, z.core.$strict>, z.ZodObject<{
+        }, z.core.$strict>, z.ZodDiscriminatedUnion<[z.ZodObject<{
             computed: z.ZodLiteral<false>;
             measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
             applicableCases: z.ZodInt;
@@ -1106,8 +1115,17 @@ export const Decision: z.ZodObject<{
                 "fixed-cases needs at least 2 trials per case and arm": "fixed-cases needs at least 2 trials per case and arm";
                 "no applicable case with a base value": "no applicable case with a base value";
                 "run invalid": "run invalid";
+                "the plan carries no planning statement, and none can be computed from it": "the plan carries no planning statement, and none can be computed from it";
             }>;
-        }, z.core.$strict>], "computed">>;
+        }, z.core.$strict>, z.ZodObject<{
+            computed: z.ZodLiteral<false>;
+            measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+            applicableCases: z.ZodInt;
+            replicates: z.ZodInt;
+            margin: z.ZodNumber;
+            reason: z.ZodLiteral<"the plan carries no planning statement, and its margin is refused">;
+            refusal: z.ZodString;
+        }, z.core.$strict>], "reason">], "computed">>;
     }, z.core.$strict>;
     missingness: z.ZodObject<{
         byArm: z.ZodArray<z.ZodObject<{
@@ -2075,6 +2093,11 @@ export class NonJsonValueError extends Error {
 }
 
 // @public
+export function notComputedReason(entry: Extract<PowerEntry, {
+    computed: false;
+}>): string;
+
+// @public
 export const Observation: z.ZodObject<{
     name: z.ZodString;
     value: z.ZodJSONSchema;
@@ -2290,7 +2313,7 @@ export const Plan: z.ZodObject<{
         sampledCasesFloor: z.ZodOptional<z.ZodNumber>;
         assumption: z.ZodString;
         decidable: z.ZodBoolean;
-    }, z.core.$strict>, z.ZodObject<{
+    }, z.core.$strict>, z.ZodDiscriminatedUnion<[z.ZodObject<{
         computed: z.ZodLiteral<false>;
         measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
         applicableCases: z.ZodInt;
@@ -2300,8 +2323,17 @@ export const Plan: z.ZodObject<{
             "fixed-cases needs at least 2 trials per case and arm": "fixed-cases needs at least 2 trials per case and arm";
             "no applicable case with a base value": "no applicable case with a base value";
             "run invalid": "run invalid";
+            "the plan carries no planning statement, and none can be computed from it": "the plan carries no planning statement, and none can be computed from it";
         }>;
-    }, z.core.$strict>], "computed">>;
+    }, z.core.$strict>, z.ZodObject<{
+        computed: z.ZodLiteral<false>;
+        measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+        applicableCases: z.ZodInt;
+        replicates: z.ZodInt;
+        margin: z.ZodNumber;
+        reason: z.ZodLiteral<"the plan carries no planning statement, and its margin is refused">;
+        refusal: z.ZodString;
+    }, z.core.$strict>], "reason">], "computed">>;
     budget: z.ZodObject<{
         worstCaseCalls: z.ZodInt;
         maxCalls: z.ZodInt;
@@ -2371,7 +2403,7 @@ export const PowerEntry: z.ZodDiscriminatedUnion<[z.ZodObject<{
     sampledCasesFloor: z.ZodOptional<z.ZodNumber>;
     assumption: z.ZodString;
     decidable: z.ZodBoolean;
-}, z.core.$strict>, z.ZodObject<{
+}, z.core.$strict>, z.ZodDiscriminatedUnion<[z.ZodObject<{
     computed: z.ZodLiteral<false>;
     measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
     applicableCases: z.ZodInt;
@@ -2381,8 +2413,17 @@ export const PowerEntry: z.ZodDiscriminatedUnion<[z.ZodObject<{
         "fixed-cases needs at least 2 trials per case and arm": "fixed-cases needs at least 2 trials per case and arm";
         "no applicable case with a base value": "no applicable case with a base value";
         "run invalid": "run invalid";
+        "the plan carries no planning statement, and none can be computed from it": "the plan carries no planning statement, and none can be computed from it";
     }>;
-}, z.core.$strict>], "computed">;
+}, z.core.$strict>, z.ZodObject<{
+    computed: z.ZodLiteral<false>;
+    measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+    applicableCases: z.ZodInt;
+    replicates: z.ZodInt;
+    margin: z.ZodNumber;
+    reason: z.ZodLiteral<"the plan carries no planning statement, and its margin is refused">;
+    refusal: z.ZodString;
+}, z.core.$strict>], "reason">], "computed">;
 
 // @public
 export type PowerEntry = z.infer<typeof PowerEntry>;
@@ -2392,6 +2433,8 @@ export const PowerNotComputed: z.ZodEnum<{
     "fixed-cases needs at least 2 trials per case and arm": "fixed-cases needs at least 2 trials per case and arm";
     "no applicable case with a base value": "no applicable case with a base value";
     "run invalid": "run invalid";
+    "the plan carries no planning statement, and its margin is refused": "the plan carries no planning statement, and its margin is refused";
+    "the plan carries no planning statement, and none can be computed from it": "the plan carries no planning statement, and none can be computed from it";
 }>;
 
 // @public
@@ -2497,6 +2540,9 @@ export const RecordDataClass: z.ZodEnum<{
     pseudonymous: "pseudonymous";
     special: "special";
 }>;
+
+// @public
+export const REFUSED_MARGIN = "the plan carries no planning statement, and its margin is refused";
 
 // @public
 export const ReplicatesFor: z.ZodObject<{

@@ -27,8 +27,8 @@ regress gives INCONCLUSIVE, and the reason names the cause of each primary measu
 bound does not clear the margin, the cases cannot tell yet, and the floor is named as well. When
 the bound clears the margin, only the floor stands in the way. When every measure has that second
 cause, the reason says that no candidate can PASS until the floor is set (`FLOOR_NOT_SET_REASON`).
-The reason says "beyond run-to-run noise" only where the scope sentence does: when every compared
-case has at least 2 trials in each arm.
+The reason says "beyond run-to-run noise" only where the scope sentence does: under `fixed-cases`,
+when every compared case has at least 2 completed trials in each arm (decision 0016).
 
 Whenever a primary measure misses a trial in either arm, each verdict is tested against the
 imputation that works against it. A verdict that this changes becomes INCONCLUSIVE (decision 0010).
@@ -38,7 +38,12 @@ margins of the statistics package (decision 0012). It adds the planning power st
 plan, an estimate-only plan too. Without the plugin, a plan has no power statement, and
 `ichnaea import` says so.
 Each decision carries that statement unchanged, and a run-time statement that never changes the
-verdict (decision 0014).
+verdict (decision 0017). When a library caller decides a plan that has no statement, `decide()`
+computes it from the plan with `planningPower`, the plugin's own function. It does not switch the
+plan to estimate-only. When `planningPower` refuses the margin, each entry says "the plan carries
+no planning statement, and its margin is refused", and carries the refusal text as `refusal`. When
+it computes nothing and refuses nothing, each entry says "the plan carries no planning statement,
+and none can be computed from it".
 
 `decidePrimaries` is the per-measure rule on counts alone. `test/req51.sim.test.ts` uses it to
 show that the rate of false REGRESSION verdicts stays at or below α. Run it with

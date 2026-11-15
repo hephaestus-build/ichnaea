@@ -1,6 +1,6 @@
 # 0014 The power statement of a decision
 
-- Status: Accepted
+- Status: Superseded by 0017
 - Date: 2026-11-15
 
 ## Context
