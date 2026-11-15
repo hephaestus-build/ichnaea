@@ -1,7 +1,7 @@
 {
   "name": "@hephaestus-build/ichnaea-stats",
   "version": "0.0.0",
-  "description": "Ichnaea statistics: score intervals, paired and stratified tests, a within-case permutation test, power, validated by simulation.",
+  "description": "Statistics for paired GenAI evaluations: exact regression test, non-inferiority pending its validated floor",
   "keywords": [
     "confidence-interval",
     "evaluation",
