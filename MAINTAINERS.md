@@ -258,25 +258,24 @@ commands from a checkout of `main`.
     ```
 
 12. **Security scan checks.** CodeQL (the organisation's default setup), dependency review and
-    Scorecard run only on a public repository. After the flip, once CodeQL and dependency review
-    have each run on a pull request, make both checks required in the `main` ruleset. Do not do it
-    before: a check that never runs blocks every pull request. Scorecard runs on pushes to `main`
-    and weekly, not on pull requests, so it is not a required check. The Scorecard badge goes into
-    the README in the pull request that follows the flip.
+    Scorecard run only on a public repository. After the flip, once dependency review has run on a
+    pull request, make it a required check in the `main` ruleset. Do not do it before: a check that
+    never runs blocks every pull request. Dependency review runs on every pull request, forks
+    included.
 
-    Default setup reports through GitHub's code scanning app, not through GitHub Actions. Read the
-    name and the app of each check from a pull request that it ran on, and bind the check to that
-    app:
+    CodeQL is not a required check. Default setup scans every push to `main` and every pull request
+    from a branch of this repository, but not a pull request from a fork. A required check that
+    never reports would block every outside contribution, and nothing bypasses the `main` ruleset.
+    Its alerts appear in the repository's Security tab, and a maintainer reads them before the
+    merge of a fork's pull request. Scorecard runs on pushes to `main` and weekly, not on pull
+    requests, so it is not a required check either. The Scorecard badge goes into the README in the
+    pull request that follows the flip.
 
     ```sh
-    gh api "repos/hephaestus-build/ichnaea/commits/<head sha of the pull request>/check-runs" \
-      --jq '.check_runs[] | select(.name | test("CodeQL|dependency review")) | {name, app: .app.slug, id: .app.id}'
     id="$(gh api repos/hephaestus-build/ichnaea/rulesets --jq '.[] | select(.name == "main") | .id')"
     gh api "repos/hephaestus-build/ichnaea/rulesets/$id" \
-      | jq --arg codeql "<CodeQL check name>" --argjson app <its app id> '{name, target, enforcement,
-          conditions, bypass_actors, rules: [.rules[] | if .type == "required_status_checks" then
-          .parameters.required_status_checks += [
-            {context: "dependency review", integration_id: 15368},
-            {context: $codeql, integration_id: $app}] else . end]}' \
+      | jq '{name, target, enforcement, conditions, bypass_actors, rules: [.rules[]
+          | if .type == "required_status_checks" then .parameters.required_status_checks += [
+              {context: "dependency review", integration_id: 15368}] else . end]}' \
       | gh api --method PUT "repos/hephaestus-build/ichnaea/rulesets/$id" --input -
     ```

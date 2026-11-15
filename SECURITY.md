@@ -83,8 +83,9 @@ Independent of this reporting channel, the repository has:
   Renovate, but pnpm's own minimum release age still applies to a newly resolved npm version.
   Oracle updates wait for a maintainer's approval on the dependency dashboard.
 - **Static analysis and dependency review:** CodeQL checks the TypeScript and Python code and the
-  workflows on each pull request and push to `main`, as GitHub's default setup that the
-  organisation enables. Dependency review blocks a pull request that adds a dependency with a high
+  workflows on each push to `main` and each pull request from a branch of this repository, as
+  GitHub's default setup that the organisation enables. It does not scan a pull request from a
+  fork; a maintainer reads the code scanning alerts before such a merge. Dependency review blocks a pull request that adds a dependency with a high
   or critical advisory or an unlisted licence, and OpenSSF Scorecard rates the repository
   ([`.github/workflows/`](.github/workflows)). Results appear in the repository's Security tab.
 - **Install policy:** pnpm installs a version only when it is at least 7 days old, runs no install
