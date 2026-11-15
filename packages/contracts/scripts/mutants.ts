@@ -26,8 +26,8 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "I13 identity accepts unknown members",
     file: "src/identity.ts",
-    from: "  Configuration.parse(input);",
-    to: "  Configuration.loose?.();",
+    from: "const config = Configuration.parse(input);",
+    to: "const config = (input as typeof Configuration._output);",
   },
   {
     id: "E1",

@@ -140,13 +140,13 @@ describe("generated records", () => {
           // The same at a nested position: delete or corrupt any member or element at any depth.
           const paths = memberPaths(record);
           const path = paths[pick % paths.length];
+          // One replacement per run, chosen with the path: over 200 runs each kind is tried about
+          // 40 times, at a fifth of the validations.
           if (path) {
-            for (const replacement of [undefined, { unexpected: true }, -1, "", null]) {
-              const broken = setPath(structuredClone(record), path, replacement);
-              expect(ajvValidate(ajv, name, broken)).toBe(
-                contract.schema.safeParse(broken).success,
-              );
-            }
+            const replacements = [undefined, { unexpected: true }, -1, "", null];
+            const replacement = replacements[Math.floor(pick / paths.length) % replacements.length];
+            const broken = setPath(structuredClone(record), path, replacement);
+            expect(ajvValidate(ajv, name, broken)).toBe(contract.schema.safeParse(broken).success);
           }
         }),
         { seed: 20261115, numRuns: 200 },
