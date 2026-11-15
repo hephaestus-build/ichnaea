@@ -1,6 +1,6 @@
 {
   "name": "@hephaestus-build/ichnaea-contracts",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Ichnaea record contracts: zod schemas, the normative JSON Schema 2020-12 files, fixtures and canonical hashing.",
   "keywords": [
     "evaluation",
