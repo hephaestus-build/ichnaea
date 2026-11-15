@@ -44,6 +44,10 @@ jobs:
         run: |
           pnpm -r --filter './packages/*' exec pnpm pack --pack-destination "$RUNNER_TEMP/tarballs"
           node scripts/smoke-tarballs.ts "$RUNNER_TEMP/tarballs"
+      - name: The release SBOM of the packed tarballs lists what they ship
+        run: |
+          node scripts/release-sbom.ts "$RUNNER_TEMP/tarballs" "$RUNNER_TEMP/sbom.cdx.json"
+          node scripts/check-sbom.ts "$RUNNER_TEMP/sbom.cdx.json" "$RUNNER_TEMP/tarballs"
 
   test:
     name: test (node ${{ matrix.node }})
