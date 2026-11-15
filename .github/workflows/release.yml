@@ -52,10 +52,12 @@ jobs:
         run: pnpm -r --filter './packages/*' exec pnpm pack --pack-destination "$GITHUB_WORKSPACE/release"
       - name: Smoke test the packed tarballs
         run: node scripts/smoke-tarballs.ts release
-      - name: SBOM of what the tarballs install
+      - name: SBOM of what the tarballs install, with their download URLs on the release
+        env:
+          TAG: ${{ inputs.tag }}
         run: |
-          node scripts/release-sbom.ts release release/sbom.cdx.json
-          node scripts/check-sbom.ts release/sbom.cdx.json release
+          node scripts/release-sbom.ts release release/sbom.cdx.json "$TAG"
+          node scripts/check-sbom.ts release/sbom.cdx.json release "$TAG"
       - name: Checksums
         working-directory: release
         run: sha256sum -- *.tgz > SHA256SUMS
@@ -85,6 +87,17 @@ jobs:
       id-token: write # sign the attestations with the workflow's identity
       attestations: write # store the attestations
     steps:
+      # First, before anything is attested or tagged: a job that names a missing environment
+      # creates it without rules, and a missing secret is empty. Only whether the key is set enters
+      # the step, not the key.
+      - name: The release environment has the deploy key
+        env:
+          HAS_DEPLOY_KEY: ${{ secrets.RELEASE_DEPLOY_KEY != '' }}
+        run: |
+          if [ "$HAS_DEPLOY_KEY" != true ]; then
+            echo "::error::The release environment has no RELEASE_DEPLOY_KEY secret. Apply steps 8 to 10 of MAINTAINERS.md § Repository settings, then start the release again."
+            exit 1
+          fi
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: release

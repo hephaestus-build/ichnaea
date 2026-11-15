@@ -21,11 +21,15 @@ gh attestation verify <tarball> --repo hephaestus-build/ichnaea \\
 sha256sum --check --ignore-missing SHA256SUMS
 \`\`\``;
 
+/** The URL that a consumer downloads a file of the release from. */
+export const downloadUrl = (tag: string, file: string): string =>
+  `https://github.com/hephaestus-build/ichnaea/releases/download/${tag}/${file}`;
+
 /** The pnpm overrides that map each package to its tarball on the release. The README has v0.1.0's. */
 export function overrides(tag: string, names: readonly string[]): string {
   const version = tag.replace(/^v/, "");
   const url = (name: string): string =>
-    `https://github.com/hephaestus-build/ichnaea/releases/download/${tag}/${name.replace("@", "").replace("/", "-")}-${version}.tgz`;
+    downloadUrl(tag, `${name.replace("@", "").replace("/", "-")}-${version}.tgz`);
   return `\`\`\`yaml
 overrides:
 ${names.map((n) => `  "${n}": "${url(n)}"`).join("\n")}

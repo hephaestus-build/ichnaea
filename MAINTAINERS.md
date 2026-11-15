@@ -131,9 +131,12 @@ commands from a checkout of `main`.
    ```
 
 6. **The `main` rulesets.** Squash merges only, linear history and resolved threads. The `main`
-   ruleset requires two checks: `ok` from `ci.yml` and `pull request text` from `pull-request.yml`.
-   Each is bound to GitHub Actions (integration 15368), so no other app or commit status of the
-   same name can satisfy it. Nothing bypasses the `main` ruleset. Two variants:
+   ruleset requires three checks, all from GitHub Actions (integration 15368), so no other app or
+   commit status of the same name can satisfy them: `ok` from `ci.yml`, `pull request text` from
+   `pull-request.yml` and `dependency review` from `dependency-review.yml`. `dependency review` is
+   the check of step 12: on a repository where it has not run yet, apply the files without it.
+   CodeQL is not a required check (step 12). Nothing bypasses the `main` ruleset. Two
+   variants:
    - **One maintainer:** the `main` ruleset of `.github/rulesets/main-one-maintainer.json`, with no
      required approval, and the code owner ruleset of `.github/rulesets/main-code-owner.json`. The
      code owner ruleset requires one approval and a code owner's review, and the `maintainer` team
@@ -155,10 +158,16 @@ commands from a checkout of `main`.
      --jq '.[] | select(.name == "main: code owner review") | .id')"
    gh api --method PUT "repos/hephaestus-build/ichnaea/rulesets/$owner" \
      --input .github/rulesets/main-code-owner.json # one maintainer only
+   diff <(jq -S . .github/rulesets/main-one-maintainer.json) \
+     <(gh api "repos/hephaestus-build/ichnaea/rulesets/$main" \
+       | jq -S '{name, target, enforcement, conditions, rules, bypass_actors}')
    diff <(jq -S . .github/rulesets/main-code-owner.json) \
      <(gh api "repos/hephaestus-build/ichnaea/rulesets/$owner" \
        | jq -S '{name, target, enforcement, conditions, rules, bypass_actors}')
    ```
+
+   Each `diff` prints nothing when the ruleset equals its file. Diff the `main` ruleset with the
+   file of the variant that you applied.
 
    If the code owner ruleset does not exist yet, create it with
    `gh api --method POST repos/hephaestus-build/ichnaea/rulesets --input .github/rulesets/main-code-owner.json`.
@@ -185,7 +194,10 @@ commands from a checkout of `main`.
      -f name=main -f type=branch
    ```
 
-9. **The release deploy key.** The private key exists only as a secret of the environment:
+9. **The release deploy key.** The private key exists only as a secret of the environment. The
+   organisation must allow deploy keys (`deploy_keys_enabled_for_repositories`, an organisation
+   setting); otherwise `gh repo deploy-key add` fails with 422. Read it back with
+   `gh api orgs/hephaestus-build --jq .deploy_keys_enabled_for_repositories`, which gives `true`:
 
    ```sh
    ssh-keygen -t ed25519 -N "" -C "ichnaea release tags" -f release-key

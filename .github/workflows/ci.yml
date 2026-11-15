@@ -44,6 +44,8 @@ jobs:
         run: |
           pnpm -r --filter './packages/*' exec pnpm pack --pack-destination "$RUNNER_TEMP/tarballs"
           node scripts/smoke-tarballs.ts "$RUNNER_TEMP/tarballs"
+      # With no tag, the SBOM's download URLs name the placeholder tag `untagged`, and the check
+      # expects that placeholder.
       - name: The release SBOM of the packed tarballs lists what they ship
         run: |
           node scripts/release-sbom.ts "$RUNNER_TEMP/tarballs" "$RUNNER_TEMP/sbom.cdx.json"
