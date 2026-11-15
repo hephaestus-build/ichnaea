@@ -316,25 +316,58 @@ function markdownRows(text: string): Array<Map<string, string>> {
   return rows;
 }
 
+/** Reverses `escape`. `&amp;` goes last, so each entity decodes once: `&amp;lt;` is `&lt;`. */
+const unescapeHtml = (text: string): string =>
+  text
+    .replaceAll("&quot;", '"')
+    .replaceAll("&gt;", ">")
+    .replaceAll("&lt;", "<")
+    .replaceAll("&amp;", "&");
+
+const CELL = 'data-col="';
+
+/**
+ * The numeric cells of one HTML table row, as `num` writes them. The scan uses `indexOf` and moves
+ * forward only, so it is linear in the row: a regular expression here backtracks polynomially on
+ * a long run of unclosed cells.
+ */
+function htmlCells(row: string): Map<string, string> {
+  const cells = new Map<string, string>();
+  let at = row.indexOf(CELL);
+  while (at !== -1) {
+    const nameStart = at + CELL.length;
+    const nameEnd = row.indexOf('"', nameStart);
+    if (nameEnd === -1) break;
+    const name = row.slice(nameStart, nameEnd);
+    if (!/^[a-z]+$/.test(name)) {
+      at = row.indexOf(CELL, at + 1);
+      continue;
+    }
+    const tagEnd = row.indexOf(">", nameEnd);
+    const textEnd = tagEnd === -1 ? -1 : row.indexOf("<", tagEnd);
+    if (textEnd === -1) break;
+    cells.set(name, unescapeHtml(row.slice(tagEnd + 1, textEnd)));
+    if (row.slice(nameEnd + 1, tagEnd).includes('data-validated="false"'))
+      cells.set("validated", "false");
+    at = row.indexOf(CELL, textEnd + 1);
+  }
+  return cells;
+}
+
 /**
  * HTML table rows as maps from the `data-col` of each numeric cell to its text, and `validated` to
- * "false" when a cell is marked not validated.
+ * "false" when a cell is marked not validated. A row runs from `<tr>` to the next `</tr>`.
  */
 function htmlRows(text: string): Array<Map<string, string>> {
-  return [...text.matchAll(/<tr>([\s\S]*?)<\/tr>/g)].map(
-    (row) =>
-      new Map(
-        [...(row[1] ?? "").matchAll(/data-col="([a-z]+)"([^>]*)>([^<]*)</g)].flatMap((m) => [
-          [
-            m[1] ?? "",
-            (m[3] ?? "").replaceAll("&amp;", "&").replaceAll("&gt;", ">").replaceAll("&lt;", "<"),
-          ] as const,
-          ...((m[2] ?? "").includes('data-validated="false"')
-            ? [["validated", "false"] as const]
-            : []),
-        ]),
-      ),
-  );
+  const rows: Array<Map<string, string>> = [];
+  let start = text.indexOf("<tr>");
+  while (start !== -1) {
+    const end = text.indexOf("</tr>", start + "<tr>".length);
+    if (end === -1) break;
+    rows.push(htmlCells(text.slice(start + "<tr>".length, end)));
+    start = text.indexOf("<tr>", end + "</tr>".length);
+  }
+  return rows;
 }
 
 /**

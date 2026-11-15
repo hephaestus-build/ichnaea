@@ -308,6 +308,70 @@ describe("reports", () => {
     ]);
   });
 
+  it("the lint reads every row of the HTML report: each rate and each difference", async () => {
+    const { decision } = await decided({
+      secondary: ["app/extra"],
+      outcome: (t) =>
+        t.case === "case-001" && t.replicate === 0 ? "infrastructure_failure" : undefined,
+    });
+    const view = decisionView(decision, "synthetic");
+    const html = renderHtml(view);
+    expect(lintReport(html)).toEqual([]);
+    const arms = view.measures.flatMap((m) => m.arms);
+    expect(arms.length).toBeGreaterThan(2);
+    const noIntervals = html.replaceAll(/(data-col="interval"[^>]*>)[^<]*</g, "$1<");
+    expect(lintReport(noIntervals)).toEqual(
+      arms.map((a) => `an estimate without its interval: a rate (${a.rate}) without its interval`),
+    );
+    const differences = [
+      ...view.measures.map((m) => m.difference?.estimate),
+      ...view.sensitivity.map((r) => r.difference),
+    ];
+    expect(differences.length).toBeGreaterThan(3);
+    const noBounds = html.replaceAll(/(data-col="bound"[^>]*>)[^<]*</g, "$1<");
+    expect(lintReport(noBounds)).toEqual(
+      differences.map(
+        (d) => `an estimate without its interval: a difference (${d}) without its bound`,
+      ),
+    );
+  });
+
+  it("the lint decodes each HTML entity in a cell once, as the report escaped it", async () => {
+    const { decision } = await decided();
+    const view = decisionView(decision, "synthetic");
+    const [first, ...rest] = view.measures;
+    if (!first?.difference) throw new Error("the scenario has a difference");
+    const html = renderHtml({
+      ...view,
+      measures: [
+        {
+          ...first,
+          difference: { ...first.difference, estimate: "–", bound: "&lt;", validated: false },
+        },
+        ...rest,
+      ],
+    });
+    expect(html).toContain('data-col="bound" data-validated="false" rowspan="2">&amp;lt;<');
+    expect(lintReport(html)).toEqual([
+      "an estimate without its interval: a bound (&lt;) that is not validated, without its label",
+    ]);
+  });
+
+  it("the lint reads a long malformed report in linear time", () => {
+    const inputs = [
+      "<tr>".repeat(100_000),
+      `<tr>${'data-col="a"'.repeat(100_000)}</tr>`,
+      `<tr>${'data-col="a"='.repeat(100_000)}</tr>`,
+      `<tr>${'data-col="a">;'.repeat(100_000)}</tr>`,
+      `<tr>${'data-col="A"'.repeat(100_000)}>x<</tr>`,
+    ];
+    for (const input of inputs) {
+      const started = performance.now();
+      expect(lintReport(`${input} Lineage`)).toEqual([]);
+      expect(performance.now() - started).toBeLessThan(1000);
+    }
+  });
+
   it("says in plain words why an unchanged candidate is INCONCLUSIVE while the floor is not set", async () => {
     const s = await scenario({ cases: 60, replicates: 3, base: () => 0.97, candidate: () => 0.97 });
     const decision = await decide({ ...s, decidedAt: "2026-11-15T12:00:00Z", ichnaea: "0.0.0" });

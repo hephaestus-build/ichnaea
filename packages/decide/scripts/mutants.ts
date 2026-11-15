@@ -484,6 +484,13 @@ export const MUTANTS: readonly Mutant[] = [
     projects: CORE,
   },
   {
+    id: "report lint decodes entities in the wrong order",
+    file: "../report/src/render.ts",
+    from: '  text\n    .replaceAll("&quot;", \'"\')',
+    to: '  text\n    .replaceAll("&amp;", "&")\n    .replaceAll("&quot;", \'"\')',
+    projects: CORE,
+  },
+  {
     id: "report n column shows planned only",
     file: "../report/src/view.ts",
     from: "n: `${a.availability.available} of ${a.availability.planned}`,",
