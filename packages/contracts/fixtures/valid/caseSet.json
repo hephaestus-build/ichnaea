@@ -2,17 +2,17 @@
   "schema": "ichnaea.caseSet/1",
   "id": "support-answers",
   "version": "3",
-  "digest": "sha256:970c1ffdd7da0b4c547160d768cd9f7ccdbcbfe66aab0ac7c4a6cef9ce01ba42",
+  "digest": "sha256:48ab0cee285376d0a24906dbbc7923cbef97288b0d40b581f1e49eef5755d93a",
   "cases": [
     {
       "id": "refund-window-de",
-      "digest": "sha256:a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2",
+      "digest": "sha256:ca1161e3d49d9b32861a5f7475b485130fe90623cea887d954f198bbcb5cbbfb",
       "pool": "development",
       "family": "refund-window"
     },
     {
       "id": "refund-window-en",
-      "digest": "sha256:a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3",
+      "digest": "sha256:2ef088519eac679c0c78b3937972f75bece87b67852ed2157efdf30db78d65b7",
       "pool": "development",
       "family": "refund-window"
     }

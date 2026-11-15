@@ -234,7 +234,7 @@
               "class": "pseudonymous",
               "identifier": "direct",
               "egress": [],
-              "retention": "record"
+              "retention": "subject"
             }
           },
           "items": {

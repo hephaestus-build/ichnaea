@@ -18,9 +18,10 @@ statistics, and says plainly when the cases cannot decide.
   over-budget run is never a pass.
 - **Treats a model judge as an instrument.** A judge gates only when it agrees with people on the
   task, and its uncertainty carries into the result.
-- **Keeps data where it lives.** Every record field has a data class. Nothing classed as personal
-  data leaves an Ichnaea command by default.
-- **Measures systems, never people.** No record holds a score whose subject is a person.
+- **Keeps data where it lives.** Every record field has a data class and a purpose allow-list.
+  Commands that move data are built to let only data classed `none` leave by default.
+- **Measures systems, never people.** No measure has a person as its subject. Agreement per rater
+  exists only inside calibration records, under pseudonyms.
 
 Ichnaea is a TypeScript library and CLI. It runs in your CI and inside your deployment, and listens
 on no network port. It reuses proven tools (OpenTelemetry, Prometheus and Grafana, Langfuse,
@@ -39,12 +40,14 @@ Inspect's log format) instead of building its own store, dashboard or labelling 
 
 Records cross every boundary as JSON. The JSON Schema files in
 [`packages/contracts/schemas`](packages/contracts/schemas) are the normative contract. They are
-generated from the zod sources, and CI runs a shared fixture set through zod and ajv to prove that
-the two agree. An application in any language can write records that validate against them.
+generated from the zod sources. CI runs a shared fixture set and generated records through zod and
+ajv, for the writer and the reader schemas, and checks digests against an implementation in another
+language. An application in any language can write records that validate against them.
 
 ## Develop
 
-Requires Node 22.12 or later and pnpm.
+The packages need Node 22.12 or later. Developing Ichnaea needs Node 22.18 or later (the repository
+scripts run TypeScript directly) and pnpm.
 
 ```sh
 pnpm install

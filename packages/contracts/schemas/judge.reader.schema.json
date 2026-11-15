@@ -162,8 +162,9 @@
       },
       "x-ichnaea-known": [
         "binary",
-        "levels",
-        "pairwise"
+        "score",
+        "level",
+        "preference"
       ]
     },
     "parameters": {
@@ -213,7 +214,6 @@
     "id",
     "version",
     "evaluatorKind",
-    "model",
     "endpointClass",
     "promptDigest",
     "rubricDigest",

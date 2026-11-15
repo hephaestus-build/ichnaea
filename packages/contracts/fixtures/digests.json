@@ -131,7 +131,7 @@
         },
         "label": "current"
       },
-      "digest": "sha256:6cd7f0cade65a3dc0cabc89a282f235436456392d18b07c3271bcde68c26c82c"
+      "digest": "sha256:db383b8801fd3a846ce4bd18a348d06901748600b21cd15af3ff37b169a0d578"
     },
     {
       "kind": "configurationIdentity",
@@ -193,7 +193,7 @@
         },
         "label": "renamed"
       },
-      "digest": "sha256:6cd7f0cade65a3dc0cabc89a282f235436456392d18b07c3271bcde68c26c82c"
+      "digest": "sha256:db383b8801fd3a846ce4bd18a348d06901748600b21cd15af3ff37b169a0d578"
     },
     {
       "kind": "configurationIdentity",
@@ -277,7 +277,143 @@
         },
         "label": "current"
       },
-      "digest": "sha256:105bf6944e97bbb4700672a774453108461d5a65a21f54cae2721831c9e85f68"
+      "digest": "sha256:dc7db19236fef5a7d84f3e9283bfa702da5285e5c00f2cfd4a1c118638748399"
+    },
+    {
+      "kind": "configurationIdentity",
+      "name": "unknown-member-and-proto-factor",
+      "input": {
+        "schema": "ichnaea.configuration/1",
+        "description": "described differently",
+        "models": [
+          {
+            "role": "answer",
+            "provider": {
+              "value": "openai-compatible",
+              "status": "pinned"
+            },
+            "id": {
+              "value": "example-model-2026-10",
+              "status": "pinned"
+            }
+          }
+        ],
+        "parameters": [
+          {
+            "name": "answer.temperature",
+            "value": 0.2,
+            "status": "pinned",
+            "origin": "explicit"
+          },
+          {
+            "name": "answer.maxTokens",
+            "value": 800,
+            "status": "pinned",
+            "origin": "explicit"
+          },
+          {
+            "name": "answer.topP",
+            "value": 1,
+            "status": "declared",
+            "origin": "default"
+          }
+        ],
+        "prompts": [
+          {
+            "name": "answer",
+            "digest": "sha256:e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1",
+            "status": "pinned"
+          }
+        ],
+        "factors": {
+          "code.commit": {
+            "value": "4f2a9c1",
+            "status": "pinned",
+            "part": "code"
+          },
+          "data.helpCentre": {
+            "value": "sha256:f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1",
+            "status": "observed",
+            "part": "data"
+          },
+          "__proto__": {
+            "value": "kept",
+            "status": "pinned",
+            "part": "other"
+          }
+        },
+        "label": "current",
+        "futureMember": {
+          "x": 1
+        }
+      },
+      "digest": "sha256:f8bd837229c3cc84d744b1b1bf2a4901ab08c870f4516b8f66ca1e48d49e873d"
+    },
+    {
+      "kind": "configurationIdentity",
+      "name": "unknown-nested-member-counts",
+      "input": {
+        "schema": "ichnaea.configuration/1",
+        "description": "Support assistant: retrieval over the help centre, one answer model.",
+        "models": [
+          {
+            "role": "answer",
+            "provider": {
+              "value": "openai-compatible",
+              "status": "pinned"
+            },
+            "id": {
+              "value": "example-model-2026-10",
+              "status": "pinned"
+            },
+            "futureNested": [
+              1,
+              2
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "answer.temperature",
+            "value": 0.2,
+            "status": "pinned",
+            "origin": "explicit"
+          },
+          {
+            "name": "answer.maxTokens",
+            "value": 800,
+            "status": "pinned",
+            "origin": "explicit"
+          },
+          {
+            "name": "answer.topP",
+            "value": 1,
+            "status": "declared",
+            "origin": "default"
+          }
+        ],
+        "prompts": [
+          {
+            "name": "answer",
+            "digest": "sha256:e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1",
+            "status": "pinned"
+          }
+        ],
+        "factors": {
+          "code.commit": {
+            "value": "4f2a9c1",
+            "status": "pinned",
+            "part": "code"
+          },
+          "data.helpCentre": {
+            "value": "sha256:f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1",
+            "status": "observed",
+            "part": "data"
+          }
+        },
+        "label": "current"
+      },
+      "digest": "sha256:0d6541ced2ab9f8f1f96e7a9dd74e5c26a09223465dbddea73553f5f81bad81c"
     },
     {
       "kind": "caseDigest",
@@ -331,7 +467,117 @@
           "status": "reviewed"
         }
       },
-      "digest": "sha256:69f673d459f80b6df5fb37c3384d61371b01f7722c8a3cff4e5e2b2f2d76b154"
+      "digest": "sha256:ca1161e3d49d9b32861a5f7475b485130fe90623cea887d954f198bbcb5cbbfb"
+    },
+    {
+      "kind": "caseDigest",
+      "name": "provenance-pool-review-and-unknown-members-excluded",
+      "input": {
+        "schema": "ichnaea.case/1",
+        "id": "refund-window-de",
+        "caseSet": "support-answers",
+        "unit": "session",
+        "dataClass": "none",
+        "input": {
+          "question": "Kann ich nach 40 Tagen noch zurückgeben?",
+          "lang": "de"
+        },
+        "turns": [
+          {
+            "role": "user",
+            "content": "Und mit Kassenbon?"
+          }
+        ],
+        "fixtures": [
+          {
+            "name": "policy.md",
+            "digest": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+          }
+        ],
+        "references": {
+          "facts": [
+            {
+              "text": "Return window is 30 days",
+              "polarity": "positive"
+            }
+          ]
+        },
+        "family": "refund-window",
+        "slices": {
+          "lang": "de",
+          "intent": "returns"
+        },
+        "criticality": "high",
+        "provenance": {
+          "source": "authored",
+          "selection": "curated",
+          "author": "someone else",
+          "created": "2026-11-01",
+          "licence": "CC-BY-4.0",
+          "exposure": "public"
+        },
+        "pool": "sealed",
+        "validation": {
+          "status": "validated"
+        },
+        "futureMember": true
+      },
+      "digest": "sha256:ca1161e3d49d9b32861a5f7475b485130fe90623cea887d954f198bbcb5cbbfb"
+    },
+    {
+      "kind": "caseDigest",
+      "name": "proto-member-in-input",
+      "input": {
+        "schema": "ichnaea.case/1",
+        "id": "refund-window-de",
+        "caseSet": "support-answers",
+        "unit": "session",
+        "dataClass": "none",
+        "input": {
+          "question": "Kann ich nach 40 Tagen noch zurückgeben?",
+          "lang": "de",
+          "__proto__": "data, not a prototype"
+        },
+        "turns": [
+          {
+            "role": "user",
+            "content": "Und mit Kassenbon?"
+          }
+        ],
+        "fixtures": [
+          {
+            "name": "policy.md",
+            "digest": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+          }
+        ],
+        "references": {
+          "facts": [
+            {
+              "text": "Return window is 30 days",
+              "polarity": "positive"
+            }
+          ]
+        },
+        "family": "refund-window",
+        "slices": {
+          "lang": "de",
+          "intent": "returns"
+        },
+        "criticality": "high",
+        "provenance": {
+          "source": "authored",
+          "selection": "curated",
+          "author": "suite maintainers",
+          "created": "2026-11-01",
+          "licence": "CC-BY-4.0",
+          "exposure": "public"
+        },
+        "pool": "development",
+        "validation": {
+          "status": "reviewed"
+        }
+      },
+      "digest": "sha256:3d1b188346ab4833f4cb458d55df7439ea7449b7a544bfddd0cae666a8443773"
     },
     {
       "kind": "caseSetDigest",
@@ -339,18 +585,18 @@
       "input": [
         {
           "id": "refund-window-de",
-          "digest": "sha256:a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2",
+          "digest": "sha256:ca1161e3d49d9b32861a5f7475b485130fe90623cea887d954f198bbcb5cbbfb",
           "pool": "development",
           "family": "refund-window"
         },
         {
           "id": "refund-window-en",
-          "digest": "sha256:a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3",
+          "digest": "sha256:2ef088519eac679c0c78b3937972f75bece87b67852ed2157efdf30db78d65b7",
           "pool": "development",
           "family": "refund-window"
         }
       ],
-      "digest": "sha256:970c1ffdd7da0b4c547160d768cd9f7ccdbcbfe66aab0ac7c4a6cef9ce01ba42"
+      "digest": "sha256:48ab0cee285376d0a24906dbbc7923cbef97288b0d40b581f1e49eef5755d93a"
     },
     {
       "kind": "caseSetDigest",

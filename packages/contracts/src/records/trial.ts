@@ -60,8 +60,8 @@ export const Usage = z.object({
  */
 export const Observation = z.object({
   name: none(Text),
-  value: none(Json),
-  expected: none(Json).optional(),
+  value: content(Json),
+  expected: content(Json).optional(),
 });
 
 /** The normalised evidence of one trial or one sampled production interaction (REQ-19, REQ-20). */

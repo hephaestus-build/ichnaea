@@ -32,7 +32,8 @@ jobs:
       - run: pnpm run lint
       - run: pnpm run typecheck
       - run: pnpm run check:generated
-      - run: pnpm run build
+      - name: Package correctness (publint, are the types wrong)
+        run: pnpm run check:package
 
   test:
     name: test (node ${{ matrix.node }})
@@ -53,6 +54,21 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
+
+  oracle:
+    name: oracle
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Digest vectors match an implementation in another language
+        run: |
+          python3 -m venv /tmp/oracle
+          /tmp/oracle/bin/pip install --quiet --require-hashes -r packages/contracts/scripts/oracle/requirements.txt
+          /tmp/oracle/bin/python packages/contracts/scripts/oracle/digest_vectors.py packages/contracts/fixtures
+          git diff --exit-code -- packages/contracts/fixtures/digests.json
 
   commits:
     name: commits
@@ -79,7 +95,7 @@ jobs:
   ok:
     name: ok
     if: always()
-    needs: [check, test, commits]
+    needs: [check, test, oracle, commits]
     runs-on: ubuntu-latest
     steps:
       - name: All required jobs passed

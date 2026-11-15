@@ -21,12 +21,14 @@ export const Judge = z.object({
   id: none(JudgeId),
   version: none(SemVer),
   evaluatorKind: none(z.enum(["model", "human", "code"])),
-  model: z.object({ provider: none(Text), id: none(Text), version: none(Text).optional() }),
+  model: z
+    .object({ provider: none(Text), id: none(Text), version: none(Text).optional() })
+    .optional(),
   endpointClass: none(Text),
   promptDigest: none(Digest),
   rubricDigest: none(Digest),
   outputSchema: none(Json),
-  outputKind: none(z.enum(["binary", "levels", "pairwise"])),
+  outputKind: none(z.enum(["binary", "score", "level", "preference"])),
   parameters: none(z.record(z.string(), Json)),
   swapOrder: none(z.boolean()),
   repeats: none(z.int().min(1)),

@@ -58,7 +58,7 @@
     "value": {
       "anyOf": [
         {
-          "oneOf": [
+          "anyOf": [
             {
               "type": "object",
               "properties": {
@@ -220,6 +220,18 @@
                 "type",
                 "preferred"
               ]
+            },
+            {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "x-ichnaea-unknown-kind": true
             }
           ]
         },
@@ -267,7 +279,7 @@
         "class": "pseudonymous",
         "identifier": "direct",
         "egress": [],
-        "retention": "record"
+        "retention": "subject"
       }
     },
     "raterRole": {
@@ -350,7 +362,7 @@
         "egress": [
           "*"
         ],
-        "retention": "record"
+        "retention": "subject"
       }
     },
     "dataClass": {

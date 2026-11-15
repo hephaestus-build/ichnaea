@@ -149,7 +149,7 @@
         "class": "personal",
         "identifier": "direct",
         "egress": [],
-        "retention": "record"
+        "retention": "subject"
       }
     },
     "action": {

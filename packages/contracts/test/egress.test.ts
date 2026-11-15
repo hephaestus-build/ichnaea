@@ -55,7 +55,9 @@ function plant(node: JsonSchema, value: unknown, corrupt: () => boolean): unknow
     // Only closed shapes get a planted member: a record (open keys) holds content keys by design.
     const out: Record<string, unknown> = extra && typeof extra === "object" ? {} : { [MARK]: "x" };
     for (const [k, v] of Object.entries(value)) {
-      const child = props[k] ?? (extra && typeof extra === "object" ? extra : undefined);
+      const child =
+        (Object.hasOwn(props, k) ? props[k] : undefined) ??
+        (extra && typeof extra === "object" ? extra : undefined);
       out[k] = child ? plant(child, v, corrupt) : v;
     }
     return out;
@@ -75,7 +77,7 @@ function assertOnlyNone(node: JsonSchema, v: unknown, recordClass: string): void
     const props = (branch["properties"] ?? {}) as Record<string, JsonSchema>;
     const extra = branch["additionalProperties"] as JsonSchema | undefined;
     for (const [k, child] of Object.entries(v)) {
-      const s = props[k] ?? extra;
+      const s = (Object.hasOwn(props, k) ? props[k] : undefined) ?? extra;
       if (s && typeof s === "object") assertOnlyNone(s, child, recordClass);
     }
   } else if (branch["type"] === "array" && Array.isArray(v)) {
@@ -301,3 +303,49 @@ const baseCalibration = {
   expiry: [],
   createdAt: "2026-11-15T12:00:00Z",
 };
+
+describe("egress projection: review regressions", () => {
+  it("keeps a __proto__ record key as data and never sets the output's prototype", () => {
+    const raw = JSON.parse(
+      `{"schema":"ichnaea.trial/1","id":"t-1","source":"offline","case":"c-1","unit":"turn","configuration":"sha256:${"a".repeat(64)}","replicate":0,"outcome":"completed","dataClass":"none","signals":{"__proto__":{"x":1}}}`,
+    ) as unknown;
+    const { value } = projectForEgress(Trial, raw, { purpose: "PU-1", maxClass: "none" });
+    const signals = (value as { signals: object }).signals;
+    expect(Object.hasOwn(signals, "__proto__")).toBe(true);
+    expect(Object.getPrototypeOf(signals)).toBe(Object.prototype);
+  });
+
+  it("drops observations and slices of a personal record at the default-deny destination", () => {
+    const trial = Trial.parse({
+      ...baseTrial,
+      dataClass: "personal",
+      observed: [{ name: "returned", value: { user: "alice" } }],
+    });
+    expect(
+      JSON.stringify(projectForEgress(Trial, trial, { purpose: "PU-1", maxClass: "none" }).value),
+    ).not.toContain("alice");
+  });
+
+  it("lets a deployment grant a purpose for a named field, within the class limit", () => {
+    const label = Label.parse(baseLabel);
+    const grants = [{ path: "/rater", purposes: ["PU-3"] }];
+    expect(
+      projectForEgress(Label, label, { purpose: "PU-3", maxClass: "pseudonymous", grants }).value,
+    ).toHaveProperty("rater");
+    expect(
+      projectForEgress(Label, label, { purpose: "PU-5", maxClass: "pseudonymous", grants }).value,
+    ).not.toHaveProperty("rater");
+    expect(
+      projectForEgress(Label, label, { purpose: "PU-3", maxClass: "none", grants }).value,
+    ).not.toHaveProperty("rater");
+  });
+
+  it("escapes dropped paths as JSON pointers", () => {
+    const { dropped } = projectForEgress(
+      Trial,
+      { ...baseTrial, "a/b~c": 1 },
+      { purpose: "PU-1", maxClass: "none" },
+    );
+    expect(dropped).toContain("/a~1b~0c");
+  });
+});

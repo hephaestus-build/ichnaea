@@ -21,8 +21,21 @@ def utf16_key(text):
     return text.encode("utf-16-be")
 
 
+CASE_MEMBERS = ("id", "unit", "input", "turns", "fixtures", "references")
+CONFIGURATION_MEMBERS = ("models", "parameters", "prompts", "factors")
+ENTRY_MEMBERS = ("id", "digest", "pool", "family")
+
+
+def pick(record, members):
+    return {k: record[k] for k in members if k in record}
+
+
+def case_digest(case):
+    return digest(pick(case, CASE_MEMBERS))
+
+
 def configuration_identity(config):
-    projection = {k: v for k, v in config.items() if k != "label"}
+    projection = pick(config, CONFIGURATION_MEMBERS)
     projection["models"] = sorted(config["models"], key=lambda m: utf16_key(m["role"]))
     projection["parameters"] = sorted(config["parameters"], key=lambda p: utf16_key(p["name"]))
     projection["prompts"] = sorted(config["prompts"], key=lambda p: utf16_key(p["name"]))
@@ -30,8 +43,7 @@ def configuration_identity(config):
 
 
 def case_set_digest(entries):
-    keep = ("id", "digest", "pool", "family")
-    projected = [{k: e[k] for k in keep if k in e} for e in entries]
+    projected = [pick(e, ENTRY_MEMBERS) for e in entries]
     return digest(sorted(projected, key=lambda e: utf16_key(e["id"])))
 
 
@@ -50,8 +62,17 @@ vectors.append({"kind": "configurationIdentity", "name": "reordered-and-relabell
 two_models = dict(config, models=config["models"] + [{"role": "Rerank", "provider": {"value": "p", "status": "pinned"}, "id": {"value": "r-1", "status": "declared"}}, {"role": "éval", "provider": {"value": "p", "status": "pinned"}, "id": {"value": "e-1", "status": "pinned"}}])
 vectors.append({"kind": "configurationIdentity", "name": "three-models-unicode-roles", "input": two_models, "digest": configuration_identity(two_models)})
 
+future = dict(config, futureMember={"x": 1}, description="described differently", factors=dict(config["factors"], **{"__proto__": {"value": "kept", "status": "pinned", "part": "other"}}))
+vectors.append({"kind": "configurationIdentity", "name": "unknown-member-and-proto-factor", "input": future, "digest": configuration_identity(future)})
+nested = dict(config, models=[dict(config["models"][0], futureNested=[1, 2])])
+vectors.append({"kind": "configurationIdentity", "name": "unknown-nested-member-counts", "input": nested, "digest": configuration_identity(nested)})
+
 case = json.loads((root / "valid" / "case.json").read_text(encoding="utf-8"))
-vectors.append({"kind": "caseDigest", "name": "valid-case", "input": case, "digest": digest(case)})
+vectors.append({"kind": "caseDigest", "name": "valid-case", "input": case, "digest": case_digest(case)})
+reviewed = dict(case, provenance=dict(case["provenance"], author="someone else"), validation={"status": "validated"}, pool="sealed", futureMember=True)
+vectors.append({"kind": "caseDigest", "name": "provenance-pool-review-and-unknown-members-excluded", "input": reviewed, "digest": case_digest(reviewed)})
+proto = dict(case, input=dict(case["input"], **{"__proto__": "data, not a prototype"}))
+vectors.append({"kind": "caseDigest", "name": "proto-member-in-input", "input": proto, "digest": case_digest(proto)})
 
 case_set = json.loads((root / "valid" / "caseSet.json").read_text(encoding="utf-8"))
 vectors.append({"kind": "caseSetDigest", "name": "valid-case-set", "input": case_set["cases"], "digest": case_set_digest(case_set["cases"])})

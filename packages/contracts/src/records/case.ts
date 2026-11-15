@@ -1,6 +1,6 @@
 import * as z from "zod";
 
-import { content, none, personal } from "../data-class.ts";
+import { attribute, content, none, personal } from "../data-class.ts";
 import {
   CalendarDate,
   CaseId,
@@ -80,7 +80,7 @@ export const Case = z.object({
   fixtures: z.array(DigestRef).optional(),
   references: content(z.record(z.string(), Json)).optional(),
   family: none(Text).optional(),
-  slices: none(z.record(z.string(), z.string())).optional(),
+  slices: attribute(z.record(z.string(), z.string())).optional(),
   criticality: none(z.enum(["low", "normal", "high", "critical"])).optional(),
   provenance: CaseProvenance,
   pool: none(Pool),

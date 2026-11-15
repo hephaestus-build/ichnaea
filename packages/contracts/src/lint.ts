@@ -1,5 +1,6 @@
 import type * as z from "zod";
 
+import { Json } from "./primitives.ts";
 import { children, defType } from "./walk.ts";
 
 /**
@@ -27,10 +28,26 @@ export const FORBIDDEN_DEF_TYPES: readonly string[] = [
   "unknown",
   "never",
   "void",
+  "tuple",
+  "intersection",
+  "nonoptional",
+  "lazy",
 ];
 
 /** Check kinds that rewrite a value (trim, case changes, overwrite) or run arbitrary code. */
 export const FORBIDDEN_CHECKS: readonly string[] = ["custom", "overwrite"];
+
+/** True for the JSON value schema or a copy of it with metadata (`.meta()` keeps a parent link). */
+function isJsonValue(node: z.ZodType): boolean {
+  for (
+    let current: z.ZodType | undefined = node;
+    current;
+    current = (current._zod as unknown as { parent?: z.ZodType }).parent
+  ) {
+    if (current === Json) return true;
+  }
+  return false;
+}
 
 /** One violation of the contract rules. */
 export interface ContractViolation {
@@ -48,6 +65,8 @@ export function lintContractSchema(schema: z.ZodType, path = "$"): ContractViola
   const visit = (node: z.ZodType, at: string): void => {
     if (seen.has(node)) return;
     seen.add(node);
+    // The JSON value type is the one recursive (lazy) schema a contract may use.
+    if (isJsonValue(node)) return;
     const type = defType(node);
     if (FORBIDDEN_DEF_TYPES.includes(type))
       out.push({ path: at, rule: `no '${type}' in contracts` });
@@ -57,10 +76,6 @@ export function lintContractSchema(schema: z.ZodType, path = "$"): ContractViola
       const kind = check._zod.def.check;
       if (FORBIDDEN_CHECKS.includes(kind))
         out.push({ path: at, rule: `no '${kind}' check in contracts` });
-    }
-    if (type === "lazy") {
-      visit((node._zod.def as unknown as { getter: () => z.ZodType }).getter(), at);
-      return;
     }
     for (const [label, child] of children(node)) visit(child, `${at}.${label}`);
   };

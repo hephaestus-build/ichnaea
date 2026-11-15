@@ -28,7 +28,10 @@ function unclassified(schema: JsonSchema): { missing: string[]; inherits: boolea
     if (policy?.class === "inherit") inherits = true;
     if (
       policy &&
-      (!policy.class || !policy.identifier || !Array.isArray(policy.egress) || !policy.retention)
+      (!policy.class ||
+        !policy.identifier ||
+        !Array.isArray(policy.egress) ||
+        !["record", "subject"].includes(policy.retention ?? ""))
     ) {
       missing.push(`${path} (incomplete policy)`);
     }

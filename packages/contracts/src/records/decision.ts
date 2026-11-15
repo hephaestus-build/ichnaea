@@ -66,7 +66,7 @@ export const ArmEstimate = z.object({
   availability: Availability,
 });
 
-/** The comparison of a candidate with the base for one measure. Absent in estimate-only mode. */
+/** The comparison of one candidate with the base for one measure. None in estimate-only mode. */
 export const Comparison = z.object({
   base: none(ArmName),
   candidate: none(ArmName),
@@ -86,7 +86,7 @@ export const MeasureOutcome = z.object({
   tier: none(z.enum(["primary", "secondary"])),
   estimand: none(Estimand),
   arms: z.array(ArmEstimate).min(1),
-  comparison: Comparison.optional(),
+  comparisons: z.array(Comparison),
   verdict: none(MeasureVerdict),
   coverage: none(z.number().min(0).max(1)),
   notes: none(z.array(Text)),

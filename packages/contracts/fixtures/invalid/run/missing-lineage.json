@@ -8,6 +8,132 @@
     "platform": "linux-x64",
     "ichnaea": "0.1.0"
   },
+  "arms": [
+    {
+      "name": "base",
+      "role": "base",
+      "identity": "sha256:db383b8801fd3a846ce4bd18a348d06901748600b21cd15af3ff37b169a0d578",
+      "configuration": {
+        "schema": "ichnaea.configuration/1",
+        "description": "Support assistant: retrieval over the help centre, one answer model.",
+        "models": [
+          {
+            "role": "answer",
+            "provider": {
+              "value": "openai-compatible",
+              "status": "pinned"
+            },
+            "id": {
+              "value": "example-model-2026-10",
+              "status": "pinned"
+            }
+          }
+        ],
+        "parameters": [
+          {
+            "name": "answer.temperature",
+            "value": 0.2,
+            "status": "pinned",
+            "origin": "explicit"
+          },
+          {
+            "name": "answer.maxTokens",
+            "value": 800,
+            "status": "pinned",
+            "origin": "explicit"
+          },
+          {
+            "name": "answer.topP",
+            "value": 1,
+            "status": "declared",
+            "origin": "default"
+          }
+        ],
+        "prompts": [
+          {
+            "name": "answer",
+            "digest": "sha256:e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1",
+            "status": "pinned"
+          }
+        ],
+        "factors": {
+          "code.commit": {
+            "value": "4f2a9c1",
+            "status": "pinned",
+            "part": "code"
+          },
+          "data.helpCentre": {
+            "value": "sha256:f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1",
+            "status": "observed",
+            "part": "data"
+          }
+        },
+        "label": "current"
+      }
+    },
+    {
+      "name": "candidate",
+      "role": "candidate",
+      "identity": "sha256:8b362c5ea2573cd56f4805357bbdf852ce3720bd31bfe7c9db2d2a4603a641ae",
+      "configuration": {
+        "schema": "ichnaea.configuration/1",
+        "description": "Support assistant: retrieval over the help centre, one answer model.",
+        "models": [
+          {
+            "role": "answer",
+            "provider": {
+              "value": "openai-compatible",
+              "status": "pinned"
+            },
+            "id": {
+              "value": "example-model-2026-10",
+              "status": "pinned"
+            }
+          }
+        ],
+        "parameters": [
+          {
+            "name": "answer.temperature",
+            "value": 0.2,
+            "status": "pinned",
+            "origin": "explicit"
+          },
+          {
+            "name": "answer.maxTokens",
+            "value": 800,
+            "status": "pinned",
+            "origin": "explicit"
+          },
+          {
+            "name": "answer.topP",
+            "value": 1,
+            "status": "declared",
+            "origin": "default"
+          }
+        ],
+        "prompts": [
+          {
+            "name": "answer",
+            "digest": "sha256:e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2",
+            "status": "pinned"
+          }
+        ],
+        "factors": {
+          "code.commit": {
+            "value": "4f2a9c1",
+            "status": "pinned",
+            "part": "code"
+          },
+          "data.helpCentre": {
+            "value": "sha256:f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1",
+            "status": "observed",
+            "part": "data"
+          }
+        },
+        "label": "candidate"
+      }
+    }
+  ],
   "ledger": [
     {
       "trial": "t-0001",

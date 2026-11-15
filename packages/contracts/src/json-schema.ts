@@ -64,13 +64,44 @@ function relax(node: unknown): unknown {
     out["x-ichnaea-known"] = out["enum"];
     delete out["enum"];
   }
+  const tagged = out["oneOf"];
+  if (Array.isArray(tagged)) {
+    const discriminator = discriminatorOf(tagged as Array<Record<string, unknown>>);
+    if (discriminator) {
+      // A kind added later still reads: any object with a string discriminator. With the fallback
+      // more than one option can match, so the reader uses anyOf.
+      delete out["oneOf"];
+      out["anyOf"] = [
+        ...tagged,
+        {
+          type: "object",
+          properties: { [discriminator]: { type: "string" } },
+          required: [discriminator],
+          "x-ichnaea-unknown-kind": true,
+        },
+      ];
+    }
+  }
   return out;
+}
+
+/** The member that every option of a tagged union fixes with `const`. */
+function discriminatorOf(options: ReadonlyArray<Record<string, unknown>>): string | undefined {
+  const first = options[0]?.["properties"] as Record<string, Record<string, unknown>> | undefined;
+  if (!first) return undefined;
+  return Object.keys(first).find((key) =>
+    options.every((o) => {
+      const prop = (o["properties"] as Record<string, Record<string, unknown>> | undefined)?.[key];
+      return prop !== undefined && "const" in prop;
+    }),
+  );
 }
 
 /**
  * The reader variant of a record's JSON Schema (REQ-05): every enumeration of strings becomes a
- * plain string with the known values kept as the `x-ichnaea-known` annotation, so a value added in
- * a later minor version still validates. Discriminators (`const`) stay strict.
+ * plain string with the known values kept as the `x-ichnaea-known` annotation, and every tagged union
+ * gains a fallback option for a kind a later minor version adds. Other constants (the `schema`
+ * field) stay strict.
  */
 export function toReaderJsonSchema(contract: RecordContract): Record<string, unknown> {
   const writer = toJsonSchema(contract);

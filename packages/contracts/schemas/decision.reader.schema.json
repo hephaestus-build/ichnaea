@@ -506,353 +506,68 @@
               ]
             }
           },
-          "comparison": {
-            "type": "object",
-            "properties": {
-              "base": {
-                "type": "string",
-                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
-                "x-ichnaea-data": {
-                  "class": "none",
-                  "identifier": "none",
-                  "egress": [
-                    "*"
-                  ],
-                  "retention": "record"
-                }
-              },
-              "candidate": {
-                "type": "string",
-                "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
-                "x-ichnaea-data": {
-                  "class": "none",
-                  "identifier": "none",
-                  "egress": [
-                    "*"
-                  ],
-                  "retention": "record"
-                }
-              },
-              "difference": {
-                "type": "object",
-                "properties": {
-                  "estimate": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "object",
-                        "properties": {
-                          "nonFinite": {
-                            "type": "string",
-                            "x-ichnaea-data": {
-                              "class": "none",
-                              "identifier": "none",
-                              "egress": [
-                                "*"
-                              ],
-                              "retention": "record"
-                            },
-                            "x-ichnaea-known": [
-                              "nan",
-                              "inf",
-                              "-inf"
-                            ]
-                          }
-                        },
-                        "required": [
-                          "nonFinite"
-                        ]
-                      }
+          "comparisons": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "base": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
+                  "x-ichnaea-data": {
+                    "class": "none",
+                    "identifier": "none",
+                    "egress": [
+                      "*"
                     ],
-                    "x-ichnaea-data": {
-                      "class": "none",
-                      "identifier": "none",
-                      "egress": [
-                        "*"
-                      ],
-                      "retention": "record"
-                    }
-                  },
-                  "lower": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "object",
-                        "properties": {
-                          "nonFinite": {
-                            "type": "string",
-                            "x-ichnaea-data": {
-                              "class": "none",
-                              "identifier": "none",
-                              "egress": [
-                                "*"
-                              ],
-                              "retention": "record"
-                            },
-                            "x-ichnaea-known": [
-                              "nan",
-                              "inf",
-                              "-inf"
-                            ]
-                          }
-                        },
-                        "required": [
-                          "nonFinite"
-                        ]
-                      }
-                    ],
-                    "x-ichnaea-data": {
-                      "class": "none",
-                      "identifier": "none",
-                      "egress": [
-                        "*"
-                      ],
-                      "retention": "record"
-                    }
-                  },
-                  "upper": {
-                    "anyOf": [
-                      {
-                        "type": "number"
-                      },
-                      {
-                        "type": "object",
-                        "properties": {
-                          "nonFinite": {
-                            "type": "string",
-                            "x-ichnaea-data": {
-                              "class": "none",
-                              "identifier": "none",
-                              "egress": [
-                                "*"
-                              ],
-                              "retention": "record"
-                            },
-                            "x-ichnaea-known": [
-                              "nan",
-                              "inf",
-                              "-inf"
-                            ]
-                          }
-                        },
-                        "required": [
-                          "nonFinite"
-                        ]
-                      }
-                    ],
-                    "x-ichnaea-data": {
-                      "class": "none",
-                      "identifier": "none",
-                      "egress": [
-                        "*"
-                      ],
-                      "retention": "record"
-                    }
-                  },
-                  "level": {
-                    "type": "number",
-                    "exclusiveMinimum": 0,
-                    "exclusiveMaximum": 1,
-                    "x-ichnaea-data": {
-                      "class": "none",
-                      "identifier": "none",
-                      "egress": [
-                        "*"
-                      ],
-                      "retention": "record"
-                    }
-                  },
-                  "sided": {
-                    "type": "string",
-                    "x-ichnaea-data": {
-                      "class": "none",
-                      "identifier": "none",
-                      "egress": [
-                        "*"
-                      ],
-                      "retention": "record"
-                    },
-                    "x-ichnaea-known": [
-                      "two",
-                      "lower",
-                      "upper"
-                    ]
-                  },
-                  "method": {
-                    "type": "string",
-                    "minLength": 1,
-                    "x-ichnaea-data": {
-                      "class": "none",
-                      "identifier": "none",
-                      "egress": [
-                        "*"
-                      ],
-                      "retention": "record"
-                    }
+                    "retention": "record"
                   }
                 },
-                "required": [
-                  "estimate",
-                  "lower",
-                  "upper",
-                  "level",
-                  "sided",
-                  "method"
-                ]
-              },
-              "margin": {
-                "type": "number",
-                "minimum": 0,
-                "x-ichnaea-data": {
-                  "class": "none",
-                  "identifier": "none",
-                  "egress": [
-                    "*"
-                  ],
-                  "retention": "record"
-                }
-              },
-              "safetyMargin": {
-                "type": "number",
-                "minimum": 0,
-                "x-ichnaea-data": {
-                  "class": "none",
-                  "identifier": "none",
-                  "egress": [
-                    "*"
-                  ],
-                  "retention": "record"
-                }
-              },
-              "nonInferiorityP": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "object",
-                    "properties": {
-                      "nonFinite": {
-                        "type": "string",
-                        "x-ichnaea-data": {
-                          "class": "none",
-                          "identifier": "none",
-                          "egress": [
-                            "*"
-                          ],
-                          "retention": "record"
-                        },
-                        "x-ichnaea-known": [
-                          "nan",
-                          "inf",
-                          "-inf"
-                        ]
-                      }
-                    },
-                    "required": [
-                      "nonFinite"
-                    ]
+                "candidate": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
+                  "x-ichnaea-data": {
+                    "class": "none",
+                    "identifier": "none",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "record"
                   }
-                ],
-                "x-ichnaea-data": {
-                  "class": "none",
-                  "identifier": "none",
-                  "egress": [
-                    "*"
-                  ],
-                  "retention": "record"
-                }
-              },
-              "regressionP": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "object",
-                    "properties": {
-                      "nonFinite": {
-                        "type": "string",
-                        "x-ichnaea-data": {
-                          "class": "none",
-                          "identifier": "none",
-                          "egress": [
-                            "*"
-                          ],
-                          "retention": "record"
-                        },
-                        "x-ichnaea-known": [
-                          "nan",
-                          "inf",
-                          "-inf"
-                        ]
-                      }
-                    },
-                    "required": [
-                      "nonFinite"
-                    ]
-                  }
-                ],
-                "x-ichnaea-data": {
-                  "class": "none",
-                  "identifier": "none",
-                  "egress": [
-                    "*"
-                  ],
-                  "retention": "record"
-                }
-              },
-              "regressionPAdjusted": {
-                "anyOf": [
-                  {
-                    "type": "number"
-                  },
-                  {
-                    "type": "object",
-                    "properties": {
-                      "nonFinite": {
-                        "type": "string",
-                        "x-ichnaea-data": {
-                          "class": "none",
-                          "identifier": "none",
-                          "egress": [
-                            "*"
-                          ],
-                          "retention": "record"
-                        },
-                        "x-ichnaea-known": [
-                          "nan",
-                          "inf",
-                          "-inf"
-                        ]
-                      }
-                    },
-                    "required": [
-                      "nonFinite"
-                    ]
-                  }
-                ],
-                "x-ichnaea-data": {
-                  "class": "none",
-                  "identifier": "none",
-                  "egress": [
-                    "*"
-                  ],
-                  "retention": "record"
-                }
-              },
-              "flips": {
-                "type": "array",
-                "items": {
+                },
+                "difference": {
                   "type": "object",
                   "properties": {
-                    "case": {
-                      "type": "string",
-                      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
+                    "estimate": {
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "nonFinite": {
+                              "type": "string",
+                              "x-ichnaea-data": {
+                                "class": "none",
+                                "identifier": "none",
+                                "egress": [
+                                  "*"
+                                ],
+                                "retention": "record"
+                              },
+                              "x-ichnaea-known": [
+                                "nan",
+                                "inf",
+                                "-inf"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "nonFinite"
+                          ]
+                        }
+                      ],
                       "x-ichnaea-data": {
                         "class": "none",
                         "identifier": "none",
@@ -862,7 +577,98 @@
                         "retention": "record"
                       }
                     },
-                    "direction": {
+                    "lower": {
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "nonFinite": {
+                              "type": "string",
+                              "x-ichnaea-data": {
+                                "class": "none",
+                                "identifier": "none",
+                                "egress": [
+                                  "*"
+                                ],
+                                "retention": "record"
+                              },
+                              "x-ichnaea-known": [
+                                "nan",
+                                "inf",
+                                "-inf"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "nonFinite"
+                          ]
+                        }
+                      ],
+                      "x-ichnaea-data": {
+                        "class": "none",
+                        "identifier": "none",
+                        "egress": [
+                          "*"
+                        ],
+                        "retention": "record"
+                      }
+                    },
+                    "upper": {
+                      "anyOf": [
+                        {
+                          "type": "number"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "nonFinite": {
+                              "type": "string",
+                              "x-ichnaea-data": {
+                                "class": "none",
+                                "identifier": "none",
+                                "egress": [
+                                  "*"
+                                ],
+                                "retention": "record"
+                              },
+                              "x-ichnaea-known": [
+                                "nan",
+                                "inf",
+                                "-inf"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "nonFinite"
+                          ]
+                        }
+                      ],
+                      "x-ichnaea-data": {
+                        "class": "none",
+                        "identifier": "none",
+                        "egress": [
+                          "*"
+                        ],
+                        "retention": "record"
+                      }
+                    },
+                    "level": {
+                      "type": "number",
+                      "exclusiveMinimum": 0,
+                      "exclusiveMaximum": 1,
+                      "x-ichnaea-data": {
+                        "class": "none",
+                        "identifier": "none",
+                        "egress": [
+                          "*"
+                        ],
+                        "retention": "record"
+                      }
+                    },
+                    "sided": {
                       "type": "string",
                       "x-ichnaea-data": {
                         "class": "none",
@@ -873,27 +679,14 @@
                         "retention": "record"
                       },
                       "x-ichnaea-known": [
-                        "negative",
-                        "positive"
+                        "two",
+                        "lower",
+                        "upper"
                       ]
                     },
-                    "base": {
-                      "type": "number",
-                      "minimum": 0,
-                      "maximum": 1,
-                      "x-ichnaea-data": {
-                        "class": "none",
-                        "identifier": "none",
-                        "egress": [
-                          "*"
-                        ],
-                        "retention": "record"
-                      }
-                    },
-                    "candidate": {
-                      "type": "number",
-                      "minimum": 0,
-                      "maximum": 1,
+                    "method": {
+                      "type": "string",
+                      "minLength": 1,
                       "x-ichnaea-data": {
                         "class": "none",
                         "identifier": "none",
@@ -905,25 +698,235 @@
                     }
                   },
                   "required": [
-                    "case",
-                    "direction",
-                    "base",
-                    "candidate"
+                    "estimate",
+                    "lower",
+                    "upper",
+                    "level",
+                    "sided",
+                    "method"
                   ]
+                },
+                "margin": {
+                  "type": "number",
+                  "minimum": 0,
+                  "x-ichnaea-data": {
+                    "class": "none",
+                    "identifier": "none",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "record"
+                  }
+                },
+                "safetyMargin": {
+                  "type": "number",
+                  "minimum": 0,
+                  "x-ichnaea-data": {
+                    "class": "none",
+                    "identifier": "none",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "record"
+                  }
+                },
+                "nonInferiorityP": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "nonFinite": {
+                          "type": "string",
+                          "x-ichnaea-data": {
+                            "class": "none",
+                            "identifier": "none",
+                            "egress": [
+                              "*"
+                            ],
+                            "retention": "record"
+                          },
+                          "x-ichnaea-known": [
+                            "nan",
+                            "inf",
+                            "-inf"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "nonFinite"
+                      ]
+                    }
+                  ],
+                  "x-ichnaea-data": {
+                    "class": "none",
+                    "identifier": "none",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "record"
+                  }
+                },
+                "regressionP": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "nonFinite": {
+                          "type": "string",
+                          "x-ichnaea-data": {
+                            "class": "none",
+                            "identifier": "none",
+                            "egress": [
+                              "*"
+                            ],
+                            "retention": "record"
+                          },
+                          "x-ichnaea-known": [
+                            "nan",
+                            "inf",
+                            "-inf"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "nonFinite"
+                      ]
+                    }
+                  ],
+                  "x-ichnaea-data": {
+                    "class": "none",
+                    "identifier": "none",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "record"
+                  }
+                },
+                "regressionPAdjusted": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "nonFinite": {
+                          "type": "string",
+                          "x-ichnaea-data": {
+                            "class": "none",
+                            "identifier": "none",
+                            "egress": [
+                              "*"
+                            ],
+                            "retention": "record"
+                          },
+                          "x-ichnaea-known": [
+                            "nan",
+                            "inf",
+                            "-inf"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "nonFinite"
+                      ]
+                    }
+                  ],
+                  "x-ichnaea-data": {
+                    "class": "none",
+                    "identifier": "none",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "record"
+                  }
+                },
+                "flips": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "case": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      },
+                      "direction": {
+                        "type": "string",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        },
+                        "x-ichnaea-known": [
+                          "negative",
+                          "positive"
+                        ]
+                      },
+                      "base": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1,
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      },
+                      "candidate": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1,
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      }
+                    },
+                    "required": [
+                      "case",
+                      "direction",
+                      "base",
+                      "candidate"
+                    ]
+                  }
                 }
-              }
-            },
-            "required": [
-              "base",
-              "candidate",
-              "difference",
-              "margin",
-              "safetyMargin",
-              "nonInferiorityP",
-              "regressionP",
-              "regressionPAdjusted",
-              "flips"
-            ]
+              },
+              "required": [
+                "base",
+                "candidate",
+                "difference",
+                "margin",
+                "safetyMargin",
+                "nonInferiorityP",
+                "regressionP",
+                "regressionPAdjusted",
+                "flips"
+              ]
+            }
           },
           "verdict": {
             "type": "string",
@@ -977,6 +980,7 @@
           "tier",
           "estimand",
           "arms",
+          "comparisons",
           "verdict",
           "coverage",
           "notes"
@@ -1032,7 +1036,7 @@
               "egress": [
                 "*"
               ],
-              "retention": "record"
+              "retention": "subject"
             }
           }
         },
@@ -1386,7 +1390,7 @@
         },
         "value": {
           "type": "string",
-          "pattern": "^\\d{1,20}$",
+          "pattern": "^(0|[1-9]\\d{0,19})$",
           "x-ichnaea-data": {
             "class": "none",
             "identifier": "none",

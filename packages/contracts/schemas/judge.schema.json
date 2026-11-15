@@ -154,8 +154,9 @@
       "type": "string",
       "enum": [
         "binary",
-        "levels",
-        "pairwise"
+        "score",
+        "level",
+        "preference"
       ],
       "x-ichnaea-data": {
         "class": "none",
@@ -213,7 +214,6 @@
     "id",
     "version",
     "evaluatorKind",
-    "model",
     "endpointClass",
     "promptDigest",
     "rubricDigest",

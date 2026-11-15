@@ -1,88 +1,91 @@
-import type * as z from "zod";
+import * as z from "zod";
 
+import { toReaderJsonSchema } from "./json-schema.ts";
 import type { RecordContract } from "./registry.ts";
-import { children, defType, unwrap } from "./walk.ts";
 
-/** A value outside a known enumeration, found by the tolerant reader. */
+/** A value that the writer schema does not know, found by the tolerant reader. */
 export interface UnknownValue {
   readonly path: readonly PropertyKey[];
-  readonly value: string;
-  readonly known: readonly unknown[];
+  readonly value: unknown;
 }
+
+/**
+ * The type a tolerant reader returns: every string enumeration may also hold a string a later
+ * minor version added, and every tagged union a kind it added. Code must handle the unknown case.
+ */
+export type Lenient<T> = T extends string
+  ? string extends T
+    ? T
+    : T | (string & { readonly __unknownValue?: never })
+  : T extends readonly (infer U)[]
+    ? ReadonlyArray<Lenient<U>>
+    : T extends object
+      ? { readonly [K in keyof T]: Lenient<T[K]> }
+      : T;
 
 /** The result of a tolerant read. */
 export type ReadResult<T> =
-  | { readonly ok: true; readonly record: T; readonly unknownValues: readonly UnknownValue[] }
+  | {
+      readonly ok: true;
+      readonly record: Lenient<T>;
+      readonly unknownValues: readonly UnknownValue[];
+    }
   | { readonly ok: false; readonly error: z.ZodError };
 
-function getAt(root: unknown, path: readonly PropertyKey[]): unknown {
-  let node = root;
-  for (const key of path) node = (node as Record<PropertyKey, unknown> | undefined)?.[key];
-  return node;
-}
+const readers = new Map<string, z.ZodType>();
 
-function setAt(root: unknown, path: readonly PropertyKey[], value: unknown): void {
-  let node = root as Record<PropertyKey, unknown>;
-  for (const key of path.slice(0, -1)) node = node[key] as Record<PropertyKey, unknown>;
-  node[path[path.length - 1] as PropertyKey] = value;
-}
-
-/** True when some schema node the path can reach is an enumeration (never a literal). */
-function reachesEnum(schema: z.ZodType, path: readonly PropertyKey[]): boolean {
-  const node = unwrap(schema);
-  const type = defType(node);
-  if (type === "union") return children(node).some(([, option]) => reachesEnum(option, path));
-  if (path.length === 0) return type === "enum";
-  const [head, ...rest] = path;
-  const kids = new Map(children(node));
-  if (type === "object") {
-    const child =
-      typeof head === "string" && Object.hasOwn(Object.fromEntries(kids), head)
-        ? kids.get(head)
-        : kids.get("*");
-    return child ? reachesEnum(child, rest) : false;
+/**
+ * The reader zod schema of a contract, built from the reader JSON Schema so that zod and every
+ * other validator of the reader schema agree by construction.
+ */
+export function readerSchema(contract: RecordContract): z.ZodType {
+  let reader = readers.get(contract.id);
+  if (!reader) {
+    reader = z.fromJSONSchema(
+      toReaderJsonSchema(contract) as Parameters<typeof z.fromJSONSchema>[0],
+    );
+    readers.set(contract.id, reader);
   }
-  if (type === "array") return reachesEnum(kids.get("[]") as z.ZodType, rest);
-  if (type === "record") return reachesEnum(kids.get("<value>") as z.ZodType, rest);
+  return reader;
+}
+
+function hasLoneSurrogate(value: unknown): boolean {
+  if (typeof value === "string") return !value.isWellFormed();
+  if (Array.isArray(value)) return value.some(hasLoneSurrogate);
+  if (value && typeof value === "object")
+    return Object.entries(value).some(([k, v]) => !k.isWellFormed() || hasLoneSurrogate(v));
   return false;
 }
 
 /**
- * Reads a record tolerantly (REQ-05). Unknown members are dropped, as every reader does. A string
- * outside a known enumeration (a value added in a later minor version) does not fail the read: it
- * is kept in the record and reported in `unknownValues`, so the caller decides what it means. A
- * caller must treat such a value as unknown, never as one of the values it knows.
- *
- * Discriminators of tagged unions are not tolerated: a new kind of record part is a new major.
+ * Reads a record tolerantly (REQ-05). It validates against the reader schema: unknown members are
+ * ignored, a string outside a known enumeration and a tagged-union kind the writer schema does not
+ * know are accepted and reported in `unknownValues`. The `schema` field and other constants stay
+ * strict. Strings must be well-formed Unicode, because a record must stay hashable.
  */
 export function readRecord<T>(
   contract: RecordContract & { schema: z.ZodType<T> },
   value: unknown,
 ): ReadResult<T> {
-  const first = contract.schema.safeParse(value);
-  if (first.success) return { ok: true, record: first.data, unknownValues: [] };
-  const working = structuredClone(value);
-  const unknownValues: UnknownValue[] = [];
-  let result: z.ZodSafeParseResult<T> = first;
-  for (let round = 0; round < 8 && !result.success; round++) {
-    const issues = result.error.issues;
-    const enumIssues = issues.filter(
-      (i) =>
-        i.code === "invalid_value" &&
-        typeof getAt(working, i.path) === "string" &&
-        reachesEnum(contract.schema, i.path),
-    );
-    if (enumIssues.length !== issues.length || enumIssues.length === 0)
-      return { ok: false, error: first.error };
-    for (const issue of enumIssues) {
-      const known = (issue as { values: unknown[] }).values;
-      unknownValues.push({ path: issue.path, value: getAt(working, issue.path) as string, known });
-      setAt(working, issue.path, known[0]);
-    }
-    result = contract.schema.safeParse(working);
+  const read = readerSchema(contract).safeParse(value);
+  if (!read.success) return { ok: false, error: read.error };
+  if (hasLoneSurrogate(value)) {
+    return {
+      ok: false,
+      error: new z.ZodError([
+        { code: "custom", path: [], message: "lone surrogate in a string", input: value },
+      ]),
+    };
   }
-  if (!result.success) return { ok: false, error: first.error };
-  const record: T = result.data;
-  for (const u of unknownValues) setAt(record, u.path, u.value);
-  return { ok: true, record, unknownValues };
+  const strict = contract.schema.safeParse(value);
+  const unknownValues = strict.success
+    ? []
+    : strict.error.issues.map((i) => ({ path: i.path, value: valueAt(value, i.path) }));
+  return { ok: true, record: structuredClone(value) as Lenient<T>, unknownValues };
+}
+
+function valueAt(root: unknown, path: readonly PropertyKey[]): unknown {
+  let node = root;
+  for (const key of path) node = (node as Record<PropertyKey, unknown> | undefined)?.[key];
+  return node;
 }

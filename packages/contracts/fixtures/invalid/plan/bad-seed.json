@@ -4,7 +4,7 @@
   "suiteVersion": "1",
   "suiteDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
   "caseSet": "support-answers",
-  "caseSetDigest": "sha256:b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1",
+  "caseSetDigest": "sha256:48ab0cee285376d0a24906dbbc7923cbef97288b0d40b581f1e49eef5755d93a",
   "trigger": "code",
   "mode": "decision",
   "estimand": "fixed-cases",
@@ -14,7 +14,7 @@
     {
       "name": "base",
       "role": "base",
-      "identity": "sha256:c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1",
+      "identity": "sha256:db383b8801fd3a846ce4bd18a348d06901748600b21cd15af3ff37b169a0d578",
       "configuration": {
         "schema": "ichnaea.configuration/1",
         "description": "Support assistant: retrieval over the help centre, one answer model.",
@@ -76,7 +76,7 @@
     {
       "name": "candidate",
       "role": "candidate",
-      "identity": "sha256:c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2",
+      "identity": "sha256:8b362c5ea2573cd56f4805357bbdf852ce3720bd31bfe7c9db2d2a4603a641ae",
       "configuration": {
         "schema": "ichnaea.configuration/1",
         "description": "Support assistant: retrieval over the help centre, one answer model.",

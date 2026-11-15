@@ -29,7 +29,7 @@ const CONFIGURATION = {
   label: "current",
 };
 
-const CONFIGURATION_B = {
+export const CONFIGURATION_B = {
   ...CONFIGURATION,
   prompts: [{ name: "answer", digest: d("e2"), status: "pinned" }],
   label: "candidate",
@@ -176,6 +176,7 @@ export const VALID: Record<string, Record<string, unknown>> = {
     plan: d("13"),
     exploratory: false,
     environment: { node: "24.22.2", platform: "linux-x64", ichnaea: "0.1.0" },
+    arms: [],
     lineage: [{ kind: "plugin", id: "support", version: "0.1.0" }],
     ledger: [{ trial: "t-0001", state: "recorded", outcome: "completed" }],
     startedAt: "2026-11-15T10:00:30Z",
@@ -255,24 +256,26 @@ export const VALID: Record<string, Record<string, unknown>> = {
             availability: { planned: 180, available: 179, notApplicable: 0, missing: 1 },
           },
         ],
-        comparison: {
-          base: "base",
-          candidate: "candidate",
-          difference: {
-            estimate: 0.01,
-            lower: -0.02,
-            upper: 1,
-            level: 0.95,
-            sided: "lower",
-            method: "stratified-score-rd-bc",
+        comparisons: [
+          {
+            base: "base",
+            candidate: "candidate",
+            difference: {
+              estimate: 0.01,
+              lower: -0.02,
+              upper: 1,
+              level: 0.95,
+              sided: "lower",
+              method: "stratified-score-rd-bc",
+            },
+            margin: 0.05,
+            safetyMargin: 0,
+            nonInferiorityP: 0.004,
+            regressionP: 0.71,
+            regressionPAdjusted: 0.71,
+            flips: [{ case: "refund-window-de", direction: "negative", base: 1, candidate: 0.33 }],
           },
-          margin: 0.05,
-          safetyMargin: 0,
-          nonInferiorityP: 0.004,
-          regressionP: 0.71,
-          regressionPAdjusted: 0.71,
-          flips: [{ case: "refund-window-de", direction: "negative", base: 1, candidate: 0.33 }],
-        },
+        ],
         verdict: "NON-INFERIOR",
         coverage: 0.994,
         notes: [],
@@ -376,8 +379,6 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
     "missing-unit": (r) => delete r["unit"],
     "reused-without-dataset": (r) =>
       (r["provenance"] = { ...(r["provenance"] as object), source: "reused" }),
-    "unknown-provenance-source": (r) =>
-      (r["provenance"] = { ...(r["provenance"] as object), source: "scraped" }),
     "wrong-schema-id": (r) => (r["schema"] = "ichnaea.case/2"),
     "missing-provenance-licence": (r) =>
       delete (r["provenance"] as Record<string, unknown>)["licence"],
@@ -440,15 +441,14 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
   },
   measureValue: {
     "untagged-value": (r) => (r["value"] = 1),
-    "unknown-value-type": (r) => (r["value"] = { type: "ranking", order: [1, 2] }),
   },
   decision: {
     "no-arms": (r) => (r["arms"] = []),
     "level-out-of-range": (r) => {
       const outcome = (
-        r["measures"] as Array<Record<string, Record<string, Record<string, unknown>>>>
+        r["measures"] as Array<{ comparisons: Array<{ difference: Record<string, unknown> }> }>
       )[0]!;
-      outcome["comparison"]!["difference"]!["level"] = 1.5;
+      outcome.comparisons[0]!.difference["level"] = 1.5;
     },
     "missing-missingness": (r) => delete r["missingness"],
   },
@@ -479,7 +479,15 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
  * enumeration in a later minor version.
  */
 export const READER_ONLY: Record<string, Record<string, Mutation>> = {
-  case: { "future-unit": (r) => (r["unit"] = "conversation") },
+  case: {
+    "future-unit": (r) => (r["unit"] = "conversation"),
+    "future-provenance-source": (r) =>
+      (r["provenance"] = { ...(r["provenance"] as object), source: "scraped" }),
+  },
+  measureValue: { "future-value-kind": (r) => (r["value"] = { type: "ranking", order: [2, 1] }) },
+  label: {
+    "future-preference-value": (r) => (r["value"] = { type: "preference", preferred: "both" }),
+  },
   trial: { "future-outcome": (r) => (r["outcome"] = "partial") },
   run: {
     "future-ledger-state": (r) =>

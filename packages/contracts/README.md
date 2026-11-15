@@ -26,49 +26,64 @@ against the schema files in [`schemas/`](schemas).
 
 Each record has two schema files:
 
-- `<name>.schema.json` is the **writer** schema. Write only records that validate against it.
-- `<name>.reader.schema.json` is the **reader** schema. It accepts string values that a later minor
-  version adds to an enumeration, and keeps the known values as the `x-ichnaea-known` annotation.
-  A reader must treat such a value as unknown. Discriminators (`const`) and the `schema` field stay
-  strict: a new kind is a new major version.
+- `<name>.schema.json` is the **writer** schema: the values a writer may emit. It does not forbid
+  unknown members, because readers must accept them; writers emit only the members it defines.
+- `<name>.reader.schema.json` is the **reader** schema. It also accepts a string that a later
+  minor version adds to an enumeration (the known values stay as the `x-ichnaea-known`
+  annotation) and a kind that a later minor version adds to a tagged union (the fallback option
+  carries `x-ichnaea-unknown-kind`). A reader must treat such values as unknown. The `schema`
+  field stays strict: a new major version is a new schema.
 
-Both accept unknown members. Readers ignore them.
+In TypeScript, `readRecord(contract, value)` validates against the reader schema (zod builds it
+from the same JSON Schema, so the two agree), reports the values the writer schema does not know,
+and types the result so that code must handle them.
 
-In TypeScript, `readRecord(contract, value)` reads tolerantly and reports unknown values.
+Strings must be well-formed Unicode and numbers finite. A writer in a language that can emit `NaN`
+or `Infinity` in JSON (Python's `json.dumps` does by default) must refuse them: encode a non-finite
+result as `{ "nonFinite": "nan" | "inf" | "-inf" }`.
 
-The schemas use three annotation keywords. Register them with your validator, for example in ajv:
+Register the annotation keywords with your validator, for example in ajv:
 
 ```ts
-ajv.addKeyword({ keyword: "x-ichnaea-data", schemaType: "object" });
+for (const keyword of ["x-ichnaea-data", "x-ichnaea-known"]) ajv.addKeyword({ keyword });
 ajv.addKeyword({ keyword: "x-ichnaea-stability", schemaType: "string" });
-ajv.addKeyword({ keyword: "x-ichnaea-known", schemaType: "array" });
+ajv.addKeyword({ keyword: "x-ichnaea-unknown-kind", schemaType: "boolean" });
 ```
 
 ## Hashing (normative)
 
-A digest is `sha256:` followed by the lowercase hex SHA-256 of the UTF-8 bytes of the record's
-[RFC 8785](https://www.rfc-editor.org/rfc/rfc8785) canonical form. Strings must be well-formed
-Unicode, and numbers must be finite.
+A digest is `sha256:` followed by the lowercase hex SHA-256 of the UTF-8 bytes of an
+[RFC 8785](https://www.rfc-editor.org/rfc/rfc8785) canonical form. A digest covers the record as
+written, restricted to a frozen list of top-level members. Nested values are hashed whole. So every
+reader, of any minor version and in any language, computes the same digest from the same bytes. A
+member added to a record later enters a digest only through a change to this list, which is a new
+major version.
 
-| Digest                 | Projection before hashing                                                                                                                                                                                               |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Case digest            | The case with only the members of `ichnaea.case/1`                                                                                                                                                                      |
-| Case-set digest        | The entries, each with `id`, `digest`, `pool` and `family` where present, sorted by `id` (UTF-16 code units). IDs are unique.                                                                                           |
-| Configuration identity | The configuration with only the members of `ichnaea.configuration/1`, without `label`, with `models` sorted by `role`, and `parameters` and `prompts` sorted by `name` (UTF-16 code units). Roles and names are unique. |
+| Digest                 | Members                                                  | Then                                                                                  |
+| ---------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Case digest            | `id`, `unit`, `input`, `turns`, `fixtures`, `references` | —                                                                                     |
+| Case-set digest        | each entry's `id`, `digest`, `pool`, `family`            | sort entries by `id` (UTF-16 code units); IDs unique, at least one                    |
+| Configuration identity | `models`, `parameters`, `prompts`, `factors`             | sort `models` by `role`, `parameters` and `prompts` by `name`; roles and names unique |
 
-The writer computes an identity and stores it in plans and trials. Readers compare stored
-identities. They never recompute an identity from a record that has members they do not know.
+The record must validate against its writer schema first. A member named `__proto__` is data like
+any other member. Provenance, pool, family and review status do not enter a case digest, so erasing
+an author or reviewing a case keeps it. `description` and `label` do not enter the configuration
+identity, because they name the configuration for people.
 
-[`fixtures/digests.json`](fixtures/digests.json) holds vectors computed by an implementation in
-another language. A new implementation must reproduce them.
+The writer computes an identity and stores it in plans, runs and trials. `verifyArms` checks a
+stored identity against its configuration.
+
+[`fixtures/digests.json`](fixtures/digests.json) holds vectors computed by an independent
+implementation in Python (`scripts/oracle/`, run in CI). A new implementation must reproduce them.
 
 ## Data policies
 
 Every field carries an `x-ichnaea-data` annotation: its data class (`none`, `pseudonymous`,
-`personal`, `special`, or `inherit` for content whose class the record declares in `dataClass`),
-its identifier kind, the purposes it may leave for, and its retention rule. `projectForEgress`
-keeps only the fields that a destination may receive for one purpose, and drops unknown,
-unclassified and off-schema values.
+`personal`, `special`, or `inherit` for content and attributes whose class the record declares in
+`dataClass`), its identifier kind, the purposes (PU-1 to PU-6) it may leave for, and its retention
+rule (`record`, or `subject`: erased with the person). `projectForEgress` keeps only the fields that
+a destination may receive for one purpose, and drops unknown, unclassified and off-schema values.
+A deployment can grant more purposes for named fields, never a higher class.
 
 ## Fixtures
 

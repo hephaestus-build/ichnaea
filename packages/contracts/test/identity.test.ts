@@ -13,6 +13,7 @@ import {
   Configuration as ConfigurationSchema,
   configurationIdentity,
   IdentityError,
+  verifyArms,
 } from "../src/index.ts";
 import { arbitraryFor } from "./support/arbitrary.ts";
 
@@ -87,13 +88,35 @@ describe("configuration identity", () => {
     );
   });
 
-  it("hashes the schema projection, so members a reader does not know never change it", async () => {
-    const extended = {
+  it("covers only the frozen top-level members, so a reader of any version computes the same identity", async () => {
+    const extended = { ...structuredClone(base), fingerprint: "fp_123", description: "renamed" };
+    expect(await configurationIdentity(extended)).toBe(await configurationIdentity(base));
+    // Nested values are hashed as written: a later writer's nested member counts for every reader.
+    const nested = {
       ...structuredClone(base),
-      fingerprint: "fp_123",
       models: base.models.map((m) => ({ ...m, futurePart: { x: 1 } })),
     };
-    expect(await configurationIdentity(extended)).toBe(await configurationIdentity(base));
+    expect(await configurationIdentity(nested)).not.toBe(await configurationIdentity(base));
+  });
+
+  it("keeps a __proto__ member as data in the identity", async () => {
+    const withProto = JSON.parse(
+      JSON.stringify(base).replace(
+        '"factors":{',
+        '"factors":{"__proto__":{"value":"x","status":"pinned","part":"other"},',
+      ),
+    ) as unknown;
+    expect(Object.hasOwn((withProto as { factors: object }).factors, "__proto__")).toBe(true);
+    expect(await configurationIdentity(withProto)).not.toBe(await configurationIdentity(base));
+  });
+
+  it("verifies that stored arm identities match their configurations", async () => {
+    const identity = await configurationIdentity(base);
+    expect(await verifyArms([{ identity, configuration: base }])).toEqual([]);
+    const wrong = await verifyArms([{ identity: `sha256:${"0".repeat(64)}`, configuration: base }]);
+    expect(wrong).toEqual([
+      { path: "/arms/0/identity", stored: `sha256:${"0".repeat(64)}`, computed: identity },
+    ]);
   });
 
   it.each([
@@ -162,6 +185,17 @@ describe("case and case-set digests", () => {
       ),
       { seed: 20261115, numRuns: 100 },
     );
+  });
+
+  it("ignores provenance, pool, review status and unknown top-level members", async () => {
+    const reviewed = {
+      ...structuredClone(record),
+      validation: { status: "validated" },
+      pool: "sealed",
+      futureMember: 1,
+    };
+    expect(await caseDigest(reviewed)).toBe(await caseDigest(record));
+    await expect(caseSetDigest([])).rejects.toThrow(IdentityError);
   });
 
   it("changes when a case moves to another pool, and refuses duplicate IDs", async () => {

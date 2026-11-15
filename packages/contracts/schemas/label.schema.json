@@ -267,7 +267,7 @@
         "class": "pseudonymous",
         "identifier": "direct",
         "egress": [],
-        "retention": "record"
+        "retention": "subject"
       }
     },
     "raterRole": {
@@ -350,7 +350,7 @@
         "egress": [
           "*"
         ],
-        "retention": "record"
+        "retention": "subject"
       }
     },
     "dataClass": {

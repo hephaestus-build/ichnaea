@@ -269,7 +269,7 @@
         "egress": [
           "*"
         ],
-        "retention": "record"
+        "retention": "subject"
       }
     },
     "dataClass": {

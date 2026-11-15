@@ -53,31 +53,33 @@
           }
         }
       ],
-      "comparison": {
-        "base": "base",
-        "candidate": "candidate",
-        "difference": {
-          "estimate": 0.01,
-          "lower": -0.02,
-          "upper": 1,
-          "level": 0.95,
-          "sided": "lower",
-          "method": "stratified-score-rd-bc"
-        },
-        "margin": 0.05,
-        "safetyMargin": 0,
-        "nonInferiorityP": 0.004,
-        "regressionP": 0.71,
-        "regressionPAdjusted": 0.71,
-        "flips": [
-          {
-            "case": "refund-window-de",
-            "direction": "negative",
-            "base": 1,
-            "candidate": 0.33
-          }
-        ]
-      },
+      "comparisons": [
+        {
+          "base": "base",
+          "candidate": "candidate",
+          "difference": {
+            "estimate": 0.01,
+            "lower": -0.02,
+            "upper": 1,
+            "level": 0.95,
+            "sided": "lower",
+            "method": "stratified-score-rd-bc"
+          },
+          "margin": 0.05,
+          "safetyMargin": 0,
+          "nonInferiorityP": 0.004,
+          "regressionP": 0.71,
+          "regressionPAdjusted": 0.71,
+          "flips": [
+            {
+              "case": "refund-window-de",
+              "direction": "negative",
+              "base": 1,
+              "candidate": 0.33
+            }
+          ]
+        }
+      ],
       "verdict": "NON-INFERIOR",
       "coverage": 0.994,
       "notes": []

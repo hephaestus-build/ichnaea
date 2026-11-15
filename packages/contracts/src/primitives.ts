@@ -102,10 +102,10 @@ export const Unit = z.enum(["turn", "trace", "session", "episode"]);
 /** The unit of a case or trial. */
 export type Unit = z.infer<typeof Unit>;
 
-/** A seed of a named generator, as decimal digits so 64-bit seeds fit. */
+/** A seed of a named generator, in decimal without leading zeros (up to 20 digits, for 64-bit seeds). */
 export const Seed = z.object({
   algorithm: none(Text),
-  value: none(z.string().regex(/^\d{1,20}$/)),
+  value: none(z.string().regex(/^(0|[1-9]\d{0,19})$/)),
 });
 
 /** A named pointer to a file or artefact with its digest. */

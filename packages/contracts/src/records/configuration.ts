@@ -52,7 +52,7 @@ export const ModelBinding = z.object({
 export const Parameter = z.object({
   name: none(Text),
   value: none(Json),
-  status: none(FactorStatus),
+  status: none(z.enum(["pinned", "declared", "uncontrollable"])),
   origin: none(z.enum(["explicit", "default"])),
 });
 
@@ -61,6 +61,8 @@ export const PromptBinding = z.object({
   name: none(Text),
   digest: none(Digest),
   status: none(FactorStatus),
+  template: none(z.string()).optional(),
+  uri: none(Text).optional(),
 });
 
 /**
@@ -69,8 +71,10 @@ export const PromptBinding = z.object({
  * At least one model with a non-empty provider and ID, and at least one generation parameter,
  * are required, so a configuration without them does not validate. Everything else that decides
  * behaviour goes into `factors` under a dotted name, for example `code.commit`,
- * `tool.retrieval.topK` or `data.corpus`. Observed per-trial values, such as the model identity a
- * provider returns or a provider fingerprint, belong in trial records, never here.
+ * `tool.retrieval.topK` or `data.corpus`. An `observed` factor is a value the system reported when
+ * the configuration was resolved (for example a corpus digest); it is part of the identity.
+ * Per-trial observations, such as the model identity a provider returns or a provider fingerprint,
+ * belong in trial records, never here, so they never change the identity.
  */
 export const Configuration = z.object({
   schema: none(z.literal("ichnaea.configuration/1")),

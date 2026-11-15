@@ -186,7 +186,7 @@
         "egress": [
           "*"
         ],
-        "retention": "record"
+        "retention": "subject"
       },
       "$ref": "#/$defs/JsonValue"
     },
@@ -197,7 +197,7 @@
         "egress": [
           "*"
         ],
-        "retention": "record"
+        "retention": "subject"
       },
       "$ref": "#/$defs/JsonValue"
     },
@@ -208,7 +208,7 @@
         "class": "pseudonymous",
         "identifier": "quasi",
         "egress": [],
-        "retention": "record"
+        "retention": "subject"
       }
     },
     "steps": {
@@ -320,7 +320,7 @@
               "egress": [
                 "*"
               ],
-              "retention": "record"
+              "retention": "subject"
             },
             "$ref": "#/$defs/JsonValue"
           }
@@ -429,23 +429,23 @@
           },
           "value": {
             "x-ichnaea-data": {
-              "class": "none",
-              "identifier": "none",
+              "class": "inherit",
+              "identifier": "content",
               "egress": [
                 "*"
               ],
-              "retention": "record"
+              "retention": "subject"
             },
             "$ref": "#/$defs/JsonValue"
           },
           "expected": {
             "x-ichnaea-data": {
-              "class": "none",
-              "identifier": "none",
+              "class": "inherit",
+              "identifier": "content",
               "egress": [
                 "*"
               ],
-              "retention": "record"
+              "retention": "subject"
             },
             "$ref": "#/$defs/JsonValue"
           }
@@ -470,7 +470,7 @@
         "egress": [
           "*"
         ],
-        "retention": "record"
+        "retention": "subject"
       }
     },
     "cache": {
@@ -564,7 +564,7 @@
         "class": "pseudonymous",
         "identifier": "quasi",
         "egress": [],
-        "retention": "record"
+        "retention": "subject"
       }
     },
     "error": {
@@ -590,7 +590,7 @@
             "egress": [
               "*"
             ],
-            "retention": "record"
+            "retention": "subject"
           }
         }
       },

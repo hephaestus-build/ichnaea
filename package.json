@@ -19,9 +19,11 @@
     "generate": "pnpm -r --filter './packages/*' run generate",
     "check": "pnpm run format:check && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run check:generated",
     "check:generated": "pnpm run generate && git status --porcelain -- packages && test -z \"$(git status --porcelain -- packages/*/schemas packages/*/fixtures)\"",
-    "changeset": "changeset"
+    "changeset": "changeset",
+    "check:package": "pnpm run build && pnpm -r --filter './packages/*' exec publint --strict && pnpm -r --filter './packages/*' exec attw --pack --profile esm-only"
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "0.18.5",
     "@changesets/cli": "3.0.2",
     "@commitlint/cli": "21.2.2",
     "@commitlint/config-conventional": "21.2.2",
@@ -30,6 +32,7 @@
     "fast-check": "4.10.2",
     "oxfmt": "0.73.0",
     "oxlint": "1.88.0",
+    "publint": "0.3.25",
     "typescript": "7.0.2",
     "vitest": "5.0.5"
   },

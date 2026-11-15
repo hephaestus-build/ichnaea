@@ -9,10 +9,16 @@ import {
 } from "./data-class.ts";
 import { defType, policyOf, unwrap } from "./walk.ts";
 
-/** What a destination accepts: one purpose and the most sensitive class it may receive. */
+/**
+ * What a destination accepts: one purpose and the most sensitive class it may receive. `grants`
+ * lets a deployment allow more purposes for named fields (JSON pointers into the record, `*` for
+ * any array index or record key), for example after recording a basis for rater pseudonyms. A
+ * grant never lifts the class limit.
+ */
 export interface EgressContext {
   readonly purpose: string;
   readonly maxClass: DataClass;
+  readonly grants?: ReadonlyArray<{ readonly path: string; readonly purposes: readonly string[] }>;
 }
 
 /** A record reduced to the fields that may cross a boundary, with the paths that were dropped. */
@@ -37,10 +43,29 @@ function recordClassOf(record: unknown): DataClass {
   return DATA_CLASSES.includes(declared as DataClass) ? (declared as DataClass) : "special";
 }
 
-function permits(policy: DataPolicy, recordClass: DataClass, context: EgressContext): boolean {
+function matches(pattern: string, path: string): boolean {
+  const a = pattern.split("/");
+  const b = path.split("/");
+  return a.length === b.length && a.every((segment, i) => segment === "*" || segment === b[i]);
+}
+
+function permits(
+  policy: DataPolicy,
+  recordClass: DataClass,
+  context: EgressContext,
+  path: string,
+): boolean {
   const effective = policy.class === "inherit" ? recordClass : policy.class;
   if (classRank(effective) > classRank(context.maxClass)) return false;
-  return policy.egress.includes(context.purpose) || policy.egress.includes(ANY_PURPOSE);
+  if (policy.egress.includes(context.purpose) || policy.egress.includes(ANY_PURPOSE)) return true;
+  return (context.grants ?? []).some(
+    (g) => matches(g.path, path) && g.purposes.includes(context.purpose),
+  );
+}
+
+/** Escapes one JSON pointer segment (RFC 6901). */
+function pointerSegment(key: string | number): string {
+  return String(key).replaceAll("~", "~0").replaceAll("/", "~1");
 }
 
 function def(node: z.ZodType): Record<string, unknown> {
@@ -81,7 +106,7 @@ export function projectForEgress(
     const policy = policyOf(node);
     let allowed = permitted;
     if (policy) {
-      allowed = permits(policy, recordClass, context);
+      allowed = permits(policy, recordClass, context, path);
       if (!allowed) return drop(path);
     }
     const inner = unwrap(node);
@@ -91,31 +116,34 @@ export function projectForEgress(
       case "object": {
         if (!isPlainObject(value)) return drop(path);
         const shape = def(inner)["shape"] as Record<string, z.ZodType>;
-        const out: Record<string, unknown> = {};
+        const out: Array<[string, unknown]> = [];
         for (const key of Object.keys(value)) {
+          const at = `${path}/${pointerSegment(key)}`;
           if (!Object.hasOwn(shape, key)) {
-            drop(`${path}/${key}`);
+            drop(at);
             continue;
           }
-          const projected = project(shape[key] as z.ZodType, value[key], `${path}/${key}`, allowed);
-          if (projected !== DROP) out[key] = projected;
+          const projected = project(shape[key] as z.ZodType, value[key], at, allowed);
+          if (projected !== DROP) out.push([key, projected]);
         }
-        return out;
+        // Object.fromEntries defines members as data, so a `__proto__` member stays a member.
+        return Object.fromEntries(out);
       }
       case "record": {
         if (!isPlainObject(value)) return drop(path);
         const keyType = def(inner)["keyType"] as z.ZodType;
         const valueType = def(inner)["valueType"] as z.ZodType;
-        const out: Record<string, unknown> = {};
+        const out: Array<[string, unknown]> = [];
         for (const key of Object.keys(value)) {
+          const at = `${path}/${pointerSegment(key)}`;
           if (!keyType.safeParse(key).success) {
-            drop(`${path}/${key}`);
+            drop(at);
             continue;
           }
-          const projected = project(valueType, value[key], `${path}/${key}`, allowed);
-          if (projected !== DROP) out[key] = projected;
+          const projected = project(valueType, value[key], at, allowed);
+          if (projected !== DROP) out.push([key, projected]);
         }
-        return out;
+        return Object.fromEntries(out);
       }
       case "array": {
         if (!Array.isArray(value)) return drop(path);

@@ -90,7 +90,7 @@
         "egress": [
           "*"
         ],
-        "retention": "record"
+        "retention": "subject"
       }
     },
     "turns": {
@@ -122,7 +122,7 @@
               "egress": [
                 "*"
               ],
-              "retention": "record"
+              "retention": "subject"
             },
             "$ref": "#/$defs/JsonValue"
           }
@@ -195,7 +195,7 @@
         "egress": [
           "*"
         ],
-        "retention": "record"
+        "retention": "subject"
       }
     },
     "family": {
@@ -219,12 +219,12 @@
         "type": "string"
       },
       "x-ichnaea-data": {
-        "class": "none",
-        "identifier": "none",
+        "class": "inherit",
+        "identifier": "quasi",
         "egress": [
           "*"
         ],
-        "retention": "record"
+        "retention": "subject"
       }
     },
     "criticality": {
@@ -245,7 +245,7 @@
       ]
     },
     "provenance": {
-      "oneOf": [
+      "anyOf": [
         {
           "type": "object",
           "properties": {
@@ -285,7 +285,7 @@
                 "class": "personal",
                 "identifier": "direct",
                 "egress": [],
-                "retention": "record"
+                "retention": "subject"
               }
             },
             "created": {
@@ -390,7 +390,7 @@
                 "class": "personal",
                 "identifier": "direct",
                 "egress": [],
-                "retention": "record"
+                "retention": "subject"
               }
             },
             "created": {
@@ -540,7 +540,7 @@
                 "class": "personal",
                 "identifier": "direct",
                 "egress": [],
-                "retention": "record"
+                "retention": "subject"
               }
             },
             "created": {
@@ -691,7 +691,7 @@
                 "class": "personal",
                 "identifier": "direct",
                 "egress": [],
-                "retention": "record"
+                "retention": "subject"
               }
             },
             "created": {
@@ -797,7 +797,7 @@
                 "class": "personal",
                 "identifier": "direct",
                 "egress": [],
-                "retention": "record"
+                "retention": "subject"
               }
             },
             "created": {
@@ -875,6 +875,18 @@
             "exposure",
             "finding"
           ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "source"
+          ],
+          "x-ichnaea-unknown-kind": true
         }
       ]
     },
@@ -923,7 +935,7 @@
             "egress": [
               "*"
             ],
-            "retention": "record"
+            "retention": "subject"
           }
         }
       },

@@ -10,6 +10,42 @@ import { ajvValidate, committedSchema, createAjv } from "./support/ajv.ts";
 import { arbitraryFor } from "./support/arbitrary.ts";
 
 const fixtures = join(import.meta.dirname, "..", "fixtures");
+
+/** Every path to a member or element inside a JSON value. */
+function memberPaths(
+  value: unknown,
+  prefix: Array<string | number> = [],
+): Array<Array<string | number>> {
+  if (Array.isArray(value))
+    return value.flatMap((v, i) => [[...prefix, i], ...memberPaths(v, [...prefix, i])]);
+  if (value && typeof value === "object") {
+    return Object.entries(value).flatMap(([k, v]) => [
+      [...prefix, k],
+      ...memberPaths(v, [...prefix, k]),
+    ]);
+  }
+  return [];
+}
+
+/** Sets (or, with undefined, deletes) the member at a path. */
+function setPath(
+  root: unknown,
+  path: ReadonlyArray<string | number>,
+  replacement: unknown,
+): unknown {
+  const parent = path
+    .slice(0, -1)
+    .reduce<unknown>(
+      (node, key) => (node as Record<string | number, unknown>)[key],
+      root,
+    ) as Record<string | number, unknown>;
+  const last = path[path.length - 1] as string | number;
+  if (replacement === undefined) {
+    if (Array.isArray(parent)) parent.splice(last as number, 1);
+    else delete parent[last];
+  } else parent[last] = replacement;
+  return root;
+}
 const ajv = createAjv();
 const read = (path: string): unknown => JSON.parse(readFileSync(path, "utf8"));
 
@@ -81,6 +117,17 @@ describe("generated records", () => {
           ]) {
             expect(ajvValidate(ajv, name, broken)).toBe(contract.schema.safeParse(broken).success);
           }
+          // The same at a nested position: delete or corrupt any member or element at any depth.
+          const paths = memberPaths(record);
+          const path = paths[pick % paths.length];
+          if (path) {
+            for (const replacement of [undefined, { unexpected: true }, -1, "", null]) {
+              const broken = setPath(structuredClone(record), path, replacement);
+              expect(ajvValidate(ajv, name, broken)).toBe(
+                contract.schema.safeParse(broken).success,
+              );
+            }
+          }
         }),
         { seed: 20261115, numRuns: 200 },
       );
@@ -112,7 +159,7 @@ describe("tolerant readers (REQ-05)", () => {
       const result = readRecord(contract, value);
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.unknownValues.length).toBe(1);
+        expect(result.unknownValues.length).toBeGreaterThanOrEqual(1);
         const [unknown] = result.unknownValues;
         expect(JSON.stringify(result.record)).toContain(JSON.stringify(unknown?.value));
       }

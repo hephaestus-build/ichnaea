@@ -106,7 +106,7 @@ function fromJsonSchema(node: JsonSchema): fc.Arbitrary<unknown> {
           .tuple(
             fixed,
             fc.dictionary(
-              keys.filter((k) => !(k in props) && k !== "__proto__"),
+              keys.filter((k) => !Object.hasOwn(props, k)),
               fromJsonSchema(extra as JsonSchema),
               { maxKeys: 3 },
             ),

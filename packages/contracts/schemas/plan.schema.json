@@ -435,7 +435,6 @@
                       "type": "string",
                       "enum": [
                         "pinned",
-                        "observed",
                         "declared",
                         "uncontrollable"
                       ],
@@ -509,6 +508,29 @@
                         "declared",
                         "uncontrollable"
                       ],
+                      "x-ichnaea-data": {
+                        "class": "none",
+                        "identifier": "none",
+                        "egress": [
+                          "*"
+                        ],
+                        "retention": "record"
+                      }
+                    },
+                    "template": {
+                      "type": "string",
+                      "x-ichnaea-data": {
+                        "class": "none",
+                        "identifier": "none",
+                        "egress": [
+                          "*"
+                        ],
+                        "retention": "record"
+                      }
+                    },
+                    "uri": {
+                      "type": "string",
+                      "minLength": 1,
                       "x-ichnaea-data": {
                         "class": "none",
                         "identifier": "none",
@@ -1042,7 +1064,7 @@
         },
         "value": {
           "type": "string",
-          "pattern": "^\\d{1,20}$",
+          "pattern": "^(0|[1-9]\\d{0,19})$",
           "x-ichnaea-data": {
             "class": "none",
             "identifier": "none",
