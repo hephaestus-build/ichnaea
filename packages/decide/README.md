@@ -27,8 +27,8 @@ regress gives INCONCLUSIVE, and the reason names the cause of each primary measu
 bound does not clear the margin, the cases cannot tell yet, and the floor is named as well. When
 the bound clears the margin, only the floor stands in the way. When every measure has that second
 cause, the reason says that no candidate can PASS until the floor is set (`FLOOR_NOT_SET_REASON`).
-The reason says "beyond run-to-run noise" only where the scope sentence does: when every compared
-case has at least 2 trials in each arm.
+The reason says "beyond run-to-run noise" only where the scope sentence does: under `fixed-cases`,
+when every compared case has at least 2 completed trials in each arm (decision 0016).
 
 Whenever a primary measure misses a trial in either arm, each verdict is tested against the
 imputation that works against it. A verdict that this changes becomes INCONCLUSIVE (decision 0010).

@@ -1,6 +1,6 @@
 # 0005 The regression test is the exact stratified conditional test
 
-- Status: Accepted
+- Status: Superseded by 0016
 - Date: 2026-11-15
 
 ## Context

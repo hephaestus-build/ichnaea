@@ -477,7 +477,7 @@ export interface PrimariesInput {
 }
 
 /**
- * Whether counts may claim "beyond run-to-run noise" (decision 0011): some case is compared, and
+ * Whether counts may claim "beyond run-to-run noise" (decision 0016): some case is compared, and
  * every compared case has at least 2 trials in each arm.
  */
 function replicated(cases: Iterable<CaseCounts>): boolean {
@@ -784,7 +784,7 @@ function sensitivityResult(
 }
 
 /**
- * Whether a verdict of this run may say "beyond run-to-run noise" (decision 0011): only under
+ * Whether a verdict of this run may say "beyond run-to-run noise" (decision 0016): only under
  * fixed-cases, and only when every case the primary measures compare has at least 2 trials in each
  * arm. The scope sentence and the REGRESSION reason both read it, so they never disagree.
  */
