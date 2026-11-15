@@ -50,13 +50,16 @@ export interface ComparisonInput {
   /** Non-inferiority margin minus the safety margin: H0 is difference <= -margin. */
   readonly margin: number;
   readonly rng?: Rng;
-  readonly score?: ScoreOptions;
 }
 
 /** The result of a paired comparison. */
 export interface Comparison {
   readonly estimand: Estimand;
-  /** One-sided lower interval matching the non-inferiority test. */
+  /**
+   * One-sided lower interval matching the non-inferiority test. A lower bound above 0, a claim that
+   * the candidate is better, is descriptive: it is the test at a margin of 0, below the validated
+   * margin floor, so no result vouches for it (decision 0009).
+   */
   readonly difference: Interval;
   /** p-value of H0: difference <= -margin. */
   readonly nonInferiorityP: number;
@@ -120,17 +123,17 @@ export const VALIDATED_FIXED_CASES: {
  * The fixed-cases case selection and lower bound, as `compareCounts` computes them: every case with
  * at least one completed trial in each arm, equal case weights, the stratified Miettinen–Nurminen
  * score interval with the N/(N−1) factor. The simulation studies call this function, so they test
- * the decision path itself.
+ * the decision path itself. It takes no score options: every other variant is outside the validated
+ * domain (a variant without the factor undercovers), so a caller cannot select one here.
  */
 export function fixedCasesInterval(
   cases: readonly CaseCounts[],
   level: number,
-  score: ScoreOptions = {},
 ): { interval: Interval; strata: Stratum[]; options: ScoreOptions } {
   const strata: Stratum[] = cases
     .filter((c) => c.base.trials > 0 && c.candidate.trials > 0)
     .map((c) => ({ candidate: c.candidate, base: c.base }));
-  const options: ScoreOptions = { ...score, weights: "equal" };
+  const options: ScoreOptions = { weights: "equal" };
   return {
     interval: {
       ...scoreDifferenceInterval(strata, level, "lower", options),
@@ -206,7 +209,7 @@ export function compareCounts(input: ComparisonInput): Comparison {
   if (used.length === 0) throw new EstimandError("no case has a completed trial in both arms");
 
   if (input.estimand === "fixed-cases") {
-    const { interval, strata, options } = fixedCasesInterval(used, level, input.score);
+    const { interval, strata, options } = fixedCasesInterval(used, level);
     const cells = used.flatMap((c) => [c.base.trials, c.candidate.trials]);
     const balanced = new Set(cells).size === 1;
     let regressionTest: { p: number; method: string };

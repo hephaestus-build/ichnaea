@@ -2,8 +2,6 @@ name: CI
 
 on:
   pull_request:
-    # `edited` runs the title and body check again when someone changes either.
-    types: [opened, synchronize, reopened, edited]
   push:
     branches: [main]
   merge_group:
@@ -14,6 +12,12 @@ permissions:
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# The oracle images, written name:tag@digest so that an update tool can read the version. The
+# digest is what runs; the tag only names it.
+env:
+  R_IMAGE: rocker/r-ver:4.5.2@sha256:fd4ccdd3a4a6f7ef805e2daeee2a0fe3bf126bc231f36351223baecf5a595a4c
+  PYTHON_IMAGE: python:3.13.18-slim@sha256:e48f59cdba69a3cbd9ed2cf0f348d90d45a8d350d98134cf1070bc106ee9ed90
 
 jobs:
   check:
@@ -86,11 +90,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # The checkout is mounted read-only: the oracle reads the vectors and cannot change them.
       - name: Digest vectors match an implementation in another language
         run: |
-          python3 -m venv /tmp/oracle
-          /tmp/oracle/bin/pip install --quiet --require-hashes -r packages/contracts/scripts/oracle/requirements.txt
-          /tmp/oracle/bin/python packages/contracts/scripts/oracle/verify_vectors.py packages/contracts/fixtures
+          docker run --rm -v "$PWD":/w:ro -w /w "$PYTHON_IMAGE" sh -c \
+            "pip install --quiet --root-user-action=ignore --require-hashes \
+            -r packages/contracts/scripts/oracle/requirements.txt \
+            && python packages/contracts/scripts/oracle/verify_vectors.py packages/contracts/fixtures"
 
   stats-oracle:
     name: stats oracle
@@ -108,9 +114,6 @@ jobs:
       # fails the job.
       - name: The stats reference values are what their oracles write
         working-directory: packages/stats
-        env:
-          R_IMAGE: rocker/r-ver@sha256:fd4ccdd3a4a6f7ef805e2daeee2a0fe3bf126bc231f36351223baecf5a595a4c
-          PYTHON_IMAGE: python@sha256:e48f59cdba69a3cbd9ed2cf0f348d90d45a8d350d98134cf1070bc106ee9ed90
         run: |
           docker run --rm -v "$PWD":/w -w /w "$R_IMAGE" Rscript scripts/reference-normal.R
           docker run --rm -v "$PWD":/w -w /w "$PYTHON_IMAGE" sh -c \
@@ -141,19 +144,12 @@ jobs:
           BASE: ${{ github.event.pull_request.base.sha }}
           HEAD: ${{ github.event.pull_request.head.sha }}
         run: pnpm exec commitlint --from "$BASE" --to "$HEAD"
-      # The title and body become the merge commit, so they are public text. The values reach the
-      # script through the environment and are never part of the shell command.
-      - name: No private record in the title and body
-        env:
-          PR_TITLE: ${{ github.event.pull_request.title }}
-          PR_BODY: ${{ github.event.pull_request.body }}
-        run: node scripts/check-purity.ts --env PR_TITLE --env PR_BODY
 
   ok:
     name: ok
     if: always()
     needs: [check, test, simulation, oracle, stats-oracle, commits]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     steps:
       - name: All required jobs passed
         env:

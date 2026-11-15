@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import { fixedCasesInterval, withinCasePermutationTest } from "../src/index.ts";
 import { draw, LEVEL, rates } from "./support/grid.ts";
+import { documented } from "./support/documented.ts";
 import { judge, type Point, TYPE_I } from "./support/simulate.ts";
 
 /**
@@ -39,8 +40,10 @@ describe("fixed-cases: the within-case permutation test", () => {
         }
       }
     }
-    expect(
-      judge(points, TYPE_I, "within-case permutation test, 17 cases, type-I error").failures,
-    ).toEqual([]);
+    const verdict = judge(points, TYPE_I, "within-case permutation test, 17 cases, type-I error");
+    expect(verdict.failures).toEqual([]);
+    // VALIDATION.md, "Results of the CI gate", states this result.
+    const { run, page } = documented(TYPE_I, verdict);
+    expect(run).toEqual(page);
   });
 });
