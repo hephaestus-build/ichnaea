@@ -55,7 +55,11 @@ export interface ComparisonInput {
 /** The result of a paired comparison. */
 export interface Comparison {
   readonly estimand: Estimand;
-  /** One-sided lower interval matching the non-inferiority test. */
+  /**
+   * One-sided lower interval matching the non-inferiority test. A lower bound above 0, a claim that
+   * the candidate is better, is descriptive: it is the test at a margin of 0, below the validated
+   * margin floor, so no result vouches for it (decision 0009).
+   */
   readonly difference: Interval;
   /** p-value of H0: difference <= -margin. */
   readonly nonInferiorityP: number;

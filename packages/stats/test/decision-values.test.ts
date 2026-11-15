@@ -624,6 +624,47 @@ describe("what compareCounts refuses or does not validate", () => {
     }
   });
 
+  it("never validates a claim that the candidate is better: it tests at a margin below any floor", () => {
+    // A better candidate: the lower bound lies above 0, which is the non-inferiority test at 0.
+    const better = counts(17, 2, 3).map((c, i) =>
+      i % 2 === 0 ? { ...c, base: { successes: 1, trials: 3 } } : c,
+    );
+    const result = compareCounts({ ...input, cases: better, margin: 0 });
+    expect(result.difference.lower).toBeGreaterThan(0);
+    expect(result.nonInferiorityP).toBeLessThan(0.05);
+    expect(result.regression.validated).toBe(true);
+    expect(result.nonInferiority.validated).toBe(false);
+    expect(result.nonInferiority.limitations).toContain(
+      "margin 0 is below the validated margin floor 0.05",
+    );
+    // Any input, any margin below the floor: the reason is the margin itself, not the pending floor,
+    // so it still holds once the floor is set.
+    expect(VALIDATED_MARGIN_FLOOR).toBeGreaterThan(0);
+    const cell = fc
+      .integer({ min: 1, max: 3 })
+      .chain((trials) =>
+        fc.record({ successes: fc.integer({ min: 0, max: trials }), trials: fc.constant(trials) }),
+      );
+    fc.assert(
+      fc.property(
+        fc.array(fc.record({ base: cell, candidate: cell }), { minLength: 5, maxLength: 20 }),
+        fc.oneof(
+          fc.constant(0),
+          fc.double({ min: 0, max: VALIDATED_MARGIN_FLOOR, maxExcluded: true, noNaN: true }),
+        ),
+        (arms, margin) => {
+          const cases = arms.map((a, i) => ({ id: `c${String(i).padStart(2, "0")}`, ...a }));
+          const { nonInferiority } = compareCounts({ ...input, cases, margin, rng: createRng(1) });
+          expect(nonInferiority.validated).toBe(false);
+          expect(nonInferiority.limitations).toContain(
+            `margin ${margin} is below the validated margin floor ${VALIDATED_MARGIN_FLOOR}`,
+          );
+        },
+      ),
+      { seed: 20261115, numRuns: 100 },
+    );
+  });
+
   it("takes no score options, so no caller can select a variant outside the validated method", () => {
     // 17 cases at 2 of 2 in both arms; the candidate passes 1 of 2 in 2 cases.
     const cases = counts(17, 2, 2, 2).map((c, i) =>

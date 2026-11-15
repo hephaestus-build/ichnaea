@@ -152,7 +152,9 @@ result lists every condition that fails in its `limitations`.
 
 - for `nonInferiority` only: an established margin floor, and an effective margin (the declared
   margin minus any safety margin) from that floor up to 0.30, the validated margin ceiling. A margin of 0 is not a
-  non-inferiority test. A declared 0.10 with a safety margin of 0.06 is tested at 0.04. The range
+  non-inferiority test. A claim that the candidate is better (a lower bound above 0) tests the
+  interval at a margin of 0, below any floor, so it stays descriptive and is never validated. A
+  unit test checks this on random inputs at every margin below the floor. A declared 0.10 with a safety margin of 0.06 is tested at 0.04. The range
   covers only this `fixed-cases` interval; every other method states its own validated domain.
 
 **No non-inferiority result is validated: the margin floor is not set yet.** Every
