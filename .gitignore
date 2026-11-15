@@ -5,6 +5,5 @@ reports/mutation/
 .stryker-tmp/
 *.tsbuildinfo
 .DS_Store
-.context/
 .scratch/
 __pycache__/

@@ -22,7 +22,7 @@ export const Judge = z.strictObject({
   version: none(SemVer),
   evaluatorKind: none(z.enum(["model", "human", "code"])),
   // Optional because a human or code evaluator has no model. A model evaluator without a model
-  // identity still validates here; REQ-37 (judges, step 8) ties the two together.
+  // identity still validates here; REQ-37 ties the two together.
   model: z
     .strictObject({ provider: none(Text), id: none(Text), version: none(Text).optional() })
     .optional(),
