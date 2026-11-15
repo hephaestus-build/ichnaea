@@ -18,3 +18,4 @@ export * from "./records/suite.ts";
 export * from "./records/trial.ts";
 export * from "./registry.ts";
 export * from "./target-view.ts";
+export * from "./values.ts";

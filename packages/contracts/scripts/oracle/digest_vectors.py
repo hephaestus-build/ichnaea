@@ -1,9 +1,8 @@
 """Writes fixtures/digests.json: canonical forms and digests computed by an implementation that
 shares no code with Ichnaea (the Python `rfc8785` package), including the normative projections
 of the configuration identity and the case-set digest. Test-only oracle: Ichnaea's runtime has no
-Python dependency. Run: python digest_vectors.py <fixtures dir>
+Python dependency. Run: python digest_vectors.py <fixtures dir> [--generated]
 """
-import hashlib
 import json
 import pathlib
 import sys
@@ -12,49 +11,9 @@ import rfc8785
 
 root = pathlib.Path(sys.argv[1])
 
+from projections import Projections, digest, text_digest
 
-def digest(value):
-    return "sha256:" + hashlib.sha256(rfc8785.dumps(value)).hexdigest()
-
-
-def utf16_key(text):
-    return text.encode("utf-16-be")
-
-
-CASE_MEMBERS = ("id", "unit", "input", "turns", "fixtures", "references")
-CONFIGURATION_MEMBERS = ("models", "parameters", "prompts", "factors")
-ENTRY_MEMBERS = ("id", "digest", "pool", "family")
-
-
-# Every top-level member a writer may emit (the strict writer schemas). An unknown member is an
-# error before hashing: a misspelt or misplaced member must not leave a digest unchanged.
-CASE_KNOWN = CASE_MEMBERS + ("schema", "caseSet", "dataClass", "family", "slices", "criticality", "provenance", "pool", "validation")
-CONFIGURATION_KNOWN = CONFIGURATION_MEMBERS + ("schema", "description", "label", "informational")
-ENTRY_KNOWN = ENTRY_MEMBERS
-
-
-def pick(record, members, known):
-    unknown = sorted(set(record) - set(known))
-    if unknown:
-        raise ValueError(f"unknown members {unknown}")
-    return {k: record[k] for k in members if k in record}
-
-
-def case_digest(case):
-    return digest(pick(case, CASE_MEMBERS, CASE_KNOWN))
-
-
-def configuration_identity(config):
-    projection = pick(config, CONFIGURATION_MEMBERS, CONFIGURATION_KNOWN)
-    projection["models"] = sorted(config["models"], key=lambda m: utf16_key(m["role"]))
-    projection["parameters"] = sorted(config["parameters"], key=lambda p: utf16_key(p["name"]))
-    projection["prompts"] = sorted(config["prompts"], key=lambda p: utf16_key(p["name"]))
-    return digest(projection)
-
-
-def case_set_digest(entries):
-    projected = [pick(e, ENTRY_MEMBERS, ENTRY_KNOWN) for e in entries]
-    return digest(sorted(projected, key=lambda e: utf16_key(e["id"])))
+P = Projections(root)
 
 
 values = [
@@ -66,31 +25,43 @@ values = [
 vectors = [{"kind": "canonical", "name": v["name"], "input": v["input"], "canonical": rfc8785.dumps(v["input"]).decode("utf-8"), "digest": digest(v["input"])} for v in values]
 
 config = json.loads((root / "valid" / "configuration.json").read_text(encoding="utf-8"))
-vectors.append({"kind": "configurationIdentity", "name": "valid-configuration", "input": config, "digest": configuration_identity(config)})
+vectors.append({"kind": "configurationIdentity", "name": "valid-configuration", "input": config, "digest": P.configuration_identity(config)})
 reordered = dict(config, models=list(reversed(config["models"])), parameters=list(reversed(config["parameters"])), label="renamed")
-vectors.append({"kind": "configurationIdentity", "name": "reordered-and-relabelled", "input": reordered, "digest": configuration_identity(reordered)})
+vectors.append({"kind": "configurationIdentity", "name": "reordered-and-relabelled", "input": reordered, "digest": P.configuration_identity(reordered)})
 two_models = dict(config, models=config["models"] + [{"role": "Rerank", "provider": {"value": "p", "status": "pinned"}, "id": {"value": "r-1", "status": "declared"}}, {"role": "éval", "provider": {"value": "p", "status": "pinned"}, "id": {"value": "e-1", "status": "pinned"}}])
-vectors.append({"kind": "configurationIdentity", "name": "three-models-unicode-roles", "input": two_models, "digest": configuration_identity(two_models)})
+vectors.append({"kind": "configurationIdentity", "name": "three-models-unicode-roles", "input": two_models, "digest": P.configuration_identity(two_models)})
 
 described = dict(config, description="described differently", informational={"provider.fingerprint": "fp_1"}, factors=dict(config["factors"], **{"__proto__": {"value": "kept", "status": "pinned", "part": "other"}}))
-vectors.append({"kind": "configurationIdentity", "name": "description-informational-and-proto-factor", "input": described, "digest": configuration_identity(described)})
-for name, bad in [("unknown-top-level-member", dict(config, tools=["search"]))]:
-    try:
-        configuration_identity(bad)
-    except ValueError:
+vectors.append({"kind": "configurationIdentity", "name": "description-informational-and-proto-factor", "input": described, "digest": P.configuration_identity(described)})
+template = "Answer from the help centre only."
+resolved = dict(config, prompts=[dict(p, template=template, uri="file:prompts/answer.txt", digest=text_digest(template)) for p in config["prompts"]])
+declared = dict(config, prompts=[dict(p, digest=text_digest(template)) for p in config["prompts"]])
+vectors.append({"kind": "configurationIdentity", "name": "prompt-template-and-uri-recorded", "input": resolved, "digest": P.configuration_identity(resolved)})
+vectors.append({"kind": "configurationIdentity", "name": "prompt-digest-only", "input": declared, "digest": P.configuration_identity(declared)})
+assert P.configuration_identity(resolved) == P.configuration_identity(declared)
+for name, bad in [("unknown-top-level-member", dict(config, tools=["search"])), ("unknown-prompt-member", dict(config, prompts=[dict(p, templat="x") for p in config["prompts"]]))]:
+    if P.compute({"kind": "configurationIdentityRefused", "input": bad}) == "":
         vectors.append({"kind": "configurationIdentityRefused", "name": name, "input": bad, "digest": ""})
 
 case = json.loads((root / "valid" / "case.json").read_text(encoding="utf-8"))
-vectors.append({"kind": "caseDigest", "name": "valid-case", "input": case, "digest": case_digest(case)})
-reviewed = dict(case, provenance=dict(case["provenance"], author="someone else"), validation={"status": "validated"}, pool="sealed")
-vectors.append({"kind": "caseDigest", "name": "provenance-pool-and-review-excluded", "input": reviewed, "digest": case_digest(reviewed)})
+vectors.append({"kind": "caseDigest", "name": "valid-case", "input": case, "digest": P.case_digest(case)})
+reviewed = dict(case, provenance=dict(case["provenance"], author="someone else"), validation={"status": "validated"})
+vectors.append({"kind": "caseDigest", "name": "author-and-review-excluded", "input": reviewed, "digest": P.case_digest(reviewed)})
+for name, changed in [
+    ("criticality-included", dict(case, criticality="critical")),
+    ("slices-included", dict(case, slices={"language": "fr"})),
+    ("selection-included", dict(case, provenance=dict(case["provenance"], selection="random"))),
+    ("exposure-included", dict(case, provenance=dict(case["provenance"], exposure="sealed"))),
+    ("data-class-included", dict(case, dataClass="personal")),
+]:
+    vectors.append({"kind": "caseDigest", "name": name, "input": changed, "digest": P.case_digest(changed)})
 proto = dict(case, input=dict(case["input"], **{"__proto__": "data, not a prototype"}))
-vectors.append({"kind": "caseDigest", "name": "proto-member-in-input", "input": proto, "digest": case_digest(proto)})
+vectors.append({"kind": "caseDigest", "name": "proto-member-in-input", "input": proto, "digest": P.case_digest(proto)})
 
 case_set = json.loads((root / "valid" / "caseSet.json").read_text(encoding="utf-8"))
-vectors.append({"kind": "caseSetDigest", "name": "valid-case-set", "input": case_set["cases"], "digest": case_set_digest(case_set["cases"])})
+vectors.append({"kind": "caseSetDigest", "name": "valid-case-set", "input": case_set["cases"], "digest": P.case_set_digest(case_set["cases"])})
 unicode_entries = [{"id": "b-2", "digest": "sha256:" + "1" * 64, "pool": "sealed"}, {"id": "Z-1", "digest": "sha256:" + "2" * 64, "pool": "development", "family": "f"}, {"id": "a-3", "digest": "sha256:" + "3" * 64, "pool": "validation"}, {"id": "9.x", "digest": "sha256:" + "4" * 64, "pool": "promoted"}]
-vectors.append({"kind": "caseSetDigest", "name": "mixed-case-ids", "input": unicode_entries, "digest": case_set_digest(unicode_entries)})
+vectors.append({"kind": "caseSetDigest", "name": "mixed-case-ids", "input": unicode_entries, "digest": P.case_set_digest(unicode_entries)})
 
 out = {"oracle": f"python rfc8785 {rfc8785.__version__ if hasattr(rfc8785, '__version__') else '0.1.4'}", "vectors": vectors}
 (root / "digests.json").write_text(json.dumps(out, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -98,6 +69,9 @@ print(f"wrote {len(vectors)} vectors")
 
 
 # 1,000 generated vectors: doubles over the whole range, arbitrary Unicode member names and strings.
+# Random generation differs between Python versions, so they are rewritten only on request.
+if "--generated" not in sys.argv:
+    sys.exit(0)
 import math
 import random
 import struct

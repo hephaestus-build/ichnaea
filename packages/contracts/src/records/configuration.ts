@@ -56,7 +56,10 @@ export const Parameter = z.strictObject({
   origin: none(z.enum(["explicit", "default"])),
 });
 
-/** A prompt template the system uses, by digest. */
+/**
+ * A prompt template the system uses, by digest: the SHA-256 of the template's UTF-8 bytes. The
+ * template text and its uri may be recorded; they do not enter the identity (`DIGEST_RULES`).
+ */
 export const PromptBinding = z.strictObject({
   name: none(Text),
   digest: none(Digest),

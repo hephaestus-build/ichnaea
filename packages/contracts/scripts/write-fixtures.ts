@@ -2,7 +2,7 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { caseDigest, caseSetDigest, configurationIdentity } from "../src/index.ts";
+import { caseDigest, caseSetDigest, configurationIdentity, DIGEST_RULES } from "../src/index.ts";
 import { CONFIGURATION_B, INVALID, READER_ONLY, VALID, VALID_EXTRA } from "./fixtures-source.ts";
 
 const root = join(import.meta.dirname, "..", "fixtures");
@@ -71,4 +71,6 @@ for (const [name, record] of Object.entries(VALID)) {
     count++;
   }
 }
-console.log(`wrote ${count} fixtures`);
+// The digest rules for implementations in other languages (the Python oracle reads them).
+write(join(root, "digest-rules.json"), DIGEST_RULES);
+console.log(`wrote ${count} fixtures and the digest rules`);

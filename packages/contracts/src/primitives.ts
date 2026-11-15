@@ -106,10 +106,13 @@ export const Unit = z.enum(["turn", "trace", "session", "episode"]);
 /** The unit of a case or trial. */
 export type Unit = z.infer<typeof Unit>;
 
-/** A seed of a named generator, in decimal without leading zeros (up to 20 digits, for 64-bit seeds). */
+/**
+ * A seed of a named generator, in decimal without leading zeros. At most 19 digits, so every seed
+ * fits in an unsigned 64-bit integer.
+ */
 export const Seed = z.strictObject({
   algorithm: none(Text),
-  value: none(z.string().regex(/^(0|[1-9][0-9]{0,19})$/)),
+  value: none(z.string().regex(/^(0|[1-9][0-9]{0,18})$/)),
 });
 
 /** A named pointer to a file or artefact with its digest. */
@@ -123,8 +126,9 @@ export const DigestRef = z.strictObject({
  * The result of one measurement or annotation, tagged by kind: a pass or fail, a score, a level
  * of an anchored scale, a preference between two outputs, an explicit `unknown` (a rater or judge
  * that cannot tell), or a proportion of items inside one
- * trial (for example the expected findings an output raised: 3 of 4). A proportion's successes
- * must not exceed its trials; readers check it, because a schema cannot compare two fields.
+ * trial (for example the expected findings an output raised: 3 of 4). A schema cannot compare two
+ * fields, so a proportion whose successes exceed its trials validates here. `proportionProblem`
+ * names it, and the decision rule refuses it.
  */
 export const MeasuredValue = z.discriminatedUnion("type", [
   z.strictObject({ type: none(z.literal("binary")), pass: none(z.boolean()) }),

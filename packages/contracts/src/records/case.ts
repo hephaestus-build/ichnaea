@@ -89,7 +89,7 @@ export const Case = z.strictObject({
   provenance: CaseProvenance,
   pool: none(Pool),
   validation: z
-    .object({
+    .strictObject({
       status: none(z.enum(["draft", "reviewed", "validated", "suspect"])),
       note: content(z.string()).optional(),
     })

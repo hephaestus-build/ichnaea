@@ -176,6 +176,83 @@ export const MUTANTS: readonly Mutant[] = [
     from: 'out["x-ichnaea-closed"] !== true',
     to: "true",
   },
+  // Re-review of 1445f5f: the four survivors, and one mutant per new path.
+  {
+    id: "N2 reader accepts lone surrogates",
+    file: "src/reader.ts",
+    from: "  if (hasLoneSurrogate(value)) {",
+    to: "  if (false) {",
+  },
+  {
+    id: "N11 grant matches a path prefix",
+    file: "src/egress.ts",
+    from: 'return a.length === b.length && a.every((segment, i) => segment === "*" || segment === b[i]);',
+    to: "return path.startsWith(pattern);",
+  },
+  {
+    id: "N13 a nested writer object is loose",
+    file: "src/records/measure.ts",
+    from: "  validation: z\n    .strictObject({",
+    to: "  validation: z\n    .object({",
+    regen: true,
+  },
+  {
+    id: "N17 template and uri enter the identity",
+    file: "src/identity.ts",
+    from: '(projection["prompts"] as unknown[]).map((p) => pick(p, DIGEST_RULES.prompt.members)),',
+    to: 'projection["prompts"],',
+  },
+  {
+    id: "DN6 provenance hashed whole",
+    file: "src/identity.ts",
+    from: 'projection["provenance"] = pick(projection["provenance"], DIGEST_RULES.provenance.members);',
+    to: "",
+  },
+  {
+    id: "DN6 criticality left out",
+    file: "src/identity.ts",
+    from: '      "criticality",\n',
+    to: "",
+    regen: true,
+  },
+  {
+    id: "DN7 template not checked",
+    file: "src/identity.ts",
+    from: "    if (prompt.template === undefined) continue;",
+    to: "    continue;",
+  },
+  {
+    id: "DN7 verifyArms skips templates",
+    file: "src/identity.ts",
+    from: "    errors.push(...(await verifyConfiguration(arm.configuration, `${at}/${i}/configuration`)));",
+    to: "",
+  },
+  {
+    id: "m20 digits left as \\d",
+    file: "src/json-schema.ts",
+    from: 'out += next === "d" ? (inClass ? "0-9" : "[0-9]") : char + next;',
+    to: "out += char + next;",
+    regen: true,
+  },
+  {
+    id: "m19 seed of 20 digits",
+    file: "src/primitives.ts",
+    from: "[1-9][0-9]{0,18}",
+    to: "[1-9][0-9]{0,19}",
+    regen: true,
+  },
+  {
+    id: "R-m3 proportion check off by one",
+    file: "src/values.ts",
+    from: "value.successes > value.trials",
+    to: "value.successes > value.trials + 1",
+  },
+  {
+    id: "R-m4 isKnownKind always true",
+    file: "src/reader.ts",
+    from: "  return known.includes((value as Record<string, unknown>)[tag] as string);",
+    to: "  return true;",
+  },
 ];
 
 const root = join(import.meta.dirname, "..");

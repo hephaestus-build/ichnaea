@@ -56,36 +56,43 @@ for (const keyword of ["x-ichnaea-unknown-kind", "x-ichnaea-closed"])
 ## Hashing (normative)
 
 A digest is `sha256:` followed by the lowercase hex SHA-256 of the UTF-8 bytes of an
-[RFC 8785](https://www.rfc-editor.org/rfc/rfc8785) canonical form. A digest covers the record as
-written, restricted to a frozen list of top-level members. Nested values are hashed whole. So every
-reader, of any minor version and in any language, computes the same digest from the same bytes. A
-member added to a record later enters a digest only through a change to this list, which is a new
-major version.
+[RFC 8785](https://www.rfc-editor.org/rfc/rfc8785) canonical form. Each digest hashes a projection
+of its record. `DIGEST_RULES` in [`src/identity.ts`](src/identity.ts) is the one home of the
+projections: per record, the members hashed and the members excluded, each with its reason. Other
+languages read the same rules from [`fixtures/digest-rules.json`](fixtures/digest-rules.json).
 
-| Digest                 | Members                                                  | Then                                                                                  |
-| ---------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| Case digest            | `id`, `unit`, `input`, `turns`, `fixtures`, `references` | —                                                                                     |
-| Case-set digest        | each entry's `id`, `digest`, `pool`, `family`            | sort entries by `id` (UTF-16 code units); IDs unique, at least one                    |
-| Configuration identity | `models`, `parameters`, `prompts`, `factors`             | sort `models` by `role`, `parameters` and `prompts` by `name`; roles and names unique |
+| Digest                 | Projection                                                                              | Then                                                                                  |
+| ---------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Case digest            | the case without its review status, and its provenance without the author pointer       | —                                                                                     |
+| Case-set digest        | each entry's `id`, `digest`, `pool`, `family`                                           | sort entries by `id` (UTF-16 code units); IDs unique, at least one                    |
+| Configuration identity | `models`, `parameters`, `factors`, and of each prompt its `name`, `digest` and `status` | sort `models` by `role`, `parameters` and `prompts` by `name`; roles and names unique |
 
-The record must validate against its strict writer schema first, so an unknown member is an error,
-never ignored. A member named `__proto__` is data like any other member. A record that validates
-but has no canonical form (a string with a lone surrogate) gets an `IdentityError`. Resolvers
-normalise what JCS does not: Unicode normalisation form (NFC and NFD spell different identities),
-and the order of list-valued factor values, which counts. Provenance, pool, family and review status do not enter a case digest, so erasing
-an author or reviewing a case keeps it. `description`, `label` and `informational` do not enter the
-configuration identity: they describe the configuration for people. A provider fingerprint seen at
-resolution time goes in `informational`; one seen per trial goes in `Trial.observed`. Neither
-changes the identity.
+A projection keeps the listed members as written. Their values are hashed whole, so a member that a
+later minor version adds inside a hashed value changes the digest. A member added at a projected
+level stays out until a rule lists it, which is a new major version. A reader can compute a digest
+only from a record its strict writer schema accepts: an unknown member is an error, never ignored,
+so an older reader refuses a record with a newer member instead of computing a different digest.
+
+A member named `__proto__` is data like any other member. A record that validates but has no
+canonical form (a string with a lone surrogate) gets an `IdentityError`. Resolvers normalise what
+JCS does not: Unicode normalisation form (NFC and NFD spell different identities), and the order of
+list-valued factor values, which counts.
+
+The rules are defined for the `/1` records, and `schema` does not enter a digest. A new major
+version states its own rules in its migration.
+
+A prompt's `digest` is the SHA-256 of its template's UTF-8 bytes. The template text and its `uri`
+are recorded but not hashed, so a configuration resolved with the text and one declared by digest
+alone have one identity. `verifyConfiguration` checks a recorded template against its digest.
 
 The writer computes an identity and stores it in plans, runs and trials. `verifyArms` checks a
-stored identity against its configuration.
+stored identity against its configuration, and the configuration's templates against their digests.
 
 [`fixtures/digests.json`](fixtures/digests.json) holds vectors for every digest and projection,
 and [`fixtures/digests-generated.json`](fixtures/digests-generated.json) 1,000 generated values
 (doubles over the whole range, any Unicode). Both come from an independent implementation in
-Python (`scripts/oracle/`, regenerated and compared in CI). A new implementation must reproduce
-them.
+Python (`scripts/oracle/`). CI recomputes every vector, the projections included, and fails on any
+difference. A new implementation must reproduce them.
 
 ## Data policies
 

@@ -22,9 +22,12 @@ import {
   projectForEgress,
   readRecord,
   RECORD_CONTRACTS,
+  Plan,
+  isKnownKind,
+  proportionProblem,
   Trial,
 } from "../src/index.ts";
-import { committedSchema } from "./support/ajv.ts";
+import { ajvValidate, committedSchema, createAjv } from "./support/ajv.ts";
 import { arbitraryFor } from "./support/arbitrary.ts";
 
 const fixture = (name: string): Record<string, unknown> =>
@@ -249,5 +252,91 @@ describe("egress edge paths (mutants E3, E9)", () => {
       { purpose: "PU-1", maxClass: "none" },
     );
     expect(value).toEqual({ open: null });
+  });
+});
+
+/** Every node of a JSON Schema with its JSON pointer. */
+const nodes = (node: unknown, at = ""): Array<[string, Record<string, unknown>]> => {
+  if (Array.isArray(node)) return node.flatMap((n, i) => nodes(n, `${at}/${i}`));
+  if (!node || typeof node !== "object") return [];
+  const object = node as Record<string, unknown>;
+  return [[at, object], ...Object.entries(object).flatMap(([k, v]) => nodes(v, `${at}/${k}`))];
+};
+
+describe("re-review of 1445f5f", () => {
+  it.each(RECORD_CONTRACTS.map((c) => [c.name] as const))(
+    "R-m1: every object in the %s writer schema refuses unknown members",
+    (name) => {
+      const loose = nodes(committedSchema(name))
+        .filter(([, n]) => n["properties"] !== undefined && n["additionalProperties"] !== false)
+        .map(([at]) => at);
+      expect(loose).toEqual([]);
+    },
+  );
+
+  it("R-m1: a misspelt nested member fails both writers and is reported by the reader", () => {
+    const ajv = createAjv();
+    const card = fixture("measureCard");
+    const misspelt = {
+      ...card,
+      validation: {
+        tester: {
+          status: "passed",
+          digest: `sha256:${"1".repeat(64)}`,
+          ranAt: "2026-11-15T00:00:00Z",
+        },
+        calibraton: "x",
+      },
+    };
+    const contract = contractFor("ichnaea.measureCard/1")!;
+    expect(contract.schema.safeParse(misspelt).success).toBe(false);
+    expect(ajvValidate(ajv, "measureCard", misspelt)).toBe(false);
+    const read = readRecord(contract, misspelt);
+    expect(read.ok && read.unknownMembers).toEqual([["validation", "calibraton"]]);
+  });
+
+  it("R-m7: the reader refuses a lone surrogate anywhere in a record", () => {
+    const contract = contractFor("ichnaea.trial/1")!;
+    const trial = fixture("trial");
+    expect(readRecord(contract, trial).ok).toBe(true);
+    for (const bad of [
+      { ...trial, output: { text: `a${String.fromCharCode(0xd800)}` } },
+      { ...trial, output: { [String.fromCharCode(0xdc00)]: 1 } },
+      { ...trial, futureField: [String.fromCharCode(0xdbff)] },
+    ])
+      expect(readRecord(contract, bad).ok).toBe(false);
+  });
+
+  it("m20: no schema pattern uses \\d, which matches other Unicode digits outside JavaScript", () => {
+    for (const { name } of RECORD_CONTRACTS)
+      for (const variant of [name, `${name}.reader`])
+        expect(JSON.stringify(committedSchema(variant))).not.toContain("\\\\d");
+  });
+
+  it("m19: a seed fits in an unsigned 64-bit integer", () => {
+    const plan = fixture("plan");
+    const withSeed = (value: string): boolean =>
+      Plan.safeParse({ ...plan, seed: { algorithm: "mt19937", value } }).success;
+    expect(withSeed("9999999999999999999")).toBe(true);
+    expect(withSeed("18446744073709551615")).toBe(false);
+    expect(withSeed("01")).toBe(false);
+  });
+
+  it("R-m3: proportionProblem names a proportion with more successes than trials", () => {
+    expect(proportionProblem({ type: "proportion", successes: 5, trials: 3 })).toBe(
+      "5 successes of 3 trials",
+    );
+    expect(proportionProblem({ type: "proportion", successes: 4, trials: 3 })).toBe(
+      "4 successes of 3 trials",
+    );
+    expect(proportionProblem({ type: "proportion", successes: 3, trials: 3 })).toBeUndefined();
+    expect(proportionProblem({ type: "binary", pass: true })).toBeUndefined();
+  });
+
+  it("R-m4: isKnownKind tells a known kind from one a later version added", () => {
+    const known = ["binary", "score"];
+    expect(isKnownKind({ type: "binary", pass: true }, "type", known)).toBe(true);
+    expect(isKnownKind({ type: "ranking", order: [1, 2] }, "type", known)).toBe(false);
+    expect(isKnownKind({ kind: "binary" }, "type", known)).toBe(false);
   });
 });

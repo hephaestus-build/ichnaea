@@ -9,7 +9,14 @@ import type {
   PlanDigest,
   TrialId,
 } from "../src/index.ts";
-import { CaseId as CaseIdSchema, Trial } from "../src/index.ts";
+import {
+  CaseId as CaseIdSchema,
+  contractFor,
+  isKnownKind,
+  MeasureValue,
+  readRecord,
+  Trial,
+} from "../src/index.ts";
 
 const takesCase = (id: CaseId): CaseId => id;
 
@@ -29,5 +36,34 @@ describe("branded identifiers", () => {
     const trial = Trial.parse({});
     // @ts-expect-error a TrialId is not a CaseId
     takesCase(trial.id);
+  });
+});
+
+describe("tolerant reader types (R-m4)", () => {
+  it("makes code handle an unknown kind before it reads a known kind's members", () => {
+    const read = readRecord(
+      { ...contractFor("ichnaea.measureValue/1")!, schema: MeasureValue },
+      {},
+    );
+    if (!read.ok || !read.record.applicable) return;
+    const value = read.record.value;
+    if (value === undefined) return;
+    if (value.type === "binary") {
+      // @ts-expect-error an unknown kind has no `pass`, so the kind must be checked first
+      expectTypeOf(value.pass).toEqualTypeOf<boolean>();
+    }
+    if (
+      isKnownKind(value, "type", [
+        "binary",
+        "score",
+        "level",
+        "preference",
+        "unknown",
+        "proportion",
+      ]) &&
+      value.type === "binary"
+    )
+      expectTypeOf(value.pass).toEqualTypeOf<boolean>();
+    if (!isKnownKind(value, "type", [])) expectTypeOf(value.type).toEqualTypeOf<string>();
   });
 });

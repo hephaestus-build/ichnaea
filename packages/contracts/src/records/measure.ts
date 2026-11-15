@@ -35,9 +35,9 @@ export const MeasureCard = z.strictObject({
   computedBy: none(z.enum(["ichnaea", "application", "judge"])),
   judge: none(JudgeId).optional(),
   validation: z
-    .object({
+    .strictObject({
       tester: z
-        .object({
+        .strictObject({
           status: none(z.enum(["passed", "failed"])),
           digest: none(Digest),
           ranAt: none(Timestamp),

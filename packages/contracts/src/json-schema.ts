@@ -22,7 +22,7 @@ export function toJsonSchema(contract: RecordContract): Record<string, unknown> 
     io: "input",
     unrepresentable: "throw",
   }) as Record<string, unknown>;
-  const { $schema, ...rest } = nameDefinitions(generated);
+  const { $schema, ...rest } = asciiDigits(nameDefinitions(generated)) as Record<string, unknown>;
   return {
     $schema,
     $id: schemaUri(contract),
@@ -31,6 +31,42 @@ export function toJsonSchema(contract: RecordContract): Record<string, unknown> 
     "x-ichnaea-stability": contract.stability,
     ...rest,
   };
+}
+
+/**
+ * Rewrites `\d` in patterns as `[0-9]`. In JavaScript `\d` is ASCII, but in other regular
+ * expression engines (Python's `re`, .NET) it also matches other Unicode digits, so the same
+ * pattern would accept more there.
+ */
+function asciiDigits(node: unknown): unknown {
+  if (Array.isArray(node)) return node.map(asciiDigits);
+  if (!node || typeof node !== "object") return node;
+  return Object.fromEntries(
+    Object.entries(node).map(([key, value]) => [
+      key,
+      key === "pattern" && typeof value === "string"
+        ? replaceDigitClass(value)
+        : asciiDigits(value),
+    ]),
+  );
+}
+
+function replaceDigitClass(pattern: string): string {
+  let out = "";
+  let inClass = false;
+  for (let i = 0; i < pattern.length; i++) {
+    const char = pattern[i] as string;
+    if (char === "\\") {
+      const next = pattern[i + 1] ?? "";
+      out += next === "d" ? (inClass ? "0-9" : "[0-9]") : char + next;
+      i++;
+      continue;
+    }
+    if (char === "[") inClass = true;
+    else if (char === "]") inClass = false;
+    out += char;
+  }
+  return out;
 }
 
 /**

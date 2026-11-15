@@ -101,7 +101,8 @@
       "required": [
         "provider",
         "id"
-      ]
+      ],
+      "additionalProperties": false
     },
     "endpointClass": {
       "type": "string",

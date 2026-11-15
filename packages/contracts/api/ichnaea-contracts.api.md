@@ -402,7 +402,7 @@ export const Case: z.ZodObject<{
             validated: "validated";
         }>;
         note: z.ZodOptional<z.ZodString>;
-    }, z.core.$strip>>;
+    }, z.core.$strict>>;
 }, z.core.$strict>;
 
 // @public
@@ -1034,10 +1034,12 @@ export type Digest = z.infer<typeof Digest>;
 export function digest(value: unknown): Promise<`sha256:${string}`>;
 
 // @public
-export const DIGEST_MEMBERS: {
-    readonly case: readonly string[];
-    readonly caseSetEntry: readonly string[];
-    readonly configuration: readonly string[];
+export const DIGEST_RULES: {
+    readonly case: DigestRule;
+    readonly provenance: DigestRule;
+    readonly caseSetEntry: DigestRule;
+    readonly configuration: DigestRule;
+    readonly prompt: DigestRule;
 };
 
 // @public
@@ -1046,6 +1048,12 @@ export const DigestRef: z.ZodObject<{
     digest: z.ZodString;
     uri: z.ZodOptional<z.ZodString>;
 }, z.core.$strict>;
+
+// @public
+export interface DigestRule {
+    readonly excluded: Readonly<Record<string, string>>;
+    readonly members: readonly string[];
+}
 
 // @public
 export interface EgressContext {
@@ -1246,6 +1254,11 @@ export const IdentityFactor: z.ZodObject<{
 }, z.core.$strict>;
 
 // @public
+export function isKnownKind<T extends object>(value: T, tag: string, known: readonly string[]): value is Exclude<T, {
+    readonly __unknownKind: true;
+}>;
+
+// @public
 export const Json: z.ZodJSONSchema;
 
 // @public
@@ -1265,7 +1278,7 @@ export const Judge: z.ZodObject<{
         provider: z.ZodString;
         id: z.ZodString;
         version: z.ZodOptional<z.ZodString>;
-    }, z.core.$strip>>;
+    }, z.core.$strict>>;
     endpointClass: z.ZodString;
     promptDigest: z.ZodString;
     rubricDigest: z.ZodString;
@@ -1405,12 +1418,13 @@ export const LedgerEntry: z.ZodObject<{
     }>>;
 }, z.core.$strict>;
 
+// Warning: (ae-forgotten-export) The symbol "LenientValue" needs to be exported by the entry point index.d.ts
+// Warning: (ae-forgotten-export) The symbol "IsUnion" needs to be exported by the entry point index.d.ts
+// Warning: (ae-forgotten-export) The symbol "Tagged" needs to be exported by the entry point index.d.ts
+// Warning: (ae-forgotten-export) The symbol "Discriminator" needs to be exported by the entry point index.d.ts
+//
 // @public
-export type Lenient<T> = T extends string ? string extends T ? T : T | (string & {
-    readonly __unknownValue?: never;
-}) : T extends readonly (infer U)[] ? ReadonlyArray<Lenient<U>> : T extends object ? {
-    readonly [K in keyof T]: Lenient<T[K]>;
-} : T;
+export type Lenient<T> = LenientValue<T> | (true extends IsUnion<Tagged<T>> ? [Discriminator<Tagged<T>>] extends [never] ? never : UnknownKind<Tagged<T>> : never);
 
 // @public
 export const LineageItem: z.ZodObject<{
@@ -1497,9 +1511,9 @@ export const MeasureCard: z.ZodObject<{
             }>;
             digest: z.ZodString;
             ranAt: z.ZodISODateTime;
-        }, z.core.$strip>>;
+        }, z.core.$strict>>;
         calibration: z.ZodOptional<z.ZodString>;
-    }, z.core.$strip>>;
+    }, z.core.$strict>>;
 }, z.core.$strict>;
 
 // @public
@@ -2190,6 +2204,9 @@ export const PromptBinding: z.ZodObject<{
 }, z.core.$strict>;
 
 // @public
+export function proportionProblem(value: MeasuredValue): string | undefined;
+
+// @public
 export function pseudonym<T extends z.ZodType>(schema: T, egress?: readonly Purpose[]): T;
 
 // @public
@@ -2691,6 +2708,13 @@ export const Unit: z.ZodEnum<{
 export type Unit = z.infer<typeof Unit>;
 
 // @public
+export type UnknownKind<T> = {
+    readonly [K in Discriminator<T>]: string;
+} & {
+    readonly __unknownKind: true;
+};
+
+// @public
 export interface UnknownValue {
     // (undocumented)
     readonly path: readonly PropertyKey[];
@@ -2724,6 +2748,9 @@ export function verifyArms(arms: ReadonlyArray<{
     identity: string;
     configuration: unknown;
 }>, at?: string): Promise<LinkError[]>;
+
+// @public
+export function verifyConfiguration(input: unknown, at?: string): Promise<LinkError[]>;
 
 // (No @packageDocumentation comment for this package)
 

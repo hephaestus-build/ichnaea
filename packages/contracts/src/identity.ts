@@ -1,4 +1,4 @@
-import { digest as rawDigest, NonJsonValueError } from "./canonical.ts";
+import { digest as rawDigest, NonJsonValueError, sha256 } from "./canonical.ts";
 import type { ConfigurationIdentity, Digest } from "./primitives.ts";
 import { Case, CaseSetEntry } from "./records/case.ts";
 import { Configuration } from "./records/configuration.ts";
@@ -8,20 +8,90 @@ export class IdentityError extends Error {
   override readonly name = "IdentityError";
 }
 
+/** What one digest projection hashes, and what it leaves out with the reason. */
+export interface DigestRule {
+  /** The members hashed, an allow-list: a member added later stays out until it is listed. */
+  readonly members: readonly string[];
+  /** Members a writer may emit that are recorded but not hashed, each with its reason. */
+  readonly excluded: Readonly<Record<string, string>>;
+}
+
 /**
- * The members each digest covers (normative, frozen). A digest hashes the record as written,
- * restricted to these top-level members; nested values are hashed whole. So every reader, of any
- * minor version and in any language, computes the same digest from the same bytes. A member added
- * to a record later enters a digest only through a new entry here, which is a breaking change.
+ * The digest projections (normative, frozen). Every member the writer schema defines is either in
+ * `members` or in `excluded`, and a test holds that. A projection keeps the listed members as
+ * written. The values of `provenance` (in a case) and of each prompt (in a configuration) are
+ * projected by their own rule; every other value is hashed whole, so a member added inside it by a
+ * later minor version changes the digest. Changing a rule is a new major version.
  */
-export const DIGEST_MEMBERS: {
-  readonly case: readonly string[];
-  readonly caseSetEntry: readonly string[];
-  readonly configuration: readonly string[];
+export const DIGEST_RULES: {
+  readonly case: DigestRule;
+  readonly provenance: DigestRule;
+  readonly caseSetEntry: DigestRule;
+  readonly configuration: DigestRule;
+  readonly prompt: DigestRule;
 } = {
-  case: ["id", "unit", "input", "turns", "fixtures", "references"],
-  caseSetEntry: ["id", "digest", "pool", "family"],
-  configuration: ["models", "parameters", "prompts", "factors"],
+  case: {
+    members: [
+      "id",
+      "caseSet",
+      "unit",
+      "dataClass",
+      "input",
+      "turns",
+      "fixtures",
+      "references",
+      "family",
+      "slices",
+      "criticality",
+      "provenance",
+      "pool",
+    ],
+    excluded: {
+      schema:
+        "The major version. These rules are defined for /1; a new major version states its own.",
+      validation: "The review status. Reviewing a case does not change what it asks or grades.",
+    },
+  },
+  provenance: {
+    members: [
+      "source",
+      "selection",
+      "created",
+      "collected",
+      "licence",
+      "exposure",
+      "generator",
+      "reusedDataset",
+      "finding",
+    ],
+    excluded: {
+      author: "A pointer to a person, erased with them. Erasing it keeps the case's digest.",
+    },
+  },
+  caseSetEntry: {
+    members: ["id", "digest", "pool", "family"],
+    excluded: {},
+  },
+  configuration: {
+    members: ["models", "parameters", "prompts", "factors"],
+    excluded: {
+      schema:
+        "The major version. These rules are defined for /1; a new major version states its own.",
+      description:
+        "Prose for people. Behaviour is pinned by models, parameters, prompts and factors.",
+      label: "A name for people.",
+      informational:
+        "Values that do not decide behaviour, such as a provider fingerprint seen at resolution.",
+    },
+  },
+  prompt: {
+    members: ["name", "digest", "status"],
+    excluded: {
+      template:
+        "The text that `digest` pins. A configuration with the text and one without it are the same configuration; verifyConfiguration checks the text against the digest.",
+      uri: "Where the template was resolved from. Two resolutions of one template give one identity.",
+    },
+  },
 };
 
 async function digest(value: unknown): Promise<`sha256:${string}`> {
@@ -67,8 +137,8 @@ function sortedUnique(items: unknown, key: string, what: string): unknown[] {
  * Returns the configuration identity (REQ-148). Normative rule, the same in every language:
  *
  * 1. The record must validate against `ichnaea.configuration/1`.
- * 2. Keep the members `models`, `parameters`, `prompts` and `factors` as written. `description`
- *    and `label` describe the configuration for people and do not enter it.
+ * 2. Keep the members in `DIGEST_RULES.configuration` as written, and of each prompt the members
+ *    in `DIGEST_RULES.prompt`. The excluded members and their reasons are listed there.
  * 3. Sort `models` by `role`, and `parameters` and `prompts` by `name` (UTF-16 code units).
  *    Duplicate roles or names are an error.
  * 4. Take SHA-256 of the RFC 8785 canonical form.
@@ -77,21 +147,28 @@ function sortedUnique(items: unknown, key: string, what: string): unknown[] {
  */
 export async function configurationIdentity(input: unknown): Promise<ConfigurationIdentity> {
   Configuration.parse(input);
-  const projection = pick(input, DIGEST_MEMBERS.configuration);
+  const projection = pick(input, DIGEST_RULES.configuration.members);
   projection["models"] = sortedUnique(projection["models"], "role", "model role");
   projection["parameters"] = sortedUnique(projection["parameters"], "name", "parameter");
-  projection["prompts"] = sortedUnique(projection["prompts"], "name", "prompt");
+  projection["prompts"] = sortedUnique(
+    (projection["prompts"] as unknown[]).map((p) => pick(p, DIGEST_RULES.prompt.members)),
+    "name",
+    "prompt",
+  );
   return (await digest(projection)) as ConfigurationIdentity;
 }
 
 /**
- * Returns the digest of a case: what a system receives and what it is graded against (`id`,
- * `unit`, `input`, `turns`, `fixtures`, `references`). Provenance, pool, family, slices and review
- * status do not enter it, so erasing an author or reviewing a case keeps its digest.
+ * Returns the digest of a case (REQ-10): the case restricted to `DIGEST_RULES.case`, with its
+ * provenance restricted to `DIGEST_RULES.provenance`. Everything that decides what a case asks, how
+ * it is graded and which analysis it supports enters it; the author pointer and the review status
+ * do not.
  */
 export async function caseDigest(input: unknown): Promise<Digest> {
   Case.parse(input);
-  return digest(pick(input, DIGEST_MEMBERS.case));
+  const projection = pick(input, DIGEST_RULES.case.members);
+  projection["provenance"] = pick(projection["provenance"], DIGEST_RULES.provenance.members);
+  return digest(projection);
 }
 
 /**
@@ -102,7 +179,7 @@ export async function caseDigest(input: unknown): Promise<Digest> {
 export async function caseSetDigest(entries: readonly unknown[]): Promise<Digest> {
   if (entries.length === 0) throw new IdentityError("a case set has at least one case");
   for (const entry of entries) CaseSetEntry.parse(entry);
-  const projected = entries.map((e) => pick(e, DIGEST_MEMBERS.caseSetEntry));
+  const projected = entries.map((e) => pick(e, DIGEST_RULES.caseSetEntry.members));
   return digest(sortedUnique(projected, "id", "case id"));
 }
 
@@ -114,8 +191,25 @@ export interface LinkError {
 }
 
 /**
- * Checks that every arm's stored identity is the identity of its configuration. Plans and runs
- * carry both; a reader that trusts the stored identity can check it once here.
+ * Checks the values a configuration records but does not hash: a prompt's `template`, when
+ * present, must have the prompt's `digest`, the SHA-256 of the template's UTF-8 bytes.
+ */
+export async function verifyConfiguration(input: unknown, at = ""): Promise<LinkError[]> {
+  const config = Configuration.parse(input);
+  const errors: LinkError[] = [];
+  for (const [i, prompt] of config.prompts.entries()) {
+    if (prompt.template === undefined) continue;
+    const computed = await sha256(prompt.template);
+    if (computed !== prompt.digest)
+      errors.push({ path: `${at}/prompts/${i}/digest`, stored: prompt.digest, computed });
+  }
+  return errors;
+}
+
+/**
+ * Checks that every arm's stored identity is the identity of its configuration, and that each
+ * configuration's recorded templates match their digests. Plans and runs carry both; a reader that
+ * trusts the stored identity can check it once here.
  */
 export async function verifyArms(
   arms: ReadonlyArray<{ identity: string; configuration: unknown }>,
@@ -126,6 +220,7 @@ export async function verifyArms(
     const computed = await configurationIdentity(arm.configuration);
     if (computed !== arm.identity)
       errors.push({ path: `${at}/${i}/identity`, stored: arm.identity, computed });
+    errors.push(...(await verifyConfiguration(arm.configuration, `${at}/${i}/configuration`)));
   }
   return errors;
 }

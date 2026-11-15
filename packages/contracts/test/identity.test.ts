@@ -12,10 +12,14 @@ import {
   type Configuration,
   Configuration as ConfigurationSchema,
   configurationIdentity,
+  DIGEST_RULES,
   IdentityError,
+  sha256,
   Trial,
   verifyArms,
+  verifyConfiguration,
 } from "../src/index.ts";
+import { committedSchema } from "./support/ajv.ts";
 import { arbitraryFor } from "./support/arbitrary.ts";
 
 const fixture = <T>(name: string): T =>
@@ -89,6 +93,34 @@ describe("configuration identity", () => {
     const changed = structuredClone(base);
     change(changed);
     expect(await configurationIdentity(changed)).not.toBe(await configurationIdentity(base));
+  });
+
+  it("records a prompt's template and uri without hashing them (DN-7)", async () => {
+    const template = "Answer from the help centre only.";
+    const declared = structuredClone(base);
+    declared.prompts[0]!.digest = await sha256(template);
+    const resolved = structuredClone(declared);
+    resolved.prompts[0]!.template = template;
+    resolved.prompts[0]!.uri = "file:prompts/answer.txt";
+    expect(await configurationIdentity(resolved)).toBe(await configurationIdentity(declared));
+    expect(await verifyConfiguration(resolved)).toEqual([]);
+    const edited = structuredClone(resolved);
+    edited.prompts[0]!.template = `${template} Be brief.`;
+    expect(await verifyConfiguration(edited, "/c")).toEqual([
+      {
+        path: "/c/prompts/0/digest",
+        stored: declared.prompts[0]!.digest,
+        computed: await sha256(edited.prompts[0]!.template!),
+      },
+    ]);
+    const identity = await configurationIdentity(edited);
+    expect(await verifyArms([{ identity, configuration: edited }])).toEqual([
+      {
+        path: "/arms/0/configuration/prompts/0/digest",
+        stored: declared.prompts[0]!.digest,
+        computed: await sha256(edited.prompts[0]!.template!),
+      },
+    ]);
   });
 
   it("does not change with the human label", async () => {
@@ -223,14 +255,37 @@ describe("case and case-set digests", () => {
     );
   });
 
-  it("ignores provenance, pool and review status", async () => {
+  it("ignores only the author pointer and the review status (DN-6)", async () => {
     const reviewed = {
       ...structuredClone(record),
       validation: { status: "validated" },
-      pool: "sealed",
+      provenance: { ...record.provenance, author: "someone else" },
     };
     expect(await caseDigest(reviewed)).toBe(await caseDigest(record));
     await expect(caseSetDigest([])).rejects.toThrow(IdentityError);
+  });
+
+  it.each<[string, (c: Record<string, unknown>) => void]>([
+    ["criticality", (c) => (c["criticality"] = "critical")],
+    ["slices", (c) => (c["slices"] = { language: "fr" })],
+    ["selection", (c) => ((c["provenance"] as Record<string, unknown>)["selection"] = "random")],
+    ["exposure", (c) => ((c["provenance"] as Record<string, unknown>)["exposure"] = "sealed")],
+    ["data class", (c) => (c["dataClass"] = "personal")],
+    ["pool", (c) => (c["pool"] = "sealed")],
+    ["family", (c) => (c["family"] = "another-family")],
+    ["licence", (c) => ((c["provenance"] as Record<string, unknown>)["licence"] = "MIT")],
+  ])("changes the case and case-set digest when the %s changes (DN-6)", async (_, change) => {
+    const changed: Record<string, unknown> = structuredClone(record);
+    change(changed);
+    expect(await caseDigest(changed)).not.toBe(await caseDigest(record));
+    const entry = async (c: unknown): Promise<unknown> => ({
+      id: record.id,
+      digest: await caseDigest(c),
+      pool: record.pool,
+    });
+    expect(await caseSetDigest([await entry(changed)])).not.toBe(
+      await caseSetDigest([await entry(record)]),
+    );
   });
 
   it("changes when a case moves to another pool, and refuses duplicate IDs", async () => {
@@ -240,4 +295,122 @@ describe("case and case-set digests", () => {
     );
     await expect(caseSetDigest([entry, entry])).rejects.toThrow(IdentityError);
   });
+});
+
+type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
+
+/** Every leaf of a JSON value with its path. */
+function leaves(value: Json, path: Array<string | number> = []): Array<Array<string | number>> {
+  if (Array.isArray(value)) return value.flatMap((v, i) => leaves(v, [...path, i]));
+  if (value !== null && typeof value === "object")
+    return Object.entries(value).flatMap(([k, v]) => leaves(v, [...path, k]));
+  return [path];
+}
+
+/** A different value of the same JSON type. */
+function changedLeaf(value: Json): Json {
+  if (typeof value === "string") return `${value}x`;
+  if (typeof value === "number") return value === 0 ? 1 : -value;
+  if (typeof value === "boolean") return !value;
+  return 0;
+}
+
+function withLeaf(root: Json, path: ReadonlyArray<string | number>): Json {
+  const copy = structuredClone(root);
+  let node = copy as Record<string | number, Json>;
+  for (const key of path.slice(0, -1)) node = node[key] as Record<string | number, Json>;
+  const last = path[path.length - 1] as string | number;
+  node[last] = changedLeaf(node[last] as Json);
+  return copy;
+}
+
+/** Whether a leaf lies under an excluded member of a rule. */
+function excluded(path: ReadonlyArray<string | number>, kind: "case" | "configuration"): boolean {
+  const [top, , nested] = path;
+  if (kind === "case")
+    return (
+      Object.hasOwn(DIGEST_RULES.case.excluded, top as string) ||
+      (top === "provenance" && Object.hasOwn(DIGEST_RULES.provenance.excluded, path[1] as string))
+    );
+  return (
+    Object.hasOwn(DIGEST_RULES.configuration.excluded, top as string) ||
+    (top === "prompts" && Object.hasOwn(DIGEST_RULES.prompt.excluded, nested as string))
+  );
+}
+
+/** The member names a writer schema object defines, over every arm of a union. */
+const membersOf = (node: Record<string, unknown>): string[] => {
+  const arms = (node["oneOf"] ?? node["anyOf"] ?? [node]) as Array<Record<string, unknown>>;
+  return [
+    ...new Set(arms.flatMap((a) => Object.keys((a["properties"] ?? {}) as object))),
+  ].toSorted();
+};
+
+const listed = (rule: { members: readonly string[]; excluded: object }): string[] =>
+  [...rule.members, ...Object.keys(rule.excluded)].toSorted();
+
+describe("digest rules", () => {
+  it("lists every member the writer schema defines, hashed or excluded with a reason", () => {
+    const caseSchema = committedSchema("case") as Record<string, Record<string, unknown>>;
+    const props = caseSchema["properties"] as Record<string, Record<string, unknown>>;
+    expect(listed(DIGEST_RULES.case)).toEqual(membersOf(caseSchema));
+    expect(listed(DIGEST_RULES.provenance)).toEqual(membersOf(props["provenance"]!));
+    const config = committedSchema("configuration") as Record<string, unknown>;
+    const configProps = config["properties"] as Record<string, Record<string, unknown>>;
+    expect(listed(DIGEST_RULES.configuration)).toEqual(membersOf(config));
+    expect(listed(DIGEST_RULES.prompt)).toEqual(
+      membersOf(configProps["prompts"]!["items"] as Record<string, unknown>),
+    );
+    const caseSet = committedSchema("caseSet") as Record<string, unknown>;
+    const entries = (caseSet["properties"] as Record<string, Record<string, unknown>>)["cases"]!;
+    expect(listed(DIGEST_RULES.caseSetEntry)).toEqual(
+      membersOf(entries["items"] as Record<string, unknown>),
+    );
+    for (const rule of Object.values(DIGEST_RULES))
+      for (const reason of Object.values(rule.excluded)) expect(reason.length).toBeGreaterThan(10);
+  });
+
+  it("is the rule file other languages read", () => {
+    const file = JSON.parse(
+      readFileSync(join(import.meta.dirname, "..", "fixtures", "digest-rules.json"), "utf8"),
+    ) as unknown;
+    expect(file).toEqual(JSON.parse(JSON.stringify(DIGEST_RULES)));
+  });
+
+  it.each([
+    ["configuration", ConfigurationSchema, configurationIdentity],
+    ["case", CaseSchema, caseDigest],
+  ] as const)(
+    "a %s digest changes with every hashed leaf and with no excluded leaf (DN-7)",
+    async (kind, schema, digestOf) => {
+      await fc.assert(
+        fc.asyncProperty(arbitraryFor(schema), fc.nat(), async (generated, pick) => {
+          const record = schema.parse(generated) as unknown as Json;
+          let before: string;
+          try {
+            before = await digestOf(record);
+          } catch {
+            fc.pre(false);
+            return;
+          }
+          const paths = leaves(record).filter((p) => p.length > 0 && p[0] !== "schema");
+          fc.pre(paths.length > 0);
+          const path = paths[pick % paths.length]!;
+          const changed = withLeaf(record, path);
+          fc.pre(schema.safeParse(changed).success);
+          let after: string;
+          try {
+            after = await digestOf(changed);
+          } catch {
+            // A changed role or name can duplicate another, which has no identity.
+            fc.pre(false);
+            return;
+          }
+          if (excluded(path, kind)) expect(after).toBe(before);
+          else expect(after).not.toBe(before);
+        }),
+        { seed: 20261115, numRuns: 300 },
+      );
+    },
+  );
 });

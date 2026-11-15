@@ -340,6 +340,24 @@ describe("egress projection: review regressions", () => {
     ).not.toHaveProperty("rater");
   });
 
+  it("a grant matches the whole path, never a prefix of it", () => {
+    const label = Label.parse(baseLabel);
+    for (const path of ["/rate", "/", "", "/rater/x", "/*/x"]) {
+      const grants = [{ path, purposes: ["PU-3"] }];
+      expect(
+        projectForEgress(Label, label, { purpose: "PU-3", maxClass: "pseudonymous", grants }).value,
+      ).not.toHaveProperty("rater");
+    }
+    const wildcard = [{ path: "/*", purposes: ["PU-3"] }];
+    expect(
+      projectForEgress(Label, label, {
+        purpose: "PU-3",
+        maxClass: "pseudonymous",
+        grants: wildcard,
+      }).value,
+    ).toHaveProperty("rater");
+  });
+
   it("escapes dropped paths as JSON pointers", () => {
     const { dropped } = projectForEgress(
       Trial,

@@ -3,8 +3,10 @@
   "compilerOptions": {
     "noEmit": true,
     // zod is the authoring source of the contracts. Under isolatedDeclarations every exported
-    // schema would need its full zod type written out by hand: a second copy of each schema.
-    // Declarations are still emitted; a committed API report will gate their changes.
+    // schema would need its full zod type written out by hand: a second copy of each schema. So
+    // the exemption covers the schema modules only (src/primitives.ts and src/records/):
+    // scripts/typecheck.ts runs every other module with isolatedDeclarations and fails on any
+    // error there (DN-2). The committed API report gates every declaration change.
     "isolatedDeclarations": false
   },
   "include": ["src", "test", "scripts"]

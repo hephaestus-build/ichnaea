@@ -1,0 +1,73 @@
+{
+  "case": {
+    "members": [
+      "id",
+      "caseSet",
+      "unit",
+      "dataClass",
+      "input",
+      "turns",
+      "fixtures",
+      "references",
+      "family",
+      "slices",
+      "criticality",
+      "provenance",
+      "pool"
+    ],
+    "excluded": {
+      "schema": "The major version. These rules are defined for /1; a new major version states its own.",
+      "validation": "The review status. Reviewing a case does not change what it asks or grades."
+    }
+  },
+  "provenance": {
+    "members": [
+      "source",
+      "selection",
+      "created",
+      "collected",
+      "licence",
+      "exposure",
+      "generator",
+      "reusedDataset",
+      "finding"
+    ],
+    "excluded": {
+      "author": "A pointer to a person, erased with them. Erasing it keeps the case's digest."
+    }
+  },
+  "caseSetEntry": {
+    "members": [
+      "id",
+      "digest",
+      "pool",
+      "family"
+    ],
+    "excluded": {}
+  },
+  "configuration": {
+    "members": [
+      "models",
+      "parameters",
+      "prompts",
+      "factors"
+    ],
+    "excluded": {
+      "schema": "The major version. These rules are defined for /1; a new major version states its own.",
+      "description": "Prose for people. Behaviour is pinned by models, parameters, prompts and factors.",
+      "label": "A name for people.",
+      "informational": "Values that do not decide behaviour, such as a provider fingerprint seen at resolution."
+    }
+  },
+  "prompt": {
+    "members": [
+      "name",
+      "digest",
+      "status"
+    ],
+    "excluded": {
+      "template": "The text that `digest` pins. A configuration with the text and one without it are the same configuration; verifyConfiguration checks the text against the digest.",
+      "uri": "Where the template was resolved from. Two resolutions of one template give one identity."
+    }
+  }
+}
