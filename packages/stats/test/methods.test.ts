@@ -4,9 +4,10 @@ import mt19937 from "@stdlib/random-base-mt19937";
 import { describe, expect, it } from "vitest";
 
 import {
-  type BinaryCase,
+  type CaseCounts,
+  countsFromOutcomes,
   benjaminiYekutieli,
-  compareBinary,
+  compareCounts,
   createRng,
   EstimandError,
   exactStratifiedTest,
@@ -197,19 +198,19 @@ describe("power", () => {
   });
 });
 
-const cases = (r: number, n: number): BinaryCase[] =>
+const cases = (r: number, n: number): CaseCounts[] =>
   Array.from({ length: n }, (_, i) => ({
     id: `c${i}`,
-    base: Array.from({ length: r }, () => 1 as const),
-    candidate: Array.from({ length: r }, () => 1 as const),
+    base: countsFromOutcomes(Array.from({ length: r }, () => 1 as const)),
+    candidate: countsFromOutcomes(Array.from({ length: r }, () => 1 as const)),
   }));
 
 describe("method choice per estimand", () => {
   it("fixed-cases needs at least two replicates per case and arm", () => {
     expect(() =>
-      compareBinary({ estimand: "fixed-cases", cases: cases(1, 20), alpha: 0.05, margin: 0.1 }),
+      compareCounts({ estimand: "fixed-cases", cases: cases(1, 20), alpha: 0.05, margin: 0.1 }),
     ).toThrow(EstimandError);
-    const result = compareBinary({
+    const result = compareCounts({
       estimand: "fixed-cases",
       cases: cases(2, 20),
       alpha: 0.05,
@@ -221,20 +222,20 @@ describe("method choice per estimand", () => {
 
   it("sampled-cases uses Tango for one trial per case, and sign-flip on families otherwise", () => {
     expect(
-      compareBinary({ estimand: "sampled-cases", cases: cases(1, 20), alpha: 0.05, margin: 0.1 })
+      compareCounts({ estimand: "sampled-cases", cases: cases(1, 20), alpha: 0.05, margin: 0.1 })
         .difference.method,
     ).toMatch(/^tango/);
     const families = cases(1, 20).map((c, i) => ({ ...c, family: `f${i % 5}` }));
     expect(
-      compareBinary({ estimand: "sampled-cases", cases: families, alpha: 0.05, margin: 0.1 })
+      compareCounts({ estimand: "sampled-cases", cases: families, alpha: 0.05, margin: 0.1 })
         .difference.method,
     ).toMatch(/^sign-flip/);
   });
 
   it("drops cases with one arm missing and reports them", () => {
-    const input = [...cases(2, 5), { id: "x", base: [1, 1] as const, candidate: [] as const }];
+    const input = [...cases(2, 5), { id: "x", base: countsFromOutcomes([1, 1]), candidate: countsFromOutcomes([]) }];
     expect(
-      compareBinary({ estimand: "fixed-cases", cases: input, alpha: 0.05, margin: 0.1 })
+      compareCounts({ estimand: "fixed-cases", cases: input, alpha: 0.05, margin: 0.1 })
         .droppedCases,
     ).toBe(1);
   });

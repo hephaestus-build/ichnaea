@@ -10,15 +10,15 @@ are checked against an independent implementation and by simulation: see
 [VALIDATION.md](VALIDATION.md), which also lists the methods that are not yet validated.
 
 ```ts
-import { compareBinary, createRng } from "@hephaestus-build/ichnaea-stats";
+import { compareCounts } from "@hephaestus-build/ichnaea-stats";
 
-const result = compareBinary({
+const result = compareCounts({
   estimand: "fixed-cases",
   alpha: 0.05,
   margin: 0.05,
   cases: [
-    { id: "a", base: [1, 1], candidate: [1, 0] },
-    { id: "b", base: [1, 1], candidate: [1, 1] },
+    { id: "a", base: { successes: 2, trials: 2, replicates: 2 }, candidate: { successes: 1, trials: 2, replicates: 2 } },
+    { id: "b", base: { successes: 5, trials: 6, replicates: 2 }, candidate: { successes: 6, trials: 6, replicates: 2 } },
   ],
 });
 // result.difference: one-sided lower interval; result.nonInferiorityP; result.regressionP
