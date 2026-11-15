@@ -88,11 +88,100 @@ describe("reports", () => {
     expect(result.differences).toContain("measures");
   });
 
-  it("an estimate-only decision says so and claims no interval for differences", async () => {
+  it("an estimate-only decision says so, and shows every difference with its interval (REQ-27)", async () => {
     const { decision } = await decided({ replicates: 1 });
+    const view = decisionView(decision, "synthetic");
+    const md = renderMarkdown(view);
+    expect(md).toContain("**ESTIMATE-ONLY** estimates on these 40 cases, without a verdict: ");
+    expect(md).not.toMatch(/beyond run-to-run noise/);
+    expect(view.measures[0]?.difference?.bound).toMatch(/^≥ [+−]?\d+\.\d pts$/);
+    expect(lintReport(md)).toEqual([]);
+    expect(lintReport(renderHtml(view))).toEqual([]);
+  });
+
+  it("a secondary measure shows its difference with an interval", async () => {
+    const { decision } = await decided({ secondary: ["app/extra"] });
     const md = renderMarkdown(decisionView(decision, "synthetic"));
-    expect(md).toContain("ESTIMATE-ONLY");
-    expect(md).toContain("no interval (estimate-only)");
+    const row = md.split("\n").find((l) => l.startsWith("| app/extra"));
+    expect(row).toMatch(/\| [+−]?\d+\.\d pts \| ≥ [+−]?\d+\.\d pts \| – \|$/);
+  });
+
+  it("the lint finds a rate or a difference without its interval, in Markdown and HTML", async () => {
+    const md =
+      "| Measure | Verdict | Arm | Rate | 95% interval | n | Missing | Difference | Bound | Margin |\n|---|---|---|---|---|---|---|---|---|---|\n| m | PASS | base | 97.0% |  | 3 of 3 | 0 | +1.0 pts |  | −10.0 pts |\n<details><summary>Lineage</summary>";
+    expect(lintReport(md)).toEqual([
+      "an estimate without its interval: a rate (97.0%) without its interval",
+    ]);
+    const { decision } = await decided();
+    const html = renderHtml(decisionView(decision, "synthetic")).replace(
+      /(data-col="bound"[^>]*>)[^<]*</,
+      "$1<",
+    );
+    expect(lintReport(html)).toEqual([
+      expect.stringMatching(
+        /^an estimate without its interval: a difference \([+−]?\d+\.\d pts\) without its bound$/,
+      ),
+    ]);
+  });
+
+  it("states why the sensitivity analysis ran, what it imputes, and shows both results", async () => {
+    // Both arms miss one trial: equal counts, so the analysis still runs.
+    const { decision } = await decided({
+      outcome: (t) =>
+        t.case === "case-001" && t.replicate === 0 ? "infrastructure_failure" : undefined,
+    });
+    const view = decisionView(decision, "synthetic");
+    expect(view.missingness).toMatch(
+      /^base: 1 of 80 trials missing; candidate: 1 of 80 trials missing\. A primary measure misses trials, so each verdict was decided again with the missing trials imputed against it: for non-inferiority, missing candidate trials fail and missing base trials pass; for regression, the reverse\./,
+    );
+    expect(view.sensitivity.map((r) => r.imputation)).toEqual([
+      "missing candidate trials fail, missing base trials pass",
+      "missing candidate trials pass, missing base trials fail",
+    ]);
+    const md = renderMarkdown(view);
+    expect(md).toContain(
+      "| Measure | Imputation | Difference | Bound | Verdict | Changes the verdict |",
+    );
+    expect(lintReport(md)).toEqual([]);
+    const none = decisionView((await decided()).decision, "synthetic");
+    expect(none.missingness).toMatch(
+      /No primary measure misses a trial in either arm, so no sensitivity analysis ran\.$/,
+    );
+  });
+
+  it("the n column counts available trials of the planned ones", async () => {
+    const { decision } = await decided({
+      outcome: (t) =>
+        t.arm === "candidate" && t.case === "case-001" && t.replicate === 0 ? "not_run" : undefined,
+    });
+    const arms = decisionView(decision, "synthetic").measures[0]?.arms;
+    expect(arms?.map((a) => a.n)).toEqual(["80 of 80", "79 of 80"]);
+  });
+
+  it("shows the planning and the run-time power statement, and why an entry was not computed", async () => {
+    const { decision } = await decided({ maxCalls: 1 });
+    const planning = {
+      computed: true as const,
+      measure: decision.measures[0]?.measure as (typeof decision.power.run)[number]["measure"],
+      applicableCases: 40,
+      replicates: 2,
+      margin: 0.1,
+      mde: 0.05,
+      floor: 0.05,
+      assumption: "planning: no noise",
+      decidable: true,
+    };
+    const view = decisionView(
+      { ...decision, power: { ...decision.power, planning: [planning] } },
+      "synthetic",
+    );
+    expect(view.power.map((p) => [p.statement, p.mde, p.reach, p.assumption])).toEqual([
+      ["planning", "5.0 pts", "yes", "planning: no noise"],
+      ["this run", "not computed", "unknown", "run invalid"],
+    ]);
+    expect(renderMarkdown(view)).toContain(
+      "| this run | app/correct | 40 | 2 | – | not computed | 10.0 pts | unknown | run invalid |",
+    );
   });
 
   it("escapes every string from records, so a configuration cannot write the summary (REQ-129)", async () => {

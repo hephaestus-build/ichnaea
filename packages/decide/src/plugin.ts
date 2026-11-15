@@ -2,7 +2,12 @@ import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { canonicalize, type Decision, type Plan } from "@hephaestus-build/ichnaea-contracts";
-import { sampledCasesFloor, zeroNoiseFloor } from "@hephaestus-build/ichnaea-stats";
+import {
+  sampledCasesFloor,
+  VALIDATED_MARGIN_CEILING,
+  VALIDATED_MARGIN_FLOOR,
+  zeroNoiseFloor,
+} from "@hephaestus-build/ichnaea-stats";
 import {
   type CommandDefinition,
   FileStore,
@@ -35,8 +40,29 @@ export function exitCode(decision: Decision, policy: Plan["policy"]): number {
  * The planning power statement (REQ-27, REQ-54): per primary measure, the zero-noise floor of the
  * fixed-cases bound for the plan's cases and trials. The floor is a lower bound on the minimum
  * detectable effect, so a margin below it can never be shown: the plan then runs estimate-only.
+ * This statement, made before any call, is the only one that may switch a plan to estimate-only.
+ *
+ * Under fixed-cases, a primary measure whose effective margin (the declared margin less its safety
+ * margin, which is what the comparison tests) lies outside the validated margins of the statistics
+ * package is refused (decision 0012): below the floor no non-inferiority result is validated, and a
+ * margin of 0 is no non-inferiority test at all; above the ceiling the validation studies do not
+ * reach. Every declared margin is checked, a placeholder too, so a margin that can never decide is
+ * refused before any call. Another estimand's method states its own validated domain.
  */
 export function planningPower(plan: Plan): PlanAdditions {
+  for (const p of plan.estimand === "fixed-cases" ? plan.primary : []) {
+    const tested = p.margin - (p.safetyMargin ?? 0);
+    const broken =
+      tested < VALIDATED_MARGIN_FLOOR
+        ? `below the validated margin floor of ${VALIDATED_MARGIN_FLOOR}`
+        : tested > VALIDATED_MARGIN_CEILING
+          ? `above the validated margin ceiling of ${VALIDATED_MARGIN_CEILING}`
+          : undefined;
+    if (broken)
+      return {
+        refuse: `primary measure '${p.measure}': its margin of ${p.margin} less its safety margin of ${p.safetyMargin ?? 0} is ${broken}, where no non-inferiority result is validated`,
+      };
+  }
   if (plan.mode !== "decision" || plan.estimand !== "fixed-cases") return {};
   const base = plan.arms.find((a) => a.role === "base")?.name ?? plan.arms[0]?.name ?? "";
   const counts = [...plannedTrialsPerCase(plan, base).values()];
@@ -50,6 +76,7 @@ export function planningPower(plan: Plan): PlanAdditions {
         `measure '${p.measure}': the zero-noise floor of ${(floor * 100).toFixed(1)} points is not below the margin of ${(effective * 100).toFixed(1)} points, so no run of this plan can show it non-inferior`,
       );
     return {
+      computed: true as const,
       measure: p.measure,
       applicableCases: counts.length,
       replicates: Math.min(...counts),

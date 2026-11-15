@@ -50,13 +50,14 @@ export function renderMarkdown(view: DecisionView): string {
     "",
     `**Flips**: ${negative.length} case(s) went from pass to fail, ${view.flips.length - negative.length} from fail to pass.`,
   );
-  if (negative.length > 0) {
+  if (view.flips.length > 0) {
     lines.push(
       "",
-      "| Measure | Case | Base | Candidate |",
-      "|---|---|---|---|",
-      ...negative.map(
-        (f) => `| ${cell(f.measure)} | ${cell(f.case)} | ${f.base} | ${f.candidate} |`,
+      "| Measure | Case | Direction | Base | Candidate |",
+      "|---|---|---|---|---|",
+      ...view.flips.map(
+        (f) =>
+          `| ${cell(f.measure)} | ${cell(f.case)} | ${f.direction} | ${f.base} | ${f.candidate} |`,
       ),
     );
   }
@@ -65,17 +66,27 @@ export function renderMarkdown(view: DecisionView): string {
       "",
       "**Power statement**",
       "",
-      "| Measure | Cases | Replicates | Zero-noise floor | MDE | Margin | Can decide | Assumption |",
-      "|---|---|---|---|---|---|---|---|",
+      "| Statement | Measure | Cases | Replicates | Zero-noise floor | MDE | Margin | Margin within reach | Assumption |",
+      "|---|---|---|---|---|---|---|---|---|",
     );
     lines.push(
       ...view.power.map(
         (p) =>
-          `| ${cell(p.measure)} | ${p.cases} | ${p.replicates} | ${p.floor} | ${p.mde} | ${p.margin} | ${p.decidable} | ${cell(p.assumption)} |`,
+          `| ${p.statement} | ${cell(p.measure)} | ${p.cases} | ${p.replicates} | ${p.floor} | ${p.mde} | ${p.margin} | ${p.reach} | ${cell(p.assumption)} |`,
       ),
     );
   }
   lines.push("", `**Missing data**: ${md(view.missingness)}`);
+  if (view.sensitivity.length > 0)
+    lines.push(
+      "",
+      "| Measure | Imputation | Difference | Bound | Verdict | Changes the verdict |",
+      "|---|---|---|---|---|---|",
+      ...view.sensitivity.map(
+        (s) =>
+          `| ${cell(s.measure)} | ${md(s.imputation)} | ${s.difference} | ${s.bound} | ${s.verdict} | ${s.changes} |`,
+      ),
+    );
   if (view.differingFactors.length > 0)
     lines.push(
       "",
@@ -137,9 +148,15 @@ function axisFigure(
 </svg><figcaption>${escape(text)}</figcaption></figure>`;
 }
 
+/** A numeric table cell. `col` names what it holds, so the lint can check each row. */
+const num = (col: string, value: string | number, rowspan?: number): string =>
+  `<td class="num" data-col="${col}"${rowspan === undefined ? "" : ` rowspan="${rowspan}"`}>${escape(value)}</td>`;
+
 /**
  * Renders the static HTML report: one file, no JavaScript, no external resources. Colour never
- * carries meaning alone: every verdict is written out, and the palette works in light and dark.
+ * carries meaning alone: every verdict is written out, the badge text keeps the page's text colour,
+ * and the verdict colours come from the Okabe–Ito palette, which is safe for the common forms of
+ * colour blindness, in light and dark.
  */
 export function renderHtml(view: DecisionView): string {
   const badge = (verdict: string): string =>
@@ -148,7 +165,7 @@ export function renderHtml(view: DecisionView): string {
     .flatMap((m) =>
       m.arms.map(
         (a, i) =>
-          `<tr>${i === 0 ? `<th scope="row" rowspan="${m.arms.length}">${escape(m.measure)}${m.tier === "secondary" ? " <small>(secondary)</small>" : ""}</th><td rowspan="${m.arms.length}">${badge(m.verdict)}</td>` : ""}<td>${escape(a.arm)}</td><td class="num">${escape(a.rate)}</td><td class="num">${escape(a.interval)}</td><td class="num">${escape(a.n)}</td><td class="num">${a.missing}</td>${i === 0 ? `<td class="num" rowspan="${m.arms.length}">${escape(m.difference?.estimate ?? "–")}</td><td class="num" rowspan="${m.arms.length}">${escape(m.difference?.bound ?? "–")}</td><td class="num" rowspan="${m.arms.length}">${escape(m.difference?.margin ?? "–")}</td>` : ""}</tr>`,
+          `<tr>${i === 0 ? `<th scope="row" rowspan="${m.arms.length}">${escape(m.measure)}${m.tier === "secondary" ? " <small>(secondary)</small>" : ""}</th><td rowspan="${m.arms.length}">${badge(m.verdict)}</td>` : ""}<td>${escape(a.arm)}</td>${num("rate", a.rate)}${num("interval", a.interval)}${num("n", a.n)}${num("missing", a.missing)}${i === 0 ? `${num("difference", m.difference?.estimate ?? "–", m.arms.length)}${num("bound", m.difference?.bound ?? "–", m.arms.length)}${num("margin", m.difference?.margin ?? "–", m.arms.length)}` : ""}</tr>`,
       ),
     )
     .join("\n");
@@ -163,7 +180,13 @@ export function renderHtml(view: DecisionView): string {
   const powerRows = view.power
     .map(
       (p) =>
-        `<tr><td>${escape(p.measure)}</td><td class="num">${p.cases}</td><td class="num">${p.replicates}</td><td class="num">${escape(p.floor)}</td><td class="num">${escape(p.mde)}</td><td class="num">${escape(p.margin)}</td><td>${escape(p.decidable)}</td><td>${escape(p.assumption)}</td></tr>`,
+        `<tr><td>${escape(p.statement)}</td><td>${escape(p.measure)}</td><td class="num">${p.cases}</td><td class="num">${p.replicates}</td><td class="num">${escape(p.floor)}</td><td class="num">${escape(p.mde)}</td><td class="num">${escape(p.margin)}</td><td>${escape(p.reach)}</td><td>${escape(p.assumption)}</td></tr>`,
+    )
+    .join("\n");
+  const sensitivityRows = view.sensitivity
+    .map(
+      (s) =>
+        `<tr><td>${escape(s.measure)}</td><td>${escape(s.imputation)}</td>${num("difference", s.difference)}${num("bound", s.bound)}<td>${badge(s.verdict)}</td><td>${escape(s.changes)}</td></tr>`,
     )
     .join("\n");
   return `<!doctype html>
@@ -173,15 +196,15 @@ export function renderHtml(view: DecisionView): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escape(view.title)}</title>
 <style>
-:root { color-scheme: light dark; --fg: #1b1f24; --bg: #ffffff; --muted: #57606a; --line: #d0d7de; --pass: #0b6e4f; --regression: #b3261e; --inconclusive: #8a5a00; --invalid: #6e40c9; --estimate: #3b5b85; }
-@media (prefers-color-scheme: dark) { :root { --fg: #e6edf3; --bg: #0d1117; --muted: #9da7b3; --line: #30363d; --pass: #56d4a5; --regression: #ff8b80; --inconclusive: #e3b341; --invalid: #c4a7ff; --estimate: #8fb4e8; } }
+:root { color-scheme: light dark; --fg: #1b1f24; --bg: #ffffff; --muted: #57606a; --line: #d0d7de; --pass: #0072b2; --regression: #d55e00; --inconclusive: #e69f00; --invalid: #cc79a7; --estimate: #56b4e9; }
+@media (prefers-color-scheme: dark) { :root { --fg: #e6edf3; --bg: #0d1117; --muted: #9da7b3; --line: #30363d; } }
 body { font: 15px/1.5 system-ui, sans-serif; color: var(--fg); background: var(--bg); max-width: 72rem; margin: 2rem auto; padding: 0 1rem; }
 table { border-collapse: collapse; width: 100%; margin: 1rem 0; } th, td { border-bottom: 1px solid var(--line); padding: .35rem .5rem; text-align: left; vertical-align: top; }
 td.num { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
-.badge { font-weight: 700; border: 2px solid currentColor; border-radius: .3rem; padding: 0 .4rem; }
-.pass { color: var(--pass); } .regression { color: var(--regression); } .inconclusive { color: var(--inconclusive); } .invalid { color: var(--invalid); } .estimate { color: var(--estimate); }
+.badge { font-weight: 700; border: 2px solid; border-left-width: .5rem; border-radius: .3rem; padding: 0 .4rem; }
+.pass { border-color: var(--pass); } .regression { border-color: var(--regression); } .inconclusive { border-color: var(--inconclusive); } .invalid { border-color: var(--invalid); } .estimate { border-color: var(--estimate); }
 .muted, small { color: var(--muted); } code { overflow-wrap: anywhere; }
-figure { margin: .5rem 0 1rem; } svg text { fill: var(--muted); font-size: 10px; } .axis { stroke: var(--line); } .zero { stroke: var(--fg); } .margin { stroke: var(--regression); stroke-dasharray: 4 3; } .interval { stroke: var(--estimate); stroke-width: 6; } .estimate { fill: var(--fg); }
+figure { margin: .5rem 0 1rem; } svg text { fill: var(--muted); font-size: 10px; } .axis { stroke: var(--line); } .zero { stroke: var(--fg); } .margin { stroke: var(--regression); stroke-dasharray: 4 3; } .interval { stroke: var(--pass); stroke-width: 6; } .estimate { fill: var(--fg); }
 </style>
 </head>
 <body>
@@ -200,9 +223,10 @@ ${view.measures.some((m) => m.notes.length > 0) ? `<h2>Notes</h2>${list(view.mea
 ${view.gates.length > 0 ? `<h2>Hard gates</h2>${list(view.gates.map((g) => `${g.gate}: ${g.result}`))}` : ""}
 <h2>Flips</h2>
 ${view.flips.length === 0 ? "<p>No case changed its majority outcome.</p>" : `<table><thead><tr><th scope="col">Measure</th><th scope="col">Case</th><th scope="col">Direction</th><th scope="col">Base</th><th scope="col">Candidate</th></tr></thead><tbody>\n${flipRows}\n</tbody></table>`}
-${view.power.length > 0 ? `<h2>Power statement</h2><table><thead><tr><th scope="col">Measure</th><th scope="col">Cases</th><th scope="col">Replicates</th><th scope="col">Zero-noise floor</th><th scope="col">MDE</th><th scope="col">Margin</th><th scope="col">Can decide</th><th scope="col">Assumption</th></tr></thead><tbody>\n${powerRows}\n</tbody></table>` : ""}
+${view.power.length > 0 ? `<h2>Power statement</h2><table><thead><tr><th scope="col">Statement</th><th scope="col">Measure</th><th scope="col">Cases</th><th scope="col">Replicates</th><th scope="col">Zero-noise floor</th><th scope="col">MDE</th><th scope="col">Margin</th><th scope="col">Margin within reach</th><th scope="col">Assumption</th></tr></thead><tbody>\n${powerRows}\n</tbody></table>` : ""}
 <h2>Missing data</h2>
 <p>${escape(view.missingness)}</p>
+${view.sensitivity.length > 0 ? `<table><caption>Sensitivity analysis</caption><thead><tr><th scope="col">Measure</th><th scope="col">Imputation</th><th scope="col">Difference</th><th scope="col">Bound</th><th scope="col">Verdict</th><th scope="col">Changes the verdict</th></tr></thead><tbody>\n${sensitivityRows}\n</tbody></table>` : ""}
 ${view.differingFactors.length > 0 ? `<h2>What differs between the arms</h2>${list(view.differingFactors)}` : ""}
 <h2>Limitations</h2>
 ${list(view.limitations)}
@@ -237,9 +261,76 @@ export function neutralView(view: DecisionView): DecisionView {
   return neutral(view) as DecisionView;
 }
 
+/** A shown rate, a difference in points, and the cells that state their intervals. */
+const RATE = /^\d+\.\d%$/;
+const DIFFERENCE = /^[+−]?\d+\.\d pts$/;
+const INTERVAL = /^\d+\.\d% to \d+\.\d%$/;
+const BOUND = /^≥ [+−]?\d+\.\d pts$/;
+
+/** The problem of one table row whose estimates lack their intervals, if any. */
+function rowProblem(cells: ReadonlyMap<string, string>): string | undefined {
+  const rate = cells.get("rate");
+  const difference = cells.get("difference");
+  if (rate !== undefined && RATE.test(rate) && !INTERVAL.test(cells.get("interval") ?? ""))
+    return `a rate (${rate}) without its interval`;
+  if (
+    difference !== undefined &&
+    DIFFERENCE.test(difference) &&
+    !BOUND.test(cells.get("bound") ?? "")
+  )
+    return `a difference (${difference}) without its bound`;
+  return undefined;
+}
+
+/** The cells of one Markdown table row; an escaped pipe stays inside its cell. */
+function cellsOf(line: string): string[] {
+  return line
+    .trim()
+    .replace(/^\|/, "")
+    .replace(/\|$/, "")
+    .split(/(?<!\\)\|/)
+    .map((c) => c.trim());
+}
+
+/** Markdown table rows as maps from column to cell, by the header row of each table. */
+function markdownRows(text: string): Array<Map<string, string>> {
+  const rows: Array<Map<string, string>> = [];
+  let header: string[] | undefined;
+  for (const line of text.split("\n")) {
+    if (!line.trim().startsWith("|")) {
+      header = undefined;
+      continue;
+    }
+    if (/^\|[-| :]+\|$/.test(line.trim())) continue;
+    const cells = cellsOf(line);
+    if (!header) {
+      header = cells.map((h) =>
+        /interval/i.test(h) ? "interval" : h.toLowerCase().replace(/\s+/g, " "),
+      );
+      continue;
+    }
+    rows.push(new Map(cells.map((c, i) => [header?.[i] ?? String(i), c])));
+  }
+  return rows;
+}
+
+/** HTML table rows as maps from the `data-col` of each numeric cell to its text. */
+function htmlRows(text: string): Array<Map<string, string>> {
+  return [...text.matchAll(/<tr>([\s\S]*?)<\/tr>/g)].map(
+    (row) =>
+      new Map(
+        [...(row[1] ?? "").matchAll(/data-col="([a-z]+)"[^>]*>([^<]*)</g)].map((m) => [
+          m[1] ?? "",
+          (m[2] ?? "").replaceAll("&amp;", "&").replaceAll("&gt;", ">").replaceAll("&lt;", "<"),
+        ]),
+      ),
+  );
+}
+
 /**
  * Problems a rendered output must not have (REQ-129). Returns one message per problem. Run it on
- * the output of `neutralView`, so a case named "significant" cannot block a report.
+ * the output of `neutralView`, so a case named "significant" cannot block a report. Every rate and
+ * every difference in a table must stand next to its interval.
  */
 export function lintReport(text: string): string[] {
   const problems: string[] = [];
@@ -247,5 +338,9 @@ export function lintReport(text: string): string[] {
     problems.push("the word 'significant' without an effect size and interval");
   if (!/Lineage/.test(text)) problems.push("no lineage footer");
   if (/\banonymi[sz]ed?\b|\banonymous\b/i.test(text)) problems.push("an anonymity claim");
+  for (const row of [...markdownRows(text), ...htmlRows(text)]) {
+    const problem = rowProblem(row);
+    if (problem) problems.push(`an estimate without its interval: ${problem}`);
+  }
   return problems;
 }

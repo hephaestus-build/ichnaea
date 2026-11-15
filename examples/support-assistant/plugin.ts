@@ -3,7 +3,12 @@
 import { readFile } from "node:fs/promises";
 
 import { Case, type MeasureValue, Trial } from "@hephaestus-build/ichnaea-contracts";
-import { defineMeasure, definePlugin, type Importer } from "@hephaestus-build/ichnaea-core";
+import {
+  defineMeasure,
+  definePlugin,
+  type Importer,
+  NOT_CAPTURED,
+} from "@hephaestus-build/ichnaea-core";
 
 const facts = (c: Case): string[] => (c.references?.["facts"] as string[] | undefined) ?? [];
 
@@ -103,6 +108,10 @@ const results: Importer<"support/results"> = {
       const identity = arms.find((a) => a.name === parsed.arm)?.identity;
       if (!identity) throw new Error(`${file}: arm '${parsed.arm}' is not in the plan`);
       for (const r of parsed.runs) {
+        // The runner says "completed" when the call returned, but a record without an answer lost
+        // its output on the way: that is a capture failure, which counts as missing, never as a
+        // wrong answer. An empty answer was captured, so it stays completed and is scored.
+        const lost = r.outcome === "completed" && r.answer === undefined;
         trials.push(
           Trial.parse({
             schema: "ichnaea.trial/1",
@@ -114,9 +123,12 @@ const results: Importer<"support/results"> = {
             configuration: identity,
             arm: parsed.arm,
             replicate: r.replicate,
-            outcome: r.outcome,
+            outcome: lost ? "infrastructure_failure" : r.outcome,
             dataClass: "none",
             ...(r.answer === undefined ? {} : { output: { text: r.answer } }),
+            ...(lost
+              ? { error: { kind: NOT_CAPTURED, message: "the result file has no answer" } }
+              : {}),
           }),
         );
       }
@@ -135,11 +147,15 @@ export const support = definePlugin({
   gates: [
     {
       id: "support/answers-present",
-      version: "1.0.0",
-      description: "Every completed trial has an answer.",
+      version: "2.0.0",
+      // A gate checks only output that was captured. A lost capture is missing data, which the
+      // decision reports as coverage, never a failed check.
+      description: "Every captured answer has text.",
       check: ({ trials }) => {
         const failures = trials.filter(
-          (t) => t.outcome === "completed" && t.output === undefined,
+          (t) =>
+            t.outcome === "completed" &&
+            String((t.output as { text?: unknown } | undefined)?.text ?? "").trim() === "",
         ).length;
         return { passed: failures === 0, failures };
       },

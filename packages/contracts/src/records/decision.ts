@@ -80,10 +80,26 @@ export const Comparison = z.strictObject({
   regressionMethod: none(Text),
   /**
    * Whether the comparison lies inside the validated domain of its methods. A verdict never rests
-   * on one that does not (DN-8); the measure's notes say why.
+   * on one that does not (decision 0008); the measure's notes say why.
    */
   validated: none(z.boolean()),
   flips: z.array(Flip),
+});
+
+/**
+ * One imputation of the sensitivity analysis for missing trials (REQ-56): the measure decided
+ * again with its missing trials imputed against one verdict. Against non-inferiority, missing
+ * candidate trials fail and missing base trials pass; against regression, the reverse.
+ */
+export const SensitivityResult = z.strictObject({
+  imputation: none(z.enum(["against-non-inferiority", "against-regression"])),
+  difference: Estimate,
+  nonInferiorityP: none(Real),
+  regressionPAdjusted: none(Real),
+  validated: none(z.boolean()),
+  verdict: none(MeasureVerdict),
+  /** Whether this imputation changes the measure's verdict, which then becomes INCONCLUSIVE. */
+  changesVerdict: none(z.boolean()),
 });
 
 /** The result for one primary or secondary measure. */
@@ -96,6 +112,8 @@ export const MeasureOutcome = z.strictObject({
   comparisons: z.array(Comparison),
   verdict: none(MeasureVerdict),
   coverage: none(z.number().min(0).max(1)),
+  /** Both imputations of a primary measure when the analysis ran; empty otherwise. */
+  sensitivity: z.array(SensitivityResult),
   notes: none(z.array(Text)),
 });
 
@@ -120,6 +138,10 @@ export const Missingness = z.strictObject({
     }),
   ),
   differs: none(z.boolean()),
+  /**
+   * `not-needed` when no primary measure has a missing trial in either arm; otherwise whether the
+   * sensitivity analysis changes a verdict.
+   */
   sensitivity: none(z.enum(["unchanged", "changes-verdict", "not-needed"])),
 });
 
@@ -130,8 +152,10 @@ export const Decision = z.strictObject({
   verdict: none(Verdict.nullable()),
   reason: none(Text),
   /**
-   * What the verdict is about, stated next to it in every output: under fixed-cases "on these N
-   * cases, beyond run-to-run noise", never a claim about new inputs.
+   * What the verdict is about, stated next to it in every output and built from the records: the
+   * cases the primary measures compare, "beyond run-to-run noise" only when each of them has at
+   * least 2 trials per arm, never a claim about new inputs. A failed hard gate says that a
+   * deterministic check failed; an INVALID decision makes no claim.
    */
   scope: none(Text),
   plan: none(PlanDigest),
@@ -150,7 +174,12 @@ export const Decision = z.strictObject({
   alpha: none(z.number().gt(0).lt(0.5)),
   measures: z.array(MeasureOutcome),
   gates: z.array(GateResult),
-  power: z.array(PowerEntry),
+  /**
+   * The power statement (REQ-54): the plan's statement unchanged, and one run-time entry per
+   * primary measure. An INVALID decision computes no run-time entry: each one says "run invalid",
+   * so no later plan can take its noise as an assumption.
+   */
+  power: z.strictObject({ planning: z.array(PowerEntry), run: z.array(PowerEntry) }),
   missingness: Missingness,
   invalidReasons: none(z.array(Text)),
   limitations: none(z.array(Text)),

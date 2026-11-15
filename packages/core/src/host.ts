@@ -120,6 +120,10 @@ export function createHost(
       commands.set(c.name, c);
     }
   }
+  if (config.governance !== undefined && !ids.has(config.governance))
+    throw new HostError(
+      `governance names plugin '${config.governance}', which the configuration does not list`,
+    );
   for (const warning of warnings) log(warning);
   const plugins = ordered(config.plugins);
   const ctx: HookContext = { log };
@@ -165,20 +169,21 @@ export function createHost(
       await Promise.all(withHook("reportRendered").map(([, hook]) => hook(ctx, files)));
     },
     async beforeEgress(request: EgressRequest): Promise<{ allow: boolean; reasons: string[] }> {
-      return decideEgress(request, withHook("beforeEgress"), ctx);
+      return decideEgress(request, withHook("beforeEgress"), ctx, config.governance);
     },
   };
 }
 
 /**
  * Runs the `beforeEgress` hooks in order (REQ-126). Any plugin can refuse, and the first refusal
- * wins. Without an explicit allow from a governance plugin, only data classed `none` may leave:
- * default deny. An allow from a plugin without `governance: true` counts for nothing.
+ * wins. Without an explicit allow from the governance plugin that the configuration names, only
+ * data classed `none` may leave: default deny. An allow from any other plugin counts for nothing.
  */
 export async function decideEgress(
   request: EgressRequest,
   hooks: ReadonlyArray<[Plugin, NonNullable<Hooks["beforeEgress"]>]>,
   ctx: HookContext,
+  governance?: string,
 ): Promise<{ allow: boolean; reasons: string[] }> {
   let allowedByPlugin = false;
   for (const [plugin, hook] of hooks) {
@@ -190,7 +195,8 @@ export async function decideEgress(
       );
       return { allow: false, reasons: [reason] };
     }
-    if (answer?.allow && plugin.governance === true) allowedByPlugin = true;
+    if (answer?.allow && governance !== undefined && plugin.id === governance)
+      allowedByPlugin = true;
     else if (answer?.allow)
       ctx.log(`egress: plugin '${plugin.id}' is not a governance plugin, so its allow is ignored`);
   }

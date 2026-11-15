@@ -70,6 +70,7 @@ const suite = {
     {
       measure: "support/facts-stated",
       margin: 0.15,
+      marginStatus: "registered",
       marginReason:
         "Twelve cases cannot see smaller drops; the floor at three replicates is about 0.08.",
     },

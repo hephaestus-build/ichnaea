@@ -96,6 +96,40 @@
       ],
       "verdict": "NON-INFERIOR",
       "coverage": 0.994,
+      "sensitivity": [
+        {
+          "imputation": "against-non-inferiority",
+          "difference": {
+            "estimate": 0.004,
+            "lower": -0.027,
+            "upper": 1,
+            "level": 0.95,
+            "sided": "lower",
+            "method": "stratified-score-rd-bc"
+          },
+          "nonInferiorityP": 0.006,
+          "regressionPAdjusted": 0.62,
+          "validated": true,
+          "verdict": "NON-INFERIOR",
+          "changesVerdict": false
+        },
+        {
+          "imputation": "against-regression",
+          "difference": {
+            "estimate": 0.012,
+            "lower": -0.018,
+            "upper": 1,
+            "level": 0.95,
+            "sided": "lower",
+            "method": "stratified-score-rd-bc"
+          },
+          "nonInferiorityP": 0.003,
+          "regressionPAdjusted": 0.78,
+          "validated": true,
+          "verdict": "NON-INFERIOR",
+          "changesVerdict": false
+        }
+      ],
       "notes": []
     }
   ],
@@ -106,20 +140,34 @@
       "failures": 0
     }
   ],
-  "power": [
-    {
-      "measure": "support/facts-correct",
-      "applicableCases": 60,
-      "replicates": 3,
-      "margin": 0.05,
-      "mde": {
-        "nonFinite": "nan"
-      },
-      "floor": 0.018,
-      "assumption": "no comparable run yet",
-      "decidable": false
-    }
-  ],
+  "power": {
+    "planning": [
+      {
+        "computed": true,
+        "measure": "support/facts-correct",
+        "applicableCases": 60,
+        "replicates": 3,
+        "margin": 0.05,
+        "mde": 0.018,
+        "floor": 0.018,
+        "assumption": "planning: no noise, every case applicable, trials per case 3 (60 cases)",
+        "decidable": true
+      }
+    ],
+    "run": [
+      {
+        "computed": true,
+        "measure": "support/facts-correct",
+        "applicableCases": 60,
+        "replicates": 3,
+        "margin": 0.05,
+        "mde": 0.034,
+        "floor": 0.018,
+        "assumption": "per-case pass rates of the base arm in this run, trials per case 3 (60 cases)",
+        "decidable": true
+      }
+    ]
+  },
   "invalidReasons": [],
   "limitations": [
     "An observed model identity cannot detect a silent update behind the same identity."

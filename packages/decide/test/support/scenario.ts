@@ -91,6 +91,25 @@ export interface ScenarioOptions {
   /** Slices by case index, and more trials for the cases of a slice. */
   readonly slices?: (i: number) => Record<string, string> | undefined;
   readonly replicatesFor?: Suite["replicatesFor"];
+  /** Changes the candidate's configuration. */
+  readonly candidateConfig?: (c: Configuration) => Configuration;
+  /** What the change declares as varied beyond its trigger. */
+  readonly varies?: readonly string[];
+  /** Observations each trial reports. */
+  readonly observed?: (t: { case: string; arm: string; replicate: number }) => Trial["observed"];
+  /**
+   * A value per trial instead of the drawn one: a boolean sets it, null drops it. Without it, only
+   * completed and abstained trials get a value.
+   */
+  readonly value?: (t: {
+    case: string;
+    arm: string;
+    replicate: number;
+    outcome: Trial["outcome"];
+  }) => boolean | null | undefined;
+  /** Whether a measure applies to the case of an index (default: every case). */
+  readonly applies?: (measure: string, i: number) => boolean;
+  readonly marginStatus?: "registered" | "placeholder";
 }
 
 export interface Scenario {
@@ -153,6 +172,7 @@ export async function scenario(o: ScenarioOptions): Promise<Scenario> {
     primary: measureIds.map((m) => ({
       measure: m,
       margin: o.margin ?? 0.1,
+      marginStatus: o.marginStatus ?? "registered",
       marginReason: "test",
       ...(o.safetyMargin === undefined ? {} : { safetyMargin: o.safetyMargin }),
       ...(o.coverageFloor === undefined ? {} : { coverageFloor: o.coverageFloor }),
@@ -176,7 +196,9 @@ export async function scenario(o: ScenarioOptions): Promise<Scenario> {
       {
         name: "candidate",
         role: "candidate",
-        configuration: configuration(o.candidateModel ?? "model-a", "b2"),
+        configuration: (o.candidateConfig ?? ((c: Configuration) => c))(
+          configuration(o.candidateModel ?? "model-a", "b2"),
+        ),
       },
     ],
     measures: new Map([...measureIds, ...(o.secondary ?? [])].map((m) => [m, card(m)])),
@@ -184,6 +206,7 @@ export async function scenario(o: ScenarioOptions): Promise<Scenario> {
       (o.hardGates ?? []).map((id) => [id, { id, version: "1.0.0", description: "a check" }]),
     ),
     trigger: o.trigger ?? "code",
+    ...(o.varies ? { varies: o.varies } : {}),
     seed: o.seed ?? 7,
     now: "2026-11-15T10:00:00Z",
     ichnaea: "0.0.0",
@@ -195,12 +218,14 @@ export async function scenario(o: ScenarioOptions): Promise<Scenario> {
     const index = Number(t.case.slice(5));
     const outcome =
       o.outcome?.({ case: t.case, arm: t.arm, replicate: t.replicate }) ?? "completed";
-    const identity = plan.arms.find((a) => a.name === t.arm)?.identity as string;
+    const identity = plan.arms.find((a) => a.name === t.arm)?.identity as Trial["configuration"];
+    const at = { case: t.case, arm: t.arm, replicate: t.replicate };
+    const observed = o.observed?.(at);
     trials.push({
       schema: "ichnaea.trial/1",
       id: t.id,
       source: "offline",
-      run: "run-1",
+      run: "run-1" as Trial["run"],
       case: t.case,
       unit: "turn",
       configuration: identity,
@@ -208,17 +233,35 @@ export async function scenario(o: ScenarioOptions): Promise<Scenario> {
       replicate: t.replicate,
       outcome,
       dataClass: "none",
+      // A completed trial carries the output it was scored on.
+      ...(outcome === "completed" || outcome === "abstained" ? { output: { text: "answer" } } : {}),
+      ...(observed ? { observed } : {}),
     } as Trial);
-    if (outcome !== "completed" && outcome !== "abstained") continue;
+    const forced = o.value?.({ ...at, outcome });
+    if (forced === null) continue;
+    if (forced === undefined && outcome !== "completed" && outcome !== "abstained") continue;
     const p = t.arm === "base" ? o.base(index) : o.candidate(index);
     for (const m of [...measureIds, ...(o.secondary ?? [])]) {
+      if (o.applies && !o.applies(m, index)) {
+        values.push({
+          schema: "ichnaea.measureValue/1",
+          trial: t.id,
+          measure: m,
+          version: "1.0.0",
+          applicable: false,
+          source: "application",
+          dataClass: "none",
+        } as MeasureValue);
+        continue;
+      }
+      const drawn = rng.uniform() < p;
       values.push({
         schema: "ichnaea.measureValue/1",
         trial: t.id,
         measure: m,
         version: "1.0.0",
         applicable: true,
-        value: { type: "binary", pass: rng.uniform() < p },
+        value: { type: "binary", pass: forced ?? drawn },
         source: "application",
         dataClass: "none",
       } as MeasureValue);

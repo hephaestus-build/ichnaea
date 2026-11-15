@@ -1,0 +1,198 @@
+{
+  "schema": "ichnaea.decision/1",
+  "mode": "decision",
+  "verdict": "PASS",
+  "reason": "Every primary measure is non-inferior and every hard gate passed.",
+  "scope": "on these 2 cases, beyond run-to-run noise",
+  "plan": "sha256:1313131313131313131313131313131313131313131313131313131313131313",
+  "run": "run-2026-11-15-a",
+  "runDigest": "sha256:1414141414141414141414141414141414141414141414141414141414141414",
+  "arms": [
+    {
+      "name": "base",
+      "role": "base",
+      "identity": "sha256:db383b8801fd3a846ce4bd18a348d06901748600b21cd15af3ff37b169a0d578"
+    },
+    {
+      "name": "candidate",
+      "role": "candidate",
+      "identity": "sha256:c383073ea5eb0360cf34b919bc66798faf965041a9e83dfcf0f219221a4c18ee"
+    }
+  ],
+  "differingFactors": [
+    "prompt.answer"
+  ],
+  "alpha": 0.05,
+  "measures": [
+    {
+      "measure": "support/facts-correct",
+      "version": "1.0.0",
+      "tier": "primary",
+      "estimand": "fixed-cases",
+      "arms": [
+        {
+          "arm": "base",
+          "rate": {
+            "estimate": 0.9,
+            "lower": 0.86,
+            "upper": 0.93,
+            "level": 0.95,
+            "sided": "two",
+            "method": "wilson"
+          },
+          "availability": {
+            "planned": 180,
+            "available": 180,
+            "notApplicable": 0,
+            "missing": 0
+          }
+        },
+        {
+          "arm": "candidate",
+          "rate": {
+            "estimate": 0.91,
+            "lower": 0.87,
+            "upper": 0.94,
+            "level": 0.95,
+            "sided": "two",
+            "method": "wilson"
+          },
+          "availability": {
+            "planned": 180,
+            "available": 179,
+            "notApplicable": 0,
+            "missing": 1
+          }
+        }
+      ],
+      "comparisons": [
+        {
+          "base": "base",
+          "candidate": "candidate",
+          "difference": {
+            "estimate": 0.01,
+            "lower": -0.02,
+            "upper": 1,
+            "level": 0.95,
+            "sided": "lower",
+            "method": "stratified-score-rd-bc"
+          },
+          "margin": 0.05,
+          "safetyMargin": 0,
+          "nonInferiorityP": 0.004,
+          "regressionP": 0.71,
+          "regressionPAdjusted": 0.71,
+          "regressionMethod": "exact-stratified-conditional",
+          "validated": true,
+          "flips": [
+            {
+              "case": "refund-window-de",
+              "direction": "negative",
+              "base": 1,
+              "candidate": 0.33
+            }
+          ]
+        }
+      ],
+      "verdict": "NON-INFERIOR",
+      "coverage": 0.994,
+      "sensitivity": [
+        {
+          "imputation": "against-non-inferiority",
+          "difference": {
+            "estimate": 0.004,
+            "lower": -0.027,
+            "upper": 1,
+            "level": 0.95,
+            "sided": "lower",
+            "method": "stratified-score-rd-bc"
+          },
+          "nonInferiorityP": 0.006,
+          "regressionPAdjusted": 0.62,
+          "validated": true,
+          "verdict": "NON-INFERIOR",
+          "changesVerdict": false
+        },
+        {
+          "imputation": "against-regression",
+          "difference": {
+            "estimate": 0.012,
+            "lower": -0.018,
+            "upper": 1,
+            "level": 0.95,
+            "sided": "lower",
+            "method": "stratified-score-rd-bc"
+          },
+          "nonInferiorityP": 0.003,
+          "regressionPAdjusted": 0.78,
+          "validated": true,
+          "verdict": "NON-INFERIOR",
+          "changesVerdict": false
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "gates": [
+    {
+      "gate": "support/schema-valid",
+      "passed": true,
+      "failures": 0
+    }
+  ],
+  "power": {
+    "planning": [
+      {
+        "computed": true,
+        "measure": "support/facts-correct",
+        "applicableCases": 60,
+        "replicates": 3,
+        "margin": 0.05,
+        "mde": 0.018,
+        "floor": 0.018,
+        "assumption": "planning: no noise, every case applicable, trials per case 3 (60 cases)",
+        "decidable": true
+      }
+    ],
+    "run": [
+      {
+        "computed": false,
+        "measure": "support/facts-correct",
+        "applicableCases": 60,
+        "replicates": 3,
+        "margin": 0.05,
+        "mde": 0.034,
+        "floor": 0.018,
+        "assumption": "per-case pass rates of the base arm in this run, trials per case 3 (60 cases)",
+        "decidable": true
+      }
+    ]
+  },
+  "missingness": {
+    "byArm": [
+      {
+        "arm": "base",
+        "missing": 0,
+        "planned": 180
+      },
+      {
+        "arm": "candidate",
+        "missing": 1,
+        "planned": 180
+      }
+    ],
+    "differs": false,
+    "sensitivity": "unchanged"
+  },
+  "invalidReasons": [],
+  "limitations": [
+    "An observed model identity cannot detect a silent update behind the same identity."
+  ],
+  "seed": {
+    "algorithm": "mt19937",
+    "value": "20261115"
+  },
+  "decidedAt": "2026-11-15T10:21:00Z",
+  "ichnaea": "0.1.0",
+  "dataClass": "none"
+}

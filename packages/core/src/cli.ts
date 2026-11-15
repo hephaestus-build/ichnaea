@@ -33,6 +33,7 @@ Commands from the core:
                       --importer <id> --suite <file> --case-set <file> --cases <file.jsonl>
                       --arm <name>:<role>:<configuration.json> (repeat) --file <path> (repeat)
                       --run <id> [--store .ichnaea] [--trigger code] [--seed 1] [--now <ISO time>]
+                      [--vary <factor key>] (repeat: what the change varies beyond its trigger)
   doctor              Check the configuration: plugins, measures, testers, warnings
   help                Show this help
 
@@ -164,6 +165,7 @@ async function importCommand(
       run: { type: "string" },
       store: { type: "string" },
       trigger: { type: "string" },
+      vary: { type: "string", multiple: true },
       seed: { type: "string" },
       now: { type: "string" },
     },
@@ -210,6 +212,7 @@ async function importCommand(
     arms,
     files: values.file ?? [],
     trigger: trigger.data,
+    varies: values.vary ?? [],
     seed: Number(seed),
     now: values.now ?? new Date().toISOString(),
     ichnaea: CORE_VERSION,
@@ -217,5 +220,13 @@ async function importCommand(
   out(
     `import: run ${values.run as string}: ${result.trials} trials, ${result.values} values, plan ${result.plan.mode}`,
   );
+  for (const reason of result.plan.modeReasons) out(`  estimate-only: ${reason}`);
+  // The planning power statement (REQ-54): what a run of this plan can detect at best.
+  for (const p of result.plan.power)
+    out(
+      p.computed
+        ? `  power: ${p.measure}: smallest detectable drop ${(p.mde * 100).toFixed(1)} points (${p.assumption}), margin ${(p.margin * 100).toFixed(1)} points, ${p.decidable ? "can decide" : "cannot decide"}`
+        : `  power: ${p.measure}: not computed (${p.reason})`,
+    );
   return 0;
 }

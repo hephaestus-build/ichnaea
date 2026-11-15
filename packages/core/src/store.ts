@@ -206,8 +206,13 @@ export class FileStore {
   /** Reads everything stored for a run. Missing primary records are an error, never an empty run. */
   async read(run: string): Promise<StoredRun> {
     const dir = this.dir(run);
-    const text = async (name: string): Promise<string> =>
-      (await readOptional(join(dir, name))) ?? "";
+    // A run's primary records are written together, an empty list as an empty file, so a missing
+    // file is a damaged run, never an empty one.
+    const text = async (name: string): Promise<string> => {
+      const found = await readOptional(join(dir, name));
+      if (found === undefined) throw new StoreError(`run '${run}' has no ${name} in ${dir}`);
+      return found;
+    };
     const plan = await readOptional(join(dir, "plan.json"));
     const runText = await readOptional(join(dir, "run.json"));
     if (plan === undefined || runText === undefined)

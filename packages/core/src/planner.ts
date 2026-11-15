@@ -6,6 +6,7 @@ import {
   type Configuration,
   configurationIdentity,
   digest,
+  type FactorPart,
   Plan,
   type Suite,
 } from "@hephaestus-build/ichnaea-contracts";
@@ -33,6 +34,8 @@ export interface PlanInput {
   readonly measures: ReadonlyMap<string, MeasureDefinition>;
   readonly gates: ReadonlyMap<string, GateDefinition>;
   readonly trigger: Plan["trigger"];
+  /** Factor keys the change varies beyond what its trigger varies by kind (REQ-15). */
+  readonly varies?: readonly string[];
   readonly seed: number;
   readonly now: string;
   readonly ichnaea: string;
@@ -42,6 +45,32 @@ export interface PlanInput {
 
 /** Fewest cases a fixed-cases decision is validated for (VALIDATED_FIXED_CASES in stats). */
 export const MIN_DECISION_CASES = 5;
+
+/**
+ * The parts of a configuration that each trigger varies by its kind (REQ-15). Arms may differ in
+ * these parts and in the factor keys a plan declares in `varies`; any other difference between the
+ * arms makes the run INVALID. `null` marks a trigger that changes nothing in the system under
+ * evaluation (a case set, a judge, the framework itself, a production signal), so its arms may not
+ * differ at all and it cannot declare anything as varied. A code or dependency change varies the
+ * code, including its lockfile; a prompt or setting it also changes must be declared.
+ */
+export const TRIGGER_VARIES: { readonly [K in Plan["trigger"]]: readonly FactorPart[] | null } = {
+  code: ["code"],
+  dependency: ["code"],
+  configuration: [],
+  "configuration-outside": [],
+  "new-model": ["model"],
+  "silent-change": [],
+  "case-set": null,
+  judge: null,
+  framework: null,
+  data: ["data"],
+  "production-signal": null,
+  manual: [],
+};
+
+/** The shape of a factor key in `varies`: the key a decision lists among the differing factors. */
+const FACTOR_KEY = /^(model|parameter|prompt|factor)\.\S+$/;
 
 /** Arm names become part of trial IDs, so they cannot contain the separator. */
 const ARM_NAME = /^[A-Za-z0-9][A-Za-z0-9._@+-]*$/;
@@ -53,8 +82,9 @@ const ARM_NAME = /^[A-Za-z0-9][A-Za-z0-9._@+-]*$/;
  * are checked. What cannot be resolved is refused with a PlanError that names the fix. What can
  * be measured but not decided runs estimate-only, and `modeReasons` says why: no base and
  * candidate, no primary measure, a primary measure with values no validated method decides yet
- * (DN-8), `sampled-cases` (no validated method yet), one trial per case and arm, or fewer than 5
- * cases.
+ * (decision 0008), a placeholder margin (decision 0012), `sampled-cases` (no validated method yet),
+ * one trial per case and arm, or fewer than 5 cases. A primary measure must have a primary card that
+ * is not a composite (REQ-34).
  */
 export async function createPlan(input: PlanInput): Promise<Plan> {
   const { suite } = input;
@@ -133,11 +163,33 @@ export async function createPlan(input: PlanInput): Promise<Plan> {
         `primary measure '${primary.measure}' has no passing known-good and known-bad test; run 'ichnaea doctor' to see why`,
       );
     }
+    if (measure.card.composite === true)
+      throw new PlanError(
+        `primary measure '${primary.measure}' is a composite of other measures; report it as a secondary measure (REQ-34)`,
+      );
+    if (measure.card.tier !== "primary")
+      throw new PlanError(
+        `primary measure '${primary.measure}' has a ${measure.card.tier} card; only a card of tier primary can decide`,
+      );
     if (measure.card.valueType !== "binary")
       reasons.push(
-        `primary measure '${primary.measure}' has ${measure.card.valueType} values, which no validated method decides yet (DN-8)`,
+        `primary measure '${primary.measure}' has ${measure.card.valueType} values, which no validated method decides yet (decision 0008)`,
+      );
+    if (primary.marginStatus === "placeholder")
+      reasons.push(
+        `margins not registered: primary measure '${primary.measure}' has a placeholder margin (decision 0012)`,
       );
   }
+  const varies = [...new Set(input.varies ?? [])].toSorted();
+  for (const key of varies)
+    if (!FACTOR_KEY.test(key))
+      throw new PlanError(
+        `'${key}' is not a factor key; use model.<role>, parameter.<name>, prompt.<name> or factor.<name>`,
+      );
+  if (varies.length > 0 && TRIGGER_VARIES[input.trigger] === null)
+    throw new PlanError(
+      `a ${input.trigger} trigger changes nothing in the system, so it cannot declare ${varies.join(", ")} as varied`,
+    );
   for (const id of suite.secondary ?? [])
     if (!input.measures.has(id))
       throw new PlanError(`secondary measure '${id}' is not provided by any plugin`);
@@ -157,7 +209,7 @@ export async function createPlan(input: PlanInput): Promise<Plan> {
     reasons.push("the plan has no base and candidate arm to compare");
   if (suite.primary.length === 0) reasons.push("the suite declares no primary measure");
   if (suite.estimand === "sampled-cases")
-    reasons.push("no sampled-cases method is validated yet (DC-5, DC-6)");
+    reasons.push("no sampled-cases method is validated yet (decision 0007)");
   // Trials per case and arm: the suite's count, or the largest `replicatesFor` entry that matches.
   const overrides = suite.replicatesFor ?? [];
   for (const o of overrides)
@@ -217,6 +269,7 @@ export async function createPlan(input: PlanInput): Promise<Plan> {
     caseSet: input.caseSet.id,
     caseSetDigest: input.caseSet.digest,
     trigger: input.trigger,
+    varies,
     mode: reasons.length === 0 ? "decision" : "estimate-only",
     modeReasons: reasons,
     estimand: suite.estimand,

@@ -17,7 +17,9 @@ const FAILED = new Set(["system_failure", "budget_exceeded"]);
  * Scores trials with the measures Ichnaea computes. A measure that does not apply to a case
  * gives an explicit not-applicable value, never a zero (REQ-30). A system failure or a budget
  * overrun scores as a failure; infrastructure failures, trials not run and invalid configurations
- * give no value, so they count as missing.
+ * give no value, so they count as missing. A capture failure is never `completed`: import makes a
+ * completed record without captured output an infrastructure failure first (`NOT_CAPTURED`), so a
+ * measure only ever scores output that was captured.
  */
 export function scoreTrials(
   measures: readonly MeasureDefinition[],

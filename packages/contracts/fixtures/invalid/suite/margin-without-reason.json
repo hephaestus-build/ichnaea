@@ -16,7 +16,8 @@
   "primary": [
     {
       "measure": "support/facts-correct",
-      "margin": 0.05
+      "margin": 0.05,
+      "marginStatus": "registered"
     }
   ],
   "hardGates": [

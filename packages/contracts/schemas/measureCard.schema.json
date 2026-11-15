@@ -211,6 +211,17 @@
         "retention": "record"
       }
     },
+    "composite": {
+      "type": "boolean",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
+      }
+    },
     "unitOfEvaluation": {
       "type": "string",
       "enum": [

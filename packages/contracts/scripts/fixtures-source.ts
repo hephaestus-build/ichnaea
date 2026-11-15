@@ -101,6 +101,7 @@ export const VALID: Record<string, Record<string, unknown>> = {
       {
         measure: "support/facts-correct",
         margin: 0.05,
+        marginStatus: "registered",
         marginReason: "A 5-point drop is the largest the owners accept.",
       },
     ],
@@ -121,6 +122,7 @@ export const VALID: Record<string, Record<string, unknown>> = {
     caseSet: "support-answers",
     caseSetDigest: d("b1"),
     trigger: "code",
+    varies: [],
     mode: "decision",
     modeReasons: [],
     estimand: "fixed-cases",
@@ -133,6 +135,7 @@ export const VALID: Record<string, Record<string, unknown>> = {
     measures: [{ kind: "measure", id: "support/facts-correct", version: "1.0.0", digest: d("12") }],
     power: [
       {
+        computed: true,
         measure: "support/facts-correct",
         applicableCases: 60,
         replicates: 3,
@@ -147,6 +150,7 @@ export const VALID: Record<string, Record<string, unknown>> = {
       {
         measure: "support/facts-correct",
         margin: 0.05,
+        marginStatus: "registered",
         marginReason: "A 5-point drop is the largest the owners accept.",
       },
     ],
@@ -318,22 +322,73 @@ export const VALID: Record<string, Record<string, unknown>> = {
         ],
         verdict: "NON-INFERIOR",
         coverage: 0.994,
+        sensitivity: [
+          {
+            imputation: "against-non-inferiority",
+            difference: {
+              estimate: 0.004,
+              lower: -0.027,
+              upper: 1,
+              level: 0.95,
+              sided: "lower",
+              method: "stratified-score-rd-bc",
+            },
+            nonInferiorityP: 0.006,
+            regressionPAdjusted: 0.62,
+            validated: true,
+            verdict: "NON-INFERIOR",
+            changesVerdict: false,
+          },
+          {
+            imputation: "against-regression",
+            difference: {
+              estimate: 0.012,
+              lower: -0.018,
+              upper: 1,
+              level: 0.95,
+              sided: "lower",
+              method: "stratified-score-rd-bc",
+            },
+            nonInferiorityP: 0.003,
+            regressionPAdjusted: 0.78,
+            validated: true,
+            verdict: "NON-INFERIOR",
+            changesVerdict: false,
+          },
+        ],
         notes: [],
       },
     ],
     gates: [{ gate: "support/schema-valid", passed: true, failures: 0 }],
-    power: [
-      {
-        measure: "support/facts-correct",
-        applicableCases: 60,
-        replicates: 3,
-        margin: 0.05,
-        mde: { nonFinite: "nan" },
-        floor: 0.018,
-        assumption: "no comparable run yet",
-        decidable: false,
-      },
-    ],
+    power: {
+      planning: [
+        {
+          computed: true,
+          measure: "support/facts-correct",
+          applicableCases: 60,
+          replicates: 3,
+          margin: 0.05,
+          mde: 0.018,
+          floor: 0.018,
+          assumption: "planning: no noise, every case applicable, trials per case 3 (60 cases)",
+          decidable: true,
+        },
+      ],
+      run: [
+        {
+          computed: true,
+          measure: "support/facts-correct",
+          applicableCases: 60,
+          replicates: 3,
+          margin: 0.05,
+          mde: 0.034,
+          floor: 0.018,
+          assumption:
+            "per-case pass rates of the base arm in this run, trials per case 3 (60 cases)",
+          decidable: true,
+        },
+      ],
+    },
     missingness: {
       byArm: [
         { arm: "base", missing: 0, planned: 180 },
@@ -474,6 +529,8 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
     "estimand-not-a-string": (r) => (r["estimand"] = ["fixed-cases"]),
     "negative-margin": (r) =>
       ((r["primary"] as Array<Record<string, unknown>>)[0]!["margin"] = -0.05),
+    "margin-without-status": (r) =>
+      delete (r["primary"] as Array<Record<string, unknown>>)[0]!["marginStatus"],
     "margin-without-reason": (r) =>
       delete (r["primary"] as Array<Record<string, unknown>>)[0]!["marginReason"],
     "unnamespaced-measure": (r) =>
@@ -515,6 +572,15 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
       outcome.comparisons[0]!.difference["level"] = 1.5;
     },
     "missing-missingness": (r) => delete r["missingness"],
+    "power-as-a-list": (r) => (r["power"] = []),
+    "run-power-not-a-number": (r) => {
+      const power = r["power"] as { run: Array<Record<string, unknown>> };
+      power.run[0]!["mde"] = { nonFinite: "nan" };
+    },
+    "not-computed-without-reason": (r) => {
+      const power = r["power"] as { run: Array<Record<string, unknown>> };
+      power.run[0] = { ...power.run[0], computed: false };
+    },
   },
   judge: {
     "zero-repeats": (r) => (r["repeats"] = 0),

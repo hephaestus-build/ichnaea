@@ -72,7 +72,12 @@ export interface ImportResult {
   readonly gates?: readonly GateResult[];
 }
 
-/** Turns another runner's output files into trial records and measure values. */
+/**
+ * Turns another runner's output files into trial records and measure values. A record whose output
+ * was not captured is an `infrastructure_failure` with error kind `NOT_CAPTURED`, never `completed`;
+ * import enforces this for a completed record with neither `output` nor `pointer`. A
+ * `system_failure` or `budget_exceeded` trial never carries a passing value: import refuses one.
+ */
 export interface Importer<Id extends string = string> {
   readonly id: Id;
   readonly version: string;
@@ -90,8 +95,8 @@ export interface EgressRequest {
 }
 
 /**
- * A plugin's answer to an egress request. Any plugin can refuse; only a plugin that declares
- * `governance: true` can allow data above class `none` to leave.
+ * A plugin's answer to an egress request. Any plugin can refuse; only the plugin that the
+ * configuration names as `governance` can allow data above class `none` to leave.
  */
 export type EgressAnswer =
   | { readonly allow: true }
@@ -206,11 +211,6 @@ export interface Plugin<Id extends string = string> {
   readonly importers?: readonly Importer<`${Id}/${string}`>[];
   readonly commands?: readonly CommandDefinition[];
   readonly hooks?: Partial<Hooks>;
-  /**
-   * The plugin decides data egress for the deployment (REQ-126). Only a governance plugin's
-   * `beforeEgress` can allow data above class `none` to leave; any plugin can refuse.
-   */
-  readonly governance?: true;
   /** `pre` runs before plugins without placement, `post` after. */
   readonly placement?: "pre" | "post";
   readonly deprecated?: {
@@ -221,9 +221,12 @@ export interface Plugin<Id extends string = string> {
   };
 }
 
-/** Defines a plugin, keeping its literal ID and the literal IDs of its parts. */
+/**
+ * Defines a plugin, keeping its literal ID and the literal IDs of its parts. The ID is inferred from
+ * `id` alone, so a part outside the plugin's namespace is a type error.
+ */
 export function definePlugin<const Id extends string, const P extends Plugin<Id>>(
-  plugin: P & Plugin<Id>,
+  plugin: P & { readonly id: Id } & Plugin<NoInfer<Id>>,
 ): P {
   return plugin;
 }
@@ -256,6 +259,13 @@ export interface Config<Plugins extends readonly Plugin[] = readonly Plugin[]> {
   readonly allowStability?: readonly Exclude<Stability, "stable">[];
   /** Where records are stored. */
   readonly store?: string;
+  /**
+   * The ID of the plugin that decides data egress for the deployment (REQ-126). Only its
+   * `beforeEgress` can allow data above class `none` to leave; any plugin can refuse. The
+   * configuration grants this, never the plugin itself, so a plugin cannot open egress by
+   * declaring itself trusted.
+   */
+  readonly governance?: string;
 }
 
 /** Defines a configuration. The measures it can name are inferred from its plugins. */

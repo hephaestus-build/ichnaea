@@ -1,17 +1,18 @@
 // The whole path from the CLI: import another runner's results, decide, report. The example
 // application is synthetic and uses only published Ichnaea parts (the substitution test).
-import { mkdtemp, readFile } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 import { main } from "@hephaestus-build/ichnaea-core";
 import { describe, expect, it } from "vitest";
 
 const here = join(import.meta.dirname, "..");
-const at = (path: string): string => join(here, path);
+const at = (path: string): string => resolve(here, path);
 
 async function flow(
   candidateResults: string,
+  varies: readonly string[] = ["prompt.answer"],
 ): Promise<{ store: string; out: string[]; codes: number[] }> {
   const store = await mkdtemp(join(tmpdir(), "ichnaea-e2e-"));
   const out: string[] = [];
@@ -46,9 +47,11 @@ async function flow(
         "2026-11-15T10:00:00Z",
         "--seed",
         "7",
-        // The candidate is a new model with a new prompt: the comparison is the change itself.
+        // The candidate is a new model with a new prompt: a new-model change varies the model, and
+        // the prompt it also changes is declared.
         "--trigger",
         "new-model",
+        ...varies.flatMap((v) => ["--vary", v]),
       ],
       log,
     ),
@@ -66,6 +69,10 @@ describe("example application, end to end", () => {
     const { store, out, codes } = await flow("results/candidate-same.json");
     expect(codes).toEqual([0, 0, 0]);
     expect(out.join("\n")).toMatch(/PASS/);
+    // The planner prints what a run of the plan can detect at best (REQ-54).
+    expect(out.join("\n")).toMatch(
+      /power: support\/facts-stated: smallest detectable drop \d+\.\d points \(planning: .*\), margin 15\.0 points, can decide/,
+    );
     const verdict = JSON.parse(
       await readFile(join(store, "runs", "run-1", "verdict.json"), "utf8"),
     ) as { verdict: string };
@@ -80,6 +87,36 @@ describe("example application, end to end", () => {
     expect(summary).toContain("support-03");
     const html = await readFile(join(store, "runs", "run-1", "report", "report.html"), "utf8");
     expect(html).toContain("Lineage");
+  });
+
+  it("a lost capture counts as missing, never as a wrong answer or a failed gate (REQ-20)", async () => {
+    const same = JSON.parse(await readFile(at("results/candidate-same.json"), "utf8")) as {
+      runs: Array<{ answer?: string }>;
+    };
+    delete same.runs[0]?.answer;
+    const dir = await mkdtemp(join(tmpdir(), "ichnaea-e2e-lost-"));
+    const lost = join(dir, "candidate-capture-lost.json");
+    await writeFile(lost, JSON.stringify(same));
+    const { store, codes, out } = await flow(lost);
+    expect(codes, out.join("\n")).toEqual([0, 0, 0]);
+    const decision = JSON.parse(
+      await readFile(join(store, "runs", "run-1", "decision.json"), "utf8"),
+    ) as {
+      verdict: string;
+      gates: Array<{ passed: boolean }>;
+      measures: Array<{ arms: Array<{ arm: string; availability: { missing: number } }> }>;
+    };
+    expect(decision.verdict).not.toBe("REGRESSION");
+    expect(decision.gates.every((g) => g.passed)).toBe(true);
+    expect(
+      decision.measures[0]?.arms.find((a) => a.arm === "candidate")?.availability.missing,
+    ).toBe(1);
+  });
+
+  it("a prompt change the run does not declare makes the run INVALID (REQ-15)", async () => {
+    const { codes, out } = await flow("results/candidate-same.json", []);
+    expect(codes[1]).toBe(1);
+    expect(out.join("\n")).toMatch(/INVALID: a new-model change may vary only the model part/);
   });
 
   it("the doctor passes: every measure's tester passes", async () => {

@@ -38,10 +38,17 @@ export const Budget = z.strictObject({
   costUnit: none(Text).optional(),
 });
 
+/**
+ * Whether a margin is registered by the measure's owner, or a placeholder. A placeholder margin
+ * gives no verdict: the plan runs estimate-only (decision 0012).
+ */
+export const MarginStatus = z.enum(["registered", "placeholder"]);
+
 /** A primary measure with its margin and optional safety margin. */
 export const PrimaryMeasure = z.strictObject({
   measure: none(MeasureId),
   margin: none(z.number().min(0)),
+  marginStatus: none(MarginStatus),
   marginReason: none(Text),
   safetyMargin: none(z.number().min(0)).optional(),
   coverageFloor: none(Probability).optional(),

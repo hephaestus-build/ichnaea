@@ -1,4 +1,4 @@
-import { appendFile, mkdir, open, readFile, rm } from "node:fs/promises";
+import { appendFile, mkdir, open, readFile, rm, stat } from "node:fs/promises";
 import { setTimeout as delay } from "node:timers/promises";
 import { join } from "node:path";
 
@@ -10,6 +10,9 @@ export interface LedgerBooking {
   readonly calls: number;
   readonly at: string;
 }
+
+/** Age after which a ledger lock is taken to belong to a crashed run. */
+export const STALE_LOCK_MS = 30_000;
 
 /** Thrown when a run would exceed an endpoint's monthly cap. The run makes no call. */
 export class MonthlyCapError extends Error {
@@ -73,7 +76,11 @@ export class CallLedger {
     }
   }
 
-  /** Takes an exclusive lock by creating its file; waits up to 10 s for another holder. */
+  /**
+   * Takes an exclusive lock by creating its file; waits up to 10 s for another holder. A booking
+   * holds the lock for milliseconds, so a lock older than `STALE_LOCK_MS` belongs to a run that
+   * crashed while it held it, and is taken over.
+   */
   private async lock(path: string): Promise<() => Promise<void>> {
     for (let attempt = 0; attempt < 200; attempt++) {
       try {
@@ -82,6 +89,11 @@ export class CallLedger {
         return () => rm(path, { force: true });
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+        const held = await stat(path).catch(() => undefined);
+        if (held && Date.now() - held.mtimeMs > STALE_LOCK_MS) {
+          await rm(path, { force: true });
+          continue;
+        }
         await delay(50);
       }
     }

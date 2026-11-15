@@ -1,5 +1,14 @@
 // REQ-06, REQ-19, REQ-20, REQ-21, REQ-28, REQ-33, REQ-49, REQ-80, REQ-86, REQ-114, REQ-126.
-import { appendFile, mkdtemp, readdir, readFile, writeFile } from "node:fs/promises";
+import {
+  appendFile,
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  utimes,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -30,6 +39,7 @@ import {
   type RunRecords,
   satisfies,
   scoreTrials,
+  STALE_LOCK_MS,
   StoreError,
   testMeasure,
 } from "../src/index.ts";
@@ -243,7 +253,7 @@ describe("egress (REQ-126)", () => {
     expect((await decideEgress(request("personal"), [], ctx)).reasons[0]).toMatch(/default deny/);
   });
 
-  it("lets any plugin refuse, and only a governance plugin allow", async () => {
+  it("lets any plugin refuse, and only the governance plugin the configuration names allow", async () => {
     const notGovernance = stable("helpful");
     const logged: string[] = [];
     expect(
@@ -254,11 +264,16 @@ describe("egress (REQ-126)", () => {
       ).allow,
     ).toBe(false);
     expect(logged[0]).toMatch(/'helpful' is not a governance plugin/);
-    const allow = stable("govern", { governance: true });
+    const allow = stable("govern");
     const refuse = stable("strict");
-    expect(
-      (await decideEgress(request("pseudonymous"), [[allow, () => ({ allow: true })]], ctx)).allow,
-    ).toBe(true);
+    const allowing: Array<[Plugin, () => { allow: true }]> = [[allow, () => ({ allow: true })]];
+    expect((await decideEgress(request("pseudonymous"), allowing, ctx, "govern")).allow).toBe(true);
+    // The same plugin, not named by the configuration, cannot open egress.
+    expect((await decideEgress(request("pseudonymous"), allowing, ctx)).allow).toBe(false);
+    expect((await decideEgress(request("pseudonymous"), allowing, ctx, "other")).allow).toBe(false);
+    expect(() => createHost({ plugins: [allow], governance: "missing" }, versions)).toThrow(
+      "governance names plugin 'missing', which the configuration does not list",
+    );
     expect(
       (
         await decideEgress(
@@ -323,6 +338,27 @@ describe("file store (REQ-28) and call ledger (REQ-86)", () => {
     ).rejects.toThrow(MonthlyCapError);
     expect(await ledger.used("endpoint", "2026-11-30T00:00:00Z")).toBe(90);
     expect(await ledger.used("endpoint", "2026-12-01T00:00:00Z")).toBe(0);
+  });
+
+  it("takes over a lock that a crashed run left behind", async () => {
+    const root = await mkdtemp(join(tmpdir(), "ichnaea-ledger-"));
+    const ledger = new CallLedger(root);
+    const lock = join(root, "ledger", "endpoint", "2026-11.jsonl.lock");
+    await mkdir(join(lock, ".."), { recursive: true });
+    await writeFile(lock, "");
+    const old = new Date(Date.now() - STALE_LOCK_MS - 1000);
+    await utimes(lock, old, old);
+    await expect(
+      ledger.reserve("endpoint", 100, { run: "a", calls: 1, at: "2026-11-15T00:00:00Z" }),
+    ).resolves.toEqual({ used: 1, remaining: 99 });
+  });
+
+  it("reads a run with a missing records file as damaged, never as empty", async () => {
+    const root = await mkdtemp(join(tmpdir(), "ichnaea-store-"));
+    const store = new FileStore(root);
+    await store.createRun(records("r1"));
+    await rm(join(root, "runs", "r1", "values.jsonl"));
+    await expect(store.read("r1")).rejects.toThrow(/^run 'r1' has no values\.jsonl in /);
   });
 
   it("serialises concurrent reservations, so together they cannot exceed the cap", async () => {
@@ -508,7 +544,7 @@ describe("versions", () => {
   });
 });
 
-describe("planner (REQ-16, REQ-19, REQ-27, REQ-33, REQ-49, DN-8)", async () => {
+describe("planner (REQ-16, REQ-19, REQ-27, REQ-33, REQ-49, decision 0008)", async () => {
   const { scenario, card, configuration } = await import("../../decide/test/support/scenario.ts");
   const { createPlan, PlanError } = await import("../src/index.ts");
   const s = await scenario({ cases: 8, replicates: 2, base: () => 1, candidate: () => 1 });
@@ -654,11 +690,11 @@ describe("planner (REQ-16, REQ-19, REQ-27, REQ-33, REQ-49, DN-8)", async () => {
     );
   });
 
-  it("runs estimate-only, and says why, where no validated method can decide (DN-8, DC-6)", async () => {
+  it("runs estimate-only, and says why, where no validated method can decide (decisions 0007, 0008)", async () => {
     expect(
       await reasonsOf({ measures: new Map([["app/correct", card("app/correct", "proportion")]]) }),
     ).toEqual([
-      "primary measure 'app/correct' has proportion values, which no validated method decides yet (DN-8)",
+      "primary measure 'app/correct' has proportion values, which no validated method decides yet (decision 0008)",
     ]);
     expect(await reasonsOf({ arms: [arms[0]!] })).toEqual([
       "the plan has no base and candidate arm to compare",
@@ -674,6 +710,58 @@ describe("planner (REQ-16, REQ-19, REQ-27, REQ-33, REQ-49, DN-8)", async () => {
       "4 case(s); a decision is validated from 5 cases",
     ]);
     void configuration;
+  });
+
+  it("refuses a primary measure whose card is not of tier primary, or is a composite (REQ-34)", async () => {
+    const secondary = card("app/correct");
+    await expect(
+      planWith({
+        measures: new Map([
+          ["app/correct", { ...secondary, card: { ...secondary.card, tier: "secondary" } }],
+        ]),
+      }),
+    ).rejects.toThrow(
+      "primary measure 'app/correct' has a secondary card; only a card of tier primary can decide",
+    );
+    await expect(
+      planWith({
+        measures: new Map([
+          ["app/correct", { ...secondary, card: { ...secondary.card, composite: true } }],
+        ]),
+      }),
+    ).rejects.toThrow(
+      /is a composite of other measures; report it as a secondary measure \(REQ-34\)$/,
+    );
+  });
+
+  it("runs a placeholder margin estimate-only: margins not registered", async () => {
+    expect(
+      await reasonsOf({
+        suite: {
+          ...s.suite,
+          primary: s.suite.primary.map((p) => ({ ...p, marginStatus: "placeholder" as const })),
+        },
+      }),
+    ).toEqual([
+      "margins not registered: primary measure 'app/correct' has a placeholder margin (decision 0012)",
+    ]);
+  });
+
+  it("records what a change declares as varied, sorted, and refuses what is not a factor key", async () => {
+    const p = await createPlan({
+      ...input,
+      varies: ["prompt.answer", "model.answer", "prompt.answer"],
+    });
+    expect(p.varies).toEqual(["model.answer", "prompt.answer"]);
+    await expect(createPlan({ ...input, varies: ["temperature"] })).rejects.toThrow(
+      "'temperature' is not a factor key; use model.<role>, parameter.<name>, prompt.<name> or factor.<name>",
+    );
+    await expect(
+      createPlan({ ...input, trigger: "judge", varies: ["model.answer"] }),
+    ).rejects.toThrow(
+      "a judge trigger changes nothing in the system, so it cannot declare model.answer as varied",
+    );
+    expect(PlanError).toBeDefined();
   });
 
   it("gives the cases of a replicatesFor slice their larger trial count, and refuses a slice that matches nothing", async () => {

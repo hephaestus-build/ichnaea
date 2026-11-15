@@ -1,5 +1,5 @@
-// REQ-15, REQ-20, REQ-27, REQ-49, REQ-51, REQ-52, REQ-53, REQ-54, REQ-56, DN-8, DC-6: every verdict
-// and rule, on complete records.
+// REQ-15, REQ-20, REQ-27, REQ-49, REQ-51, REQ-52, REQ-53, REQ-54, REQ-56, decisions 0007 and 0008:
+// every verdict and rule, on complete records.
 import {
   Decision,
   digest,
@@ -288,28 +288,29 @@ describe("INVALID (REQ-53): every check, and INVALID always blocks", () => {
     );
   });
 
-  it("a code change whose arms run different models (REQ-15); a configuration change may", async () => {
+  it("a code change whose arms run different models (REQ-15); a declared configuration change may", async () => {
     const code = await scenario({ ...refusal, candidateModel: "model-b" });
     expect((await invalidOf(code)).reason).toBe(
-      "a code change must compare the same models on both arms, but the arms' models differ",
+      "a code change may vary only the code part and what the plan declares as varied, but the arms also differ in model.answer",
     );
     const dependency = await scenario({
       ...refusal,
       candidateModel: "model-b",
       trigger: "dependency",
     });
-    expect((await invalidOf(dependency)).reason).toMatch(/^a dependency change must compare/);
+    expect((await invalidOf(dependency)).reason).toMatch(/^a dependency change may vary only/);
     // A valid change must reach a verdict, so this one uses a run that can decide.
     const config = await scenario({
       ...stable,
       candidateModel: "model-b",
       trigger: "configuration",
+      varies: ["model.answer", "factor.code.commit"],
     });
     expect((await run(config)).verdict).toBe("PASS");
   });
 });
 
-describe("estimate-only (REQ-27, REQ-49, DN-8)", () => {
+describe("estimate-only (REQ-27, REQ-49, decision 0008)", () => {
   it("one trial per case and arm gives no verdict, only descriptive estimates, and says why", async () => {
     const d = await run(
       await scenario({ cases: 20, replicates: 1, base: () => 0.9, candidate: () => 0.7 }),
@@ -318,7 +319,12 @@ describe("estimate-only (REQ-27, REQ-49, DN-8)", () => {
     expect(d.verdict).toBeNull();
     expect(d.reason).toMatch(/one trial per case and arm is outside the validated domain/);
     expect(d.measures[0]?.verdict).toBe("ESTIMATE-ONLY");
-    expect(d.measures[0]?.comparisons[0]?.difference.lower).toEqual({ nonFinite: "-inf" });
+    // The difference carries its interval, without a test: it is descriptive.
+    expect(typeof d.measures[0]?.comparisons[0]?.difference.lower).toBe("number");
+    expect(d.measures[0]?.comparisons[0]).toMatchObject({
+      nonInferiorityP: { nonFinite: "nan" },
+      regressionMethod: "none (descriptive)",
+    });
     expect(exitCode(d, policy("block"))).toBe(1);
     expect(exitCode(d, { ...policy("block"), onEstimateOnly: "report" })).toBe(0);
   });
@@ -430,12 +436,12 @@ describe("margins and multiplicity (REQ-51)", () => {
     const d = await run(await scenario({ ...stable, secondary: ["app/extra"] }));
     const secondary = d.measures.find((m) => m.measure === "app/extra");
     expect(secondary).toMatchObject({ tier: "secondary", verdict: "ESTIMATE-ONLY" });
-    expect(secondary?.comparisons[0]?.regressionMethod).toBe("none (estimate-only)");
+    expect(secondary?.comparisons[0]?.regressionMethod).toBe("none (descriptive)");
     expect(d.verdict).toBe("PASS");
   });
 });
 
-describe("missing data (REQ-20, REQ-30, REQ-56, DC-6)", () => {
+describe("missing data (REQ-20, REQ-30, REQ-56)", () => {
   it("6 of 60 cases losing their failing candidate trials ends INCONCLUSIVE, not PASS", async () => {
     // Base passes everything. In 6 cases the candidate fails 2 of 3 trials, and exactly those
     // trials are lost: the observed candidate trials all pass.
@@ -454,7 +460,7 @@ describe("missing data (REQ-20, REQ-30, REQ-56, DC-6)", () => {
     expect(d.missingness).toMatchObject({ differs: true, sensitivity: "changes-verdict" });
     expect(d.measures[0]?.verdict).toBe("INCONCLUSIVE");
     expect(d.measures[0]?.notes.join(" ")).toMatch(
-      /changes this verdict, so it is INCONCLUSIVE \(DC-6\)/,
+      /imputing its missing trials against this verdict changes it, so it is INCONCLUSIVE/,
     );
     expect(d.verdict).toBe("INCONCLUSIVE");
   });
@@ -567,15 +573,17 @@ describe("flips and power (REQ-52, REQ-54)", () => {
         margin: 0.005,
       }),
     );
-    const power = d.power[0];
+    const power = d.power.run[0];
     expect(power).toMatchObject({
+      computed: true,
       applicableCases: 60,
       replicates: 3,
       margin: 0.005,
       decidable: false,
     });
-    expect(power?.floor as number).toBeCloseTo(0.0181, 3);
-    expect(power?.mde as number).toBeGreaterThan(power?.floor as number);
+    if (!power?.computed) throw new Error("the run-time entry is computed");
+    expect(power.floor).toBeCloseTo(0.0181, 3);
+    expect(power.mde).toBeGreaterThan(power.floor);
     const wide = await run(
       await scenario({
         cases: 60,
@@ -585,7 +593,7 @@ describe("flips and power (REQ-52, REQ-54)", () => {
         margin: 0.2,
       }),
     );
-    expect(wide.power[0]?.decidable).toBe(true);
+    expect(wide.power.run[0]).toMatchObject({ computed: true, decidable: true });
   });
 });
 
@@ -595,6 +603,13 @@ describe("determinism", () => {
     expect(JSON.stringify(await run(s))).toBe(JSON.stringify(await run(s)));
   });
 });
+
+/** The zero-noise floor of a plan's first planning entry. */
+function floorOf(p: ReturnType<typeof planningPower>): number {
+  const entry = p.power?.[0];
+  if (!entry?.computed) throw new Error("the planning entry is computed");
+  return entry.floor;
+}
 
 describe("more trials for a slice of cases", () => {
   const smallGroup: ScenarioOptions = {
@@ -617,16 +632,20 @@ describe("more trials for a slice of cases", () => {
       validated: true,
       regressionMethod: "within-case-permutation",
     });
-    expect(d.power[0]).toMatchObject({ applicableCases: 60, replicates: 2 });
-    expect(d.power[0]?.assumption).toMatch(/trials per case 2 \(43 cases\), 3 \(17 cases\)/);
+    expect(d.power.run[0]).toMatchObject({
+      computed: true,
+      applicableCases: 60,
+      replicates: 2,
+      assumption: expect.stringMatching(/trials per case 2 \(43 cases\), 3 \(17 cases\)/),
+    });
   });
 
   const { replicatesFor: _r, slices: _s, ...uniform } = smallGroup;
 
   it("the planning floor uses each case's trial count", async () => {
     const s = await scenario(smallGroup);
-    const floor = planningPower(s.plan).power?.[0]?.floor as number;
-    const two = planningPower((await scenario(uniform)).plan).power?.[0]?.floor as number;
+    const floor = floorOf(planningPower(s.plan));
+    const two = floorOf(planningPower((await scenario(uniform)).plan));
     expect(floor).toBeLessThan(two);
   });
 });

@@ -1,4 +1,4 @@
-import type { Decision, Real, Run } from "@hephaestus-build/ichnaea-contracts";
+import type { Decision, PowerEntry, Real, Run } from "@hephaestus-build/ichnaea-contracts";
 
 /** A number as reports show it: a percentage with one decimal, or a dash when undefined. */
 export function percent(value: Real | number): string {
@@ -42,11 +42,37 @@ export interface MeasureRow {
   readonly notes: readonly string[];
 }
 
+/** One row of the power statement. */
+export interface PowerRow {
+  /** `planning` for the plan's statement, made before any call; `this run` for the run-time one. */
+  readonly statement: "planning" | "this run";
+  readonly measure: string;
+  readonly cases: number;
+  readonly replicates: number;
+  readonly floor: string;
+  readonly mde: string;
+  readonly margin: string;
+  /** Whether the margin is within reach of the minimum detectable effect, or why it is unknown. */
+  readonly reach: string;
+  /** The assumption behind a computed entry, or the reason an entry was not computed. */
+  readonly assumption: string;
+}
+
+/** One imputation of the sensitivity analysis for one measure. */
+export interface SensitivityRow {
+  readonly measure: string;
+  readonly imputation: string;
+  readonly difference: string;
+  readonly bound: string;
+  readonly verdict: string;
+  readonly changes: string;
+}
+
 /** The view model of a decision. Every output renders from it, so they show the same numbers. */
 export interface DecisionView {
   readonly title: string;
   readonly verdict: string;
-  /** What the verdict is about, shown next to it: "on these 60 cases, beyond run-to-run noise". */
+  /** What the verdict is about, shown next to it, for example "on these 12 cases". */
   readonly claim: string;
   readonly reason: string;
   /** How the verdict was reached: estimand, bounds and adjustments. */
@@ -60,16 +86,8 @@ export interface DecisionView {
     readonly base: string;
     readonly candidate: string;
   }>;
-  readonly power: ReadonlyArray<{
-    readonly measure: string;
-    readonly cases: number;
-    readonly replicates: number;
-    readonly floor: string;
-    readonly mde: string;
-    readonly margin: string;
-    readonly decidable: string;
-    readonly assumption: string;
-  }>;
+  readonly power: readonly PowerRow[];
+  readonly sensitivity: readonly SensitivityRow[];
   readonly missingness: string;
   readonly differingFactors: readonly string[];
   readonly limitations: readonly string[];
@@ -80,6 +98,42 @@ export interface DecisionView {
  * Builds the view model from a decision record alone. It computes nothing new: every number comes
  * from the record (REQ-82, REQ-128).
  */
+/** A difference and its one-sided bound, or dashes when there is no interval to show. */
+function differenceCells(
+  difference: Decision["measures"][number]["comparisons"][number]["difference"],
+): {
+  estimate: string;
+  bound: string;
+} {
+  // An estimate is never shown without its interval (REQ-129); the notes say why there is none.
+  if (typeof difference.lower !== "number") return { estimate: "–", bound: "–" };
+  return { estimate: points(difference.estimate), bound: `≥ ${points(difference.lower)}` };
+}
+
+function powerRow(statement: PowerRow["statement"], p: PowerEntry): PowerRow {
+  const common = {
+    statement,
+    measure: p.measure,
+    cases: p.applicableCases,
+    replicates: p.replicates,
+    margin: `${(p.margin * 100).toFixed(1)} pts`,
+  };
+  if (!p.computed)
+    return { ...common, floor: "–", mde: "not computed", reach: "unknown", assumption: p.reason };
+  return {
+    ...common,
+    floor: points(p.floor).replace("+", ""),
+    mde: points(p.mde).replace("+", ""),
+    reach: p.decidable ? "yes" : "no",
+    assumption: p.assumption,
+  };
+}
+
+const IMPUTATION: Readonly<Record<string, string>> = {
+  "against-non-inferiority": "missing candidate trials fail, missing base trials pass",
+  "against-regression": "missing candidate trials pass, missing base trials fail",
+};
+
 export function decisionView(
   decision: Decision,
   suite: string,
@@ -94,7 +148,7 @@ export function decisionView(
     reason: decision.reason,
     method:
       decision.mode === "estimate-only"
-        ? `Estimate-only (${decision.measures[0]?.estimand ?? "fixed-cases"}): no inferential verdict. Rates carry ${95}% Wilson intervals; differences are descriptive.`
+        ? `Estimate-only (${decision.measures[0]?.estimand ?? "fixed-cases"}): no statistical verdict. Rates carry 95% Wilson intervals; differences carry one-sided ${level}% lower bounds and are descriptive.`
         : `Estimand ${decision.measures[0]?.estimand ?? "fixed-cases"}; one-sided ${level}% lower bounds for differences (candidate minus base); intersection-union over primary measures; Holm across regression tests.`,
     measures: decision.measures.map((m) => {
       const comparison = m.comparisons[0];
@@ -112,10 +166,7 @@ export function decisionView(
         ...(comparison
           ? {
               difference: {
-                estimate: points(comparison.difference.estimate),
-                bound: comparison.difference.method.startsWith("descriptive")
-                  ? "no interval (estimate-only)"
-                  : `≥ ${points(comparison.difference.lower)}`,
+                ...differenceCells(comparison.difference),
                 // A secondary measure has no margin: it is descriptive.
                 margin:
                   m.tier === "secondary"
@@ -153,22 +204,29 @@ export function decisionView(
         candidate: percent(f.candidate),
       })),
     ),
-    power: decision.power.map((p) => ({
-      measure: p.measure,
-      cases: p.applicableCases,
-      replicates: p.replicates,
-      floor: points(p.floor).replace("+", ""),
-      mde: points(p.mde).replace("+", ""),
-      margin: `${(p.margin * 100).toFixed(1)} pts`,
-      decidable: p.decidable ? "yes" : "no",
-      assumption: p.assumption,
-    })),
-    missingness: `${decision.missingness.byArm.map((a) => `${a.arm}: ${a.missing} of ${a.planned} missing`).join("; ")}. ${
+    power: [
+      ...decision.power.planning.map((p) => powerRow("planning", p)),
+      ...decision.power.run.map((p) => powerRow("this run", p)),
+    ],
+    sensitivity: decision.measures
+      .flatMap((m) =>
+        m.sensitivity.map((s) => ({
+          measure: m.measure,
+          imputation: IMPUTATION[s.imputation] ?? s.imputation,
+          ...differenceCells(s.difference),
+          verdict: s.verdict,
+          changes: s.changesVerdict ? "yes" : "no",
+        })),
+      )
+      .map(({ estimate, ...rest }) => ({ ...rest, difference: estimate })),
+    missingness: `${decision.missingness.byArm.map((a) => `${a.arm}: ${a.missing} of ${a.planned} trials missing`).join("; ")}. ${
       decision.missingness.sensitivity === "not-needed"
-        ? "No infrastructure failures, so no sensitivity analysis."
-        : decision.missingness.sensitivity === "unchanged"
-          ? "Counting infrastructure failures as failures does not change any verdict."
-          : "Counting infrastructure failures as failures changes a verdict."
+        ? "No primary measure misses a trial in either arm, so no sensitivity analysis ran."
+        : `A primary measure misses trials, so each verdict was decided again with the missing trials imputed against it: for non-inferiority, missing candidate trials fail and missing base trials pass; for regression, the reverse. ${
+            decision.missingness.sensitivity === "unchanged"
+              ? "No verdict changes."
+              : "A verdict changes, and that measure is INCONCLUSIVE."
+          }`
     }`,
     differingFactors: decision.differingFactors,
     limitations: decision.limitations,

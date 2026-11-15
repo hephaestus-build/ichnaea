@@ -301,6 +301,21 @@
               "retention": "record"
             }
           },
+          "marginStatus": {
+            "type": "string",
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
+            },
+            "x-ichnaea-known": [
+              "registered",
+              "placeholder"
+            ]
+          },
           "marginReason": {
             "type": "string",
             "minLength": 1,
@@ -342,6 +357,7 @@
         "required": [
           "measure",
           "margin",
+          "marginStatus",
           "marginReason"
         ]
       }

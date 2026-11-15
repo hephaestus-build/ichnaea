@@ -36,10 +36,21 @@ export interface ImportRunInput {
   }>;
   readonly files: readonly string[];
   readonly trigger: Plan["trigger"];
+  /** Factor keys the change varies beyond what its trigger varies by kind (REQ-15). */
+  readonly varies?: readonly string[];
   readonly seed: number;
   readonly now: string;
   readonly ichnaea: string;
 }
+
+/**
+ * The error kind of a trial whose output was not captured. Such a trial is an infrastructure
+ * failure, never a completed trial: it counts as missing, never as a failure of the system.
+ */
+export const NOT_CAPTURED = "not-captured";
+
+/** Outcomes that score as a failed trial, whatever value a record carries (REQ-20). */
+const FAILED_OUTCOMES: ReadonlySet<string> = new Set(["system_failure", "budget_exceeded"]);
 
 /** Thrown when an importer's records cannot be stored. The message names the record. */
 export class ImportError extends Error {
@@ -75,6 +86,29 @@ function checkConfiguration(trial: Trial, identity: string | undefined): Trial {
     outcome: "invalid_configuration",
     error: { kind: "configuration-mismatch", message: mismatch },
   };
+}
+
+/**
+ * A trial is scored only on output that was captured (REQ-20). A completed record with neither
+ * an output nor a pointer to one is a capture failure: an infrastructure failure, so it counts as
+ * missing. An output the system returned empty is present, and is scored.
+ */
+function checkCaptured(trial: Trial): Trial {
+  if (trial.outcome !== "completed" || trial.output !== undefined || trial.pointer !== undefined)
+    return trial;
+  return {
+    ...trial,
+    outcome: "infrastructure_failure",
+    error: { kind: NOT_CAPTURED, message: "the record has no captured output" },
+  };
+}
+
+/** Whether a value says that its trial passed: a binary pass, or a proportion with a success. */
+function passing(value: MeasureValue["value"]): boolean {
+  return (
+    (value?.type === "binary" && value.pass) ||
+    (value?.type === "proportion" && value.successes > 0)
+  );
 }
 
 /**
@@ -126,6 +160,7 @@ export async function importRun(
       measures: host.measures,
       gates: host.gates,
       trigger: input.trigger,
+      ...(input.varies === undefined ? {} : { varies: input.varies }),
       seed: input.seed,
       now: input.now,
       ichnaea: input.ichnaea,
@@ -151,7 +186,7 @@ export async function importRun(
       throw new ImportError(
         `trial '${t.id}' is planned as case '${p.case}', arm '${p.arm}', replicate ${p.replicate}`,
       );
-    return checkConfiguration(t, identities.get(p.arm));
+    return checkCaptured(checkConfiguration(t, identities.get(p.arm)));
   });
   const byTrial = new Map(trials.map((t) => [t.id as string, t]));
 
@@ -182,6 +217,12 @@ export async function importRun(
       );
     const problem = proportionProblem(v.value);
     if (problem) throw new ImportError(`value for '${v.measure}' on '${v.trial}': ${problem}`);
+    const outcome = byTrial.get(v.trial)?.outcome ?? "not_run";
+    // A record that contradicts itself is a defect in the importer, not evidence about the system.
+    if (FAILED_OUTCOMES.has(outcome) && passing(v.value))
+      throw new ImportError(
+        `trial '${v.trial}' is a ${outcome} but carries a passing value for '${v.measure}'; a failed trial cannot pass, so fix the importer`,
+      );
   }
   const byCase = new Map(cases.map((c) => [c.id as string, c]));
   const valid = new Set(

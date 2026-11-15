@@ -19,6 +19,7 @@
     {
       "measure": "support/facts-correct",
       "margin": 0.05,
+      "marginStatus": "registered",
       "marginReason": "A 5-point drop is the largest the owners accept."
     }
   ],

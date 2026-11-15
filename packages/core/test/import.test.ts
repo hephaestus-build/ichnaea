@@ -15,6 +15,7 @@ import {
   type ImportResult,
   importRun,
   type MeasureDefinition,
+  NOT_CAPTURED,
   type Plugin,
 } from "../src/index.ts";
 
@@ -154,6 +155,46 @@ describe("import mode", () => {
     expect(stored.trials[1]?.error?.message).toBe("observed model differs from the expected value");
     // Their values are not stored: an invalid configuration is missing.
     expect(stored.values.some((v) => v.trial === stored.trials[0]?.id)).toBe(false);
+  });
+
+  it("makes a completed record without captured output a capture failure, counted as missing (REQ-20)", async () => {
+    const { go, store } = await setup((trials, values) => ({
+      trials: trials.map((t, i) => {
+        if (i !== 0) return t;
+        const { output: _output, ...rest } = t;
+        return rest as Trial;
+      }),
+      values,
+    }));
+    await go();
+    const stored = await new FileStore(store).read("run-1");
+    expect(stored.trials[0]).toMatchObject({
+      outcome: "infrastructure_failure",
+      error: { kind: NOT_CAPTURED, message: "the record has no captured output" },
+    });
+    expect(stored.run.ledger[0]).toMatchObject({ outcome: "infrastructure_failure" });
+    // An output the system returned empty was captured, so it stays completed.
+    const empty = await setup((trials, values) => ({
+      trials: trials.map((t, i) => (i === 0 ? { ...t, output: "" } : t)),
+      values,
+    }));
+    await empty.go();
+    expect((await new FileStore(empty.store).read("run-1")).trials[0]?.outcome).toBe("completed");
+  });
+
+  it("refuses a system failure that carries a passing value (REQ-20)", async () => {
+    const { go, store } = await setup((trials, values) => ({
+      trials: trials.map((t, i) => (i === 0 ? { ...t, outcome: "system_failure" } : t)),
+      values: values.map((v) =>
+        v.trial === trials[0]?.id
+          ? ({ ...v, value: { type: "binary", pass: true } } as MeasureValue)
+          : v,
+      ),
+    }));
+    await expect(go()).rejects.toThrow(
+      "trial 'case-000/base/r0' is a system_failure but carries a passing value for 'app/correct'; a failed trial cannot pass, so fix the importer",
+    );
+    await expect(new FileStore(store).runs()).resolves.toEqual([]);
   });
 
   it("checks every imported value against its card (REQ-31)", async () => {
