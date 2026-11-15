@@ -256,7 +256,7 @@ describe("the INCONCLUSIVE reason names its cause", () => {
       const t = trials.get(v.trial);
       if (t?.arm !== "candidate") return [v];
       if (v.measure !== "app/a") return t.case === "case-000" ? [] : [v];
-      const index = Number(t.case.slice(5));
+      const index = Number(t.case?.slice(5));
       return index >= 1 && index <= 5 && t.replicate === 0
         ? [{ ...v, value: { type: "binary" as const, pass: false } }]
         : [v];

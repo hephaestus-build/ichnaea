@@ -1,7 +1,12 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { canonicalize, type Decision, type Plan } from "@hephaestus-build/ichnaea-contracts";
+import {
+  canonicalize,
+  type Decision,
+  type Plan,
+  type PowerEntry,
+} from "@hephaestus-build/ichnaea-contracts";
 import {
   sampledCasesFloor,
   VALIDATED_MARGIN_CEILING,
@@ -71,7 +76,9 @@ export function planningPower(plan: Plan): PlanAdditions {
   const base = plan.arms.find((a) => a.role === "base")?.name ?? plan.arms[0]?.name ?? "";
   const counts = [...plannedTrialsPerCase(plan, base).values()];
   if (counts.length === 0) return {};
-  const common = (p: Plan["primary"][number]) => ({
+  const common = (
+    p: Plan["primary"][number],
+  ): Pick<PowerEntry, "measure" | "applicableCases" | "replicates" | "margin"> => ({
     measure: p.measure,
     applicableCases: counts.length,
     replicates: Math.min(...counts),
