@@ -1,0 +1,9 @@
+node_modules/
+dist/
+coverage/
+reports/mutation/
+.stryker-tmp/
+*.tsbuildinfo
+.DS_Store
+.context/
+.scratch/
