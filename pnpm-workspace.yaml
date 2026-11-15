@@ -10,3 +10,9 @@ strictDepBuilds: true
 allowBuilds: {}
 linkWorkspacePackages: true
 saveExact: true
+
+# @microsoft/api-extractor 7.60.1 pins minimatch 10.2.3, which GHSA-g3hv-75wg-m249 affects (fixed in
+# 11.0.1). The tool only reads the build's own globs, and no release of it raises the pin yet.
+# Remove this override when an api-extractor release depends on a fixed minimatch.
+overrides:
+  "@microsoft/api-extractor>minimatch": 11.0.5
