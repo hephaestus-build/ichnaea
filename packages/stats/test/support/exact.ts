@@ -96,3 +96,212 @@ export function exactCoverage(k: number, r: number, p: number, q: number, level 
 export function exactTypeI(k: number, r: number, p: number, alpha = 0.05): number {
   return probability(enumerate(k, r, 0.95), p, p, (m) => m.regressionP <= alpha);
 }
+
+/** A group of cases that share rates and trial counts. */
+export interface Group {
+  readonly count: number;
+  readonly base: number;
+  readonly candidate: number;
+  readonly baseTrials: number;
+  readonly candidateTrials: number;
+}
+
+interface Outcome {
+  readonly x1: number;
+  readonly x2: number;
+  readonly p: number;
+}
+
+/** Every multiset of a group's outcomes with nonzero probability, and its probability. */
+function groupMultisets(
+  g: Group,
+): Array<{ outcomes: Outcome[]; counts: number[]; weight: number }> {
+  const outcomes: Outcome[] = [];
+  for (let x1 = 0; x1 <= g.candidateTrials; x1++)
+    for (let x2 = 0; x2 <= g.baseTrials; x2++) {
+      const p = binom(g.candidateTrials, x1, g.candidate) * binom(g.baseTrials, x2, g.base);
+      if (p > 0) outcomes.push({ x1, x2, p });
+    }
+  const result: Array<{ outcomes: Outcome[]; counts: number[]; weight: number }> = [];
+  const counts = outcomes.map(() => 0);
+  const recurse = (index: number, left: number): void => {
+    if (index === outcomes.length - 1) {
+      counts[index] = left;
+      let weight = fact(g.count);
+      counts.forEach((c, i) => (weight *= (outcomes[i] as Outcome).p ** c / fact(c)));
+      result.push({ outcomes, counts: [...counts], weight });
+      return;
+    }
+    for (let c = 0; c <= left; c++) {
+      counts[index] = c;
+      recurse(index + 1, left - c);
+    }
+  };
+  recurse(0, g.count);
+  return result;
+}
+
+/** The true mean of per-case differences over the groups. */
+export function truthOfGroups(groups: readonly Group[]): number {
+  const k = groups.reduce((a, g) => a + g.count, 0);
+  return groups.reduce((a, g) => a + g.count * (g.candidate - g.base), 0) / k;
+}
+
+/**
+ * The exact probability of an event over every outcome of the groups' cases. The event sees the
+ * cases in group order; the methods under test do not depend on case order.
+ */
+export function exactGroups(
+  groups: readonly Group[],
+  event: (cases: CaseCounts[]) => boolean,
+): number {
+  const perGroup = groups.map(groupMultisets);
+  let total = 0;
+  const chosen: Array<{ outcomes: Outcome[]; counts: number[]; weight: number }> = [];
+  const recurse = (index: number, weight: number): void => {
+    if (index === groups.length) {
+      const cases: CaseCounts[] = [];
+      chosen.forEach((m, gi) => {
+        const g = groups[gi] as Group;
+        m.counts.forEach((c, i) => {
+          const o = m.outcomes[i] as Outcome;
+          for (let t = 0; t < c; t++)
+            cases.push({
+              id: `c${String(cases.length).padStart(3, "0")}`,
+              candidate: { successes: o.x1, trials: g.candidateTrials },
+              base: { successes: o.x2, trials: g.baseTrials },
+            });
+        });
+      });
+      if (event(cases)) total += weight;
+      return;
+    }
+    for (const m of perGroup[index] as typeof chosen) {
+      chosen[index] = m;
+      recurse(index + 1, weight * m.weight);
+    }
+  };
+  recurse(0, 1);
+  return total;
+}
+
+/** Exact coverage of the fixed-cases lower bound over groups. */
+export function exactGroupCoverage(groups: readonly Group[], level = 0.95): number {
+  const truth = truthOfGroups(groups);
+  return exactGroups(
+    groups,
+    (cases) => fixedCasesInterval(cases, level).interval.lower <= truth + 1e-12,
+  );
+}
+
+/** Cases that share their trial counts. */
+export interface Pattern {
+  readonly count: number;
+  readonly candidateTrials: number;
+  readonly baseTrials: number;
+}
+
+interface PatternEnumeration {
+  readonly perGroup: ReadonlyArray<ReadonlyArray<{ x1: number; x2: number }>>;
+  /** Per combination: the count of each outcome type in each group, and the lower bound. */
+  readonly combos: ReadonlyArray<{ counts: readonly (readonly number[])[]; lower: number }>;
+}
+
+const patternCache = new Map<string, PatternEnumeration>();
+
+function enumeratePatterns(patterns: readonly Pattern[], level: number): PatternEnumeration {
+  const key = `${JSON.stringify(patterns)}/${level}`;
+  const cached = patternCache.get(key);
+  if (cached) return cached;
+  const perGroup = patterns.map((g) => {
+    const types: Array<{ x1: number; x2: number }> = [];
+    for (let x1 = 0; x1 <= g.candidateTrials; x1++)
+      for (let x2 = 0; x2 <= g.baseTrials; x2++) types.push({ x1, x2 });
+    return types;
+  });
+  const multisets = patterns.map((g, gi) => {
+    const types = perGroup[gi] as Array<{ x1: number; x2: number }>;
+    const out: number[][] = [];
+    const counts = types.map(() => 0);
+    const recurse = (index: number, left: number): void => {
+      if (index === types.length - 1) {
+        counts[index] = left;
+        out.push([...counts]);
+        return;
+      }
+      for (let c = 0; c <= left; c++) {
+        counts[index] = c;
+        recurse(index + 1, left - c);
+      }
+    };
+    recurse(0, g.count);
+    return out;
+  });
+  const combos: Array<{ counts: number[][]; lower: number }> = [];
+  const chosen: number[][] = [];
+  const recurse = (gi: number): void => {
+    if (gi === patterns.length) {
+      const cases: CaseCounts[] = [];
+      chosen.forEach((counts, g) => {
+        const pattern = patterns[g] as Pattern;
+        counts.forEach((c, i) => {
+          const o = (perGroup[g] as Array<{ x1: number; x2: number }>)[i] as {
+            x1: number;
+            x2: number;
+          };
+          for (let t = 0; t < c; t++)
+            cases.push({
+              id: `c${String(cases.length).padStart(3, "0")}`,
+              candidate: { successes: o.x1, trials: pattern.candidateTrials },
+              base: { successes: o.x2, trials: pattern.baseTrials },
+            });
+        });
+      });
+      combos.push({
+        counts: chosen.map((c) => [...c]),
+        lower: fixedCasesInterval(cases, level).interval.lower,
+      });
+      return;
+    }
+    for (const m of multisets[gi] as number[][]) {
+      chosen[gi] = m;
+      recurse(gi + 1);
+    }
+  };
+  recurse(0);
+  const result = { perGroup, combos };
+  patternCache.set(key, result);
+  return result;
+}
+
+/**
+ * Exact coverage of the fixed-cases lower bound when every case has base rate p and candidate rate
+ * q, but cases differ in their trial counts. Each bound is computed once per pattern and reweighted
+ * for every pair of rates.
+ */
+export function exactPatternCoverage(
+  patterns: readonly Pattern[],
+  p: number,
+  q: number,
+  level = 0.95,
+): number {
+  const e = enumeratePatterns(patterns, level);
+  const typeProb = patterns.map((g, gi) =>
+    (e.perGroup[gi] as Array<{ x1: number; x2: number }>).map(
+      (o) => binom(g.candidateTrials, o.x1, q) * binom(g.baseTrials, o.x2, p),
+    ),
+  );
+  let total = 0;
+  for (const combo of e.combos) {
+    if (combo.lower > q - p + 1e-12) continue;
+    let weight = 1;
+    combo.counts.forEach((counts, gi) => {
+      weight *= fact((patterns[gi] as Pattern).count);
+      counts.forEach(
+        (c, i) => (weight *= ((typeProb[gi] as number[])[i] as number) ** c / fact(c)),
+      );
+    });
+    total += weight;
+  }
+  return total;
+}

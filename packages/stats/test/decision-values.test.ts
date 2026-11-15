@@ -21,6 +21,9 @@ import {
   scoreDifferenceTest,
   tangoInterval,
   tangoTest,
+  VALIDATED_MARGIN_CEILING,
+  VALIDATED_MARGIN_FLOOR,
+  zeroNoiseFloor,
 } from "../src/index.ts";
 
 const reference = JSON.parse(
@@ -67,6 +70,7 @@ describe("decision values against R", () => {
     reference.pvalues.map((r, i) => [`set ${Math.floor(i / 4)} margin ${r.margin}`, r] as const),
   )("%s", (_, r) => {
     const result = compareCounts({
+      valueType: "binary",
       estimand: "fixed-cases",
       cases: toCases(r),
       alpha: 0.05,
@@ -128,7 +132,13 @@ describe("decision values against R", () => {
           candidate: { successes: a, trials: n },
           base: { successes: b, trials: n },
         }));
-        const r = compareCounts({ estimand: "fixed-cases", cases, alpha: 0.05, margin });
+        const r = compareCounts({
+          valueType: "binary",
+          estimand: "fixed-cases",
+          cases,
+          alpha: 0.05,
+          margin,
+        });
         const gap = r.difference.lower + margin;
         if (Math.abs(gap) > 1e-9) expect(r.nonInferiorityP <= 0.05).toBe(gap > 0);
       }),
@@ -150,10 +160,22 @@ describe("decision values against R", () => {
       n2: [2, 2, 2, 2],
     });
     expect(
-      compareCounts({ estimand: "fixed-cases", cases: drop, alpha: 0.05, margin: 0.1 }).regressionP,
+      compareCounts({
+        valueType: "binary",
+        estimand: "fixed-cases",
+        cases: drop,
+        alpha: 0.05,
+        margin: 0.1,
+      }).regressionP,
     ).toBeLessThan(0.01);
     expect(
-      compareCounts({ estimand: "fixed-cases", cases: gain, alpha: 0.05, margin: 0.1 }).regressionP,
+      compareCounts({
+        valueType: "binary",
+        estimand: "fixed-cases",
+        cases: gain,
+        alpha: 0.05,
+        margin: 0.1,
+      }).regressionP,
     ).toBe(1);
   });
 
@@ -178,12 +200,22 @@ describe("decision values against R", () => {
     const drop = Array.from({ length: 300 }, (_, i) => (i < 40 ? one(1, 0, i) : one(1, 1, i)));
     const gain = Array.from({ length: 300 }, (_, i) => (i < 40 ? one(0, 1, i) : one(1, 1, i)));
     expect(
-      compareCounts({ estimand: "sampled-cases", cases: drop, alpha: 0.05, margin: 0.05 })
-        .regressionP,
+      compareCounts({
+        valueType: "binary",
+        estimand: "sampled-cases",
+        cases: drop,
+        alpha: 0.05,
+        margin: 0.05,
+      }).regressionP,
     ).toBeLessThan(0.01);
     expect(
-      compareCounts({ estimand: "sampled-cases", cases: gain, alpha: 0.05, margin: 0.05 })
-        .regressionP,
+      compareCounts({
+        valueType: "binary",
+        estimand: "sampled-cases",
+        cases: gain,
+        alpha: 0.05,
+        margin: 0.05,
+      }).regressionP,
     ).toBeGreaterThan(0.99);
   });
 
@@ -392,6 +424,7 @@ describe("exact test and restricted MLE properties", () => {
 
 const at = (input: CaseCounts[]): ReturnType<typeof compareCounts> =>
   compareCounts({
+    valueType: "binary",
     estimand: "fixed-cases",
     cases: input,
     alpha: 0.05,
@@ -419,10 +452,12 @@ describe("input validation", () => {
     ],
     ["duplicate case IDs", { alpha: 0.05, margin: 0.1, cases: [ok, ok] }],
   ])("refuses %s", (_, input) => {
-    expect(() => compareCounts({ estimand: "fixed-cases", ...input })).toThrow(RangeError);
+    expect(() => compareCounts({ valueType: "binary", estimand: "fixed-cases", ...input })).toThrow(
+      RangeError,
+    );
   });
 
-  it("keeps a case with one completed trial in an arm, and excludes one with none (DC-6)", () => {
+  it("keeps a case with one completed trial in an arm, and excludes one with none (decision 0007)", () => {
     const thin = {
       id: "b",
       base: { successes: 1, trials: 1 },
@@ -434,6 +469,7 @@ describe("input validation", () => {
       candidate: { successes: 0, trials: 0 },
     };
     const result = compareCounts({
+      valueType: "binary",
       estimand: "fixed-cases",
       cases: [ok, { ...ok, id: "c" }, { ...ok, id: "d" }, thin, empty],
       alpha: 0.05,
@@ -447,11 +483,17 @@ describe("input validation", () => {
       "1 case(s) have no completed trial in an arm and are excluded",
     );
     expect(() =>
-      compareCounts({ estimand: "fixed-cases", cases: [empty], alpha: 0.05, margin: 0.1 }),
+      compareCounts({
+        valueType: "binary",
+        estimand: "fixed-cases",
+        cases: [empty],
+        alpha: 0.05,
+        margin: 0.1,
+      }),
     ).toThrow(EstimandError);
   });
 
-  it("a regression in a case's only remaining trial stays in the evidence (the DC-6 example)", () => {
+  it("a regression in a case's only remaining trial stays in the evidence (decision 0007)", () => {
     // 60 cases at 3 of 3 in both arms. In 6, two candidate trials are missing and the third fails.
     const full = { successes: 3, trials: 3 };
     const input: CaseCounts[] = Array.from({ length: 60 }, (_, i) => ({
@@ -460,6 +502,7 @@ describe("input validation", () => {
       candidate: i < 6 ? { successes: 0, trials: 1 } : full,
     }));
     const result = compareCounts({
+      valueType: "binary",
       estimand: "fixed-cases",
       cases: input,
       alpha: 0.05,
@@ -473,7 +516,7 @@ describe("input validation", () => {
     expect(result.regressionMethod).toBe("within-case-permutation");
   });
 
-  it("marks results outside the validated domain, naming each reason (DC-6)", () => {
+  it("marks results outside the validated domain, naming each reason (decision 0007)", () => {
     const five = ["a", "b", "c", "d", "e"].map((id) => ({ ...ok, id }));
     expect(at(five)).toMatchObject({ validated: true, limitations: [] });
     expect(at(five.slice(0, 4)).limitations).toEqual([
@@ -482,7 +525,7 @@ describe("input validation", () => {
     // Unequal binary trial counts are inside the grid.
     const unequal = [
       ...five,
-      { id: "f", base: { successes: 2, trials: 3 }, candidate: { successes: 3, trials: 5 } },
+      { id: "f", base: { successes: 2, trials: 3 }, candidate: { successes: 1, trials: 2 } },
     ];
     expect(at(unequal)).toMatchObject({
       validated: true,
@@ -490,10 +533,10 @@ describe("input validation", () => {
     });
     const many = [
       ...five,
-      { id: "f", base: { successes: 6, trials: 6 }, candidate: { successes: 6, trials: 6 } },
+      { id: "f", base: { successes: 4, trials: 4 }, candidate: { successes: 4, trials: 4 } },
     ];
     expect(at(many).limitations).toEqual([
-      "more than 5 trials per case and arm is outside the studied grid",
+      "more than 3 trials per case and arm is outside the studied grid",
     ]);
     // 2 of 12 cells with one trial: below 90% with two or more.
     const thin = { successes: 1, trials: 1 };
@@ -523,8 +566,160 @@ describe("the fixed-cases estimand with unequal replicates (equal case weights)"
       },
     ];
     expect(
-      compareCounts({ estimand: "fixed-cases", cases, alpha: 0.05, margin: 0.1, rng: createRng(1) })
-        .difference.estimate,
+      compareCounts({
+        valueType: "binary",
+        estimand: "fixed-cases",
+        cases,
+        alpha: 0.05,
+        margin: 0.1,
+        rng: createRng(1),
+      }).difference.estimate,
     ).toBeCloseTo(0, 12);
   });
+});
+
+const counts = (n: number, base: number, candidate: number, trials = 3): CaseCounts[] =>
+  Array.from({ length: n }, (_, i) => ({
+    id: `c${String(i).padStart(2, "0")}`,
+    base: { successes: base, trials },
+    candidate: { successes: candidate, trials },
+  }));
+
+describe("what compareCounts refuses or does not validate", () => {
+  const input = {
+    valueType: "binary" as const,
+    estimand: "fixed-cases" as const,
+    cases: counts(17, 3, 3),
+    alpha: 0.05,
+    margin: 0.1,
+  };
+
+  it("refuses a proportion passed as counts: items in one output are not trials", () => {
+    // One output of 3 items per arm; the candidate fails every item in 2 cases.
+    const items = counts(17, 3, 3).map((c, i) =>
+      i < 2 ? { ...c, candidate: { successes: 0, trials: 3 } } : c,
+    );
+    expect(() => compareCounts({ ...input, valueType: "proportion", cases: items })).toThrow(
+      EstimandError,
+    );
+    expect(() => compareCounts({ ...input, valueType: "proportion", cases: items })).toThrow(
+      /a proportion measure has no validated method yet/,
+    );
+    for (const valueType of ["score", "ordinal"] as const)
+      expect(() => compareCounts({ ...input, valueType })).toThrow(EstimandError);
+  });
+
+  it(`validates non-inferiority only at margins of ${VALIDATED_MARGIN_FLOOR} or more`, () => {
+    expect(compareCounts({ ...input, margin: VALIDATED_MARGIN_FLOOR }).validated).toBe(true);
+    for (const margin of [0, 0.02, VALIDATED_MARGIN_FLOOR - 1e-9]) {
+      const result = compareCounts({ ...input, margin });
+      expect(result.validated).toBe(false);
+      expect(result.limitations.join(" ")).toMatch(/below the validated margin floor/);
+    }
+  });
+
+  it(`validates non-inferiority only at margins up to ${VALIDATED_MARGIN_CEILING}`, () => {
+    expect(compareCounts({ ...input, margin: VALIDATED_MARGIN_CEILING }).validated).toBe(true);
+    for (const margin of [VALIDATED_MARGIN_CEILING + 1e-9, 0.5, 0.99]) {
+      const result = compareCounts({ ...input, margin });
+      expect(result.validated).toBe(false);
+      expect(result.limitations.join(" ")).toMatch(/above the validated margin ceiling/);
+    }
+  });
+
+  it("validates at most 3 trials per case and arm", () => {
+    expect(compareCounts({ ...input, cases: counts(17, 3, 3, 3) }).validated).toBe(true);
+    const four = compareCounts({ ...input, cases: counts(17, 4, 4, 4) });
+    expect(four.validated).toBe(false);
+    expect(four.limitations.join(" ")).toMatch(/more than 3 trials per case and arm/);
+  });
+
+  it("refuses a margin of 1 or more, and a negative one", () => {
+    for (const margin of [1, 1.5, -0.01])
+      expect(() => compareCounts({ ...input, margin })).toThrow(RangeError);
+  });
+
+  it("gives the same result whatever the order of the cases", () => {
+    const mixed = counts(17, 3, 2).map((c, i) =>
+      i % 3 === 0 ? { ...c, candidate: { successes: 3, trials: 3 } } : c,
+    );
+    const forward = compareCounts({ ...input, cases: mixed });
+    const backward = compareCounts({ ...input, cases: mixed.toReversed() });
+    const shuffled = compareCounts({
+      ...input,
+      cases: mixed.toSorted(
+        (a, b) => ((a.id.charCodeAt(2) * 7) % 11) - ((b.id.charCodeAt(2) * 7) % 11),
+      ),
+    });
+    expect(backward).toEqual(forward);
+    expect(shuffled).toEqual(forward);
+  });
+
+  it("gives the same result whatever the order, also with unequal counts and a generator", () => {
+    const unequal = counts(17, 2, 1).map((c, i) =>
+      // The first four cases differ, so reversing the order puts them at other positions.
+      i < 4 ? { ...c, base: { successes: 2, trials: 2 } } : c,
+    );
+    expect(compareCounts({ ...input, cases: unequal, rng: createRng(5) }).regressionMethod).toMatch(
+      /permutation/,
+    );
+    const run = (cases: CaseCounts[]) => compareCounts({ ...input, cases, rng: createRng(5) });
+    expect(run(unequal.toReversed())).toEqual(run(unequal));
+  });
+
+  it("refuses unequal trial counts without a seeded generator", () => {
+    const unequal = counts(17, 2, 2).map((c, i) =>
+      i === 0 ? { ...c, base: { successes: 2, trials: 2 } } : c,
+    );
+    expect(() => compareCounts({ ...input, cases: unequal })).toThrow(EstimandError);
+    expect(() => compareCounts({ ...input, cases: unequal })).toThrow(/seeded generator/);
+  });
+});
+
+const strataOf = (s: { x1: number[]; n1: number[]; x2: number[]; n2: number[] }) =>
+  s.x1.map((x, j) => ({
+    candidate: { successes: x, trials: s.n1[j] as number },
+    base: { successes: s.x2[j] as number, trials: s.n2[j] as number },
+  }));
+
+describe("more values against R (scripts/reference-extra.R)", () => {
+  const extra = JSON.parse(
+    readFileSync(join(import.meta.dirname, "reference-r-extra.json"), "utf8"),
+  ) as {
+    exactUnequal: Array<{ x1: number[]; n1: number[]; x2: number[]; n2: number[]; p: number }>;
+    floors: Array<{ trials: number[]; floor: number }>;
+    extremes: Array<{
+      x1: number[];
+      n1: number[];
+      x2: number[];
+      n2: number[];
+      level: number;
+      lower: number;
+      upper: number;
+    }>;
+  };
+  it.each(extra.exactUnequal.map((s, i) => [i, s] as const))(
+    "the exact stratified test matches R's exact Mantel–Haenszel test with unequal arms (set %d)",
+    (_, s) => {
+      expect(s.n1.some((n, j) => n !== s.n2[j])).toBe(true);
+      expect(exactStratifiedTest(strataOf(s), "less").p).toBeCloseTo(s.p, 9);
+    },
+  );
+
+  it.each(extra.floors.map((f) => [f.trials.join(","), f] as const))(
+    "the zero-noise floor with trials %s matches ratesci",
+    (_, f) => {
+      expect(new Set(f.trials).size).toBeGreaterThan(1);
+      expect(zeroNoiseFloor(f.trials, 0.05)).toBeCloseTo(f.floor, 6);
+    },
+  );
+
+  it.each(extra.extremes.map((e, i) => [i, e.level, e] as const))(
+    "an extreme table's interval matches ratesci near ±1 (set %d, level %d)",
+    (_, level, e) => {
+      const interval = scoreDifferenceInterval(strataOf(e), level, "two", { weights: "equal" });
+      expect(interval.lower).toBeCloseTo(e.lower, 6);
+      expect(interval.upper).toBeCloseTo(e.upper, 6);
+    },
+  );
 });

@@ -3,9 +3,9 @@
 This page records the evidence behind each method in `@hephaestus-build/ichnaea-stats`: agreement
 with an independent implementation, exact computation where it is cheap, and simulation studies of
 coverage and type-I error. No verdict may rest on a method or a call outside the validated domain
-(design note DN-8).
+(decision 0008). Each rule is stated here; `docs/decisions/` records why it was chosen.
 
-## The bar (DC-7)
+## The bar (decision 0006)
 
 Coverage of a 95% one-sided bound and type-I error of a 5% test are checked per grid point in two
 stages:
@@ -17,9 +17,18 @@ stages:
    its estimate + 3·SE is below 0.94; a confirmed type-I point fails if its estimate − 3·SE is above
    0.05. A point computed exactly must be at least 0.94 (coverage) or at most 0.05 (type-I).
 
-The grid mean of coverage fails if mean + 3·SE is below 0.95. More than 12 candidates in one grid
-fail the gate at once: the method misses the bar broadly. Every run prints its table and the
+The grid mean of coverage fails if mean + 3·SE is below 0.95. A coverage grid with more than 12
+candidates fails without confirming them: the interval misses the bar broadly. That is stricter than
+the rule, which confirms every candidate. A type-I grid confirms every candidate, because a valid
+test whose size is just under 0.05 makes most points candidates. Every run prints its table and the
 thresholds in effect (`test:sim` runs Vitest with `--silent=false`, so CI logs show them).
+
+`test/validation-rule.test.ts` pins every threshold at its edge with exact points and Bernoulli
+experiments of known rate, in the unit suite: exact 0.9399 fails and 0.94 passes; a true 0.936 and
+0.937 fail and 0.9395 passes after confirmation; a grid mean of 0.945 fails; exact type-I 0.0501
+fails; a true 0.0527 fails and 0.0505 passes; confirmation uses the seed plus 100,000.
+`scripts/mutants.ts` changes each threshold, the confirmation and the cap, 13 changes in all, and
+the unit suite detects each one.
 
 ## Reference values
 
@@ -55,7 +64,7 @@ each is pinned against an independent implementation:
   (`scripts/reference-normal-coefficients.ts`), and a test requires the code to use exactly those
   values. This check is needed because a wrong literal can stay inside every accuracy bound: moving
   qnorm's central bound from 0.425 to 0.42 costs at most 2.8 ε·|v|. A wrong digit in a coefficient
-  can be invisible in every output: the independent review found `5226.495278852546` for R's
+  can be invisible in every output: a review found `5226.495278852546` for R's
   `5226.4952788528545610`, a change of about 1e-19 relative, which no reference value detects.
 - `test/reference-mpmath-normal.json` holds the true values, from mpmath 1.3.0 at 60 digits and
   rounded to the nearest double (`scripts/reference-normal-mpmath.py`). It has `pnorm` at 13,052
@@ -88,26 +97,33 @@ term of the subnormal expansion moves the result by at most 0.84 ε·|v|. That i
 ## fixed-cases: what counts
 
 `compareCounts` takes binary outcomes: per case and arm, the completed trials that passed, of all
-completed trials. Every completed trial counts (DC-6). A case with at least one completed trial in
-each arm enters the analysis with equal weight; a case with none in an arm is excluded, reported in
-`excludedCases`, and counts against coverage in the decision. Dropping cases with fewer than two
-trials, as an earlier version did, hid a regression: losing 6 of 60 cases' remaining failing
-candidate trials turned a −0.10 drop (regression p = 1.6e-8) into a pass (independent review).
+completed trials. Every completed trial counts (decision 0007). A case with at least one completed
+trial in each arm enters the analysis with equal weight; a case with none in an arm is excluded,
+reported in `excludedCases`, and counts against coverage in the decision. Dropping cases with fewer
+than two trials, as an earlier version did, hid a regression: losing 6 of 60 cases' remaining
+failing candidate trials turned a −0.10 drop (regression p = 1.6e-8) into a pass.
+
+`validated: true` assumes that missingness within a case does not depend on the outcome. When the
+failing trials of a case go missing, the estimate moves towards a pass: 6 of 60 cases that lose their
+2 failing candidate trials of 3 give an estimate of 0.000 instead of −0.067. The decision layer
+therefore runs a sensitivity analysis whenever a trial is missing.
 
 Proportion measures (several items in one output), score and ordinal measures have no validated
-method yet, so they never reach `compareCounts` (DN-8). Treating correlated items as independent
-trials gave coverage of 0.73–0.80 and false rejections of 19–48% (independent review). The method
-for them reduces each trial to one value and analyses it as a score outcome; it lands before the
-first suite that declares such a primary measure, and at the latest for 1.0.
+method yet (decision 0008). `compareCounts` takes the measure's value type and refuses anything but
+`binary` with an `EstimandError`, so the measure is estimate-only. Passing a proportion's items as
+trials would undercover: with 17 cases and items sharing a latent pass (correlation 0.5 to 0.8),
+coverage fell to 0.77–0.93, all marked validated. The method for these measures reduces each trial
+to one value and analyses it as a score outcome. It lands before the first suite that declares such a
+primary measure, and at the latest for 1.0.
 
 ## fixed-cases: the estimate and its interval
 
 The estimand is the mean of the per-case differences, every case with the same weight whatever its
-trial count (DC-3). Mantel–Haenszel weights (n1·n2/(n1+n2)) give another estimand as soon as trial
+trial count (decision 0004). Mantel–Haenszel weights (n1·n2/(n1+n2)) give another estimand as soon as trial
 counts differ. `test/decision-values` pins a two-case example.
 
 The interval is the stratified Miettinen–Nurminen score interval with the N/(N−1) factor and no
-skewness correction (DC-2), chosen by a 252-point study at 10,000 repetitions
+skewness correction (decision 0004), chosen by a 252-point study at 10,000 repetitions
 (`scripts/study-fixed-cases.ts`, `validation/fixed-cases.json`):
 
 | Variant                             | Minimum coverage | Mean coverage | Points below the band |
@@ -117,7 +133,7 @@ skewness correction (DC-2), chosen by a 252-point study at 10,000 repetitions
 | Skewness-corrected, no factor       | 0.8819           | 0.9432        | 166                   |
 | Skewness-corrected with the factor  | 0.9207           | 0.9598        | 2                     |
 
-## The validated domain (DC-6)
+## The validated domain (decision 0007)
 
 `compareCounts` returns `validated: true` for `fixed-cases` only when every condition holds, and
 otherwise lists each one that fails in `limitations`:
@@ -126,19 +142,36 @@ otherwise lists each one that fails in `limitations`:
   coverage dips to 0.9385 and 0.9394 on a wide grid; from 5 to 9 cases every exact point on the grid
   below is at least 0.9435);
 - no excluded case;
-- at most 5 completed trials per case and arm (the studied grid);
+- at most 3 completed trials per case and arm. Suites run 2 or 3, and the search for heterogeneous
+  effects covers 2, 3 and mixed counts;
 - at least 90% of case-arm cells with 2 or more completed trials (one trial per case and arm by
   design is not studied; missingness that leaves some cells with one trial is).
 
+- for non-inferiority, an effective margin (the declared margin minus any safety margin) from the
+  validated margin floor up to 0.30, the validated margin ceiling. A margin of 0 is not a
+  non-inferiority test. A declared 0.10 with a safety margin of 0.06 is tested at 0.04. The range
+  covers only this `fixed-cases` interval; every other method states its own validated domain.
+
+**The validated margin floor is not yet established.** When most cases pass every base trial and
+drop under the candidate, while a few noisy cases offset the drops, the lower bound can undercover.
+An exact search over such structures found coverage below 0.94 at several margins between 0.05 and
+0.19, with 5 to 9 cases or mixed trial counts. `VALIDATED_MARGIN_FLOOR` (0.05) is a placeholder.
+Known gap: `compareCounts` still reports `validated: true` for a non-inferiority result from that
+placeholder upward, so read `validated` as "inside the studied domain except the margin floor".
+The change that sets the floor removes this gap, and brings the search, its space and its results.
+
 Unequal binary trial counts are inside the domain. `sampled-cases` results are never validated
-(see below).
+(see below). `sampled-cases` needs at least 300 cases, one trial per case and arm and one case per
+family, so it needs as many families as cases.
 
 ## fixed-cases: the regression tests
 
 - **Equal trial counts in every case and arm:** the exact stratified conditional test (Fisher's
-  exact test per case, combined by convolution). It equals R's exact Mantel–Haenszel test. The
-  Miettinen–Nurminen score test at 0 reaches type-I error 0.058 (independent review), so it is not
-  used (DC-4); the CI gate fails it (below).
+  exact test per case, combined by convolution). It equals R's exact Mantel–Haenszel test, also with
+  unequal arms (`test/reference-r-extra.json`). The Miettinen–Nurminen score test at 0 is not a
+  regression test (decision 0005): its type-I error exceeds 0.05, exactly 0.0525 at 17 cases with 2
+  trials (12 cases at rate 1, 3 at 0.8, 2 at 0.3) and 0.0559 at 5 cases with 5 trials and rate 0.1.
+  The unit suite computes the first value by exact enumeration and requires the rule to fail it.
 - **Unequal counts:** a within-case permutation test of the equal-weight mean difference: arm labels
   are permuted within each case (hypergeometric draws without replacement), by Monte Carlo with the
   seeded generator, p = (1 + count) / (1 + resamples). It is exact under the sharp null for every
@@ -174,11 +207,6 @@ variant without the N/(N−1) factor fails (0.9224 ± 0.0005 at 17 cases, r = 2,
 test at 0 without the factor, used as a regression test, fails (type-I 0.0771 ± 0.0005 at 60 cases,
 r = 2, low rates).
 
-The score test at 0 in the form `compareCounts` would use (equal case weights, with the factor)
-stayed within the bar on this grid: its worst point is 0.0498 ± 0.0005 (60 cases, r = 3, rate 0.7,
-confirmed at 200,000 repetitions). The 0.058 behind DC-4 was measured on the variant of the time.
-DC-4 stands: the exact test is exact under the sharp null and needs no simulation to hold its level.
-
 Seeds 1–999 serve coverage points, 1000–1999 type-I points, 9000 and above the checks of the check;
 confirmations add 100,000.
 
@@ -204,11 +232,11 @@ observed per-case rates.
 
 ## Not validated
 
-| Method                                          | Use                                                                          | Measured                                                                                                                                                                                                                                       | Status                                                           |
-| ----------------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| Tango paired score interval, skewness-corrected | `sampled-cases`, one trial per case and arm, one case per family, 300+ cases | Agrees with ratesci on every table with n = 10 and 25 (and n = 6 and 12 in the independent review). `validation/tango.tsv` is a study from before the fix of its skewness root; it must be rerun under DC-7 before the method gives a verdict. | Experimental: results are never validated, so no verdict.        |
-| `sampled-cases` below 300 cases or 30 families  | —                                                                            | The sign-flip tests once used here reject far too often: non-inferiority up to 59%, and "no drop" 27.5% under a skewed null with mean 0 (independent review). They were removed.                                                               | No method: `compareCounts` throws, the measure is estimate-only. |
-| Proportion, score and ordinal measures          | —                                                                            | See above (DN-8).                                                                                                                                                                                                                              | No method yet: estimate-only.                                    |
-| Wilson interval for one proportion              | Per-arm rates in reports, never in a decision                                | Exact two-sided coverage at n = 20 is 0.9245 at p = 0.95, minimum 0.838 near p = 0.009 (`scripts/exact-wilson.ts`)                                                                                                                             | Descriptive only.                                                |
+| Method                                          | Use                                                                          | Measured                                                                                                                                                                                                                                              | Status                                                           |
+| ----------------------------------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Tango paired score interval, skewness-corrected | `sampled-cases`, one trial per case and arm, one case per family, 300+ cases | Agrees with ratesci on every table with n = 10 and 25 (and n = 6 and 12 in a second check). `validation/tango.tsv` is a study from before the fix of its skewness root; it must be rerun under the validation rule before the method gives a verdict. | Experimental: results are never validated, so no verdict.        |
+| `sampled-cases` below 300 cases                 | —                                                                            | The sign-flip tests once used here reject far too often: non-inferiority up to 59%, and "no drop" 27.5% under a skewed null with mean 0. They were removed.                                                                                           | No method: `compareCounts` throws, the measure is estimate-only. |
+| Proportion, score and ordinal measures          | —                                                                            | See above (decision 0008).                                                                                                                                                                                                                            | No method yet: estimate-only.                                    |
+| Wilson interval for one proportion              | Per-arm rates in reports, never in a decision                                | Exact two-sided coverage at n = 20 is 0.9245 at p = 0.95, minimum 0.838 near p = 0.009 (`scripts/exact-wilson.ts`)                                                                                                                                    | Descriptive only.                                                |
 
 The false-alarm part of REQ-58 (monitor statistics) belongs to the drift canary (step 7).

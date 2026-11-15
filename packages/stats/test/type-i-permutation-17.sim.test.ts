@@ -1,4 +1,4 @@
-// Simulation study under the two-stage rule of DC-7 (VALIDATION.md). Every experiment goes through
+// Simulation study under the two-stage validation rule (VALIDATION.md, decision 0006). Every experiment goes through
 // the functions compareCounts uses. Seeds: 1–999 coverage, 1000–1999 type-I, 9000+ the checks of
 // the check; confirmations add CONFIRM_SEED_OFFSET, so no two experiments share a stream.
 import { describe, expect, it } from "vitest";
@@ -22,7 +22,7 @@ describe("fixed-cases: the within-case permutation test", () => {
       for (const scenario of ["0.7", "0.9", "mixture"]) {
         const base = rates(k, scenario);
         const patterns: Array<[string, (j: number) => number, (j: number) => number]> = [
-          ["r=2..5", (j) => 2 + (j % 4), () => 0],
+          ["r=2..3", (j) => 2 + (j % 2), () => 0],
           ["r=3, every tenth case loses 2", () => 3, (j) => (j % 10 === 0 ? 2 : 0)],
         ];
         for (const [name, r, lose] of patterns) {

@@ -21,7 +21,13 @@ const cases = ["a", "b", "c", "d", "e", "f"].map((id, i) => ({
   base: { successes: 3, trials: 3 },
   candidate: { successes: i === 0 ? 2 : 3, trials: 3 },
 }));
-const result = compareCounts({ estimand: "fixed-cases", alpha: 0.05, margin: 0.1, cases });
+const result = compareCounts({
+  valueType: "binary",
+  estimand: "fixed-cases",
+  alpha: 0.05,
+  margin: 0.1,
+  cases,
+});
 // result.difference: the one-sided lower interval; result.nonInferiorityP; result.regressionP and
 // result.regressionMethod; result.validated and result.limitations
 ```

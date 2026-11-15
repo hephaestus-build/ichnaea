@@ -1,4 +1,4 @@
-// Simulation study under the two-stage rule of DC-7 (VALIDATION.md). Every experiment goes through
+// Simulation study under the two-stage validation rule (VALIDATION.md, decision 0006). Every experiment goes through
 // the functions compareCounts uses. Seeds: 1–999 coverage, 1000–1999 type-I, 9000+ the checks of
 // the check; confirmations add CONFIRM_SEED_OFFSET, so no two experiments share a stream.
 import { describe, expect, it } from "vitest";

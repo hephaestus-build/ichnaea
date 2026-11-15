@@ -222,6 +222,7 @@ describe("method choice per estimand", () => {
   it("fixed-cases uses the stratified score interval, also for one trial per case and arm", () => {
     for (const r of [1, 2]) {
       const result = compareCounts({
+        valueType: "binary",
         estimand: "fixed-cases",
         cases: cases(r, 20),
         alpha: 0.05,
@@ -233,13 +234,19 @@ describe("method choice per estimand", () => {
     }
     // One trial per case and arm is outside the studied grid.
     expect(
-      compareCounts({ estimand: "fixed-cases", cases: cases(1, 20), alpha: 0.05, margin: 0.1 })
-        .validated,
+      compareCounts({
+        valueType: "binary",
+        estimand: "fixed-cases",
+        cases: cases(1, 20),
+        alpha: 0.05,
+        margin: 0.1,
+      }).validated,
     ).toBe(false);
   });
 
-  it("sampled-cases uses Tango from 300 single-trial cases in as many families, and is estimate-only below (DC-6)", () => {
+  it("sampled-cases uses Tango from 300 single-trial cases in as many families, and is estimate-only below (decision 0007)", () => {
     const tango = compareCounts({
+      valueType: "binary",
       estimand: "sampled-cases",
       cases: cases(1, 300),
       alpha: 0.05,
@@ -254,7 +261,13 @@ describe("method choice per estimand", () => {
       cases(1, 300).map((c, i) => ({ ...c, family: `f${i % 150}` })),
     ]) {
       expect(() =>
-        compareCounts({ estimand: "sampled-cases", cases: input, alpha: 0.05, margin: 0.1 }),
+        compareCounts({
+          valueType: "binary",
+          estimand: "sampled-cases",
+          cases: input,
+          alpha: 0.05,
+          margin: 0.1,
+        }),
       ).toThrow(EstimandError);
     }
   });
@@ -265,8 +278,13 @@ describe("method choice per estimand", () => {
       { id: "x", base: countsFromOutcomes([1, 1]), candidate: countsFromOutcomes([]) },
     ];
     expect(
-      compareCounts({ estimand: "fixed-cases", cases: input, alpha: 0.05, margin: 0.1 })
-        .excludedCases,
+      compareCounts({
+        valueType: "binary",
+        estimand: "fixed-cases",
+        cases: input,
+        alpha: 0.05,
+        margin: 0.1,
+      }).excludedCases,
     ).toBe(1);
   });
 });
