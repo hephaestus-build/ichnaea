@@ -627,12 +627,25 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
   },
 };
 
-/**
- * Variants that a writer must not produce but a reader must accept (REQ-05): values added to an
- * enumeration in a later minor version.
- */
+/** A planning entry that a decision states for a plan without one, whose margin is refused. */
+const REFUSED_PLANNING = {
+  computed: false,
+  measure: "support/facts-correct",
+  applicableCases: 60,
+  replicates: 3,
+  margin: 0.35,
+  reason: "the plan carries no planning statement, and its margin is refused",
+  refusal:
+    "primary measure 'support/facts-correct': its margin of 0.35 less its safety margin of 0 is above the validated margin ceiling of 0.3, where no non-inferiority result is validated",
+};
+
 /** Further valid records: shapes the main valid fixture does not show. */
 export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
+  decision: {
+    "planning-margin-refused": (r) => {
+      (r["power"] as { planning: unknown[] }).planning = [REFUSED_PLANNING];
+    },
+  },
   suite: {
     "more-trials-for-a-slice": (r) => {
       r["replicates"] = 2;
@@ -673,6 +686,10 @@ export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
   },
 };
 
+/**
+ * Variants that a writer must not produce but a reader must accept (REQ-05): values added to an
+ * enumeration in a later minor version, and members the writer schema does not define.
+ */
 export const READER_ONLY: Record<string, Record<string, Mutation>> = {
   configuration: {
     // Statuses outside a field's enumeration read as a value a later minor version may add.
@@ -706,7 +723,18 @@ export const READER_ONLY: Record<string, Record<string, Mutation>> = {
       ((r["ledger"] as Array<Record<string, unknown>>)[0]!["state"] = "skipped"),
   },
   measureCard: { "future-tier": (r) => (r["tier"] = "headline") },
-  decision: { "future-verdict": (r) => (r["verdict"] = "PASS-WITH-NOTES") },
+  decision: {
+    "future-verdict": (r) => (r["verdict"] = "PASS-WITH-NOTES"),
+    // Only the refused reason carries a refusal; on another reason it is an unknown member.
+    "refusal-with-another-reason": (r) => {
+      (r["power"] as { planning: unknown[] }).planning = [
+        {
+          ...REFUSED_PLANNING,
+          reason: "the plan carries no planning statement, and none can be computed from it",
+        },
+      ];
+    },
+  },
   calibration: { "future-status": (r) => (r["status"] = "provisional") },
   finding: { "future-promotion": (r) => (r["promotion"] = "auto") },
   suite: { "future-estimand": (r) => (r["estimand"] = "population") },

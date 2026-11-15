@@ -1,4 +1,10 @@
-import type { Decision, PowerEntry, Real, Run } from "@hephaestus-build/ichnaea-contracts";
+import {
+  type Decision,
+  notComputedReason,
+  type PowerEntry,
+  type Real,
+  type Run,
+} from "@hephaestus-build/ichnaea-contracts";
 
 /** A number as reports show it: a percentage with one decimal, or a dash when undefined. */
 export function percent(value: Real | number): string {
@@ -138,7 +144,13 @@ function powerRow(statement: PowerRow["statement"], p: PowerEntry): PowerRow {
     margin: `${(p.margin * 100).toFixed(1)} pts`,
   };
   if (!p.computed)
-    return { ...common, floor: "–", mde: "not computed", reach: "unknown", assumption: p.reason };
+    return {
+      ...common,
+      floor: "–",
+      mde: "not computed",
+      reach: "unknown",
+      assumption: notComputedReason(p),
+    };
   return {
     ...common,
     floor: points(p.floor).replace("+", ""),

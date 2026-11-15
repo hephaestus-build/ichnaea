@@ -3,7 +3,12 @@ import { basename, dirname, extname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 
-import { RECORD_CONTRACTS, toJsonSchema, TriggerKind } from "@hephaestus-build/ichnaea-contracts";
+import {
+  notComputedReason,
+  RECORD_CONTRACTS,
+  toJsonSchema,
+  TriggerKind,
+} from "@hephaestus-build/ichnaea-contracts";
 
 import { CORE_COMMANDS, createHost, type Host } from "./host.ts";
 import { importRun } from "./import.ts";
@@ -292,7 +297,7 @@ async function importCommand(
     out(
       p.computed
         ? `  power: ${p.measure}: smallest detectable drop ${(p.mde * 100).toFixed(1)} points (${p.assumption}), margin ${(p.margin * 100).toFixed(1)} points, ${reach(p.decidable)}`
-        : `  power: ${p.measure}: not computed (${p.reason})`,
+        : `  power: ${p.measure}: not computed (${notComputedReason(p)})`,
     );
   if (result.plan.power.length === 0 && result.plan.primary.length > 0)
     out("  power: not computed: no plugin in the configuration states one (decidePlugin() does)");

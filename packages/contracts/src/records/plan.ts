@@ -27,13 +27,25 @@ export const LineageItem = z.strictObject({
   digest: none(Digest).optional(),
 });
 
+/** The reason of a power entry whose margin is refused. Only that entry carries a `refusal`. */
+export const REFUSED_MARGIN = "the plan carries no planning statement, and its margin is refused";
+
 /** Why a power entry was not computed. */
 export const PowerNotComputed = z.enum([
   "run invalid",
   "no applicable case with a base value",
   "fixed-cases needs at least 2 trials per case and arm",
-  "the plan was made without the decide plugin",
+  REFUSED_MARGIN,
+  "the plan carries no planning statement, and none can be computed from it",
 ]);
+
+const notComputed = {
+  computed: none(z.literal(false)),
+  measure: none(MeasureId),
+  applicableCases: none(z.int().min(0)),
+  replicates: none(z.int().min(1)),
+  margin: none(z.number().min(0)),
+};
 
 /**
  * The power statement of one primary measure (REQ-54). An entry is computed, with its numbers and
@@ -55,17 +67,28 @@ export const PowerEntry = z.discriminatedUnion("computed", [
     assumption: none(Text),
     decidable: none(z.boolean()),
   }),
-  z.strictObject({
-    computed: none(z.literal(false)),
-    measure: none(MeasureId),
-    applicableCases: none(z.int().min(0)),
-    replicates: none(z.int().min(1)),
-    margin: none(z.number().min(0)),
-    reason: none(PowerNotComputed),
-  }),
+  z.discriminatedUnion("reason", [
+    z.strictObject({
+      ...notComputed,
+      reason: none(PowerNotComputed.exclude([REFUSED_MARGIN])),
+    }),
+    z.strictObject({
+      ...notComputed,
+      reason: none(z.literal(REFUSED_MARGIN)),
+      refusal: none(Text),
+    }),
+  ]),
 ]);
 /** A power entry. */
 export type PowerEntry = z.infer<typeof PowerEntry>;
+
+/**
+ * The reason of a power entry that was not computed, as a line prints it: the refused reason with
+ * its refusal text.
+ */
+export function notComputedReason(entry: Extract<PowerEntry, { computed: false }>): string {
+  return entry.reason === REFUSED_MARGIN ? `${entry.reason}: ${entry.refusal}` : entry.reason;
+}
 
 /**
  * One configuration of a plan with its role. A comparison has a `base` and one or more

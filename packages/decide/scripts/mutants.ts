@@ -504,10 +504,22 @@ export const MUTANTS: readonly Mutant[] = [
     to: "      planning: plan.power,",
   },
   {
-    id: "fallback reason dropped",
+    id: "planning: the not-computed entries dropped",
     file: D,
     from: "  if (power && power.length > 0) return power;",
     to: "  return power ?? [];",
+  },
+  {
+    id: "planning: the refusal text dropped",
+    file: D,
+    from: "      : { ...common, reason: REFUSED_MARGIN, refusal: refuse };",
+    to: '      : { ...common, reason: REFUSED_MARGIN, refusal: "the margin is refused" };',
+  },
+  {
+    id: "planning: the refused reason used for an uncomputable plan",
+    file: D,
+    from: '          reason: "the plan carries no planning statement, and none can be computed from it",',
+    to: '          reason: REFUSED_MARGIN,\n          refusal: "no statement",',
   },
   {
     id: "power: INVALID runs the simulation",

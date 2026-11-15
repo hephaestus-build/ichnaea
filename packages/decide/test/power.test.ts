@@ -1,5 +1,5 @@
 // REQ-54, decision 0017: the power statement of a decision.
-import type { Decision } from "@hephaestus-build/ichnaea-contracts";
+import { type Decision, notComputedReason } from "@hephaestus-build/ichnaea-contracts";
 import { describe, expect, it } from "vitest";
 
 import { decide, planningPower } from "../src/index.ts";
@@ -192,10 +192,14 @@ describe("the power statement (REQ-54)", () => {
     expect(floored.mode).toBe("decision");
   });
 
-  it("a plan without the plugin whose statement cannot be computed says why", async () => {
+  it("a plan without a statement whose margin is refused carries the refusal", async () => {
     // The plugin refuses a margin above the validated ceiling, so it states no power for it.
     const s = await scenario({ ...stable, margin: 0.35 });
-    expect(planningPower(s.plan).power).toBeUndefined();
+    const { power, refuse } = planningPower(s.plan);
+    expect(power).toBeUndefined();
+    expect(refuse).toBe(
+      "primary measure 'app/correct': its margin of 0.35 less its safety margin of 0 is above the validated margin ceiling of 0.3, where no non-inferiority result is validated",
+    );
     const d = await run(s);
     expect(d.power.planning).toEqual([
       {
@@ -204,7 +208,28 @@ describe("the power statement (REQ-54)", () => {
         applicableCases: 60,
         replicates: 3,
         margin: 0.35,
-        reason: "the plan was made without the decide plugin",
+        reason: "the plan carries no planning statement, and its margin is refused",
+        refusal: refuse,
+      },
+    ]);
+    expect(d.power.planning.map((p) => !p.computed && notComputedReason(p))).toEqual([
+      "the plan carries no planning statement, and its margin is refused: primary measure 'app/correct': its margin of 0.35 less its safety margin of 0 is above the validated margin ceiling of 0.3, where no non-inferiority result is validated",
+    ]);
+  });
+
+  it("a plan without a statement that plans no base-arm trial says none can be computed", async () => {
+    const s = await scenario(stable);
+    const plan = { ...s.plan, trials: s.plan.trials.filter((t) => t.arm !== "base") };
+    expect(planningPower(plan)).toEqual({});
+    const d = await run({ ...s, plan });
+    expect(d.power.planning).toEqual([
+      {
+        computed: false,
+        measure: "app/correct",
+        applicableCases: 60,
+        replicates: 3,
+        margin: 0.1,
+        reason: "the plan carries no planning statement, and none can be computed from it",
       },
     ]);
   });

@@ -30,8 +30,15 @@ this gap.
   - "run invalid"
   - "no applicable case with a base value"
   - "fixed-cases needs at least 2 trials per case and arm"
-  - "the plan was made without the decide plugin": the plan has no statement, and `planningPower`
-    gives none for it. That is the case for a margin that the plugin refuses (decision 0012).
+  - "the plan carries no planning statement, and its margin is refused": the plan has no
+    statement, and `planningPower` refuses its margin (decision 0012). The entry also carries the
+    refusal text of `planningPower` as `refusal`. Only this entry has a `refusal`.
+  - "the plan carries no planning statement, and none can be computed from it": the plan has no
+    statement, and `planningPower` gives none and refuses nothing. That is the case for a plan
+    with primary measures but no planned trial in the base arm.
+- These two reasons name only what `decide()` observes. They do not say how the plan was made: a
+  plan that the plugin made can also have no statement.
+- A line that prints the refused reason prints it as "<reason>: <refusal>".
 - An INVALID decision runs no power simulation. Each of its run-time entries says "run invalid".
 - Only the plan's statement may switch a plan to estimate-only, and only before any call. A
   statement that `decide()` computes after the calls has the same `floor` and `decidable`, but it
@@ -56,18 +63,22 @@ This record supersedes decision 0014.
   - "a plan made without the decide plugin gets its planning statement from the plan": the
     decision's statement equals `planningPower` of the plan. A plan whose planning floor is out of
     reach gets `decidable: false`, and its decision stays in decision mode.
-  - "a plan without the plugin whose statement cannot be computed says why": a margin of 0.35,
-    above the validated ceiling, gives "the plan was made without the decide plugin".
+  - "a plan without a statement whose margin is refused carries the refusal": a margin of 0.35,
+    above the validated ceiling, gives the refused reason, and `refusal` equals the refusal text of
+    `planningPower`.
+  - "a plan without a statement that plans no base-arm trial says none can be computed": the
+    entry gives "the plan carries no planning statement, and none can be computed from it".
   - "no decision carries an empty planning statement, with or without the plugin": nine scenarios
     give one entry per primary measure. Each is decided without the plugin's statement, and with it
     where the plugin accepts the plan.
-- `packages/decide/scripts/mutants.ts` has two mutants that the tests kill: "decide keeps an empty
-  planning statement" and "fallback reason dropped".
+- `packages/decide/scripts/mutants.ts` has four mutants that the tests kill: "decide keeps an
+  empty planning statement", "planning: the not-computed entries dropped", "planning: the refusal
+  text dropped" and "planning: the refused reason used for an uncomputable plan".
 
 ## Consequences
 
-- The power statement has a fourth reason for an entry that was not computed. A reader branches on
-  `computed`.
+- The power statement has two more reasons for an entry that was not computed. A reader branches
+  on `computed`, and reads `refusal` only for the refused reason.
 - An INVALID decision is faster: it skips 1,000 simulations per primary measure.
 - A library caller gets the same planning statement as the CLI. It does not get the plugin's
   refusal or its switch to estimate-only, because those apply before any call. A caller that wants

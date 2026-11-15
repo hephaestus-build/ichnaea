@@ -155,6 +155,28 @@ describe("generated records", () => {
   );
 });
 
+describe("a power entry whose margin is refused", () => {
+  const decision = read(join(fixtures, "valid-extra", "decision", "planning-margin-refused.json"));
+  const contract = RECORD_CONTRACTS.find((c) => c.name === "decision")!;
+
+  it("needs its refusal: writers reject it without one, in zod and ajv alike", () => {
+    const broken = structuredClone(decision) as {
+      power: { planning: Array<Record<string, unknown>> };
+    };
+    delete broken.power.planning[0]!["refusal"];
+    expect(contract.schema.safeParse(broken).success).toBe(false);
+    expect(ajvValidate(ajv, "decision", broken)).toBe(false);
+  });
+
+  it("is the only one that carries a refusal", () => {
+    const another = read(
+      join(fixtures, "reader-only", "decision", "refusal-with-another-reason.json"),
+    );
+    expect(contract.schema.safeParse(another).success).toBe(false);
+    expect(ajvValidate(ajv, "decision", another)).toBe(false);
+  });
+});
+
 describe("tolerant readers (REQ-05)", () => {
   const readerOnly = RECORD_CONTRACTS.flatMap((c) => {
     const dir = join(fixtures, "reader-only", c.name);

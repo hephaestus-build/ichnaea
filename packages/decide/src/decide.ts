@@ -9,6 +9,7 @@ import {
   type MeasureValue,
   type Plan,
   proportionProblem,
+  REFUSED_MARGIN,
   type Run,
   type Trial,
   verifyArms,
@@ -119,25 +120,33 @@ const AGAINST_REGRESSION: Imputation = { base: false, candidate: true };
 
 /**
  * The plan's planning statement (REQ-54, decision 0017). A plan made with the decide plugin carries
- * it. A plan made without the plugin carries none, so `decide` computes it with the plugin's own
- * function, `planningPower`, because the statement is a function of the plan alone. Its `floor` and
- * `decidable` say whether the planning floor is below the margin. It never changes the mode: only
- * the plugin switches a plan to estimate-only, before any call. When no statement
- * can be computed, for a margin that the plugin refuses, each entry says that the plan was made
- * without the decide plugin. A plan with a primary measure never gives an empty statement.
+ * it. A plan that carries none gets it from `planningPower`, the plugin's own function, because the
+ * statement is a function of the plan alone. Its `floor` and `decidable` say whether the planning
+ * floor is below the margin. It never changes the mode: only the plugin switches a plan to
+ * estimate-only, before any call. When `planningPower` gives no statement, each entry says only
+ * what `decide` observes: the margin is refused, with `planningPower`'s refusal text, or no
+ * statement can be computed from the plan (for example, it plans no trial in the base arm). A plan
+ * with a primary measure never gives an empty statement.
  */
 function planningOf(plan: Plan): PowerEntry[] {
   if (plan.power.length > 0) return plan.power;
-  const { power } = planningPower(plan);
+  const { power, refuse } = planningPower(plan);
   if (power && power.length > 0) return power;
-  return plan.primary.map((p) => ({
-    computed: false,
-    measure: p.measure,
-    applicableCases: new Set(plan.trials.map((t) => t.case)).size,
-    replicates: plan.replicates,
-    margin: p.margin,
-    reason: "the plan was made without the decide plugin",
-  }));
+  return plan.primary.map((p) => {
+    const common = {
+      computed: false as const,
+      measure: p.measure,
+      applicableCases: new Set(plan.trials.map((t) => t.case)).size,
+      replicates: plan.replicates,
+      margin: p.margin,
+    };
+    return refuse === undefined
+      ? {
+          ...common,
+          reason: "the plan carries no planning statement, and none can be computed from it",
+        }
+      : { ...common, reason: REFUSED_MARGIN, refusal: refuse };
+  });
 }
 
 function seedOf(plan: Plan): number {

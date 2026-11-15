@@ -22,7 +22,10 @@ export function toJsonSchema(contract: RecordContract): Record<string, unknown> 
     io: "input",
     unrepresentable: "throw",
   }) as Record<string, unknown>;
-  const { $schema, ...rest } = asciiDigits(nameDefinitions(generated)) as Record<string, unknown>;
+  const { $schema, ...rest } = flatUnions(asciiDigits(nameDefinitions(generated))) as Record<
+    string,
+    unknown
+  >;
   return {
     $schema,
     $id: schemaUri(contract),
@@ -31,6 +34,22 @@ export function toJsonSchema(contract: RecordContract): Record<string, unknown> 
     "x-ichnaea-stability": contract.stability,
     ...rest,
   };
+}
+
+/**
+ * zod writes a tagged union inside another (a not-computed power entry, split by its reason) as a
+ * `oneOf` inside a `oneOf`. Its options are exclusive with their siblings, so one flat `oneOf` says
+ * the same, and the reader schema then sees one tag that every option fixes.
+ */
+function flatUnions(node: unknown): unknown {
+  if (Array.isArray(node)) return node.map(flatUnions);
+  if (!node || typeof node !== "object") return node;
+  const out = Object.fromEntries(Object.entries(node).map(([k, v]) => [k, flatUnions(v)]));
+  if (Array.isArray(out["oneOf"]))
+    out["oneOf"] = (out["oneOf"] as Array<Record<string, unknown>>).flatMap((o) =>
+      Object.keys(o).length === 1 && Array.isArray(o["oneOf"]) ? o["oneOf"] : [o],
+    );
+  return out;
 }
 
 /**
@@ -141,9 +160,14 @@ function knownKinds(
   options: ReadonlyArray<Record<string, unknown>>,
   discriminator: string,
 ): unknown[] {
-  return options.map(
-    (o) => (o["properties"] as Record<string, Record<string, unknown>>)[discriminator]?.["const"],
-  );
+  return [
+    ...new Set(
+      options.map(
+        (o) =>
+          (o["properties"] as Record<string, Record<string, unknown>>)[discriminator]?.["const"],
+      ),
+    ),
+  ];
 }
 
 /** The member that every option of a tagged union fixes with `const`. */
