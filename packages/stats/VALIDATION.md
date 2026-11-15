@@ -144,8 +144,10 @@ needs the same conditions, an established margin floor and a margin inside the r
 result lists every condition that fails in its `limitations`.
 
 - at least 5 cases with a completed trial in each arm (at 3 and 4 cases with 2 trials, exact
-  coverage dips to 0.9385 and 0.9394 on a wide grid; from 5 to 9 cases every exact point on the grid
-  below is at least 0.9435);
+  coverage dips to 0.9385 and 0.9394 on a wide grid; with equal trial counts, at 5 to 9, 12 and 13
+  cases, every exact point of the CI grid is at least 0.9435; its exact points with one-trial cells
+  or mixed counts are at least 0.9431, at 5 cases with 2 candidate trials against 5 base trials,
+  outside the cap);
 - no excluded case;
 - at most 3 completed trials per case and arm. Suites run 2 or 3, and the search for heterogeneous
   effects covers 2, 3 and mixed counts;
@@ -181,9 +183,30 @@ such structures, at a true difference of minus the margin, found these points be
 The change that sets the floor brings the search, its space, its seeds and the structures it
 skipped, and makes `nonInferiority` validated only where the search found no failure.
 
-Unequal binary trial counts are inside the domain. `sampled-cases` results are never validated
-(see below). `sampled-cases` needs at least 300 cases, one trial per case and arm and one case per
-family, so it needs as many families as cases.
+Unequal binary trial counts are inside the domain, but one pattern of them misses the bar: every
+case with 2 trials in one arm and 3 in the other. At a true difference of 0 the lower bound lies too
+high. The worst exact coverage over the rates and shifts of the CI grid
+(`scripts/exact-coverage.ts`), and two confirmed points at 17 cases:
+
+| Cases | Candidate 3 trials, base 2      | Candidate 2 trials, base 3      |
+| ----- | ------------------------------- | ------------------------------- |
+| 5     | **0.9381** (rate 0.9)           | 0.9452                          |
+| 6     | **0.9374** (rate 0.9)           | 0.9448                          |
+| 7     | **0.9383** (rate 0.9)           | 0.9456                          |
+| 8     | **0.9397** (rate 0.9)           | 0.9413                          |
+| 9     | 0.9408                          | **0.9384** (rate 0.05)          |
+| 10    | 0.9415                          | **0.9366** (rate 0.05)          |
+| 17    | **0.9361 ± 0.0005** (rate 0.95) | **0.9370 ± 0.0005** (rate 0.05) |
+
+The CI gate leaves this pattern out. A second study in `test/coverage.sim.test.ts` requires six of
+these points to fail, so a change that makes them pass shows, and the pattern then moves into the
+gate. No validated result rests on the pattern today: no `nonInferiority` result is validated, and
+the regression test for unequal counts is the permutation test, whose type-I error does not depend
+on this bound. The change that sets the floor must take the pattern out of `nonInferiority`, or fix
+the interval.
+
+`sampled-cases` results are never validated (see below). `sampled-cases` needs at least 300 cases,
+one trial per case and arm and one case per family, so it needs as many families as cases.
 
 ## fixed-cases: the regression tests
 

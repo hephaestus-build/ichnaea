@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { fixedCasesInterval } from "../src/index.ts";
 import { exactCoverage, exactPatternCoverage, type Pattern } from "./support/exact.ts";
 import { clamp, draw, LEVEL, rates, truthOf } from "./support/grid.ts";
-import { COVERAGE, judge, type Point, REPS } from "./support/simulate.ts";
+import { binomial, COVERAGE, judge, type Point, REPS } from "./support/simulate.ts";
 
 const pattern = (count: number, candidateTrials: number, baseTrials: number): Pattern => ({
   count,
@@ -44,6 +44,8 @@ describe("fixed-cases: the one-sided lower bound compareCounts reports", () => {
       [8, 2],
       [8, 3],
       [9, 2],
+      [12, 2],
+      [13, 2],
     ] as const) {
       for (const p of [0.05, 0.2, 0.5, 0.7, 0.9, 0.99]) {
         for (const shift of [0.1, 0, -0.05, -0.1, -0.2, -0.3]) {
@@ -63,6 +65,12 @@ describe("fixed-cases: the one-sided lower bound compareCounts reports", () => {
       ["k=5 r=3, one 1-trial cell", [pattern(4, 3, 3), pattern(1, 1, 3)]],
       ["k=9 r=2, one 1-trial cell", [pattern(8, 2, 2), pattern(1, 1, 2)]],
       ["k=5, candidate 2 trials against base 5", [pattern(5, 2, 5)]],
+      ["k=6, 3 cases with r=2 and 3 with r=3", [pattern(3, 2, 2), pattern(3, 3, 3)]],
+      [
+        "k=10 r=2, one case with 1 trial per arm (10% of cells)",
+        [pattern(9, 2, 2), pattern(1, 1, 1)],
+      ],
+      ["k=10 r=2, two 1-trial cells (10%)", [pattern(8, 2, 2), pattern(2, 1, 2)]],
     ] as const) {
       for (const p of [0.05, 0.2, 0.5, 0.7, 0.9, 0.99]) {
         for (const shift of [0.1, 0, -0.05, -0.1, -0.2, -0.3]) {
@@ -143,7 +151,73 @@ describe("fixed-cases: the one-sided lower bound compareCounts reports", () => {
         suite.map((p) => clamp(p + shift)),
         (j) => (j < 17 ? 3 : 2),
       );
+    // Between the exact points and 17 cases: 12 cases at r = 3 and r = 2..3, and one-trial cells
+    // up to 10% at 17 cases. Exact enumeration costs too much here. New points go last, so the
+    // seeds of the points above stay the same.
+    for (const scenario of ["0.9", "mixture"]) {
+      const base = rates(12, scenario);
+      for (const shift of [0, -0.05]) {
+        const cand = base.map((p) => clamp(p + shift));
+        mc(`k=12 r=3 ${scenario} shift=${shift}`, base, cand, () => 3);
+        mc(`k=12 r=2..3 ${scenario} shift=${shift}`, base, cand, (j) => 2 + (j % 2));
+        const k17 = rates(17, scenario);
+        mc(
+          `k=17 r=2, 3 cases keep 1 candidate trial (9% of cells), ${scenario} shift=${shift}`,
+          k17,
+          k17.map((p) => clamp(p + shift)),
+          () => 2,
+          (j) => (j % 6 === 0 ? 1 : 0),
+        );
+      }
+    }
     const verdict = judge(points, COVERAGE, "fixed-cases lower bound");
     expect(verdict.failures).toEqual([]);
+  });
+
+  it("misses the bar when every case has 2 trials in one arm and 3 in the other", () => {
+    // Outside the gate above, and outside every validated result until the margin floor is set
+    // (VALIDATION.md, "The validated domain"). The bound sits too high at a difference of 0. If a
+    // change to the method makes these points pass, move the pattern into the gate.
+    const at = (k: number, candidateTrials: number, baseTrials: number, p: number): Point => ({
+      label: `k=${k}, candidate ${candidateTrials} trials against base ${baseTrials}, p=${p} shift=0`,
+      seed: 0,
+      exact: exactPatternCoverage([pattern(k, candidateTrials, baseTrials)], p, p, LEVEL),
+    });
+    const unequal = (
+      k: number,
+      candidateTrials: number,
+      baseTrials: number,
+      p: number,
+      seed: number,
+    ): Point => {
+      const base = rates(k, String(p));
+      return {
+        label: `k=${k}, candidate ${candidateTrials} trials against base ${baseTrials}, p=${p} shift=0`,
+        seed,
+        run: (rng) =>
+          fixedCasesInterval(
+            base.map((q, j) => ({
+              id: `c${j}`,
+              candidate: { successes: binomial(rng, candidateTrials, q), trials: candidateTrials },
+              base: { successes: binomial(rng, baseTrials, q), trials: baseTrials },
+            })),
+            LEVEL,
+          ).interval.lower <= 1e-12,
+      };
+    };
+    const points = [
+      at(5, 3, 2, 0.9),
+      at(6, 3, 2, 0.9),
+      at(7, 3, 2, 0.9),
+      at(9, 2, 3, 0.05),
+      unequal(17, 2, 3, 0.05, 900),
+      unequal(17, 3, 2, 0.95, 901),
+    ];
+    const verdict = judge(points, COVERAGE, "unequal arms in every case (must fail)");
+    for (const point of points)
+      expect(
+        verdict.failures.some((f) => f.startsWith(`${point.label}:`)),
+        point.label,
+      ).toBe(true);
   });
 });
