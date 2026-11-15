@@ -158,7 +158,20 @@ commands from a checkout of `main`.
    If the code owner ruleset does not exist yet, create it with
    `gh api --method POST repos/hephaestus-build/ichnaea/rulesets --input .github/rulesets/main-code-owner.json`.
 
-7. **The `release` environment.** Only `main` may deploy to it, and a maintainer approves each run:
+7. **Signed commits.** Every commit pushed to a branch must carry a verified signature. Before you
+   apply this ruleset, each maintainer sets up commit signing, as
+   [CONTRIBUTING.md](CONTRIBUTING.md#signed-commits) shows, and checks that GitHub shows their
+   last commit as verified: the ruleset refuses a push of an unsigned commit to any branch. GitHub
+   signs the commits that it creates itself: the squash commit of a merged pull request, and the
+   commits of Renovate. Tags are not branches, so the release workflow's tag push is not affected.
+   The tag names a squash commit on `main`, which GitHub signed.
+
+   ```sh
+   gh api --method POST repos/hephaestus-build/ichnaea/rulesets \
+     --input .github/rulesets/signed-commits.json
+   ```
+
+8. **The `release` environment.** Only `main` may deploy to it, and a maintainer approves each run:
 
    ```sh
    gh api --method PUT repos/hephaestus-build/ichnaea/environments/release \
@@ -167,7 +180,7 @@ commands from a checkout of `main`.
      -f name=main -f type=branch
    ```
 
-8. **The release deploy key.** The private key exists only as a secret of the environment:
+9. **The release deploy key.** The private key exists only as a secret of the environment:
 
    ```sh
    ssh-keygen -t ed25519 -N "" -C "ichnaea release tags" -f release-key
@@ -177,41 +190,41 @@ commands from a checkout of `main`.
    rm release-key release-key.pub
    ```
 
-9. **The `v*` tags and the releases.** Only deploy keys may create a release tag, nobody may move
-   or delete one, and a published release cannot change. Keep the release key the only deploy key
-   of the repository. Apply the tag rules in two parts, with a probe between them, so that a probe
-   that creates a tag by mistake cannot leave a tag that nobody can delete:
-   1. Apply the rule that only deploy keys create a release tag. Then list the tag rulesets: the
-      list must have only this ruleset.
+10. **The `v*` tags and the releases.** Only deploy keys may create a release tag, nobody may move
+    or delete one, and a published release cannot change. Keep the release key the only deploy key
+    of the repository. Apply the tag rules in two parts, with a probe between them, so that a probe
+    that creates a tag by mistake cannot leave a tag that nobody can delete:
+    1. Apply the rule that only deploy keys create a release tag. Then list the tag rulesets: the
+       list must have only this ruleset.
 
-      ```sh
-      gh api --method POST repos/hephaestus-build/ichnaea/rulesets \
-        --input .github/rulesets/release-tags-create.json
-      gh api repos/hephaestus-build/ichnaea/rulesets --jq '.[] | select(.target == "tag") | .name'
-      ```
+    ```sh
+    gh api --method POST repos/hephaestus-build/ichnaea/rulesets \
+      --input .github/rulesets/release-tags-create.json
+    gh api repos/hephaestus-build/ichnaea/rulesets --jq '.[] | select(.target == "tag") | .name'
+    ```
 
-   2. Probe the rule. A person cannot create a release tag, so both commands must fail with a rule
-      violation:
+    2. Probe the rule. A person cannot create a release tag, so both commands must fail with a rule
+       violation:
 
-      ```sh
-      git push origin "$(git rev-parse origin/main):refs/tags/v0.0.0-probe"
-      gh api --method POST repos/hephaestus-build/ichnaea/git/refs \
-        -f ref=refs/tags/v0.0.0-probe -f sha="$(git rev-parse origin/main)"
-      ```
+    ```sh
+    git push origin "$(git rev-parse origin/main):refs/tags/v0.0.0-probe"
+    gh api --method POST repos/hephaestus-build/ichnaea/git/refs \
+      -f ref=refs/tags/v0.0.0-probe -f sha="$(git rev-parse origin/main)"
+    ```
 
-      If a command creates the tag, the rule is wrong. No rule forbids the deletion of a tag yet,
-      so delete it with `git push origin :refs/tags/v0.0.0-probe`, correct the ruleset and probe
-      again. Go on only when `git ls-remote origin refs/tags/v0.0.0-probe` prints nothing.
+    If a command creates the tag, the rule is wrong. No rule forbids the deletion of a tag yet,
+    so delete it with `git push origin :refs/tags/v0.0.0-probe`, correct the ruleset and probe
+    again. Go on only when `git ls-remote origin refs/tags/v0.0.0-probe` prints nothing.
 
-   3. Apply the rule that nobody moves or deletes a release tag, and immutable releases:
+    3. Apply the rule that nobody moves or deletes a release tag, and immutable releases:
 
-      ```sh
-      gh api --method POST repos/hephaestus-build/ichnaea/rulesets \
-        --input .github/rulesets/release-tags-fixed.json
-      gh api --method PUT repos/hephaestus-build/ichnaea/immutable-releases
-      ```
+    ```sh
+    gh api --method POST repos/hephaestus-build/ichnaea/rulesets \
+      --input .github/rulesets/release-tags-fixed.json
+    gh api --method PUT repos/hephaestus-build/ichnaea/immutable-releases
+    ```
 
-10. **Read back.** Read the settings of steps 3 to 9 back. Step 1 has its own read-back:
+11. **Read back.** Read the settings of steps 3 to 10 back. Step 1 has its own read-back:
 
     ```sh
     gh api repos/hephaestus-build/ichnaea --jq '{visibility, has_wiki, has_projects,
@@ -229,7 +242,17 @@ commands from a checkout of `main`.
     gh api repos/hephaestus-build/ichnaea/immutable-releases
     ```
 
-11. **Security scan checks.** CodeQL, dependency review and Scorecard run only on a public
+    The signed commits ruleset must equal its file. The command prints nothing when it does:
+
+    ```sh
+    id="$(gh api repos/hephaestus-build/ichnaea/rulesets \
+      --jq '.[] | select(.name == "signed commits") | .id')"
+    diff <(jq -S . .github/rulesets/signed-commits.json) \
+      <(gh api "repos/hephaestus-build/ichnaea/rulesets/$id" \
+        | jq -S '{name, target, enforcement, conditions, rules, bypass_actors}')
+    ```
+
+12. **Security scan checks.** CodeQL, dependency review and Scorecard run only on a public
     repository; while the repository is private they skip and write a notice. After the flip, once
     each has run on a pull request, make the three scan checks required in the `main` ruleset. Do
     not do it before: a check that never runs blocks every pull request. Keep CodeQL's default
