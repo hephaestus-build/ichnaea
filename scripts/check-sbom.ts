@@ -1,11 +1,12 @@
-// Fails unless the release SBOM describes what is shipped: every tarball is a component at its
-// version with its SHA-512, and every runtime and peer dependency of every tarball is listed.
+// Fails unless the release SBOM describes what is shipped: its top-level component is the release
+// project in the release's npm scope, every tarball is a component at its version with its
+// SHA-512, and every runtime and peer dependency of every tarball is listed.
 // Usage: node scripts/check-sbom.ts <sbom.cdx.json> <directory with .tgz files>
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 
-import { tarballsIn } from "./consumer-project.ts";
+import { PROJECT, tarballsIn } from "./consumer-project.ts";
 
 export interface Shipped {
   readonly name: string;
@@ -18,6 +19,7 @@ interface Component {
   readonly name: string;
   readonly group?: string;
   readonly version?: string;
+  readonly purl?: string;
   readonly externalReferences?: ReadonlyArray<{
     readonly type?: string;
     readonly hashes?: ReadonlyArray<{ readonly alg?: string; readonly content?: string }>;
@@ -29,16 +31,40 @@ const isComponent = (c: unknown): c is Component =>
 
 const fullName = (c: Component): string => (c.group ? `${c.group}/${c.name}` : c.name);
 
-/** Returns one finding per way in which the SBOM does not describe the shipped tarballs. */
-export function checkSbom(bom: unknown, shipped: readonly Shipped[]): string[] {
-  const { bomFormat, components } = (bom ?? {}) as { bomFormat?: unknown; components?: unknown };
+/** The package URL of an npm package: the `@` of a scope is percent-encoded. */
+const npmPurl = (name: string, version: string): string =>
+  `pkg:npm/${name.replace(/^@/, "%40")}@${version}`;
+
+/**
+ * Returns one finding per way in which the SBOM does not describe the shipped tarballs. `project`
+ * is the name of the top-level component, which has the version of the tarballs.
+ */
+export function checkSbom(bom: unknown, shipped: readonly Shipped[], project = PROJECT): string[] {
+  const { bomFormat, components, metadata } = (bom ?? {}) as {
+    bomFormat?: unknown;
+    components?: unknown;
+    metadata?: { component?: unknown };
+  };
   if (bomFormat !== "CycloneDX") return ["the SBOM is not CycloneDX"];
+  // Every shipped package has the same version, and so has the release.
+  const version = shipped[0]?.version ?? "";
+  const root = metadata?.component;
+  const purl = npmPurl(project, version);
+  // A tool that reads the top-level component as a package looks its purl up in an advisory
+  // database, so it must name the release, not a package of another author.
+  const rootFindings =
+    isComponent(root) &&
+    fullName(root) === project &&
+    root.version === version &&
+    root.purl === purl
+      ? []
+      : [`the SBOM's top-level component is not ${purl}`];
   // CycloneDX may leave out an empty component list.
   if (components === undefined || (Array.isArray(components) && components.length === 0))
-    return ["the SBOM lists no components"];
+    return [...rootFindings, "the SBOM lists no components"];
   if (!Array.isArray(components) || !components.every(isComponent))
-    return ["the SBOM has no valid component list"];
-  const findings: string[] = [];
+    return [...rootFindings, "the SBOM has no valid component list"];
+  const findings = [...rootFindings];
   const names = new Set(components.map(fullName));
   for (const p of shipped) {
     const own = components.find((c) => fullName(c) === p.name && c.version === p.version);

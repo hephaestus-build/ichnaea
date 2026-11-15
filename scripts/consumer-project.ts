@@ -7,8 +7,11 @@ import { basename, join, resolve } from "node:path";
 
 import { readmeInstall, withTarballs } from "./readme-example.ts";
 
-/** The consumer project's name. The SBOM names it as its top-level component. */
-export const PROJECT = "ichnaea";
+/**
+ * The consumer project's name. The SBOM names it as its top-level component, so it is a name in
+ * the release's own npm scope: an unscoped name such as `ichnaea` is another author's package.
+ */
+export const PROJECT = "@hephaestus-build/ichnaea-release";
 
 const TARBALL = /^hephaestus-build-(.+)-(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)\.tgz$/;
 
