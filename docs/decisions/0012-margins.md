@@ -37,8 +37,8 @@ non-inferiority test at all.
 - A margin below the floor, and so a margin of 0, is never a non-inferiority test. A claim that a
   candidate is better (a lower bound above 0) is descriptive and never validated. The decision
   rule makes no such claim.
-- A comparison that reaches the statistics with an effective margin outside the range anyway is
-  marked not validated there, and gives INCONCLUSIVE.
+- A comparison that reaches the statistics with an effective margin outside the range anyway has a
+  non-inferiority result that is not validated there. It cannot give NON-INFERIOR (decision 0015).
 
 ## Evidence
 
