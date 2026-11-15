@@ -1,0 +1,36 @@
+{
+  "schema": "ichnaea.suite/1",
+  "id": "support-answers",
+  "version": "1",
+  "objective": "Answers about store policies stay correct when the assistant changes.",
+  "construct": "Factual correctness of answers against the policy pages.",
+  "decision": "Merge or hold a change to the assistant.",
+  "scope": "Questions about returns, refunds and shipping.",
+  "nonCoverage": "Tone, latency and other topics.",
+  "estimand": "fixed-cases",
+  "caseSet": {
+    "id": "support-answers",
+    "path": "data/cases.jsonl",
+    "digest": "sha256:241daede1c4eea0fee98116491999d8e384d2ac0f310ead2dced98a11049c6aa"
+  },
+  "replicates": 3,
+  "primary": [
+    {
+      "measure": "support/facts-stated",
+      "margin": 0.15,
+      "marginReason": "Twelve cases cannot see smaller drops; the floor at three replicates is about 0.08."
+    }
+  ],
+  "hardGates": ["support/answers-present"],
+  "budget": {
+    "maxCalls": 200,
+    "callsPerTrial": 1
+  },
+  "policy": {
+    "onRegression": "block",
+    "onInconclusive": "report",
+    "onEstimateOnly": "report",
+    "onInvalid": "block"
+  },
+  "measureReviewDate": "2027-05-01"
+}

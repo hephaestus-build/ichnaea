@@ -100,6 +100,9 @@ export const GateResult = z.strictObject({
   detail: content(z.string()).optional(),
 });
 
+/** A hard-gate result. */
+export type GateResult = z.infer<typeof GateResult>;
+
 /** The comparison of missing trials between arms (REQ-56). */
 export const Missingness = z.strictObject({
   byArm: z.array(

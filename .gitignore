@@ -7,3 +7,8 @@ reports/mutation/
 .DS_Store
 .scratch/
 __pycache__/
+
+# Build output never lives next to sources.
+packages/*/src/**/*.js
+packages/*/src/**/*.d.ts
+packages/*/src/**/*.map

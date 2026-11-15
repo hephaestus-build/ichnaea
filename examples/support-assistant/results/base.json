@@ -1,0 +1,221 @@
+{
+  "arm": "base",
+  "runs": [
+    {
+      "case": "support-01",
+      "replicate": 0,
+      "outcome": "completed",
+      "answer": "Our policy: 30 days."
+    },
+    {
+      "case": "support-01",
+      "replicate": 1,
+      "outcome": "completed",
+      "answer": "Our policy: 30 days."
+    },
+    {
+      "case": "support-01",
+      "replicate": 2,
+      "outcome": "completed",
+      "answer": "Our policy: 30 days."
+    },
+    {
+      "case": "support-02",
+      "replicate": 0,
+      "outcome": "completed",
+      "answer": "Our policy: original payment method."
+    },
+    {
+      "case": "support-02",
+      "replicate": 1,
+      "outcome": "completed",
+      "answer": "Our policy: original payment method."
+    },
+    {
+      "case": "support-02",
+      "replicate": 2,
+      "outcome": "completed",
+      "answer": "Our policy: original payment method."
+    },
+    {
+      "case": "support-03",
+      "replicate": 0,
+      "outcome": "completed",
+      "answer": "Our policy: free of charge."
+    },
+    {
+      "case": "support-03",
+      "replicate": 1,
+      "outcome": "completed",
+      "answer": "Our policy: free of charge."
+    },
+    {
+      "case": "support-03",
+      "replicate": 2,
+      "outcome": "completed",
+      "answer": "Our policy: free of charge."
+    },
+    {
+      "case": "support-04",
+      "replicate": 0,
+      "outcome": "completed",
+      "answer": "Our policy: two years."
+    },
+    {
+      "case": "support-04",
+      "replicate": 1,
+      "outcome": "completed",
+      "answer": "Our policy: two years."
+    },
+    {
+      "case": "support-04",
+      "replicate": 2,
+      "outcome": "completed",
+      "answer": "Our policy: two years."
+    },
+    {
+      "case": "support-05",
+      "replicate": 0,
+      "outcome": "completed",
+      "answer": "Our policy: three working days."
+    },
+    {
+      "case": "support-05",
+      "replicate": 1,
+      "outcome": "completed",
+      "answer": "Our policy: three working days."
+    },
+    {
+      "case": "support-05",
+      "replicate": 2,
+      "outcome": "completed",
+      "answer": "Our policy: three working days."
+    },
+    {
+      "case": "support-06",
+      "replicate": 0,
+      "outcome": "completed",
+      "answer": "Our policy: unused."
+    },
+    {
+      "case": "support-06",
+      "replicate": 1,
+      "outcome": "completed",
+      "answer": "Our policy: unused."
+    },
+    {
+      "case": "support-06",
+      "replicate": 2,
+      "outcome": "completed",
+      "answer": "Our policy: unused."
+    },
+    {
+      "case": "support-07",
+      "replicate": 0,
+      "outcome": "completed",
+      "answer": "Our policy: store credit."
+    },
+    {
+      "case": "support-07",
+      "replicate": 1,
+      "outcome": "completed",
+      "answer": "Our policy: store credit."
+    },
+    {
+      "case": "support-07",
+      "replicate": 2,
+      "outcome": "completed",
+      "answer": "Our policy: store credit."
+    },
+    {
+      "case": "support-08",
+      "replicate": 0,
+      "outcome": "completed",
+      "answer": "Our policy: final sale."
+    },
+    {
+      "case": "support-08",
+      "replicate": 1,
+      "outcome": "completed",
+      "answer": "Our policy: final sale."
+    },
+    {
+      "case": "support-08",
+      "replicate": 2,
+      "outcome": "completed",
+      "answer": "Our policy: final sale."
+    },
+    {
+      "case": "support-09",
+      "replicate": 0,
+      "outcome": "completed",
+      "answer": "Our policy: photo of the damage."
+    },
+    {
+      "case": "support-09",
+      "replicate": 1,
+      "outcome": "completed",
+      "answer": "Our policy: photo of the damage."
+    },
+    {
+      "case": "support-09",
+      "replicate": 2,
+      "outcome": "completed",
+      "answer": "Our policy: photo of the damage."
+    },
+    {
+      "case": "support-10",
+      "replicate": 0,
+      "outcome": "completed",
+      "answer": "Our policy: within 14 days."
+    },
+    {
+      "case": "support-10",
+      "replicate": 1,
+      "outcome": "completed",
+      "answer": "Our policy: within 14 days."
+    },
+    {
+      "case": "support-10",
+      "replicate": 2,
+      "outcome": "completed",
+      "answer": "Our policy: within 14 days."
+    },
+    {
+      "case": "support-11",
+      "replicate": 0,
+      "outcome": "completed",
+      "answer": "Our policy: prepaid label."
+    },
+    {
+      "case": "support-11",
+      "replicate": 1,
+      "outcome": "completed",
+      "answer": "Our policy: prepaid label."
+    },
+    {
+      "case": "support-11",
+      "replicate": 2,
+      "outcome": "completed",
+      "answer": "Our policy: prepaid label."
+    },
+    {
+      "case": "support-12",
+      "replicate": 0,
+      "outcome": "completed",
+      "answer": "Our policy: seven days."
+    },
+    {
+      "case": "support-12",
+      "replicate": 1,
+      "outcome": "completed",
+      "answer": "Our policy: seven days."
+    },
+    {
+      "case": "support-12",
+      "replicate": 2,
+      "outcome": "completed",
+      "answer": "Our policy: seven days."
+    }
+  ]
+}

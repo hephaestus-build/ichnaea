@@ -1,0 +1,33 @@
+{
+  "schema": "ichnaea.configuration/1",
+  "description": "Support assistant: one answer model over the policy pages.",
+  "models": [
+    {
+      "role": "answer",
+      "provider": {
+        "value": "example-provider",
+        "status": "pinned"
+      },
+      "id": {
+        "value": "example-model-2026-10",
+        "status": "pinned"
+      }
+    }
+  ],
+  "parameters": [
+    {
+      "name": "answer.temperature",
+      "value": 0.2,
+      "status": "pinned",
+      "origin": "explicit"
+    }
+  ],
+  "prompts": [
+    {
+      "name": "answer",
+      "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "status": "pinned"
+    }
+  ],
+  "factors": {}
+}

@@ -149,6 +149,25 @@ importers:
         specifier: 5.1.0
         version: 5.1.0(@types/node@26.6.6)(@vitest/coverage-v8@5.1.0)(vite@8.3.6(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1))
 
+  examples/support-assistant:
+    dependencies:
+      '@hephaestus-build/ichnaea-contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@hephaestus-build/ichnaea-core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@hephaestus-build/ichnaea-decide':
+        specifier: workspace:*
+        version: link:../../packages/decide
+      '@hephaestus-build/ichnaea-report':
+        specifier: workspace:*
+        version: link:../../packages/report
+    devDependencies:
+      zod:
+        specifier: 4.6.6
+        version: 4.6.6
+
   packages/contracts:
     devDependencies:
       ajv:
@@ -163,6 +182,51 @@ importers:
       zod:
         specifier: 4.6.7
         version: 4.6.7
+
+  packages/core:
+    dependencies:
+      '@hephaestus-build/ichnaea-contracts':
+        specifier: workspace:*
+        version: link:../contracts
+    devDependencies:
+      zod:
+        specifier: 4.6.6
+        version: 4.6.6
+
+  packages/decide:
+    dependencies:
+      '@hephaestus-build/ichnaea-contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@hephaestus-build/ichnaea-stats':
+        specifier: workspace:*
+        version: link:../stats
+    devDependencies:
+      '@hephaestus-build/ichnaea-core':
+        specifier: workspace:*
+        version: link:../core
+      zod:
+        specifier: 4.6.6
+        version: 4.6.6
+
+  packages/report:
+    dependencies:
+      '@hephaestus-build/ichnaea-contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@hephaestus-build/ichnaea-decide':
+        specifier: workspace:*
+        version: link:../decide
+    devDependencies:
+      '@hephaestus-build/ichnaea-core':
+        specifier: workspace:*
+        version: link:../core
+      '@hephaestus-build/ichnaea-stats':
+        specifier: workspace:*
+        version: link:../stats
+      zod:
+        specifier: 4.6.6
+        version: 4.6.6
 
   packages/stats: {}
 

@@ -1,0 +1,47 @@
+{
+  "name": "@hephaestus-build/ichnaea-decide",
+  "version": "0.0.0",
+  "description": "Ichnaea decision rule: paired non-inferiority per primary measure, Holm on regressions, hard gates, flips, power statement, estimate-only mode.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hephaestus-build/ichnaea.git",
+    "directory": "packages/decide"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": {
+    "@hephaestus-build/ichnaea-contracts": "workspace:*",
+    "@hephaestus-build/ichnaea-stats": "workspace:*"
+  },
+  "devDependencies": {
+    "@hephaestus-build/ichnaea-core": "workspace:*",
+    "zod": "4.6.6"
+  },
+  "peerDependencies": {
+    "@hephaestus-build/ichnaea-core": "workspace:*",
+    "zod": "^4.6.0"
+  },
+  "engines": {
+    "node": ">=22.12"
+  }
+}

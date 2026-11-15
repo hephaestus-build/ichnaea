@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    // The contracts sources (zod schemas) are part of this program through paths and cannot meet
+    // isolatedDeclarations; explicit return types are enforced by lint instead (DN-2).
+    "isolatedDeclarations": false
+  },
+  "include": ["src", "test", "scripts"]
+}

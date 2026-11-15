@@ -1,0 +1,18 @@
+{
+  "name": "@ichnaea-examples/support-assistant",
+  "private": true,
+  "description": "A synthetic support assistant evaluated with Ichnaea in import mode.",
+  "type": "module",
+  "scripts": {
+    "generate": "node scripts/generate.ts"
+  },
+  "dependencies": {
+    "@hephaestus-build/ichnaea-contracts": "workspace:*",
+    "@hephaestus-build/ichnaea-core": "workspace:*",
+    "@hephaestus-build/ichnaea-decide": "workspace:*",
+    "@hephaestus-build/ichnaea-report": "workspace:*"
+  },
+  "devDependencies": {
+    "zod": "4.6.6"
+  }
+}

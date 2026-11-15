@@ -1,0 +1,80 @@
+{
+  "schema": "ichnaea.caseSet/1",
+  "id": "support-answers",
+  "version": "1",
+  "digest": "sha256:241daede1c4eea0fee98116491999d8e384d2ac0f310ead2dced98a11049c6aa",
+  "cases": [
+    {
+      "id": "support-01",
+      "digest": "sha256:d0415153c914c65aff6cf3a27dedd77283c0da073554c1c96862ae38e4f31c9d",
+      "pool": "development",
+      "family": "return-window"
+    },
+    {
+      "id": "support-02",
+      "digest": "sha256:accb72b570ac0bfbc0b29ac9b537927b54941cd4093d43b35379ae37d9f4387f",
+      "pool": "development",
+      "family": "refund-method"
+    },
+    {
+      "id": "support-03",
+      "digest": "sha256:d42dbcc91d6be3c6d5574cf9674bfc700e6745d86c612cf08ebcf65703c750aa",
+      "pool": "development",
+      "family": "exchange-fee"
+    },
+    {
+      "id": "support-04",
+      "digest": "sha256:763e8e6f560dcabf43dbfd598eab385434091fd6c11e5a7872d84add2c5467d7",
+      "pool": "development",
+      "family": "warranty"
+    },
+    {
+      "id": "support-05",
+      "digest": "sha256:c02d581209415345f3a85bf38a135ebc68992bf58f7eaffd67919a7c18028e5d",
+      "pool": "development",
+      "family": "shipping-time"
+    },
+    {
+      "id": "support-06",
+      "digest": "sha256:a981104a430f6891a6ee59d66b4c7d4ecda967900d4a36d513ee23525226301d",
+      "pool": "development",
+      "family": "opened-items"
+    },
+    {
+      "id": "support-07",
+      "digest": "sha256:3ed6fa25b76764573901ec7e24731b73e5d3442a259421f24cdfa7d4fb237873",
+      "pool": "development",
+      "family": "gift-receipt"
+    },
+    {
+      "id": "support-08",
+      "digest": "sha256:757753153361040330859b565484ddfc56bb688cc9f35e195bf2230eba910f10",
+      "pool": "development",
+      "family": "sale-items"
+    },
+    {
+      "id": "support-09",
+      "digest": "sha256:d3ab44f43aec4d7c5d80e44accec478fb07fb35e5c584bf0806aaff9535ce98a",
+      "pool": "development",
+      "family": "damaged-parcel"
+    },
+    {
+      "id": "support-10",
+      "digest": "sha256:49c6f8a63cd621ac2c518889f0bf518628e3e3c7a87bbe496092bcf5706c85b3",
+      "pool": "development",
+      "family": "missing-parts"
+    },
+    {
+      "id": "support-11",
+      "digest": "sha256:128d96e5cf840e33de37b0aa0ca56c7aa8a146c7e1419111af0081e4b91241db",
+      "pool": "development",
+      "family": "international-returns"
+    },
+    {
+      "id": "support-12",
+      "digest": "sha256:59a7021ebc4e426ac6f09469ebd74d133733929f20f37e6991caca1aff7dd707",
+      "pool": "development",
+      "family": "price-match"
+    }
+  ]
+}
