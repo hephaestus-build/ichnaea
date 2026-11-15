@@ -109,17 +109,38 @@ function prepare(
 function scoreFunction(prepared: Prepared, options: ScoreOptions): (delta: number) => number {
   const bias = options.biasCorrection ?? true;
   const skew = options.skewnessCorrection ?? false;
+  // Cases share few distinct tables (with 2 trials per arm, at most 9), so each evaluation solves
+  // the restricted MLE once per distinct table. The sums still run over the strata in their order,
+  // with the same operations, so the result is bit-identical to solving every stratum.
+  const tables: Array<{ x1: number; n1: number; x2: number; n2: number }> = [];
+  const index = new Map<string, number>();
+  const terms = prepared.strata.map((s) => {
+    const key = `${s.x1}/${s.n1}/${s.x2}/${s.n2}`;
+    let table = index.get(key);
+    if (table === undefined) {
+      table = tables.length;
+      index.set(key, table);
+      tables.push({ x1: s.x1, n1: s.n1, x2: s.x2, n2: s.n2 });
+    }
+    const factor = bias ? (s.n1 + s.n2) / (s.n1 + s.n2 - 1) : 1;
+    return { table, varianceWeight: s.w * s.w * factor, skewWeight: s.w ** 3 };
+  });
+  const varianceTerm = new Float64Array(tables.length);
+  const skewTerm = new Float64Array(tables.length);
   return (deltaIn: number): number => {
     const delta = Math.min(1 - EDGE, Math.max(-1 + EDGE, deltaIn));
+    for (let i = 0; i < tables.length; i++) {
+      const t = tables[i]!;
+      const { p1, p2 } = restrictedMle(t.x1, t.n1, t.x2, t.n2, delta);
+      varianceTerm[i] = (p1 * (1 - p1)) / t.n1 + (p2 * (1 - p2)) / t.n2;
+      skewTerm[i] =
+        (p1 * (1 - p1) * (1 - 2 * p1)) / t.n1 ** 2 - (p2 * (1 - p2) * (1 - 2 * p2)) / t.n2 ** 2;
+    }
     let variance = 0;
     let mu3 = 0;
-    for (const s of prepared.strata) {
-      const { p1, p2 } = restrictedMle(s.x1, s.n1, s.x2, s.n2, delta);
-      const factor = bias ? (s.n1 + s.n2) / (s.n1 + s.n2 - 1) : 1;
-      variance += s.w * s.w * factor * ((p1 * (1 - p1)) / s.n1 + (p2 * (1 - p2)) / s.n2);
-      mu3 +=
-        s.w ** 3 *
-        ((p1 * (1 - p1) * (1 - 2 * p1)) / s.n1 ** 2 - (p2 * (1 - p2) * (1 - 2 * p2)) / s.n2 ** 2);
+    for (const s of terms) {
+      variance += s.varianceWeight * varianceTerm[s.table]!;
+      mu3 += s.skewWeight * skewTerm[s.table]!;
     }
     const numerator = prepared.estimate - delta;
     if (variance <= 0) return numerator > 0 ? Infinity : numerator < 0 ? -Infinity : 0;

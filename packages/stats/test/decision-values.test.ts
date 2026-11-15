@@ -79,7 +79,10 @@ describe("decision values against R", () => {
     expect(result.difference.level).toBe(0.95);
   });
 
-  it("non-inferiority p ≤ α exactly when the bound lies above −margin", () => {
+  // The duality belongs to the score method, so it is checked there for unequal trial counts.
+  // Through compareCounts the counts are equal per run: unequal counts would also run 10,000
+  // permutation resamples per call, which this property does not need.
+  it("non-inferiority p ≤ α exactly when the bound lies above −margin, for any trial counts", () => {
     const counts = fc.integer({ min: 2, max: 4 }).chain((n) =>
       fc.record({
         n: fc.constant(n),
@@ -91,26 +94,47 @@ describe("decision values against R", () => {
       fc.property(
         fc.array(counts, { minLength: 3, maxLength: 12 }),
         fc.double({ min: 0, max: 0.4, noNaN: true }),
-        (strata, margin) => {
-          const cases = strata.map(({ n, a, b }, i) => ({
-            id: `c${i}`,
+        (cells, margin) => {
+          const strata = cells.map(({ n, a, b }) => ({
             candidate: { successes: a, trials: n },
             base: { successes: b, trials: n },
           }));
-          const r = compareCounts({
-            estimand: "fixed-cases",
-            cases,
-            alpha: 0.05,
-            margin,
-            rng: createRng(5),
-          });
-          const gap = r.difference.lower + margin;
-          if (Math.abs(gap) > 1e-9) expect(r.nonInferiorityP <= 0.05).toBe(gap > 0);
+          const options = { weights: "equal" as const };
+          const bound = scoreDifferenceInterval(strata, 0.95, "lower", options).lower;
+          const p = scoreDifferenceTest(strata, -margin, "greater", options).p;
+          const gap = bound + margin;
+          if (Math.abs(gap) > 1e-9) expect(p <= 0.05).toBe(gap > 0);
         },
       ),
       { seed: 20261115, numRuns: 300 },
     );
-  }, 60_000);
+  });
+
+  it("compareCounts reports a non-inferiority p and a bound that agree", () => {
+    const run = fc
+      .integer({ min: 2, max: 4 })
+      .chain((n) =>
+        fc
+          .array(
+            fc.record({ a: fc.integer({ min: 0, max: n }), b: fc.integer({ min: 0, max: n }) }),
+            { minLength: 3, maxLength: 12 },
+          )
+          .map((cells) => cells.map((c) => ({ ...c, n }))),
+      );
+    fc.assert(
+      fc.property(run, fc.double({ min: 0, max: 0.4, noNaN: true }), (cells, margin) => {
+        const cases = cells.map(({ n, a, b }, i) => ({
+          id: `c${i}`,
+          candidate: { successes: a, trials: n },
+          base: { successes: b, trials: n },
+        }));
+        const r = compareCounts({ estimand: "fixed-cases", cases, alpha: 0.05, margin });
+        const gap = r.difference.lower + margin;
+        if (Math.abs(gap) > 1e-9) expect(r.nonInferiorityP <= 0.05).toBe(gap > 0);
+      }),
+      { seed: 20261115, numRuns: 300 },
+    );
+  });
 
   it("the regression test looks for a drop, not a gain", () => {
     const drop = toCases({
