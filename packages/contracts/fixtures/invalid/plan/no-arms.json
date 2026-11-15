@@ -31,6 +31,23 @@
       "decidable": true
     }
   ],
+  "primary": [
+    {
+      "measure": "support/facts-correct",
+      "margin": 0.05,
+      "marginReason": "A 5-point drop is the largest the owners accept."
+    }
+  ],
+  "secondary": [],
+  "hardGates": [
+    "support/schema-valid"
+  ],
+  "policy": {
+    "onRegression": "block",
+    "onInconclusive": "report",
+    "onEstimateOnly": "report",
+    "onInvalid": "block"
+  },
   "budget": {
     "worstCaseCalls": 720,
     "maxCalls": 800

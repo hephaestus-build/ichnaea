@@ -3,6 +3,7 @@ import * as z from "zod";
 import { none } from "../data-class.ts";
 import {
   ArmName,
+  GateId,
   CaseId,
   CaseSetId,
   ConfigurationIdentity,
@@ -17,7 +18,7 @@ import {
   TrialId,
 } from "../primitives.ts";
 import { Configuration } from "./configuration.ts";
-import { Estimand } from "./suite.ts";
+import { CiPolicy, Estimand, PrimaryMeasure } from "./suite.ts";
 
 /** A versioned part that can change a verdict, with its hash (REQ-17). */
 export const LineageItem = z.object({
@@ -91,6 +92,10 @@ export const Plan = z.object({
   replicates: none(z.int().min(1)),
   arms: z.array(Arm).min(1),
   measures: z.array(LineageItem),
+  primary: z.array(PrimaryMeasure),
+  secondary: none(z.array(MeasureId)),
+  hardGates: none(z.array(GateId)),
+  policy: CiPolicy,
   power: z.array(PowerEntry),
   budget: z.object({
     worstCaseCalls: none(z.int().min(0)),

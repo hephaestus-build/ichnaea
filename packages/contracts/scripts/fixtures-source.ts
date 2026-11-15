@@ -129,6 +129,21 @@ export const VALID: Record<string, Record<string, unknown>> = {
         decidable: true,
       },
     ],
+    primary: [
+      {
+        measure: "support/facts-correct",
+        margin: 0.05,
+        marginReason: "A 5-point drop is the largest the owners accept.",
+      },
+    ],
+    secondary: [],
+    hardGates: ["support/schema-valid"],
+    policy: {
+      onRegression: "block",
+      onInconclusive: "report",
+      onEstimateOnly: "report",
+      onInvalid: "block",
+    },
     budget: { worstCaseCalls: 720, maxCalls: 800 },
     trials: [{ id: "t-0001", case: "refund-window-de", arm: "candidate", replicate: 0, batch: 0 }],
     seed: { algorithm: "mt19937", value: "20261115" },
