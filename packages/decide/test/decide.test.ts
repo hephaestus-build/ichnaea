@@ -95,11 +95,12 @@ describe("run verdicts", () => {
   });
 
   it("a measure non-inferior with a drop beyond noise stays NON-INFERIOR, with a note", async () => {
-    // 60 cases, 5 trials: a 3-point drop on every case is beyond noise but inside a 10-point margin.
+    // 60 cases, 3 trials (the most the validated domain allows): a 6-point drop on every case is
+    // beyond noise but inside a 15-point margin.
     const d = await run(
       await scenario({
         cases: 60,
-        replicates: 5,
+        replicates: 3,
         base: () => 1,
         candidate: () => 0.94,
         margin: 0.15,
