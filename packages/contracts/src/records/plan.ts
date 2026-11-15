@@ -21,7 +21,7 @@ import { Configuration } from "./configuration.ts";
 import { CiPolicy, Estimand, PrimaryMeasure } from "./suite.ts";
 
 /** A versioned part that can change a verdict, with its hash (REQ-17). */
-export const LineageItem = z.object({
+export const LineageItem = z.strictObject({
   kind: none(z.enum(["measure", "judge", "preset", "plugin", "featureGate", "gate", "package"])),
   id: none(Text),
   version: none(Text),
@@ -29,7 +29,7 @@ export const LineageItem = z.object({
 });
 
 /** The power statement of one primary measure (REQ-54). */
-export const PowerEntry = z.object({
+export const PowerEntry = z.strictObject({
   measure: none(MeasureId),
   applicableCases: none(z.int().min(0)),
   replicates: none(z.int().min(1)),
@@ -45,7 +45,7 @@ export const PowerEntry = z.object({
  * One configuration of a plan with its role. A comparison has a `base` and one or more
  * `candidate` arms. An estimate-only run may have a single arm.
  */
-export const Arm = z.object({
+export const Arm = z.strictObject({
   name: none(ArmName),
   role: none(z.enum(["base", "candidate", "reference"])),
   identity: none(ConfigurationIdentity),
@@ -53,7 +53,7 @@ export const Arm = z.object({
 });
 
 /** One planned trial. */
-export const PlannedTrial = z.object({
+export const PlannedTrial = z.strictObject({
   id: none(TrialId),
   case: none(CaseId),
   arm: none(ArmName),
@@ -78,7 +78,7 @@ export const TriggerKind = z.enum([
 ]);
 
 /** The resolved, locked form of a suite for one run (REQ-16). */
-export const Plan = z.object({
+export const Plan = z.strictObject({
   schema: none(z.literal("ichnaea.plan/1")),
   suite: none(SuiteId),
   suiteVersion: none(Text),
@@ -97,7 +97,7 @@ export const Plan = z.object({
   hardGates: none(z.array(GateId)),
   policy: CiPolicy,
   power: z.array(PowerEntry),
-  budget: z.object({
+  budget: z.strictObject({
     worstCaseCalls: none(z.int().min(0)),
     maxCalls: none(z.int().min(0)),
     monthlyRemaining: none(z.int().min(0)).optional(),

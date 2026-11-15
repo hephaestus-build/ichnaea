@@ -1,4 +1,4 @@
-import { digest } from "./canonical.ts";
+import { digest as rawDigest, NonJsonValueError } from "./canonical.ts";
 import type { ConfigurationIdentity, Digest } from "./primitives.ts";
 import { Case, CaseSetEntry } from "./records/case.ts";
 import { Configuration } from "./records/configuration.ts";
@@ -23,6 +23,17 @@ export const DIGEST_MEMBERS: {
   caseSetEntry: ["id", "digest", "pool", "family"],
   configuration: ["models", "parameters", "prompts", "factors"],
 };
+
+async function digest(value: unknown): Promise<`sha256:${string}`> {
+  try {
+    return await rawDigest(value);
+  } catch (error) {
+    // A record can validate and still be unhashable (a lone surrogate in a string).
+    if (error instanceof NonJsonValueError)
+      throw new IdentityError(`the record has no canonical form: ${error.message}`);
+    throw error;
+  }
+}
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);

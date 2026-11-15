@@ -327,7 +327,8 @@
         },
         "required": [
           "kind"
-        ]
+        ],
+        "additionalProperties": false
       }
     },
     "usage": {
@@ -408,7 +409,8 @@
             "retention": "record"
           }
         }
-      }
+      },
+      "additionalProperties": false
     },
     "observed": {
       "type": "array",
@@ -453,7 +455,8 @@
         "required": [
           "name",
           "value"
-        ]
+        ],
+        "additionalProperties": false
       }
     },
     "signals": {
@@ -502,7 +505,8 @@
       },
       "required": [
         "hit"
-      ]
+      ],
+      "additionalProperties": false
     },
     "evidence": {
       "type": "array",
@@ -549,7 +553,8 @@
         "required": [
           "name",
           "digest"
-        ]
+        ],
+        "additionalProperties": false
       }
     },
     "joinKeys": {
@@ -596,7 +601,8 @@
       },
       "required": [
         "kind"
-      ]
+      ],
+      "additionalProperties": false
     },
     "startedAt": {
       "type": "string",
@@ -648,6 +654,7 @@
     "outcome",
     "dataClass"
   ],
+  "additionalProperties": false,
   "$defs": {
     "JsonValue": {
       "anyOf": [

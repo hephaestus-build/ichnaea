@@ -15,7 +15,7 @@ import {
  * An online or scheduled check (REQ-60). An alert without an owner and an action is a dashboard
  * series, so both are required. The owner may be a person, so it is classed personal.
  */
-export const Monitor = z.object({
+export const Monitor = z.strictObject({
   schema: none(z.literal("ichnaea.monitor/1")),
   id: none(MonitorId),
   measure: none(MeasureId),
@@ -36,7 +36,7 @@ export const Monitor = z.object({
 export type Monitor = z.infer<typeof Monitor>;
 
 /** A confirmed failure with pointers to its trial records (REQ-70, REQ-71). */
-export const Finding = z.object({
+export const Finding = z.strictObject({
   schema: none(z.literal("ichnaea.finding/1")),
   id: none(FindingId),
   source: none(z.enum(["monitor", "canary", "check", "triage", "manual"])),

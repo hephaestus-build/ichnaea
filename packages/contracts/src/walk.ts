@@ -42,7 +42,9 @@ export function children(schema: z.ZodType): Array<[string, z.ZodType]> {
     case "object": {
       const shape = def["shape"] as Record<string, z.ZodType>;
       const out: Array<[string, z.ZodType]> = Object.entries(shape);
-      if (def["catchall"]) out.push(["*", def["catchall"] as z.ZodType]);
+      // A strict object's catchall is `never` (no other member): nothing to walk.
+      const catchall = def["catchall"] as z.ZodType | undefined;
+      if (catchall && catchall._zod.def.type !== "never") out.push(["*", catchall]);
       return out;
     }
     case "array":

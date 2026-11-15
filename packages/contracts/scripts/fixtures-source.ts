@@ -297,7 +297,18 @@ export const VALID: Record<string, Record<string, unknown>> = {
       },
     ],
     gates: [{ gate: "support/schema-valid", passed: true, failures: 0 }],
-    power: [],
+    power: [
+      {
+        measure: "support/facts-correct",
+        applicableCases: 60,
+        replicates: 3,
+        margin: 0.05,
+        mde: { nonFinite: "nan" },
+        floor: 0.018,
+        assumption: "no comparable run yet",
+        decidable: false,
+      },
+    ],
     missingness: {
       byArm: [
         { arm: "base", missing: 0, planned: 180 },
@@ -394,7 +405,14 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
     "missing-unit": (r) => delete r["unit"],
     "reused-without-dataset": (r) =>
       (r["provenance"] = { ...(r["provenance"] as object), source: "reused" }),
-    "wrong-schema-id": (r) => (r["schema"] = "ichnaea.case/2"),
+    "reused-without-limits": (r) =>
+      (r["provenance"] = {
+        ...(r["provenance"] as object),
+        source: "reused",
+        reusedDataset: { name: "public help pages" },
+      }),
+    "missing-created": (r) => delete (r["provenance"] as Record<string, unknown>)["created"],
+    "missing-exposure": (r) => delete (r["provenance"] as Record<string, unknown>)["exposure"],
     "missing-provenance-licence": (r) =>
       delete (r["provenance"] as Record<string, unknown>)["licence"],
     "bad-fixture-digest": (r) => (r["fixtures"] = [{ name: "x", digest: "md5:abc" }]),
@@ -413,9 +431,8 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
       ((r["models"] as Array<Record<string, Record<string, unknown>>>)[0]!["id"]!["value"] = ""),
     "null-model-id": (r) =>
       ((r["models"] as Array<Record<string, Record<string, unknown>>>)[0]!["id"]!["value"] = null),
-    "observed-model-id": (r) =>
-      ((r["models"] as Array<Record<string, Record<string, unknown>>>)[0]!["id"]!["status"] =
-        "uncontrollable"),
+    "factor-without-status": (r) =>
+      delete (r["factors"] as Record<string, Record<string, unknown>>)["code.commit"]!["status"],
     "parameter-without-origin": (r) =>
       delete (r["parameters"] as Array<Record<string, unknown>>)[0]!["origin"],
   },
@@ -455,6 +472,7 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
     "bad-version": (r) => (r["version"] = "1.0"),
   },
   measureValue: {
+    "non-finite-misspelt": (r) => (r["value"] = { type: "score", value: { nonFinite: "NaN" } }),
     "untagged-value": (r) => (r["value"] = 1),
   },
   decision: {
@@ -493,7 +511,53 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
  * Variants that a writer must not produce but a reader must accept (REQ-05): values added to an
  * enumeration in a later minor version.
  */
+/** Further valid records: shapes the main valid fixture does not show. */
+export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
+  trial: {
+    online: (r) => {
+      r["source"] = "online";
+      r["case"] = null;
+      delete r["run"];
+      delete r["arm"];
+      delete r["caseDigest"];
+      delete r["input"];
+      delete r["output"];
+      r["pointer"] = "app://interaction/42";
+      r["dataClass"] = "pseudonymous";
+    },
+  },
+  measureValue: {
+    "non-finite-score": (r) => (r["value"] = { type: "score", value: { nonFinite: "-inf" } }),
+  },
+  label: { "rater-cannot-tell": (r) => (r["value"] = { type: "unknown" }) },
+  configuration: {
+    "model-version-route-and-informational": (r) => {
+      const model = (r["models"] as Array<Record<string, unknown>>)[0]!;
+      model["version"] = { value: "2026-10-01", status: "pinned" };
+      model["route"] = { value: "primary", status: "declared" };
+      r["informational"] = { "provider.fingerprint": "fp_3c1a" };
+    },
+  },
+};
+
 export const READER_ONLY: Record<string, Record<string, Mutation>> = {
+  configuration: {
+    // Statuses outside a field's enumeration read as a value a later minor version may add.
+    "uncontrollable-model-id": (r) =>
+      ((r["models"] as Array<Record<string, Record<string, unknown>>>)[0]!["id"]!["status"] =
+        "uncontrollable"),
+    "observed-model-id": (r) =>
+      ((r["models"] as Array<Record<string, Record<string, unknown>>>)[0]!["id"]!["status"] =
+        "observed"),
+    "observed-parameter": (r) =>
+      ((r["parameters"] as Array<Record<string, unknown>>)[0]!["status"] = "observed"),
+    "misspelt-model-member": (r) =>
+      ((r["models"] as Array<Record<string, unknown>>)[0]!["versoin"] = {
+        value: "2026-10",
+        status: "pinned",
+      }),
+    "misplaced-top-level-member": (r) => (r["tools"] = ["search"]),
+  },
   case: {
     "future-unit": (r) => (r["unit"] = "conversation"),
     "future-provenance-source": (r) =>

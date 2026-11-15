@@ -12,10 +12,9 @@ export function schemaUri(
 }
 
 /**
- * Generates the normative JSON Schema 2020-12 of a record contract.
- *
- * The schema is generated for the input side: it does not forbid unknown members, because readers
- * accept unknown fields (REQ-05) and zod strips them on read. Writers emit only known fields.
+ * Generates the normative writer JSON Schema 2020-12 of a record contract. Writers are strict: an
+ * unknown member is an error, so a misspelt or misplaced member cannot pass unnoticed or leave an
+ * identity unchanged. The reader schema (`toReaderJsonSchema`) accepts unknown members.
  */
 export function toJsonSchema(contract: RecordContract): Record<string, unknown> {
   const generated = z.toJSONSchema(contract.schema, {
@@ -60,7 +59,9 @@ function relax(node: unknown): unknown {
   if (!node || typeof node !== "object") return node;
   const out: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(node)) out[key] = relax(value);
-  if (out["type"] === "string" && Array.isArray(out["enum"])) {
+  // Readers accept members a later minor version adds.
+  if (out["additionalProperties"] === false) delete out["additionalProperties"];
+  if (out["type"] === "string" && Array.isArray(out["enum"]) && out["x-ichnaea-closed"] !== true) {
     out["x-ichnaea-known"] = out["enum"];
     delete out["enum"];
   }
@@ -75,7 +76,15 @@ function relax(node: unknown): unknown {
         ...tagged,
         {
           type: "object",
-          properties: { [discriminator]: { type: "string" } },
+          // Only a kind no known option names: a malformed known kind must still fail.
+          properties: {
+            [discriminator]: {
+              type: "string",
+              pattern: notOneOf(
+                knownKinds(tagged as Array<Record<string, unknown>>, discriminator),
+              ),
+            },
+          },
           required: [discriminator],
           "x-ichnaea-unknown-kind": true,
         },
@@ -83,6 +92,22 @@ function relax(node: unknown): unknown {
     }
   }
   return out;
+}
+
+/** A pattern matching every string except the given ones (a negative lookahead; portable ECMA-262). */
+function notOneOf(values: readonly unknown[]): string {
+  const escaped = values.map((v) => String(v).replaceAll(/[.*+?^${}()|[\]\\/-]/g, "\\$&"));
+  return `^(?!(?:${escaped.join("|")})$)`;
+}
+
+/** The discriminator values a tagged union already knows. */
+function knownKinds(
+  options: ReadonlyArray<Record<string, unknown>>,
+  discriminator: string,
+): unknown[] {
+  return options.map(
+    (o) => (o["properties"] as Record<string, Record<string, unknown>>)[discriminator]?.["const"],
+  );
 }
 
 /** The member that every option of a tagged union fixes with `const`. */

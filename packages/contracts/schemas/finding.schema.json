@@ -163,5 +163,6 @@
     "pointers",
     "failureClass",
     "promotion"
-  ]
+  ],
+  "additionalProperties": false
 }

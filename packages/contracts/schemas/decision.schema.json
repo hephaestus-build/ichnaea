@@ -156,7 +156,8 @@
           "name",
           "role",
           "identity"
-        ]
+        ],
+        "additionalProperties": false
       }
     },
     "differingFactors": {
@@ -206,7 +207,7 @@
           },
           "version": {
             "type": "string",
-            "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$",
+            "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$",
             "x-ichnaea-data": {
               "class": "none",
               "identifier": "none",
@@ -282,6 +283,7 @@
                                 "inf",
                                 "-inf"
                               ],
+                              "x-ichnaea-closed": true,
                               "x-ichnaea-data": {
                                 "class": "none",
                                 "identifier": "none",
@@ -294,7 +296,8 @@
                           },
                           "required": [
                             "nonFinite"
-                          ]
+                          ],
+                          "additionalProperties": false
                         }
                       ],
                       "x-ichnaea-data": {
@@ -321,6 +324,7 @@
                                 "inf",
                                 "-inf"
                               ],
+                              "x-ichnaea-closed": true,
                               "x-ichnaea-data": {
                                 "class": "none",
                                 "identifier": "none",
@@ -333,7 +337,8 @@
                           },
                           "required": [
                             "nonFinite"
-                          ]
+                          ],
+                          "additionalProperties": false
                         }
                       ],
                       "x-ichnaea-data": {
@@ -360,6 +365,7 @@
                                 "inf",
                                 "-inf"
                               ],
+                              "x-ichnaea-closed": true,
                               "x-ichnaea-data": {
                                 "class": "none",
                                 "identifier": "none",
@@ -372,7 +378,8 @@
                           },
                           "required": [
                             "nonFinite"
-                          ]
+                          ],
+                          "additionalProperties": false
                         }
                       ],
                       "x-ichnaea-data": {
@@ -433,7 +440,8 @@
                     "level",
                     "sided",
                     "method"
-                  ]
+                  ],
+                  "additionalProperties": false
                 },
                 "availability": {
                   "type": "object",
@@ -496,14 +504,16 @@
                     "available",
                     "notApplicable",
                     "missing"
-                  ]
+                  ],
+                  "additionalProperties": false
                 }
               },
               "required": [
                 "arm",
                 "rate",
                 "availability"
-              ]
+              ],
+              "additionalProperties": false
             }
           },
           "comparisons": {
@@ -553,6 +563,7 @@
                                 "inf",
                                 "-inf"
                               ],
+                              "x-ichnaea-closed": true,
                               "x-ichnaea-data": {
                                 "class": "none",
                                 "identifier": "none",
@@ -565,7 +576,8 @@
                           },
                           "required": [
                             "nonFinite"
-                          ]
+                          ],
+                          "additionalProperties": false
                         }
                       ],
                       "x-ichnaea-data": {
@@ -592,6 +604,7 @@
                                 "inf",
                                 "-inf"
                               ],
+                              "x-ichnaea-closed": true,
                               "x-ichnaea-data": {
                                 "class": "none",
                                 "identifier": "none",
@@ -604,7 +617,8 @@
                           },
                           "required": [
                             "nonFinite"
-                          ]
+                          ],
+                          "additionalProperties": false
                         }
                       ],
                       "x-ichnaea-data": {
@@ -631,6 +645,7 @@
                                 "inf",
                                 "-inf"
                               ],
+                              "x-ichnaea-closed": true,
                               "x-ichnaea-data": {
                                 "class": "none",
                                 "identifier": "none",
@@ -643,7 +658,8 @@
                           },
                           "required": [
                             "nonFinite"
-                          ]
+                          ],
+                          "additionalProperties": false
                         }
                       ],
                       "x-ichnaea-data": {
@@ -704,7 +720,8 @@
                     "level",
                     "sided",
                     "method"
-                  ]
+                  ],
+                  "additionalProperties": false
                 },
                 "margin": {
                   "type": "number",
@@ -745,6 +762,7 @@
                             "inf",
                             "-inf"
                           ],
+                          "x-ichnaea-closed": true,
                           "x-ichnaea-data": {
                             "class": "none",
                             "identifier": "none",
@@ -757,7 +775,8 @@
                       },
                       "required": [
                         "nonFinite"
-                      ]
+                      ],
+                      "additionalProperties": false
                     }
                   ],
                   "x-ichnaea-data": {
@@ -784,6 +803,7 @@
                             "inf",
                             "-inf"
                           ],
+                          "x-ichnaea-closed": true,
                           "x-ichnaea-data": {
                             "class": "none",
                             "identifier": "none",
@@ -796,7 +816,8 @@
                       },
                       "required": [
                         "nonFinite"
-                      ]
+                      ],
+                      "additionalProperties": false
                     }
                   ],
                   "x-ichnaea-data": {
@@ -823,6 +844,7 @@
                             "inf",
                             "-inf"
                           ],
+                          "x-ichnaea-closed": true,
                           "x-ichnaea-data": {
                             "class": "none",
                             "identifier": "none",
@@ -835,7 +857,8 @@
                       },
                       "required": [
                         "nonFinite"
-                      ]
+                      ],
+                      "additionalProperties": false
                     }
                   ],
                   "x-ichnaea-data": {
@@ -911,7 +934,8 @@
                       "direction",
                       "base",
                       "candidate"
-                    ]
+                    ],
+                    "additionalProperties": false
                   }
                 }
               },
@@ -925,7 +949,8 @@
                 "regressionP",
                 "regressionPAdjusted",
                 "flips"
-              ]
+              ],
+              "additionalProperties": false
             }
           },
           "verdict": {
@@ -984,7 +1009,8 @@
           "verdict",
           "coverage",
           "notes"
-        ]
+        ],
+        "additionalProperties": false
       }
     },
     "gates": {
@@ -1044,7 +1070,8 @@
           "gate",
           "passed",
           "failures"
-        ]
+        ],
+        "additionalProperties": false
       }
     },
     "power": {
@@ -1117,6 +1144,7 @@
                       "inf",
                       "-inf"
                     ],
+                    "x-ichnaea-closed": true,
                     "x-ichnaea-data": {
                       "class": "none",
                       "identifier": "none",
@@ -1129,7 +1157,8 @@
                 },
                 "required": [
                   "nonFinite"
-                ]
+                ],
+                "additionalProperties": false
               }
             ],
             "x-ichnaea-data": {
@@ -1156,6 +1185,7 @@
                       "inf",
                       "-inf"
                     ],
+                    "x-ichnaea-closed": true,
                     "x-ichnaea-data": {
                       "class": "none",
                       "identifier": "none",
@@ -1168,7 +1198,8 @@
                 },
                 "required": [
                   "nonFinite"
-                ]
+                ],
+                "additionalProperties": false
               }
             ],
             "x-ichnaea-data": {
@@ -1195,6 +1226,7 @@
                       "inf",
                       "-inf"
                     ],
+                    "x-ichnaea-closed": true,
                     "x-ichnaea-data": {
                       "class": "none",
                       "identifier": "none",
@@ -1207,7 +1239,8 @@
                 },
                 "required": [
                   "nonFinite"
-                ]
+                ],
+                "additionalProperties": false
               }
             ],
             "x-ichnaea-data": {
@@ -1252,7 +1285,8 @@
           "floor",
           "assumption",
           "decidable"
-        ]
+        ],
+        "additionalProperties": false
       }
     },
     "missingness": {
@@ -1306,7 +1340,8 @@
               "arm",
               "missing",
               "planned"
-            ]
+            ],
+            "additionalProperties": false
           }
         },
         "differs": {
@@ -1341,7 +1376,8 @@
         "byArm",
         "differs",
         "sensitivity"
-      ]
+      ],
+      "additionalProperties": false
     },
     "invalidReasons": {
       "type": "array",
@@ -1390,7 +1426,7 @@
         },
         "value": {
           "type": "string",
-          "pattern": "^(0|[1-9]\\d{0,19})$",
+          "pattern": "^(0|[1-9][0-9]{0,19})$",
           "x-ichnaea-data": {
             "class": "none",
             "identifier": "none",
@@ -1404,7 +1440,8 @@
       "required": [
         "algorithm",
         "value"
-      ]
+      ],
+      "additionalProperties": false
     },
     "decidedAt": {
       "type": "string",
@@ -1421,7 +1458,7 @@
     },
     "ichnaea": {
       "type": "string",
-      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$",
       "x-ichnaea-data": {
         "class": "none",
         "identifier": "none",
@@ -1470,5 +1507,6 @@
     "decidedAt",
     "ichnaea",
     "dataClass"
-  ]
+  ],
+  "additionalProperties": false
 }

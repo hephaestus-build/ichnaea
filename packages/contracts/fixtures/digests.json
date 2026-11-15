@@ -281,7 +281,7 @@
     },
     {
       "kind": "configurationIdentity",
-      "name": "unknown-member-and-proto-factor",
+      "name": "description-informational-and-proto-factor",
       "input": {
         "schema": "ichnaea.configuration/1",
         "description": "described differently",
@@ -343,15 +343,15 @@
           }
         },
         "label": "current",
-        "futureMember": {
-          "x": 1
+        "informational": {
+          "provider.fingerprint": "fp_1"
         }
       },
       "digest": "sha256:f8bd837229c3cc84d744b1b1bf2a4901ab08c870f4516b8f66ca1e48d49e873d"
     },
     {
-      "kind": "configurationIdentity",
-      "name": "unknown-nested-member-counts",
+      "kind": "configurationIdentityRefused",
+      "name": "unknown-top-level-member",
       "input": {
         "schema": "ichnaea.configuration/1",
         "description": "Support assistant: retrieval over the help centre, one answer model.",
@@ -365,11 +365,7 @@
             "id": {
               "value": "example-model-2026-10",
               "status": "pinned"
-            },
-            "futureNested": [
-              1,
-              2
-            ]
+            }
           }
         ],
         "parameters": [
@@ -411,9 +407,12 @@
             "part": "data"
           }
         },
-        "label": "current"
+        "label": "current",
+        "tools": [
+          "search"
+        ]
       },
-      "digest": "sha256:0d6541ced2ab9f8f1f96e7a9dd74e5c26a09223465dbddea73553f5f81bad81c"
+      "digest": ""
     },
     {
       "kind": "caseDigest",
@@ -471,7 +470,7 @@
     },
     {
       "kind": "caseDigest",
-      "name": "provenance-pool-review-and-unknown-members-excluded",
+      "name": "provenance-pool-and-review-excluded",
       "input": {
         "schema": "ichnaea.case/1",
         "id": "refund-window-de",
@@ -519,8 +518,7 @@
         "pool": "sealed",
         "validation": {
           "status": "validated"
-        },
-        "futureMember": true
+        }
       },
       "digest": "sha256:ca1161e3d49d9b32861a5f7475b485130fe90623cea887d954f198bbcb5cbbfb"
     },

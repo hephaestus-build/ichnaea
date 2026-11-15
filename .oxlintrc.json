@@ -14,5 +14,14 @@
       }
     ]
   },
-  "ignorePatterns": ["dist", "coverage", "packages/*/schemas"]
+  "ignorePatterns": ["dist", "coverage", "packages/*/schemas"],
+  "overrides": [
+    {
+      "files": ["packages/contracts/src/*.ts"],
+      "rules": {
+        "typescript/explicit-function-return-type": "error",
+        "typescript/explicit-module-boundary-types": "error"
+      }
+    }
+  ]
 }

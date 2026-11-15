@@ -82,7 +82,7 @@
         },
         "ichnaea": {
           "type": "string",
-          "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$",
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$",
           "x-ichnaea-data": {
             "class": "none",
             "identifier": "none",
@@ -569,6 +569,24 @@
               },
               "label": {
                 "type": "string",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              },
+              "informational": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "additionalProperties": {
+                  "$ref": "#/$defs/JsonValue"
+                },
                 "x-ichnaea-data": {
                   "class": "none",
                   "identifier": "none",

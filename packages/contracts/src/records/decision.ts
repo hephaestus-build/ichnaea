@@ -34,7 +34,7 @@ export const MeasureVerdict = z.enum([
 ]);
 
 /** Counts behind a rate, with not-applicable and missing kept apart (REQ-30). */
-export const Availability = z.object({
+export const Availability = z.strictObject({
   planned: none(z.int().min(0)),
   available: none(z.int().min(0)),
   notApplicable: none(z.int().min(0)),
@@ -42,7 +42,7 @@ export const Availability = z.object({
 });
 
 /** An estimate with its interval and method. */
-export const Estimate = z.object({
+export const Estimate = z.strictObject({
   estimate: none(Real),
   lower: none(Real),
   upper: none(Real),
@@ -52,7 +52,7 @@ export const Estimate = z.object({
 });
 
 /** A case whose binary outcome changed between two arms (REQ-52). Rates are per-case pass rates. */
-export const Flip = z.object({
+export const Flip = z.strictObject({
   case: none(CaseId),
   direction: none(z.enum(["negative", "positive"])),
   base: none(z.number().min(0).max(1)),
@@ -60,14 +60,14 @@ export const Flip = z.object({
 });
 
 /** One arm's estimate for a measure. */
-export const ArmEstimate = z.object({
+export const ArmEstimate = z.strictObject({
   arm: none(ArmName),
   rate: Estimate,
   availability: Availability,
 });
 
 /** The comparison of one candidate with the base for one measure. None in estimate-only mode. */
-export const Comparison = z.object({
+export const Comparison = z.strictObject({
   base: none(ArmName),
   candidate: none(ArmName),
   difference: Estimate,
@@ -80,7 +80,7 @@ export const Comparison = z.object({
 });
 
 /** The result for one primary or secondary measure. */
-export const MeasureOutcome = z.object({
+export const MeasureOutcome = z.strictObject({
   measure: none(MeasureId),
   version: none(SemVer),
   tier: none(z.enum(["primary", "secondary"])),
@@ -93,7 +93,7 @@ export const MeasureOutcome = z.object({
 });
 
 /** The result of one hard gate. */
-export const GateResult = z.object({
+export const GateResult = z.strictObject({
   gate: none(GateId),
   passed: none(z.boolean()),
   failures: none(z.int().min(0)),
@@ -101,16 +101,20 @@ export const GateResult = z.object({
 });
 
 /** The comparison of missing trials between arms (REQ-56). */
-export const Missingness = z.object({
+export const Missingness = z.strictObject({
   byArm: z.array(
-    z.object({ arm: none(ArmName), missing: none(z.int().min(0)), planned: none(z.int().min(0)) }),
+    z.strictObject({
+      arm: none(ArmName),
+      missing: none(z.int().min(0)),
+      planned: none(z.int().min(0)),
+    }),
   ),
   differs: none(z.boolean()),
   sensitivity: none(z.enum(["unchanged", "changes-verdict", "not-needed"])),
 });
 
 /** The verdict of one run with estimates, intervals, flips and lineage (REQ-49 to REQ-56). */
-export const Decision = z.object({
+export const Decision = z.strictObject({
   schema: none(z.literal("ichnaea.decision/1")),
   mode: none(z.enum(["decision", "estimate-only"])),
   verdict: none(Verdict.nullable()),
@@ -120,7 +124,7 @@ export const Decision = z.object({
   runDigest: none(Digest),
   arms: z
     .array(
-      z.object({
+      z.strictObject({
         name: none(ArmName),
         role: none(z.enum(["base", "candidate", "reference"])),
         identity: none(ConfigurationIdentity),

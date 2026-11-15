@@ -160,7 +160,8 @@
       "required": [
         "id",
         "path"
-      ]
+      ],
+      "additionalProperties": false
     },
     "pools": {
       "minItems": 1,
@@ -280,7 +281,8 @@
           "measure",
           "margin",
           "marginReason"
-        ]
+        ],
+        "additionalProperties": false
       }
     },
     "secondary": {
@@ -370,7 +372,8 @@
       "required": [
         "maxCalls",
         "callsPerTrial"
-      ]
+      ],
+      "additionalProperties": false
     },
     "policy": {
       "type": "object",
@@ -441,7 +444,8 @@
         "onInconclusive",
         "onEstimateOnly",
         "onInvalid"
-      ]
+      ],
+      "additionalProperties": false
     },
     "threats": {
       "type": "array",
@@ -503,5 +507,6 @@
     "budget",
     "policy",
     "measureReviewDate"
-  ]
+  ],
+  "additionalProperties": false
 }

@@ -3,10 +3,10 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { caseDigest, caseSetDigest, configurationIdentity } from "../src/index.ts";
-import { CONFIGURATION_B, INVALID, READER_ONLY, VALID } from "./fixtures-source.ts";
+import { CONFIGURATION_B, INVALID, READER_ONLY, VALID, VALID_EXTRA } from "./fixtures-source.ts";
 
 const root = join(import.meta.dirname, "..", "fixtures");
-for (const dir of ["valid", "invalid", "reader-only"])
+for (const dir of ["valid", "valid-extra", "invalid", "reader-only"])
   rmSync(join(root, dir), { recursive: true, force: true });
 const write = (path: string, value: unknown): void => {
   mkdirSync(join(path, ".."), { recursive: true });
@@ -49,6 +49,19 @@ for (const [name, record] of Object.entries(VALID)) {
     const copy = structuredClone(record);
     mutate(copy);
     write(join(root, "invalid", name, `${variant}.json`), copy);
+    count++;
+  }
+  // Every record refuses another major version of its schema ID.
+  const wrongId = {
+    ...structuredClone(record),
+    schema: String(record["schema"]).replace(/\/1$/, "/2"),
+  };
+  write(join(root, "invalid", name, "wrong-schema-id.json"), wrongId);
+  count++;
+  for (const [variant, mutate] of Object.entries(VALID_EXTRA[name] ?? {})) {
+    const copy = structuredClone(record);
+    mutate(copy);
+    write(join(root, "valid-extra", name, `${variant}.json`), copy);
     count++;
   }
   for (const [variant, mutate] of Object.entries(READER_ONLY[name] ?? {})) {

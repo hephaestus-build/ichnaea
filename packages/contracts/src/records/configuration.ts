@@ -22,7 +22,7 @@ export const FactorPart = z.enum([
 ]);
 
 /** One element of a configuration with its value and control status (REQ-14). */
-export const Factor = z.object({
+export const Factor = z.strictObject({
   value: none(Json),
   status: none(FactorStatus),
   part: none(FactorPart),
@@ -31,13 +31,13 @@ export const Factor = z.object({
 export type Factor = z.infer<typeof Factor>;
 
 /** A named value of the model's identity with its control status. Never empty. */
-export const IdentityFactor = z.object({
+export const IdentityFactor = z.strictObject({
   value: none(Text),
   status: none(z.enum(["pinned", "declared"])),
 });
 
 /** One model the system uses, under a role name (for example `answer` or `rerank`). */
-export const ModelBinding = z.object({
+export const ModelBinding = z.strictObject({
   role: none(Text),
   provider: IdentityFactor,
   id: IdentityFactor,
@@ -49,7 +49,7 @@ export const ModelBinding = z.object({
  * One generation parameter. `origin: "default"` records a value the system did not set and the
  * provider applies, so all parameters are recorded, set or not (REQ-14).
  */
-export const Parameter = z.object({
+export const Parameter = z.strictObject({
   name: none(Text),
   value: none(Json),
   status: none(z.enum(["pinned", "declared", "uncontrollable"])),
@@ -57,7 +57,7 @@ export const Parameter = z.object({
 });
 
 /** A prompt template the system uses, by digest. */
-export const PromptBinding = z.object({
+export const PromptBinding = z.strictObject({
   name: none(Text),
   digest: none(Digest),
   status: none(FactorStatus),
@@ -76,7 +76,7 @@ export const PromptBinding = z.object({
  * Per-trial observations, such as the model identity a provider returns or a provider fingerprint,
  * belong in trial records, never here, so they never change the identity.
  */
-export const Configuration = z.object({
+export const Configuration = z.strictObject({
   schema: none(z.literal("ichnaea.configuration/1")),
   description: none(Text),
   models: z.array(ModelBinding).min(1),
@@ -84,6 +84,12 @@ export const Configuration = z.object({
   prompts: z.array(PromptBinding),
   factors: z.record(Text, Factor),
   label: none(z.string()).optional(),
+  /**
+   * Informational values that do not decide behaviour and never enter the identity, for example a
+   * provider fingerprint seen when the configuration was resolved. Per-trial fingerprints belong in
+   * `Trial.observed`.
+   */
+  informational: none(z.record(Text, Json)).optional(),
 });
 /** A resolved system configuration. */
 export type Configuration = z.infer<typeof Configuration>;

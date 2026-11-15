@@ -194,5 +194,6 @@
     "owner",
     "action",
     "severity"
-  ]
+  ],
+  "additionalProperties": false
 }

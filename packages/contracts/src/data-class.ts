@@ -53,18 +53,27 @@ export interface DataPolicy {
   readonly retention: RetentionRule;
 }
 
-function withPolicy<T extends z.ZodType>(schema: T, policy: DataPolicy): T {
-  return schema.meta({ [DATA_POLICY_KEY]: policy }) as T;
+function withPolicy<T extends z.ZodType>(
+  schema: T,
+  policy: DataPolicy,
+  extra: Record<string, unknown> = {},
+): T {
+  return schema.meta({ ...extra, [DATA_POLICY_KEY]: policy }) as T;
 }
 
+/**
+ * Marks a closed enumeration: a value set fixed by its definition (IEEE 754's non-finite values),
+ * which readers do not widen. Tolerant readers widen every other enumeration.
+ */
+export const CLOSED_KEY = "x-ichnaea-closed" as const;
+
 /** A field without personal data. It may leave for any purpose. */
-export function none<T extends z.ZodType>(schema: T): T {
-  return withPolicy(schema, {
-    class: "none",
-    identifier: "none",
-    egress: [ANY_PURPOSE],
-    retention: "record",
-  });
+export function none<T extends z.ZodType>(schema: T, extra: Record<string, unknown> = {}): T {
+  return withPolicy(
+    schema,
+    { class: "none", identifier: "none", egress: [ANY_PURPOSE], retention: "record" },
+    extra,
+  );
 }
 
 /** Content whose class the enclosing record declares in `dataClass`. */

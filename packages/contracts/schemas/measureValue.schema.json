@@ -57,7 +57,7 @@
     },
     "version": {
       "type": "string",
-      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$",
       "x-ichnaea-data": {
         "class": "none",
         "identifier": "none",
@@ -110,7 +110,8 @@
           "required": [
             "type",
             "pass"
-          ]
+          ],
+          "additionalProperties": false
         },
         {
           "type": "object",
@@ -142,6 +143,7 @@
                         "inf",
                         "-inf"
                       ],
+                      "x-ichnaea-closed": true,
                       "x-ichnaea-data": {
                         "class": "none",
                         "identifier": "none",
@@ -154,7 +156,8 @@
                   },
                   "required": [
                     "nonFinite"
-                  ]
+                  ],
+                  "additionalProperties": false
                 }
               ],
               "x-ichnaea-data": {
@@ -170,7 +173,8 @@
           "required": [
             "type",
             "value"
-          ]
+          ],
+          "additionalProperties": false
         },
         {
           "type": "object",
@@ -218,7 +222,8 @@
             "type",
             "successes",
             "trials"
-          ]
+          ],
+          "additionalProperties": false
         },
         {
           "type": "object",
@@ -251,7 +256,8 @@
           "required": [
             "type",
             "level"
-          ]
+          ],
+          "additionalProperties": false
         },
         {
           "type": "object",
@@ -288,7 +294,29 @@
           "required": [
             "type",
             "preferred"
-          ]
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "unknown",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": false
         }
       ]
     },
@@ -346,5 +374,6 @@
     "applicable",
     "source",
     "dataClass"
-  ]
+  ],
+  "additionalProperties": false
 }

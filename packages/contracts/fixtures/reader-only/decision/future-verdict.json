@@ -103,7 +103,20 @@
       "failures": 0
     }
   ],
-  "power": [],
+  "power": [
+    {
+      "measure": "support/facts-correct",
+      "applicableCases": 60,
+      "replicates": 3,
+      "margin": 0.05,
+      "mde": {
+        "nonFinite": "nan"
+      },
+      "floor": 0.018,
+      "assumption": "no comparable run yet",
+      "decidable": false
+    }
+  ],
   "missingness": {
     "byArm": [
       {

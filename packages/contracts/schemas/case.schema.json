@@ -130,7 +130,8 @@
         "required": [
           "role",
           "content"
-        ]
+        ],
+        "additionalProperties": false
       }
     },
     "fixtures": {
@@ -178,7 +179,8 @@
         "required": [
           "name",
           "digest"
-        ]
+        ],
+        "additionalProperties": false
       }
     },
     "references": {
@@ -349,7 +351,8 @@
             "created",
             "licence",
             "exposure"
-          ]
+          ],
+          "additionalProperties": false
         },
         {
           "type": "object",
@@ -489,7 +492,8 @@
               },
               "required": [
                 "method"
-              ]
+              ],
+              "additionalProperties": false
             }
           },
           "required": [
@@ -499,7 +503,8 @@
             "licence",
             "exposure",
             "generator"
-          ]
+          ],
+          "additionalProperties": false
         },
         {
           "type": "object",
@@ -640,7 +645,8 @@
               "required": [
                 "name",
                 "limits"
-              ]
+              ],
+              "additionalProperties": false
             }
           },
           "required": [
@@ -650,7 +656,8 @@
             "licence",
             "exposure",
             "reusedDataset"
-          ]
+          ],
+          "additionalProperties": false
         },
         {
           "type": "object",
@@ -756,7 +763,8 @@
             "collected",
             "licence",
             "exposure"
-          ]
+          ],
+          "additionalProperties": false
         },
         {
           "type": "object",
@@ -874,7 +882,8 @@
             "licence",
             "exposure",
             "finding"
-          ]
+          ],
+          "additionalProperties": false
         }
       ]
     },
@@ -941,6 +950,7 @@
     "provenance",
     "pool"
   ],
+  "additionalProperties": false,
   "$defs": {
     "JsonValue": {
       "anyOf": [

@@ -129,7 +129,8 @@
           "id",
           "digest",
           "pool"
-        ]
+        ],
+        "additionalProperties": false
       }
     }
   },
@@ -138,5 +139,6 @@
     "id",
     "digest",
     "cases"
-  ]
+  ],
+  "additionalProperties": false
 }

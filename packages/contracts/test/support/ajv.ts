@@ -21,6 +21,7 @@ export function createAjv(): Ajv2020 {
   ajv.addKeyword({ keyword: DATA_POLICY_KEY, schemaType: "object" });
   ajv.addKeyword({ keyword: "x-ichnaea-stability", schemaType: "string" });
   ajv.addKeyword({ keyword: "x-ichnaea-known", schemaType: "array" });
+  ajv.addKeyword({ keyword: "x-ichnaea-closed", schemaType: "boolean" });
   ajv.addKeyword({ keyword: "x-ichnaea-unknown-kind", schemaType: "boolean" });
   for (const contract of RECORD_CONTRACTS) {
     ajv.addSchema(committedSchema(contract.name));

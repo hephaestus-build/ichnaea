@@ -1,6 +1,6 @@
 import * as z from "zod";
 
-import { DATA_CLASSES, none } from "./data-class.ts";
+import { CLOSED_KEY, DATA_CLASSES, none } from "./data-class.ts";
 
 /** A content digest: `sha256:` and 64 lowercase hex digits of an RFC 8785 canonical form. */
 export const Digest = z.string().regex(/^sha256:[0-9a-f]{64}$/);
@@ -72,7 +72,9 @@ export type ConfigurationIdentity = z.infer<typeof ConfigurationIdentity>;
 /** A semantic version. */
 export const SemVer = z
   .string()
-  .regex(/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/);
+  .regex(
+    /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/,
+  );
 
 /** An ISO 8601 timestamp with a `Z` suffix or a numeric offset. */
 export const Timestamp = z.iso.datetime({ offset: true });
@@ -85,7 +87,9 @@ export const Json: z.ZodJSONSchema = z.json();
 export type Json = z.infer<typeof Json>;
 
 /** An explicit encoding of a non-finite number, because JSON has none (REQ-04). */
-export const NonFinite = z.object({ nonFinite: none(z.enum(["nan", "inf", "-inf"])) });
+export const NonFinite = z.strictObject({
+  nonFinite: none(z.enum(["nan", "inf", "-inf"]), { [CLOSED_KEY]: true }),
+});
 /** A real number or an explicit non-finite marker. */
 export const Real = z.union([z.number(), NonFinite]);
 /** A real number or an explicit non-finite marker. */
@@ -103,13 +107,13 @@ export const Unit = z.enum(["turn", "trace", "session", "episode"]);
 export type Unit = z.infer<typeof Unit>;
 
 /** A seed of a named generator, in decimal without leading zeros (up to 20 digits, for 64-bit seeds). */
-export const Seed = z.object({
+export const Seed = z.strictObject({
   algorithm: none(Text),
-  value: none(z.string().regex(/^(0|[1-9]\d{0,19})$/)),
+  value: none(z.string().regex(/^(0|[1-9][0-9]{0,19})$/)),
 });
 
 /** A named pointer to a file or artefact with its digest. */
-export const DigestRef = z.object({
+export const DigestRef = z.strictObject({
   name: none(Text),
   digest: none(Digest),
   uri: none(Text).optional(),
@@ -117,23 +121,25 @@ export const DigestRef = z.object({
 
 /**
  * The result of one measurement or annotation, tagged by kind: a pass or fail, a score, a level
- * of an anchored scale, a preference between two outputs, or a proportion of items inside one
+ * of an anchored scale, a preference between two outputs, an explicit `unknown` (a rater or judge
+ * that cannot tell), or a proportion of items inside one
  * trial (for example the expected findings an output raised: 3 of 4). A proportion's successes
  * must not exceed its trials; readers check it, because a schema cannot compare two fields.
  */
 export const MeasuredValue = z.discriminatedUnion("type", [
-  z.object({ type: none(z.literal("binary")), pass: none(z.boolean()) }),
-  z.object({ type: none(z.literal("score")), value: none(Real) }),
-  z.object({
+  z.strictObject({ type: none(z.literal("binary")), pass: none(z.boolean()) }),
+  z.strictObject({ type: none(z.literal("score")), value: none(Real) }),
+  z.strictObject({
     type: none(z.literal("proportion")),
     successes: none(z.int().min(0)),
     trials: none(z.int().min(1)),
   }),
-  z.object({ type: none(z.literal("level")), level: none(Text) }),
-  z.object({
+  z.strictObject({ type: none(z.literal("level")), level: none(Text) }),
+  z.strictObject({
     type: none(z.literal("preference")),
     preferred: none(z.enum(["first", "second", "tie"])),
   }),
+  z.strictObject({ type: none(z.literal("unknown")) }),
 ]);
 /** A measured value. */
 export type MeasuredValue = z.infer<typeof MeasuredValue>;

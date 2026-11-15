@@ -19,6 +19,6 @@
     "erasableSyntaxOnly": true,
     "rewriteRelativeImportExtensions": true,
     "types": ["node"],
-    "customConditions": ["ichnaea-source"]
+    "paths": { "@hephaestus-build/ichnaea-*": ["./packages/*/src/index.ts"] }
   }
 }

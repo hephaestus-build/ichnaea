@@ -21,7 +21,7 @@ export type Estimand = z.infer<typeof Estimand>;
 export const PolicyAction = z.enum(["block", "report"]);
 
 /** The CI policy of a suite. INCONCLUSIVE and estimate-only must have a stated action (REQ-27). */
-export const CiPolicy = z.object({
+export const CiPolicy = z.strictObject({
   onRegression: none(PolicyAction),
   onInconclusive: none(PolicyAction),
   onEstimateOnly: none(PolicyAction),
@@ -29,7 +29,7 @@ export const CiPolicy = z.object({
 });
 
 /** The run budget (REQ-21). */
-export const Budget = z.object({
+export const Budget = z.strictObject({
   maxCalls: none(z.int().min(0)),
   callsPerTrial: none(z.int().min(1)),
   maxCost: none(z.number().min(0)).optional(),
@@ -37,7 +37,7 @@ export const Budget = z.object({
 });
 
 /** A primary measure with its margin and optional safety margin. */
-export const PrimaryMeasure = z.object({
+export const PrimaryMeasure = z.strictObject({
   measure: none(MeasureId),
   margin: none(z.number().min(0)),
   marginReason: none(Text),
@@ -46,14 +46,14 @@ export const PrimaryMeasure = z.object({
 });
 
 /** A reference to the case set a suite evaluates. */
-export const CaseSetRef = z.object({
+export const CaseSetRef = z.strictObject({
   id: none(CaseSetId),
   path: none(Text),
   digest: none(Digest).optional(),
 });
 
 /** A suite: what an application declares it evaluates (REQ-16, REQ-115). It names no system. */
-export const Suite = z.object({
+export const Suite = z.strictObject({
   schema: none(z.literal("ichnaea.suite/1")),
   id: none(SuiteId),
   version: none(Text),

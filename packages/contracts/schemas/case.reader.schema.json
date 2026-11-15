@@ -880,7 +880,8 @@
           "type": "object",
           "properties": {
             "source": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^(?!(?:authored|generated|reused|collected|promoted)$)"
             }
           },
           "required": [

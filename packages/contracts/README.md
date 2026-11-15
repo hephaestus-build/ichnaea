@@ -26,17 +26,19 @@ against the schema files in [`schemas/`](schemas).
 
 Each record has two schema files:
 
-- `<name>.schema.json` is the **writer** schema: the values a writer may emit. It does not forbid
-  unknown members, because readers must accept them; writers emit only the members it defines.
-- `<name>.reader.schema.json` is the **reader** schema. It also accepts a string that a later
-  minor version adds to an enumeration (the known values stay as the `x-ichnaea-known`
-  annotation) and a kind that a later minor version adds to a tagged union (the fallback option
-  carries `x-ichnaea-unknown-kind`). A reader must treat such values as unknown. The `schema`
-  field stays strict: a new major version is a new schema.
+- `<name>.schema.json` is the **writer** schema. It is strict: an unknown member is an error, so a
+  misspelt or misplaced member never passes unnoticed and never leaves an identity unchanged.
+- `<name>.reader.schema.json` is the **reader** schema. It accepts unknown members, a string
+  that a later minor version adds to an open enumeration (the known values stay as the
+  `x-ichnaea-known` annotation), and a kind that a later minor version adds to a tagged union (the
+  fallback option, marked `x-ichnaea-unknown-kind`, takes only kinds no known option names). A
+  reader must treat such values as unknown. Closed enumerations (`x-ichnaea-closed`, the
+  non-finite values) and the `schema` field stay strict: a new major version is a new schema, and
+  it ships with a migration (`majors.json`).
 
 In TypeScript, `readRecord(contract, value)` validates against the reader schema (zod builds it
-from the same JSON Schema, so the two agree), reports the values the writer schema does not know,
-and types the result so that code must handle them.
+from the same JSON Schema, so the two agree), reports unknown values in `unknownValues` and
+unknown members in `unknownMembers`, and types the result so that code must handle them.
 
 Strings must be well-formed Unicode and numbers finite. A writer in a language that can emit `NaN`
 or `Infinity` in JSON (Python's `json.dumps` does by default) must refuse them: encode a non-finite
@@ -47,7 +49,8 @@ Register the annotation keywords with your validator, for example in ajv:
 ```ts
 for (const keyword of ["x-ichnaea-data", "x-ichnaea-known"]) ajv.addKeyword({ keyword });
 ajv.addKeyword({ keyword: "x-ichnaea-stability", schemaType: "string" });
-ajv.addKeyword({ keyword: "x-ichnaea-unknown-kind", schemaType: "boolean" });
+for (const keyword of ["x-ichnaea-unknown-kind", "x-ichnaea-closed"])
+  ajv.addKeyword({ keyword, schemaType: "boolean" });
 ```
 
 ## Hashing (normative)
@@ -65,16 +68,24 @@ major version.
 | Case-set digest        | each entry's `id`, `digest`, `pool`, `family`            | sort entries by `id` (UTF-16 code units); IDs unique, at least one                    |
 | Configuration identity | `models`, `parameters`, `prompts`, `factors`             | sort `models` by `role`, `parameters` and `prompts` by `name`; roles and names unique |
 
-The record must validate against its writer schema first. A member named `__proto__` is data like
-any other member. Provenance, pool, family and review status do not enter a case digest, so erasing
-an author or reviewing a case keeps it. `description` and `label` do not enter the configuration
-identity, because they name the configuration for people.
+The record must validate against its strict writer schema first, so an unknown member is an error,
+never ignored. A member named `__proto__` is data like any other member. A record that validates
+but has no canonical form (a string with a lone surrogate) gets an `IdentityError`. Resolvers
+normalise what JCS does not: Unicode normalisation form (NFC and NFD spell different identities),
+and the order of list-valued factor values, which counts. Provenance, pool, family and review status do not enter a case digest, so erasing
+an author or reviewing a case keeps it. `description`, `label` and `informational` do not enter the
+configuration identity: they describe the configuration for people. A provider fingerprint seen at
+resolution time goes in `informational`; one seen per trial goes in `Trial.observed`. Neither
+changes the identity.
 
 The writer computes an identity and stores it in plans, runs and trials. `verifyArms` checks a
 stored identity against its configuration.
 
-[`fixtures/digests.json`](fixtures/digests.json) holds vectors computed by an independent
-implementation in Python (`scripts/oracle/`, run in CI). A new implementation must reproduce them.
+[`fixtures/digests.json`](fixtures/digests.json) holds vectors for every digest and projection,
+and [`fixtures/digests-generated.json`](fixtures/digests-generated.json) 1,000 generated values
+(doubles over the whole range, any Unicode). Both come from an independent implementation in
+Python (`scripts/oracle/`, regenerated and compared in CI). A new implementation must reproduce
+them.
 
 ## Data policies
 
@@ -89,6 +100,11 @@ A deployment can grant more purposes for named fields, never a higher class.
 
 [`fixtures/`](fixtures) holds a valid record per contract, invalid variants that every writer
 validator must reject, reader-only variants that readers must accept, and the digest vectors.
+
+## API
+
+The public API is recorded in [`api/ichnaea-contracts.api.md`](api/ichnaea-contracts.api.md)
+(API Extractor). CI fails when the API changes without the report.
 
 ## Licence
 

@@ -6,7 +6,7 @@ import { Arm, LineageItem } from "./plan.ts";
 import { Outcome } from "./trial.ts";
 
 /** The state of one planned trial in the ledger (REQ-19). */
-export const LedgerEntry = z.object({
+export const LedgerEntry = z.strictObject({
   trial: none(TrialId),
   state: none(z.enum(["planned", "running", "recorded"])),
   outcome: none(Outcome).optional(),
@@ -17,12 +17,12 @@ export const LedgerEntry = z.object({
  * run without a model identity or a generation parameter does not validate), and the lineage of
  * everything that can change a verdict.
  */
-export const Run = z.object({
+export const Run = z.strictObject({
   schema: none(z.literal("ichnaea.run/1")),
   id: none(RunId),
   plan: none(PlanDigest),
   exploratory: none(z.boolean()),
-  environment: z.object({
+  environment: z.strictObject({
     node: none(Text),
     platform: none(Text),
     ichnaea: none(SemVer),

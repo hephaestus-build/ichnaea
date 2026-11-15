@@ -1,7 +1,7 @@
 import type * as z from "zod";
 
 import { Json } from "./primitives.ts";
-import { children, defType } from "./walk.ts";
+import { children, defType, policyOf, unwrap } from "./walk.ts";
 
 /**
  * Definition types that a contract schema may not use (REQ-02, REQ-108). Refinements and
@@ -80,5 +80,43 @@ export function lintContractSchema(schema: z.ZodType, path = "$"): ContractViola
     for (const [label, child] of children(node)) visit(child, `${at}.${label}`);
   };
   visit(schema, path);
+  return out;
+}
+
+/**
+ * Checks data policies (REQ-135). Every object member carries a policy, unless an enclosing
+ * container carries a restrictive one (`pseudonymous`, `personal` or `special`), which covers its
+ * whole subtree. A field's policy covers its scalar parts (array elements, union options), but a
+ * permissive policy (`none`, `inherit`) never covers the members of an object below it: each needs
+ * its own, so nothing leaves unclassified.
+ */
+export function lintDataPolicies(schema: z.ZodType, path = "$"): ContractViolation[] {
+  const out: ContractViolation[] = [];
+  const visit = (node: z.ZodType, at: string, restrictive: boolean, fieldPolicy: boolean): void => {
+    const policy = policyOf(node);
+    const covered =
+      restrictive ||
+      (policy !== undefined && policy.class !== "none" && policy.class !== "inherit");
+    const hasPolicy = fieldPolicy || policy !== undefined;
+    const inner = unwrap(node);
+    const type = defType(inner);
+    if (type === "object") {
+      for (const [label, child] of children(inner)) visit(child, `${at}.${label}`, covered, false);
+      return;
+    }
+    if (type === "array" || type === "union") {
+      for (const [label, child] of children(inner))
+        visit(child, `${at}.${label}`, covered, hasPolicy);
+      return;
+    }
+    if (type === "record") {
+      const value = children(inner)[1]?.[1] as z.ZodType;
+      visit(value, `${at}.<value>`, covered, hasPolicy);
+      return;
+    }
+    if (!hasPolicy && !covered) out.push({ path: at, rule: "a field without a data policy" });
+  };
+  for (const [label, child] of children(unwrap(schema)))
+    visit(child, `${path}.${label}`, false, false);
   return out;
 }

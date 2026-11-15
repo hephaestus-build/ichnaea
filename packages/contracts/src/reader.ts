@@ -29,6 +29,8 @@ export type ReadResult<T> =
       readonly ok: true;
       readonly record: Lenient<T>;
       readonly unknownValues: readonly UnknownValue[];
+      /** Paths of members the writer schema does not define. Readers ignore them. */
+      readonly unknownMembers: ReadonlyArray<readonly PropertyKey[]>;
     }
   | { readonly ok: false; readonly error: z.ZodError };
 
@@ -60,7 +62,7 @@ function hasLoneSurrogate(value: unknown): boolean {
 /**
  * Reads a record tolerantly (REQ-05). It validates against the reader schema: unknown members are
  * ignored, a string outside a known enumeration and a tagged-union kind the writer schema does not
- * know are accepted and reported in `unknownValues`. The `schema` field and other constants stay
+ * know are accepted and reported in `unknownValues`, and unknown members in `unknownMembers`. The `schema` field and other constants stay
  * strict. Strings must be well-formed Unicode, because a record must stay hashable.
  */
 export function readRecord<T>(
@@ -78,10 +80,14 @@ export function readRecord<T>(
     };
   }
   const strict = contract.schema.safeParse(value);
-  const unknownValues = strict.success
-    ? []
-    : strict.error.issues.map((i) => ({ path: i.path, value: valueAt(value, i.path) }));
-  return { ok: true, record: structuredClone(value) as Lenient<T>, unknownValues };
+  const issues = strict.success ? [] : strict.error.issues;
+  const unknownMembers = issues.flatMap((i) =>
+    i.code === "unrecognized_keys" ? i.keys.map((k) => [...i.path, k]) : [],
+  );
+  const unknownValues = issues
+    .filter((i) => i.code !== "unrecognized_keys")
+    .map((i) => ({ path: i.path, value: valueAt(value, i.path) }));
+  return { ok: true, record: structuredClone(value) as Lenient<T>, unknownValues, unknownMembers };
 }
 
 function valueAt(root: unknown, path: readonly PropertyKey[]): unknown {

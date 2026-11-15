@@ -88,14 +88,34 @@ describe("shared fixtures", () => {
   });
 
   it.each(RECORD_CONTRACTS.map((c) => [c.name, c] as const))(
-    "%s accepts unknown fields in both validators (REQ-05)",
+    "%s: writers reject an unknown member, readers accept it and report it (REQ-05)",
     (name, contract) => {
       const value = read(join(fixtures, "valid", `${name}.json`)) as Record<string, unknown>;
       const extended = { ...value, futureField: { added: "in a later minor version" } };
-      expect(contract.schema.safeParse(extended).success).toBe(true);
-      expect(ajvValidate(ajv, name, extended)).toBe(true);
+      expect(contract.schema.safeParse(extended).success).toBe(false);
+      expect(ajvValidate(ajv, name, extended)).toBe(false);
+      expect(ajvValidate(ajv, name, extended, "reader")).toBe(true);
+      const read2 = readRecord(contract, extended);
+      expect(read2.ok && read2.unknownMembers).toEqual([["futureField"]]);
     },
   );
+
+  const extras = RECORD_CONTRACTS.flatMap((c) => {
+    try {
+      return readdirSync(join(fixtures, "valid-extra", c.name)).map(
+        (f) => [`${c.name}/${f}`, c] as const,
+      );
+    } catch {
+      return [];
+    }
+  });
+  it.each(extras)("%s passes zod and ajv, writer and reader", (file, contract) => {
+    const value = read(join(fixtures, "valid-extra", file));
+    expect(contract.schema.safeParse(value).success).toBe(true);
+    expect(ajvValidate(ajv, contract.name, value)).toBe(true);
+    expect(ajvValidate(ajv, contract.name, value, "reader")).toBe(true);
+    expect(readRecord(contract, value).ok).toBe(true);
+  });
 });
 
 describe("generated records", () => {
@@ -159,9 +179,13 @@ describe("tolerant readers (REQ-05)", () => {
       const result = readRecord(contract, value);
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(result.unknownValues.length).toBeGreaterThanOrEqual(1);
-        const [unknown] = result.unknownValues;
-        expect(JSON.stringify(result.record)).toContain(JSON.stringify(unknown?.value));
+        // Every reader-only variant is reported: as an unknown value or an unknown member.
+        expect(result.unknownValues.length + result.unknownMembers.length).toBeGreaterThanOrEqual(
+          1,
+        );
+        for (const unknown of result.unknownValues) {
+          expect(JSON.stringify(result.record)).toContain(JSON.stringify(unknown.value));
+        }
       }
     },
   );
@@ -172,6 +196,7 @@ describe("tolerant readers (REQ-05)", () => {
     ),
   )("%s stays invalid for the reader in zod and ajv alike", (file, contract) => {
     const value = read(join(fixtures, "invalid", file));
-    expect(ajvValidate(ajv, contract.name, value, "reader")).toBe(readRecord(contract, value).ok);
+    expect(ajvValidate(ajv, contract.name, value, "reader")).toBe(false);
+    expect(readRecord(contract, value).ok).toBe(false);
   });
 });

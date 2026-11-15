@@ -18,17 +18,17 @@
     "directory": "packages/contracts"
   },
   "files": [
+    "README.md",
     "dist",
-    "schemas",
     "fixtures",
-    "src",
-    "README.md"
+    "majors.json",
+    "schemas",
+    "src"
   ],
   "type": "module",
   "sideEffects": false,
   "exports": {
     ".": {
-      "ichnaea-source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
@@ -42,7 +42,9 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "generate": "node scripts/generate-schemas.ts && node scripts/write-fixtures.ts"
+    "generate": "node scripts/generate-schemas.ts && node scripts/write-fixtures.ts",
+    "api": "api-extractor run --local",
+    "check:api": "api-extractor run"
   },
   "devDependencies": {
     "ajv": "8.20.0",

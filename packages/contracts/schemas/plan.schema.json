@@ -284,7 +284,8 @@
                       "required": [
                         "value",
                         "status"
-                      ]
+                      ],
+                      "additionalProperties": false
                     },
                     "id": {
                       "type": "object",
@@ -320,7 +321,8 @@
                       "required": [
                         "value",
                         "status"
-                      ]
+                      ],
+                      "additionalProperties": false
                     },
                     "version": {
                       "type": "object",
@@ -356,7 +358,8 @@
                       "required": [
                         "value",
                         "status"
-                      ]
+                      ],
+                      "additionalProperties": false
                     },
                     "route": {
                       "type": "object",
@@ -392,14 +395,16 @@
                       "required": [
                         "value",
                         "status"
-                      ]
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [
                     "role",
                     "provider",
                     "id"
-                  ]
+                  ],
+                  "additionalProperties": false
                 }
               },
               "parameters": {
@@ -468,7 +473,8 @@
                     "value",
                     "status",
                     "origin"
-                  ]
+                  ],
+                  "additionalProperties": false
                 }
               },
               "prompts": {
@@ -545,7 +551,8 @@
                     "name",
                     "digest",
                     "status"
-                  ]
+                  ],
+                  "additionalProperties": false
                 }
               },
               "factors": {
@@ -612,11 +619,30 @@
                     "value",
                     "status",
                     "part"
-                  ]
+                  ],
+                  "additionalProperties": false
                 }
               },
               "label": {
                 "type": "string",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              },
+              "informational": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "additionalProperties": {
+                  "$ref": "#/$defs/JsonValue"
+                },
                 "x-ichnaea-data": {
                   "class": "none",
                   "identifier": "none",
@@ -634,7 +660,8 @@
               "parameters",
               "prompts",
               "factors"
-            ]
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
@@ -642,7 +669,8 @@
           "role",
           "identity",
           "configuration"
-        ]
+        ],
+        "additionalProperties": false
       }
     },
     "measures": {
@@ -711,7 +739,8 @@
           "kind",
           "id",
           "version"
-        ]
+        ],
+        "additionalProperties": false
       }
     },
     "primary": {
@@ -785,7 +814,8 @@
           "measure",
           "margin",
           "marginReason"
-        ]
+        ],
+        "additionalProperties": false
       }
     },
     "secondary": {
@@ -887,7 +917,8 @@
         "onInconclusive",
         "onEstimateOnly",
         "onInvalid"
-      ]
+      ],
+      "additionalProperties": false
     },
     "power": {
       "type": "array",
@@ -959,6 +990,7 @@
                       "inf",
                       "-inf"
                     ],
+                    "x-ichnaea-closed": true,
                     "x-ichnaea-data": {
                       "class": "none",
                       "identifier": "none",
@@ -971,7 +1003,8 @@
                 },
                 "required": [
                   "nonFinite"
-                ]
+                ],
+                "additionalProperties": false
               }
             ],
             "x-ichnaea-data": {
@@ -998,6 +1031,7 @@
                       "inf",
                       "-inf"
                     ],
+                    "x-ichnaea-closed": true,
                     "x-ichnaea-data": {
                       "class": "none",
                       "identifier": "none",
@@ -1010,7 +1044,8 @@
                 },
                 "required": [
                   "nonFinite"
-                ]
+                ],
+                "additionalProperties": false
               }
             ],
             "x-ichnaea-data": {
@@ -1037,6 +1072,7 @@
                       "inf",
                       "-inf"
                     ],
+                    "x-ichnaea-closed": true,
                     "x-ichnaea-data": {
                       "class": "none",
                       "identifier": "none",
@@ -1049,7 +1085,8 @@
                 },
                 "required": [
                   "nonFinite"
-                ]
+                ],
+                "additionalProperties": false
               }
             ],
             "x-ichnaea-data": {
@@ -1094,7 +1131,8 @@
           "floor",
           "assumption",
           "decidable"
-        ]
+        ],
+        "additionalProperties": false
       }
     },
     "budget": {
@@ -1143,7 +1181,8 @@
       "required": [
         "worstCaseCalls",
         "maxCalls"
-      ]
+      ],
+      "additionalProperties": false
     },
     "trials": {
       "type": "array",
@@ -1219,7 +1258,8 @@
           "arm",
           "replicate",
           "batch"
-        ]
+        ],
+        "additionalProperties": false
       }
     },
     "seed": {
@@ -1239,7 +1279,7 @@
         },
         "value": {
           "type": "string",
-          "pattern": "^(0|[1-9]\\d{0,19})$",
+          "pattern": "^(0|[1-9][0-9]{0,19})$",
           "x-ichnaea-data": {
             "class": "none",
             "identifier": "none",
@@ -1253,7 +1293,8 @@
       "required": [
         "algorithm",
         "value"
-      ]
+      ],
+      "additionalProperties": false
     },
     "createdAt": {
       "type": "string",
@@ -1270,7 +1311,7 @@
     },
     "ichnaea": {
       "type": "string",
-      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$",
       "x-ichnaea-data": {
         "class": "none",
         "identifier": "none",
@@ -1306,6 +1347,7 @@
     "createdAt",
     "ichnaea"
   ],
+  "additionalProperties": false,
   "$defs": {
     "JsonValue": {
       "anyOf": [

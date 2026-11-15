@@ -13,6 +13,7 @@ import {
   Configuration as ConfigurationSchema,
   configurationIdentity,
   IdentityError,
+  Trial,
   verifyArms,
 } from "../src/index.ts";
 import { arbitraryFor } from "./support/arbitrary.ts";
@@ -70,6 +71,14 @@ describe("configuration identity", () => {
           part: "setting",
         }),
     ],
+    [
+      "only the model version",
+      (c) => (c.models[0]!.version = { value: "2026-10-01", status: "pinned" }),
+    ],
+    [
+      "only the model route",
+      (c) => (c.models[0]!.route = { value: "fallback", status: "declared" }),
+    ],
     ["only a prompt digest", (c) => (c.prompts[0]!.digest = `sha256:${"9".repeat(64)}`)],
     ["only a factor status", (c) => (c.factors["data.helpCentre"]!.status = "pinned")],
     [
@@ -88,15 +97,42 @@ describe("configuration identity", () => {
     );
   });
 
-  it("covers only the frozen top-level members, so a reader of any version computes the same identity", async () => {
-    const extended = { ...structuredClone(base), fingerprint: "fp_123", description: "renamed" };
-    expect(await configurationIdentity(extended)).toBe(await configurationIdentity(base));
-    // Nested values are hashed as written: a later writer's nested member counts for every reader.
-    const nested = {
+  it("refuses unknown members, so a misspelt or misplaced member cannot leave the identity unchanged", async () => {
+    await expect(
+      configurationIdentity({ ...structuredClone(base), tools: ["search"] }),
+    ).rejects.toThrow();
+    const misspelt = {
       ...structuredClone(base),
-      models: base.models.map((m) => ({ ...m, futurePart: { x: 1 } })),
+      models: base.models.map((m) => ({ ...m, versoin: { value: "x", status: "pinned" } })),
     };
-    expect(await configurationIdentity(nested)).not.toBe(await configurationIdentity(base));
+    await expect(configurationIdentity(misspelt)).rejects.toThrow();
+  });
+
+  it("ignores the description and informational values, such as a provider fingerprint", async () => {
+    const described = {
+      ...structuredClone(base),
+      description: "renamed",
+      informational: { "provider.fingerprint": "fp_123" },
+    };
+    expect(await configurationIdentity(described)).toBe(await configurationIdentity(base));
+  });
+
+  it("a per-trial fingerprint lives in the trial, so it never touches the identity", async () => {
+    const before = await configurationIdentity(base);
+    const trial = Trial.parse({
+      schema: "ichnaea.trial/1",
+      id: "t",
+      source: "offline",
+      case: "c",
+      unit: "turn",
+      configuration: before,
+      replicate: 0,
+      outcome: "completed",
+      dataClass: "none",
+      observed: [{ name: "provider.fingerprint", value: "fp_new" }],
+    });
+    expect(trial.configuration).toBe(before);
+    expect(await configurationIdentity(base)).toBe(before);
   });
 
   it("keeps a __proto__ member as data in the identity", async () => {
@@ -153,8 +189,8 @@ describe("configuration identity", () => {
 describe("case and case-set digests", () => {
   const record = CaseSchema.parse(fixture("case"));
 
-  it("a case digest ignores members the schema does not define", async () => {
-    expect(await caseDigest({ ...record, futureField: [1] })).toBe(await caseDigest(record));
+  it("a case digest refuses members the schema does not define", async () => {
+    await expect(caseDigest({ ...record, futureField: [1] })).rejects.toThrow();
   });
 
   it("changes when any one case changes (REQ-10)", async () => {
@@ -187,12 +223,11 @@ describe("case and case-set digests", () => {
     );
   });
 
-  it("ignores provenance, pool, review status and unknown top-level members", async () => {
+  it("ignores provenance, pool and review status", async () => {
     const reviewed = {
       ...structuredClone(record),
       validation: { status: "validated" },
       pool: "sealed",
-      futureMember: 1,
     };
     expect(await caseDigest(reviewed)).toBe(await caseDigest(record));
     await expect(caseSetDigest([])).rejects.toThrow(IdentityError);

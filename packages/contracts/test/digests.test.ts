@@ -15,7 +15,12 @@ import {
 } from "../src/index.ts";
 
 interface Vector {
-  kind: "canonical" | "configurationIdentity" | "caseDigest" | "caseSetDigest";
+  kind:
+    | "canonical"
+    | "configurationIdentity"
+    | "configurationIdentityRefused"
+    | "caseDigest"
+    | "caseSetDigest";
   name: string;
   input: unknown;
   canonical?: string;
@@ -28,7 +33,13 @@ const { vectors } = JSON.parse(
 describe("cross-language digest vectors", () => {
   it("covers every kind", () => {
     expect(new Set(vectors.map((v) => v.kind))).toEqual(
-      new Set(["canonical", "configurationIdentity", "caseDigest", "caseSetDigest"]),
+      new Set([
+        "canonical",
+        "configurationIdentity",
+        "configurationIdentityRefused",
+        "caseDigest",
+        "caseSetDigest",
+      ]),
     );
   });
 
@@ -41,12 +52,31 @@ describe("cross-language digest vectors", () => {
       case "configurationIdentity":
         expect(await configurationIdentity(v.input)).toBe(v.digest);
         break;
+      case "configurationIdentityRefused":
+        await expect(configurationIdentity(v.input)).rejects.toThrow();
+        break;
       case "caseDigest":
         expect(await caseDigest(v.input)).toBe(v.digest);
         break;
       case "caseSetDigest":
         expect(await caseSetDigest(v.input as never)).toBe(v.digest);
         break;
+    }
+  });
+});
+
+const generated = JSON.parse(
+  readFileSync(join(import.meta.dirname, "..", "fixtures", "digests-generated.json"), "utf8"),
+) as {
+  vectors: Array<{ input: unknown; canonical: string; digest: string }>;
+};
+
+describe("1,000 generated cross-language vectors (wide-range doubles, any Unicode)", () => {
+  it("has 1,000 vectors", () => expect(generated.vectors).toHaveLength(1000));
+  it("every canonical form and digest matches the Python implementation", async () => {
+    for (const v of generated.vectors) {
+      expect(canonicalize(v.input)).toBe(v.canonical);
+      expect(await digest(v.input)).toBe(v.digest);
     }
   });
 });

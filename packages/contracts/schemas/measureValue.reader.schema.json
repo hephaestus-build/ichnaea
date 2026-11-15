@@ -57,7 +57,7 @@
     },
     "version": {
       "type": "string",
-      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$",
       "x-ichnaea-data": {
         "class": "none",
         "identifier": "none",
@@ -137,6 +137,12 @@
                   "properties": {
                     "nonFinite": {
                       "type": "string",
+                      "enum": [
+                        "nan",
+                        "inf",
+                        "-inf"
+                      ],
+                      "x-ichnaea-closed": true,
                       "x-ichnaea-data": {
                         "class": "none",
                         "identifier": "none",
@@ -144,12 +150,7 @@
                           "*"
                         ],
                         "retention": "record"
-                      },
-                      "x-ichnaea-known": [
-                        "nan",
-                        "inf",
-                        "-inf"
-                      ]
+                      }
                     }
                   },
                   "required": [
@@ -294,7 +295,28 @@
           "type": "object",
           "properties": {
             "type": {
-              "type": "string"
+              "type": "string",
+              "const": "unknown",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "pattern": "^(?!(?:binary|score|proportion|level|preference|unknown)$)"
             }
           },
           "required": [

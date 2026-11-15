@@ -423,6 +423,24 @@
         ],
         "retention": "record"
       }
+    },
+    "informational": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
+      }
     }
   },
   "required": [

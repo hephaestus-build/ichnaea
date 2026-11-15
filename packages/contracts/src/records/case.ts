@@ -31,7 +31,7 @@ const provenanceBase = {
   exposure: none(z.enum(["public", "private", "sealed"])),
 };
 
-const Generator = z.object({
+const Generator = z.strictObject({
   method: none(Text),
   model: none(Text).optional(),
   seedSource: none(Text).optional(),
@@ -43,33 +43,37 @@ const Generator = z.object({
  * collection date, a promoted case the finding it came from.
  */
 export const CaseProvenance = z.discriminatedUnion("source", [
-  z.object({ source: none(z.literal("authored")), ...provenanceBase }),
-  z.object({ source: none(z.literal("generated")), ...provenanceBase, generator: Generator }),
-  z.object({
+  z.strictObject({ source: none(z.literal("authored")), ...provenanceBase }),
+  z.strictObject({ source: none(z.literal("generated")), ...provenanceBase, generator: Generator }),
+  z.strictObject({
     source: none(z.literal("reused")),
     ...provenanceBase,
-    reusedDataset: z.object({
+    reusedDataset: z.strictObject({
       name: none(Text),
       version: none(Text).optional(),
       limits: none(Text),
     }),
   }),
-  z.object({
+  z.strictObject({
     source: none(z.literal("collected")),
     ...provenanceBase,
     collected: none(CalendarDate),
   }),
-  z.object({ source: none(z.literal("promoted")), ...provenanceBase, finding: none(FindingId) }),
+  z.strictObject({
+    source: none(z.literal("promoted")),
+    ...provenanceBase,
+    finding: none(FindingId),
+  }),
 ]);
 
 /** One scripted turn of a session case. */
-export const ScriptedTurn = z.object({
+export const ScriptedTurn = z.strictObject({
   role: none(z.enum(["user", "assistant", "system", "tool"])),
   content: content(Json),
 });
 
 /** One evaluation input with its fixtures and hidden references (REQ-08, REQ-09). */
-export const Case = z.object({
+export const Case = z.strictObject({
   schema: none(z.literal("ichnaea.case/1")),
   id: none(CaseId),
   caseSet: none(CaseSetId).optional(),
@@ -95,7 +99,7 @@ export const Case = z.object({
 export type Case = z.infer<typeof Case>;
 
 /** One entry of a case set manifest. */
-export const CaseSetEntry = z.object({
+export const CaseSetEntry = z.strictObject({
   id: none(CaseId),
   digest: none(Digest),
   pool: none(Pool),
@@ -103,7 +107,7 @@ export const CaseSetEntry = z.object({
 });
 
 /** A versioned collection of cases, identified by the digest of its entries (REQ-10). */
-export const CaseSet = z.object({
+export const CaseSet = z.strictObject({
   schema: none(z.literal("ichnaea.caseSet/1")),
   id: none(CaseSetId),
   version: none(Text).optional(),

@@ -1,0 +1,39 @@
+{
+  "schema": "ichnaea.trial/1",
+  "id": "t-0001",
+  "source": "online",
+  "case": null,
+  "unit": "session",
+  "configuration": "sha256:8b362c5ea2573cd56f4805357bbdf852ce3720bd31bfe7c9db2d2a4603a641ae",
+  "replicate": 0,
+  "outcome": "completed",
+  "dataClass": "pseudonymous",
+  "steps": [
+    {
+      "kind": "model_call",
+      "model": "example-model-2026-10",
+      "outcome": "ok",
+      "inputTokens": 812,
+      "outputTokens": 64
+    }
+  ],
+  "usage": {
+    "calls": 1,
+    "inputTokens": 812,
+    "outputTokens": 64,
+    "wallMs": 1830
+  },
+  "observed": [
+    {
+      "name": "model.answer.returnedId",
+      "value": "example-model-2026-10",
+      "expected": "example-model-2026-10"
+    }
+  ],
+  "cache": {
+    "hit": false
+  },
+  "startedAt": "2026-11-15T10:01:00Z",
+  "endedAt": "2026-11-15T10:01:02Z",
+  "pointer": "app://interaction/42"
+}

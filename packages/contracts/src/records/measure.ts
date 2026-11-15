@@ -15,7 +15,7 @@ import {
 } from "../primitives.ts";
 
 /** The definition of a measure (REQ-29). A measure without a card does not register. */
-export const MeasureCard = z.object({
+export const MeasureCard = z.strictObject({
   schema: none(z.literal("ichnaea.measureCard/1")),
   id: none(MeasureId),
   version: none(SemVer),
@@ -25,7 +25,7 @@ export const MeasureCard = z.object({
   levels: none(z.array(Text).min(2)).optional(),
   unit: none(Text),
   direction: none(z.enum(["higher", "lower"])),
-  scale: z.object({ min: none(z.number()), max: none(z.number()) }).optional(),
+  scale: z.strictObject({ min: none(z.number()), max: none(z.number()) }).optional(),
   justification: none(Text),
   errorModel: none(Text),
   applicability: none(Text),
@@ -55,7 +55,7 @@ export type MeasureCard = z.infer<typeof MeasureCard>;
  * never zero or missing, and has no value (REQ-30). An application-computed value names its source
  * (REQ-31).
  */
-export const MeasureValue = z.object({
+export const MeasureValue = z.strictObject({
   schema: none(z.literal("ichnaea.measureValue/1")),
   trial: none(TrialId),
   turn: none(z.int().min(0)).optional(),

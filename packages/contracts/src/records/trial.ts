@@ -33,7 +33,7 @@ export const Outcome = z.enum([
 export type Outcome = z.infer<typeof Outcome>;
 
 /** One step inside a trial: a model call, a tool call, a retrieval or a user turn. */
-export const Step = z.object({
+export const Step = z.strictObject({
   kind: none(z.enum(["model_call", "tool_call", "retrieval", "user_turn", "other"])),
   name: none(Text).optional(),
   model: none(Text).optional(),
@@ -45,7 +45,7 @@ export const Step = z.object({
 });
 
 /** Resource usage of a trial as reported. Absent means unknown, never zero. */
-export const Usage = z.object({
+export const Usage = z.strictObject({
   calls: none(z.int().min(0)).optional(),
   inputTokens: none(z.int().min(0)).optional(),
   outputTokens: none(z.int().min(0)).optional(),
@@ -58,14 +58,14 @@ export const Usage = z.object({
  * An observed factor value reported by the system for this trial, for example the model identity
  * a provider returned or a provider fingerprint (informational, never part of the identity).
  */
-export const Observation = z.object({
+export const Observation = z.strictObject({
   name: none(Text),
   value: content(Json),
   expected: content(Json).optional(),
 });
 
 /** The normalised evidence of one trial or one sampled production interaction (REQ-19, REQ-20). */
-export const Trial = z.object({
+export const Trial = z.strictObject({
   schema: none(z.literal("ichnaea.trial/1")),
   id: none(TrialId),
   source: none(z.enum(["offline", "online"])),
@@ -85,10 +85,10 @@ export const Trial = z.object({
   usage: Usage.optional(),
   observed: z.array(Observation).optional(),
   signals: content(z.record(z.string(), Json)).optional(),
-  cache: z.object({ hit: none(z.boolean()), from: none(TrialId).optional() }).optional(),
+  cache: z.strictObject({ hit: none(z.boolean()), from: none(TrialId).optional() }).optional(),
   evidence: z.array(DigestRef).optional(),
   joinKeys: quasi(z.record(z.string(), z.string())).optional(),
-  error: z.object({ kind: none(Text), message: content(z.string()).optional() }).optional(),
+  error: z.strictObject({ kind: none(Text), message: content(z.string()).optional() }).optional(),
   startedAt: none(Timestamp).optional(),
   endedAt: none(Timestamp).optional(),
   inputDigest: none(Digest).optional(),

@@ -16,7 +16,7 @@ import {
 } from "../primitives.ts";
 
 /** A model-based instrument for a measure, defined as data (REQ-32, REQ-37). */
-export const Judge = z.object({
+export const Judge = z.strictObject({
   schema: none(z.literal("ichnaea.judge/1")),
   id: none(JudgeId),
   version: none(SemVer),
@@ -37,10 +37,10 @@ export const Judge = z.object({
 export type Judge = z.infer<typeof Judge>;
 
 /** A label's value: a measured value, or an explicit `unknown` when the rater cannot tell. */
-export const LabelValue = z.union([MeasuredValue, z.object({ type: none(z.literal("unknown")) })]);
+export const LabelValue = MeasuredValue;
 
 /** One human or judge annotation on one trial record for one measure (REQ-44). */
-export const Label = z.object({
+export const Label = z.strictObject({
   schema: none(z.literal("ichnaea.label/1")),
   trial: none(TrialId),
   turn: none(z.int().min(0)).optional(),
@@ -60,7 +60,7 @@ export const Label = z.object({
 export type Label = z.infer<typeof Label>;
 
 /** An agreement estimate with its interval. */
-export const Agreement = z.object({
+export const Agreement = z.strictObject({
   statistic: none(z.enum(["raw", "cohen-kappa", "gwet-ac1", "krippendorff-alpha"])),
   estimate: none(z.number()),
   lower: none(z.number()),
@@ -69,7 +69,7 @@ export const Agreement = z.object({
 });
 
 /** The agreement between a judge and human labels, with the judge's status (REQ-39, REQ-40). */
-export const Calibration = z.object({
+export const Calibration = z.strictObject({
   schema: none(z.literal("ichnaea.calibration/1")),
   judge: none(JudgeId),
   judgeDigest: none(Digest),
@@ -77,15 +77,11 @@ export const Calibration = z.object({
   calibrationSet: none(Digest),
   humanHuman: z.array(Agreement),
   judgeHuman: z.array(Agreement),
-  perRater: z
-    .array(
-      z.object({
-        rater: pseudonym(Text),
-        items: none(z.int().min(0)),
-        agreement: z.array(Agreement),
-      }),
-    )
-    .optional(),
+  // Per-rater agreement is a score about a person: the whole list is pseudonymous and never leaves
+  // the calibration record (REQ-40, REQ-130).
+  perRater: pseudonym(
+    z.array(z.strictObject({ rater: Text, items: z.int().min(0), agreement: z.array(Agreement) })),
+  ).optional(),
   confusion: none(z.array(z.array(z.int().min(0)))),
   strata: none(z.array(Text)).optional(),
   tolerance: none(Probability),
