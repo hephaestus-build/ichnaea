@@ -34,6 +34,8 @@ const policy = (action: "block" | "report"): Plan["policy"] => ({
 });
 
 const stable = { cases: 60, replicates: 3, base: () => 0.97, candidate: () => 0.97 } as const;
+// Refusals are about the records, not the cases: a small valid run decides them as well.
+const refusal = { cases: 6, replicates: 2, base: () => 0.97, candidate: () => 0.97 } as const;
 
 describe("run verdicts", () => {
   it("PASS: identical, stable arms on many cases", async () => {
@@ -159,7 +161,7 @@ describe("INVALID (REQ-53): every check, and INVALID always blocks", () => {
   });
 
   it("a run of another plan, or an identity that does not match its configuration", async () => {
-    const s = await scenario({ ...stable });
+    const s = await scenario({ ...refusal });
     const foreign = {
       ...s,
       run: { ...s.run, plan: `sha256:${"0".repeat(64)}` as Scenario["run"]["plan"] },
@@ -179,7 +181,7 @@ describe("INVALID (REQ-53): every check, and INVALID always blocks", () => {
   it("no base arm with a value", async () => {
     const d = await invalidOf(
       await scenario({
-        ...stable,
+        ...refusal,
         coverageFloor: 0,
         outcome: (t) => (t.arm === "base" ? "not_run" : undefined),
       }),
@@ -188,7 +190,7 @@ describe("INVALID (REQ-53): every check, and INVALID always blocks", () => {
   });
 
   it("a decision without a base and candidate, or without a primary measure", async () => {
-    const s = await scenario({ ...stable });
+    const s = await scenario({ ...refusal });
     const lone = await withPlan(s, (p) => ({
       ...p,
       arms: p.arms.map((a) => ({ ...a, role: "reference" as const })),
@@ -201,7 +203,7 @@ describe("INVALID (REQ-53): every check, and INVALID always blocks", () => {
   });
 
   it("more than one candidate arm (REQ-57 not yet supported)", async () => {
-    const s = await scenario({ ...stable });
+    const s = await scenario({ ...refusal });
     const two = await withPlan(s, (p) => ({
       ...p,
       arms: [
@@ -217,7 +219,7 @@ describe("INVALID (REQ-53): every check, and INVALID always blocks", () => {
 
   it("duplicate trials, duplicate values, duplicate or inconsistent gate results", async () => {
     const s = await scenario({
-      ...stable,
+      ...refusal,
       hardGates: ["app/schema"],
       gates: [{ gate: "app/schema", passed: true, failures: 0 } as GateResult],
     });
@@ -243,7 +245,7 @@ describe("INVALID (REQ-53): every check, and INVALID always blocks", () => {
   });
 
   it("trials and values the plan does not list", async () => {
-    const s = await scenario({ ...stable });
+    const s = await scenario({ ...refusal });
     const stray = {
       ...(s.trials[0] as Scenario["trials"][number]),
       id: "elsewhere" as Scenario["trials"][number]["id"],
@@ -258,7 +260,7 @@ describe("INVALID (REQ-53): every check, and INVALID always blocks", () => {
   });
 
   it("a margin the decision cannot use, instead of an error", async () => {
-    const s = await scenario({ ...stable });
+    const s = await scenario({ ...refusal });
     const wide = await withPlan(s, (p) => ({
       ...p,
       primary: p.primary.map((m) => ({ ...m, margin: 0.05, safetyMargin: 0.1 })),
@@ -269,7 +271,7 @@ describe("INVALID (REQ-53): every check, and INVALID always blocks", () => {
   });
 
   it("a value whose type the decision rule cannot use, and a proportion with too many successes", async () => {
-    const s = await scenario({ ...stable });
+    const s = await scenario({ ...refusal });
     const values = s.values.map((v, i) =>
       i === 0 ? ({ ...v, value: { type: "score", value: 0.5 } } as MeasureValue) : v,
     );
@@ -287,16 +289,17 @@ describe("INVALID (REQ-53): every check, and INVALID always blocks", () => {
   });
 
   it("a code change whose arms run different models (REQ-15); a configuration change may", async () => {
-    const code = await scenario({ ...stable, candidateModel: "model-b" });
+    const code = await scenario({ ...refusal, candidateModel: "model-b" });
     expect((await invalidOf(code)).reason).toBe(
       "a code change must compare the same models on both arms, but the arms' models differ",
     );
     const dependency = await scenario({
-      ...stable,
+      ...refusal,
       candidateModel: "model-b",
       trigger: "dependency",
     });
     expect((await invalidOf(dependency)).reason).toMatch(/^a dependency change must compare/);
+    // A valid change must reach a verdict, so this one uses a run that can decide.
     const config = await scenario({
       ...stable,
       candidateModel: "model-b",
