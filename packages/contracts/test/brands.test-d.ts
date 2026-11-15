@@ -39,7 +39,7 @@ describe("branded identifiers", () => {
   });
 });
 
-describe("tolerant reader types (R-m4)", () => {
+describe("tolerant reader types", () => {
   it("makes code handle an unknown kind before it reads a known kind's members", () => {
     const read = readRecord(
       { ...contractFor("ichnaea.measureValue/1")!, schema: MeasureValue },

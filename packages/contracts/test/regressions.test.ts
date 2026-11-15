@@ -1,5 +1,4 @@
-// Tests added for the independent contracts review (M2-contracts-review.md): each pins a behaviour
-// that a surviving mutation showed was untested.
+// Regression tests: each pins a behaviour that a surviving mutation once showed was untested.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -35,7 +34,7 @@ const fixture = (name: string): Record<string, unknown> =>
     readFileSync(join(import.meta.dirname, "..", "fixtures", "valid", `${name}.json`), "utf8"),
   ) as Record<string, unknown>;
 
-describe("M4: per-rater agreement never leaves the calibration record", () => {
+describe("per-rater agreement never leaves the calibration record", () => {
   it.each(DATA_CLASSES.flatMap((c) => PURPOSES.map((p) => [c, p] as const)))(
     "is absent at maxClass %s for %s without a grant",
     (maxClass, purpose) => {
@@ -58,7 +57,7 @@ describe("M4: per-rater agreement never leaves the calibration record", () => {
   );
 });
 
-describe("M5: unclassified fields and unknown data classes never pass", () => {
+describe("unclassified fields and unknown data classes never pass", () => {
   const plugin = z.strictObject({
     dataClass: none(z.enum(DATA_CLASSES)),
     ok: none(z.string()),
@@ -116,7 +115,7 @@ const policyAt = (name: string, pointer: string): Record<string, unknown> => {
   return node[DATA_POLICY_KEY] as Record<string, unknown>;
 };
 
-describe("m7: the class of each sensitive field is pinned", () => {
+describe("the class of each sensitive field is pinned", () => {
   it.each([
     ["case", "/references", "inherit", "content"],
     ["case", "/input", "inherit", "content"],
@@ -150,7 +149,7 @@ describe("m7: the class of each sensitive field is pinned", () => {
   });
 });
 
-describe("m10: the target view copies every part it passes", () => {
+describe("the target view copies every part it passes", () => {
   it("copies turns and fixtures as well as the input", () => {
     const record = Case.parse({ ...fixture("case") });
     const view = caseForTarget(record);
@@ -161,7 +160,7 @@ describe("m10: the target view copies every part it passes", () => {
   });
 });
 
-describe("m11, m16: the lints", () => {
+describe("the lints", () => {
   it("rejects a lazy schema other than the JSON value, with a refinement inside", () => {
     const lazy = z.strictObject({ a: z.lazy(() => z.string().refine(() => true)) });
     expect(lintContractSchema(lazy).length).toBeGreaterThan(0);
@@ -183,7 +182,7 @@ describe("m11, m16: the lints", () => {
   );
 });
 
-describe("m12: valid data survives an egress it may pass", () => {
+describe("valid data survives an egress it may pass", () => {
   it.each([
     "measureValue",
     "decision",
@@ -215,7 +214,7 @@ describe("m12: valid data survives an egress it may pass", () => {
   });
 });
 
-describe("M7: contract package boundaries (REQ-06, DN-1)", () => {
+describe("contract package boundaries (REQ-06)", () => {
   it("has no runtime dependency, and zod only as its peer", () => {
     const manifest = JSON.parse(
       readFileSync(join(import.meta.dirname, "..", "package.json"), "utf8"),
@@ -263,9 +262,9 @@ const nodes = (node: unknown, at = ""): Array<[string, Record<string, unknown>]>
   return [[at, object], ...Object.entries(object).flatMap(([k, v]) => nodes(v, `${at}/${k}`))];
 };
 
-describe("re-review of 1445f5f", () => {
+describe("schemas and readers", () => {
   it.each(RECORD_CONTRACTS.map((c) => [c.name] as const))(
-    "R-m1: every object in the %s writer schema refuses unknown members",
+    "every object in the %s writer schema refuses unknown members",
     (name) => {
       const loose = nodes(committedSchema(name))
         .filter(([, n]) => n["properties"] !== undefined && n["additionalProperties"] !== false)
@@ -274,7 +273,7 @@ describe("re-review of 1445f5f", () => {
     },
   );
 
-  it("R-m1: a misspelt nested member fails both writers and is reported by the reader", () => {
+  it("a misspelt nested member fails both writers and is reported by the reader", () => {
     const ajv = createAjv();
     const card = fixture("measureCard");
     const misspelt = {
@@ -295,7 +294,7 @@ describe("re-review of 1445f5f", () => {
     expect(read.ok && read.unknownMembers).toEqual([["validation", "calibraton"]]);
   });
 
-  it("R-m7: the reader refuses a lone surrogate anywhere in a record", () => {
+  it("the reader refuses a lone surrogate anywhere in a record", () => {
     const contract = contractFor("ichnaea.trial/1")!;
     const trial = fixture("trial");
     expect(readRecord(contract, trial).ok).toBe(true);
@@ -307,22 +306,70 @@ describe("re-review of 1445f5f", () => {
       expect(readRecord(contract, bad).ok).toBe(false);
   });
 
-  it("m20: no schema pattern uses \\d, which matches other Unicode digits outside JavaScript", () => {
+  it("no schema pattern uses \\d, which matches other Unicode digits outside JavaScript", () => {
     for (const { name } of RECORD_CONTRACTS)
       for (const variant of [name, `${name}.reader`])
         expect(JSON.stringify(committedSchema(variant))).not.toContain("\\\\d");
   });
 
-  it("m19: a seed fits in an unsigned 64-bit integer", () => {
+  it("a seed is exactly an unsigned 64-bit integer, in both writers", () => {
     const plan = fixture("plan");
-    const withSeed = (value: string): boolean =>
-      Plan.safeParse({ ...plan, seed: { algorithm: "mt19937", value } }).success;
-    expect(withSeed("9999999999999999999")).toBe(true);
-    expect(withSeed("18446744073709551615")).toBe(false);
-    expect(withSeed("01")).toBe(false);
+    const ajv = createAjv();
+    const withSeed = (value: string): boolean[] => {
+      const record = { ...plan, seed: { algorithm: "mt19937", value } };
+      return [Plan.safeParse(record).success, ajvValidate(ajv, "plan", record)];
+    };
+    const max = 2n ** 64n - 1n;
+    for (const accepted of [
+      "0",
+      "1",
+      "9999999999999999999",
+      "10000000000000000000",
+      "18446744073709551614",
+      max.toString(),
+    ])
+      expect(withSeed(accepted), accepted).toEqual([true, true]);
+    for (const refused of [
+      (max + 1n).toString(),
+      "18446744073709551620",
+      "19999999999999999999",
+      "99999999999999999999",
+      "100000000000000000000",
+      "00",
+      "01",
+      "00000000000000000000",
+      "01844674407370955161",
+      "-1",
+      "1.5",
+      "",
+      "0x10",
+      "１２",
+    ])
+      expect(withSeed(refused), refused).toEqual([false, false]);
   });
 
-  it("R-m3: proportionProblem names a proportion with more successes than trials", () => {
+  it("a decimal seed is valid exactly when it is at most 2^64 - 1", () => {
+    const plan = fixture("plan");
+    const ajv = createAjv();
+    const max = 2n ** 64n - 1n;
+    fc.assert(
+      fc.property(
+        fc.oneof(
+          fc.bigInt({ min: 0n, max: max + 1000n }),
+          fc.bigInt({ min: max - 1000n, max: max + 1000n }),
+          fc.bigInt({ min: 0n, max: 2n ** 66n }),
+        ),
+        (n) => {
+          const record = { ...plan, seed: { algorithm: "pcg64", value: n.toString() } };
+          expect(Plan.safeParse(record).success).toBe(n <= max);
+          expect(ajvValidate(ajv, "plan", record)).toBe(n <= max);
+        },
+      ),
+      { seed: 20261115, numRuns: 300 },
+    );
+  });
+
+  it("proportionProblem names a proportion with more successes than trials", () => {
     expect(proportionProblem({ type: "proportion", successes: 5, trials: 3 })).toBe(
       "5 successes of 3 trials",
     );
@@ -333,7 +380,7 @@ describe("re-review of 1445f5f", () => {
     expect(proportionProblem({ type: "binary", pass: true })).toBeUndefined();
   });
 
-  it("R-m4: isKnownKind tells a known kind from one a later version added", () => {
+  it("isKnownKind tells a known kind from one a later version added", () => {
     const known = ["binary", "score"];
     expect(isKnownKind({ type: "binary", pass: true }, "type", known)).toBe(true);
     expect(isKnownKind({ type: "ranking", order: [1, 2] }, "type", known)).toBe(false);

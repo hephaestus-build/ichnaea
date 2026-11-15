@@ -61,11 +61,11 @@ of its record. `DIGEST_RULES` in [`src/identity.ts`](src/identity.ts) is the one
 projections: per record, the members hashed and the members excluded, each with its reason. Other
 languages read the same rules from [`fixtures/digest-rules.json`](fixtures/digest-rules.json).
 
-| Digest                 | Projection                                                                              | Then                                                                                  |
-| ---------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| Case digest            | the case without its review status, and its provenance without the author pointer       | —                                                                                     |
-| Case-set digest        | each entry's `id`, `digest`, `pool`, `family`                                           | sort entries by `id` (UTF-16 code units); IDs unique, at least one                    |
-| Configuration identity | `models`, `parameters`, `factors`, and of each prompt its `name`, `digest` and `status` | sort `models` by `role`, `parameters` and `prompts` by `name`; roles and names unique |
+| Digest                 | Projection                                                                                             | Then                                                                                  |
+| ---------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| Case digest            | the case without its review status and case set pointer, and its provenance without the author pointer | —                                                                                     |
+| Case-set digest        | each entry's `id`, `digest`, `pool`, `family`                                                          | sort entries by `id` (UTF-16 code units); IDs unique, at least one                    |
+| Configuration identity | `models`, `parameters`, `factors`, and of each prompt its `name`, `digest` and `status`                | sort `models` by `role`, `parameters` and `prompts` by `name`; roles and names unique |
 
 A projection keeps the listed members as written. Their values are hashed whole, so a member that a
 later minor version adds inside a hashed value changes the digest. A member added at a projected
@@ -81,18 +81,36 @@ list-valued factor values, which counts.
 The rules are defined for the `/1` records, and `schema` does not enter a digest. A new major
 version states its own rules in its migration.
 
-A prompt's `digest` is the SHA-256 of its template's UTF-8 bytes. The template text and its `uri`
-are recorded but not hashed, so a configuration resolved with the text and one declared by digest
-alone have one identity. `verifyConfiguration` checks a recorded template against its digest.
+A prompt's `digest` is the SHA-256 of its template's UTF-8 bytes as written, a trailing newline
+included. A template with a lone surrogate has no UTF-8 form, so it never matches a digest. The
+template text and its `uri` are recorded but not hashed, so a configuration resolved with the text
+and one declared by digest alone have one identity.
+
+A schema cannot compare a template with a digest, so validating a record against its schema, or
+reading it with `readRecord`, does not check it. `verifyConfiguration` checks a recorded template
+against its digest, and `configurationIdentity` refuses a configuration whose template does not
+match. A reader that trusts a recorded template must call one of them.
 
 The writer computes an identity and stores it in plans, runs and trials. `verifyArms` checks a
 stored identity against its configuration, and the configuration's templates against their digests.
+It reports every problem as a `LinkError`, including an arm that is not a valid configuration or
+that has no identity (no `models`, a duplicate role), and does not throw.
+
+Decisions 0002 and 0003 in [`docs/decisions`](../../docs/decisions) give the reasons for the case
+digest and the configuration identity.
 
 [`fixtures/digests.json`](fixtures/digests.json) holds vectors for every digest and projection,
 and [`fixtures/digests-generated.json`](fixtures/digests-generated.json) 1,000 generated values
-(doubles over the whole range, any Unicode). Both come from an independent implementation in
-Python (`scripts/oracle/`). CI recomputes every vector, the projections included, and fails on any
-difference. A new implementation must reproduce them.
+(doubles over the whole range, any Unicode). Both come from an implementation in Python that
+shares no code with this package (`scripts/oracle/`). CI recomputes every vector, the projections
+included, and fails on any difference. A new implementation must reproduce them.
+
+The Python code checks the projection logic, the sort order and the canonical form independently.
+It does not check which members a projection keeps: it reads those lists from
+`fixtures/digest-rules.json`, which is generated from `DIGEST_RULES`. The committed vectors pin the
+lists instead. They hold one case per provenance arm and one change per hashed member, so a member
+that leaves a digest changes a recomputed vector and fails CI until the vectors are regenerated and
+the change is reviewed.
 
 ## Data policies
 

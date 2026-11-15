@@ -104,6 +104,10 @@ function hasLoneSurrogate(value: unknown): boolean {
  * ignored, a string outside a known enumeration and a tagged-union kind the writer schema does not
  * know are accepted and reported in `unknownValues`, and unknown members in `unknownMembers`. The `schema` field and other constants stay
  * strict. Strings must be well-formed Unicode, because a record must stay hashable.
+ *
+ * A schema cannot compare two values, so reading does not check a prompt template against its
+ * digest or a stored identity against its configuration. `verifyConfiguration` and `verifyArms`
+ * do.
  */
 export function readRecord<T>(
   contract: RecordContract & { schema: z.ZodType<T> },

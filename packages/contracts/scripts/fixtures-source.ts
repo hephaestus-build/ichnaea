@@ -2,6 +2,8 @@
 // every validator (zod, ajv, and later a Java consumer) reads. The application is synthetic: a
 // support assistant that answers questions about a fictional product.
 
+import { sha256 } from "../src/canonical.ts";
+
 const d = (c: string): string => `sha256:${c.repeat(64).slice(0, 64)}`;
 const config = d("c1");
 const configB = d("c2");
@@ -29,9 +31,21 @@ const CONFIGURATION = {
   label: "current",
 };
 
+// The candidate resolved its prompt to text, so it carries the text with its URI. The digest is the
+// digest of the text: validation by schema cannot check that, `verifyConfiguration` does.
+const CANDIDATE_TEMPLATE = "Answer from the help centre only. Be brief.\n";
+
 export const CONFIGURATION_B = {
   ...CONFIGURATION,
-  prompts: [{ name: "answer", digest: d("e2"), status: "pinned" }],
+  prompts: [
+    {
+      name: "answer",
+      digest: await sha256(CANDIDATE_TEMPLATE),
+      status: "pinned",
+      template: CANDIDATE_TEMPLATE,
+      uri: "file:prompts/answer.txt",
+    },
+  ],
   label: "candidate",
 };
 

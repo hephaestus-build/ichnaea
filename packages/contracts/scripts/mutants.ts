@@ -3,17 +3,56 @@
 //   node scripts/mutants.ts            # every mutant
 //   node scripts/mutants.ts S10 E1     # selected mutants
 // A mutant that survives is a test that cannot fail: kill it, or justify it as equivalent here.
+// `test/mutants.test.ts` checks that every anchor still occurs exactly once, so a refactor that
+// moves one fails the test run instead of leaving a mutant that silently tests nothing.
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-interface Mutant {
+export interface Mutant {
   readonly id: string;
   readonly file: string;
   readonly from: string;
   readonly to: string;
   /** Regenerate schemas and fixtures first, as a schema change would. */
   readonly regen?: boolean;
+  /** More edits of the same file, applied after the first. */
+  readonly also?: ReadonlyArray<{ readonly from: string; readonly to: string }>;
+}
+
+/**
+ * A digest rule that drops a provenance member: the member leaves `members` and enters `excluded`,
+ * so the rule still lists every member and the regenerated rule file agrees with it. Only a
+ * behaviour test, or the committed vectors, can notice.
+ */
+const provenanceMemberDropped = (name: string): Mutant => ({
+  id: `provenance.${name} left out of the case digest`,
+  file: "src/identity.ts",
+  from: `      "${name}",\n`,
+  to: "",
+  also: [
+    {
+      from: "    excluded: {\n      author:",
+      to: `    excluded: {\n      ${name}: "moved out of the digest by a mutant.",\n      author:`,
+    },
+  ],
+  regen: true,
+});
+
+/** Every edit of a mutant, in order. */
+export const editsOf = (m: Mutant): ReadonlyArray<{ from: string; to: string }> => [
+  { from: m.from, to: m.to },
+  ...(m.also ?? []),
+];
+
+/** The text of a file after a mutant's edits, or the edit whose anchor is missing. */
+export function mutate(original: string, m: Mutant): { text: string } | { missing: string } {
+  let text = original;
+  for (const { from, to } of editsOf(m)) {
+    if (!text.includes(from)) return { missing: from };
+    text = text.replace(from, () => to);
+  }
+  return { text };
 }
 
 export const MUTANTS: readonly Mutant[] = [
@@ -171,133 +210,236 @@ export const MUTANTS: readonly Mutant[] = [
     regen: true,
   },
   {
-    id: "J2 nonFinite widened by readers",
+    id: "nonFinite widened by readers",
     file: "src/json-schema.ts",
     from: 'out["x-ichnaea-closed"] !== true',
     to: "true",
   },
-  // Re-review of 1445f5f: the four survivors, and one mutant per new path.
   {
-    id: "N2 reader accepts lone surrogates",
+    id: "reader accepts lone surrogates",
     file: "src/reader.ts",
     from: "  if (hasLoneSurrogate(value)) {",
     to: "  if (false) {",
   },
   {
-    id: "N11 grant matches a path prefix",
+    id: "grant matches a path prefix",
     file: "src/egress.ts",
     from: 'return a.length === b.length && a.every((segment, i) => segment === "*" || segment === b[i]);',
     to: "return path.startsWith(pattern);",
   },
   {
-    id: "N13 a nested writer object is loose",
+    id: "a nested writer object is loose",
     file: "src/records/measure.ts",
     from: "  validation: z\n    .strictObject({",
     to: "  validation: z\n    .object({",
     regen: true,
   },
   {
-    id: "N17 template and uri enter the identity",
+    id: "template and uri enter the identity",
     file: "src/identity.ts",
     from: '(projection["prompts"] as unknown[]).map((p) => pick(p, DIGEST_RULES.prompt.members)),',
     to: 'projection["prompts"],',
   },
   {
-    id: "DN6 provenance hashed whole",
+    id: "provenance hashed whole",
     file: "src/identity.ts",
     from: 'projection["provenance"] = pick(projection["provenance"], DIGEST_RULES.provenance.members);',
     to: "",
   },
   {
-    id: "DN6 criticality left out",
+    id: "criticality left out of the case digest",
     file: "src/identity.ts",
     from: '      "criticality",\n',
     to: "",
     regen: true,
   },
   {
-    id: "DN7 template not checked",
+    id: "template not checked",
     file: "src/identity.ts",
     from: "    if (prompt.template === undefined) continue;",
     to: "    continue;",
   },
   {
-    id: "DN7 verifyArms skips templates",
+    id: "verifyArms skips template errors",
     file: "src/identity.ts",
     from: "    errors.push(...templates);",
     to: "",
   },
   {
-    id: "DN7 identity of a contradicting template",
+    id: "identity of a contradicting template",
     file: "src/identity.ts",
-    from: "  if (mismatch)\n",
-    to: "  if (false)\n",
+    from: "  if (mismatch) {\n",
+    to: "  if (false) {\n",
   },
   {
-    id: "m20 digits left as \\d",
+    id: "digits left as \\d",
     file: "src/json-schema.ts",
     from: 'out += next === "d" ? (inClass ? "0-9" : "[0-9]") : char + next;',
     to: "out += char + next;",
     regen: true,
   },
   {
-    id: "m19 seed of 20 digits",
+    id: "seed bound one above 2^64 - 1",
     file: "src/primitives.ts",
-    from: "[1-9][0-9]{0,18}",
-    to: "[1-9][0-9]{0,19}",
+    from: 'const SEED_MAX = "18446744073709551615";',
+    to: 'const SEED_MAX = "18446744073709551616";',
     regen: true,
   },
   {
-    id: "R-m3 proportion check off by one",
+    id: "seed bound itself refused",
+    file: "src/primitives.ts",
+    from: "  alternatives.push(max);",
+    to: "",
+    regen: true,
+  },
+  {
+    id: "seed accepts a leading zero",
+    file: "src/primitives.ts",
+    from: "const smallest = i === 0 ? 1 : 0;",
+    to: "const smallest = 0;",
+    regen: true,
+  },
+  {
+    id: "seed of 19 digits refused",
+    file: "src/primitives.ts",
+    from: "[1-9][0-9]{0,${max.length - 2}}",
+    to: "[1-9][0-9]{0,${max.length - 3}}",
+    regen: true,
+  },
+  {
+    id: "proportion check off by one",
     file: "src/values.ts",
     from: "value.successes > value.trials",
     to: "value.successes > value.trials + 1",
   },
   {
-    id: "R-m4 isKnownKind always true",
+    id: "isKnownKind always true",
     file: "src/reader.ts",
     from: "  return known.includes((value as Record<string, unknown>)[tag] as string);",
     to: "  return true;",
   },
+  // The digest rules: every ruled member, in and out.
+  provenanceMemberDropped("source"),
+  provenanceMemberDropped("selection"),
+  provenanceMemberDropped("created"),
+  provenanceMemberDropped("collected"),
+  provenanceMemberDropped("licence"),
+  provenanceMemberDropped("exposure"),
+  provenanceMemberDropped("generator"),
+  provenanceMemberDropped("reusedDataset"),
+  provenanceMemberDropped("finding"),
+  {
+    id: "author enters the case digest",
+    file: "src/identity.ts",
+    from: '      "finding",\n    ],\n    excluded: {\n      author: "A pointer to a person, erased with them. Erasing it keeps the case\'s digest.",\n    },',
+    to: '      "finding",\n      "author",\n    ],\n    excluded: {},',
+    regen: true,
+  },
+  {
+    id: "case set pointer enters the case digest",
+    file: "src/identity.ts",
+    from: '      "id",\n      "unit",',
+    to: '      "id",\n      "caseSet",\n      "unit",',
+    also: [
+      {
+        from: '      caseSet:\n        "A pointer to the set that holds the case. The same case in another set, or in a renamed set, keeps its digest, so a case is traced by its digest across sets. The set\'s own digest covers its membership.",\n',
+        to: "",
+      },
+    ],
+    regen: true,
+  },
+  {
+    id: "review status enters the case digest",
+    file: "src/identity.ts",
+    from: '      "pool",\n    ],',
+    to: '      "pool",\n      "validation",\n    ],',
+    also: [
+      {
+        from: '      validation: "The review status. Reviewing a case does not change what it asks or grades.",\n',
+        to: "",
+      },
+    ],
+    regen: true,
+  },
+  {
+    id: "prompt status left out of the identity",
+    file: "src/identity.ts",
+    from: 'members: ["name", "digest", "status"],',
+    to: 'members: ["name", "digest"],',
+    also: [
+      {
+        from: "    excluded: {\n      template:",
+        to: '    excluded: {\n      status: "a mutant moved it out.",\n      template:',
+      },
+    ],
+    regen: true,
+  },
+  {
+    id: "template digest of the trimmed text",
+    file: "src/identity.ts",
+    from: "const computed = await sha256(prompt.template);",
+    to: "const computed = await sha256(prompt.template.trim());",
+  },
+  {
+    id: "template with a lone surrogate not reported",
+    file: "src/identity.ts",
+    from: "    if (!prompt.template.isWellFormed()) {",
+    to: "    if (false) {",
+  },
+  {
+    id: "sha256 hashes a lone surrogate as U+FFFD",
+    file: "src/canonical.ts",
+    from: '  if (!text.isWellFormed())\n    throw new TypeError("cannot hash a string with a lone surrogate: it has no UTF-8 form");',
+    to: "",
+  },
+  {
+    id: "verifyArms throws on a bad arm",
+    file: "src/identity.ts",
+    from: "      if (!(error instanceof IdentityError || error instanceof z.ZodError)) throw error;",
+    to: "      throw error;",
+  },
 ];
 
-const root = join(import.meta.dirname, "..");
-const wanted = process.argv.slice(2);
-const run = (cmd: string, args: string[]): boolean => {
-  try {
-    execFileSync(cmd, args, { cwd: root, stdio: "ignore" });
-    return true;
-  } catch {
-    return false;
-  }
-};
-const survivors: string[] = [];
-for (const m of MUTANTS.filter(
-  (x) => wanted.length === 0 || wanted.some((w) => x.id.startsWith(w)),
-)) {
-  const path = join(root, m.file);
-  const original = readFileSync(path, "utf8");
-  if (!original.includes(m.from)) {
-    console.log(`${m.id}: anchor not found (update the mutant)`);
-    survivors.push(m.id);
-    continue;
-  }
-  writeFileSync(path, original.replace(m.from, m.to));
-  try {
-    if (m.regen) {
-      run("node", ["scripts/generate-schemas.ts"]);
-      run("node", ["scripts/write-fixtures.ts"]);
+if (import.meta.main) {
+  const root = join(import.meta.dirname, "..");
+  const wanted = process.argv.slice(2);
+  const run = (cmd: string, args: string[]): boolean => {
+    try {
+      execFileSync(cmd, args, { cwd: root, stdio: "ignore" });
+      return true;
+    } catch {
+      return false;
     }
-    const killed = !run("pnpm", ["exec", "vitest", "run", "--root", "."]);
-    console.log(`${m.id}: ${killed ? "killed" : "SURVIVED"}`);
-    if (!killed) survivors.push(m.id);
-  } finally {
-    writeFileSync(path, original);
-    if (m.regen) {
-      run("node", ["scripts/generate-schemas.ts"]);
-      run("node", ["scripts/write-fixtures.ts"]);
+  };
+  const survivors: string[] = [];
+  for (const m of MUTANTS.filter(
+    (x) => wanted.length === 0 || wanted.some((w) => x.id.startsWith(w)),
+  )) {
+    const path = join(root, m.file);
+    const original = readFileSync(path, "utf8");
+    const mutated = mutate(original, m);
+    if ("missing" in mutated) {
+      console.log(`${m.id}: anchor not found (update the mutant)`);
+      survivors.push(m.id);
+      continue;
+    }
+    writeFileSync(path, mutated.text);
+    try {
+      if (m.regen) {
+        run("node", ["scripts/generate-schemas.ts"]);
+        run("node", ["scripts/write-fixtures.ts"]);
+      }
+      const killed = !run("pnpm", ["exec", "vitest", "run", "--root", "."]);
+      console.log(`${m.id}: ${killed ? "killed" : "SURVIVED"}`);
+      if (!killed) survivors.push(m.id);
+    } finally {
+      writeFileSync(path, original);
+      if (m.regen) {
+        run("node", ["scripts/generate-schemas.ts"]);
+        run("node", ["scripts/write-fixtures.ts"]);
+      }
     }
   }
+  console.log(survivors.length === 0 ? "all mutants killed" : `survivors: ${survivors.join(", ")}`);
+  process.exitCode = survivors.length === 0 ? 0 : 1;
 }
-console.log(survivors.length === 0 ? "all mutants killed" : `survivors: ${survivors.join(", ")}`);
-process.exitCode = survivors.length === 0 ? 0 : 1;

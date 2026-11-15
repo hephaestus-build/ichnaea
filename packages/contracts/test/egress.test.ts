@@ -304,7 +304,7 @@ const baseCalibration = {
   createdAt: "2026-11-15T12:00:00Z",
 };
 
-describe("egress projection: review regressions", () => {
+describe("egress projection: regressions", () => {
   it("keeps a __proto__ record key as data and never sets the output's prototype", () => {
     const raw = JSON.parse(
       `{"schema":"ichnaea.trial/1","id":"t-1","source":"offline","case":"c-1","unit":"turn","configuration":"sha256:${"a".repeat(64)}","replicate":0,"outcome":"completed","dataClass":"none","signals":{"__proto__":{"x":1}}}`,

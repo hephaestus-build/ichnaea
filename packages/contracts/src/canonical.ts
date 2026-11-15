@@ -85,8 +85,14 @@ export function canonicalize(value: unknown): string {
 
 const encoder = new TextEncoder();
 
-/** Returns `sha256:<hex>` of the UTF-8 bytes of a string. */
+/**
+ * Returns `sha256:<hex>` of the UTF-8 bytes of a string. A string with a lone surrogate has no
+ * UTF-8 form (a text encoder would replace it with U+FFFD, so two different strings would share a
+ * digest), so it throws a `TypeError`.
+ */
 export async function sha256(text: string): Promise<`sha256:${string}`> {
+  if (!text.isWellFormed())
+    throw new TypeError("cannot hash a string with a lone surrogate: it has no UTF-8 form");
   const bytes = await globalThis.crypto.subtle.digest("SHA-256", encoder.encode(text));
   let hex = "";
   for (const byte of new Uint8Array(bytes)) hex += byte.toString(16).padStart(2, "0");

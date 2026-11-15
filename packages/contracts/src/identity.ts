@@ -1,3 +1,5 @@
+import * as z from "zod";
+
 import { digest as rawDigest, NonJsonValueError, sha256 } from "./canonical.ts";
 import type { ConfigurationIdentity, Digest } from "./primitives.ts";
 import { Case, CaseSetEntry } from "./records/case.ts";
@@ -21,7 +23,8 @@ export interface DigestRule {
  * `members` or in `excluded`, and a test holds that. A projection keeps the listed members as
  * written. The values of `provenance` (in a case) and of each prompt (in a configuration) are
  * projected by their own rule; every other value is hashed whole, so a member added inside it by a
- * later minor version changes the digest. Changing a rule is a new major version.
+ * later minor version changes the digest. Changing a rule is a new major version. Decisions 0002
+ * (case digests) and 0003 (configuration identity) in docs/decisions give the reasons.
  */
 export const DIGEST_RULES: {
   readonly case: DigestRule;
@@ -33,7 +36,6 @@ export const DIGEST_RULES: {
   case: {
     members: [
       "id",
-      "caseSet",
       "unit",
       "dataClass",
       "input",
@@ -49,6 +51,8 @@ export const DIGEST_RULES: {
     excluded: {
       schema:
         "The major version. A major that keeps this projection keeps identities; one that changes it is listed in majors.json, and its migration recomputes them.",
+      caseSet:
+        "A pointer to the set that holds the case. The same case in another set, or in a renamed set, keeps its digest, so a case is traced by its digest across sets. The set's own digest covers its membership.",
       validation: "The review status. Reviewing a case does not change what it asks or grades.",
     },
   },
@@ -148,10 +152,14 @@ function sortedUnique(items: unknown, key: string, what: string): unknown[] {
  */
 export async function configurationIdentity(input: unknown): Promise<ConfigurationIdentity> {
   const [mismatch] = await verifyConfiguration(input);
-  if (mismatch)
+  if (mismatch) {
+    const template = mismatch.path.replace(/\/digest$/, "/template");
     throw new IdentityError(
-      `the template at ${mismatch.path.replace(/\/digest$/, "/template")} does not match its digest`,
+      mismatch.problem === undefined
+        ? `the template at ${template} does not match its digest`
+        : `the template at ${template} cannot be hashed: ${mismatch.problem}`,
     );
+  }
   const projection = pick(input, DIGEST_RULES.configuration.members);
   projection["models"] = sortedUnique(projection["models"], "role", "model role");
   projection["parameters"] = sortedUnique(projection["parameters"], "name", "parameter");
@@ -188,25 +196,40 @@ export async function caseSetDigest(entries: readonly unknown[]): Promise<Digest
   return digest(sortedUnique(projected, "id", "case id"));
 }
 
-/** A mismatch between a stored identity or digest and the record it names. */
+/**
+ * A stored identity or digest that does not match the record it names (`computed` is the value the
+ * record has), or a record whose value cannot be computed (`computed` is null and `problem` says
+ * why).
+ */
 export interface LinkError {
   readonly path: string;
   readonly stored: string;
-  readonly computed: string;
+  readonly computed: string | null;
+  readonly problem?: string;
 }
 
 /**
  * Checks the values a configuration records but does not hash: a prompt's `template`, when
- * present, must have the prompt's `digest`, the SHA-256 of the template's UTF-8 bytes.
+ * present, must be well-formed Unicode and have the prompt's `digest`, the SHA-256 of the
+ * template's UTF-8 bytes. A template with a lone surrogate has no UTF-8 form, so it never matches.
  */
 export async function verifyConfiguration(input: unknown, at = ""): Promise<LinkError[]> {
   const config = Configuration.parse(input);
   const errors: LinkError[] = [];
   for (const [i, prompt] of config.prompts.entries()) {
     if (prompt.template === undefined) continue;
+    const path = `${at}/prompts/${i}/digest`;
+    if (!prompt.template.isWellFormed()) {
+      errors.push({
+        path,
+        stored: prompt.digest,
+        computed: null,
+        problem: "the template has a lone surrogate, so it has no UTF-8 form",
+      });
+      continue;
+    }
     const computed = await sha256(prompt.template);
-    if (computed !== prompt.digest)
-      errors.push({ path: `${at}/prompts/${i}/digest`, stored: prompt.digest, computed });
+    if (computed !== prompt.digest) errors.push({ path, stored: prompt.digest, computed });
   }
   return errors;
 }
@@ -214,7 +237,9 @@ export async function verifyConfiguration(input: unknown, at = ""): Promise<Link
 /**
  * Checks that every arm's stored identity is the identity of its configuration, and that each
  * configuration's recorded templates match their digests. Plans and runs carry both; a reader that
- * trusts the stored identity can check it once here.
+ * trusts the stored identity can check it once here. It reports every problem and does not throw:
+ * an arm that is not a valid configuration, or that has no identity (an empty `models`, a duplicate
+ * role), is reported with a null `computed` and its `problem`.
  */
 export async function verifyArms(
   arms: ReadonlyArray<{ identity: string; configuration: unknown }>,
@@ -222,12 +247,23 @@ export async function verifyArms(
 ): Promise<LinkError[]> {
   const errors: LinkError[] = [];
   for (const [i, arm] of arms.entries()) {
-    const templates = await verifyConfiguration(arm.configuration, `${at}/${i}/configuration`);
-    errors.push(...templates);
-    if (templates.length > 0) continue;
-    const computed = await configurationIdentity(arm.configuration);
-    if (computed !== arm.identity)
-      errors.push({ path: `${at}/${i}/identity`, stored: arm.identity, computed });
+    const path = `${at}/${i}`;
+    try {
+      const templates = await verifyConfiguration(arm.configuration, `${path}/configuration`);
+      errors.push(...templates);
+      if (templates.length > 0) continue;
+      const computed = await configurationIdentity(arm.configuration);
+      if (computed !== arm.identity)
+        errors.push({ path: `${path}/identity`, stored: arm.identity, computed });
+    } catch (error) {
+      if (!(error instanceof IdentityError || error instanceof z.ZodError)) throw error;
+      errors.push({
+        path: `${path}/configuration`,
+        stored: arm.identity,
+        computed: null,
+        problem: error instanceof z.ZodError ? z.prettifyError(error) : error.message,
+      });
+    }
   }
   return errors;
 }

@@ -39,6 +39,13 @@ declared = dict(config, prompts=[dict(p, digest=text_digest(template)) for p in 
 vectors.append({"kind": "configurationIdentity", "name": "prompt-template-and-uri-recorded", "input": resolved, "digest": P.configuration_identity(resolved)})
 vectors.append({"kind": "configurationIdentity", "name": "prompt-digest-only", "input": declared, "digest": P.configuration_identity(declared)})
 assert P.configuration_identity(resolved) == P.configuration_identity(declared)
+plan = json.loads((root / "valid" / "plan.json").read_text(encoding="utf-8"))
+candidate = plan["arms"][1]["configuration"]
+assert "template" in candidate["prompts"][0] and plan["arms"][1]["identity"] == P.configuration_identity(candidate)
+vectors.append({"kind": "configurationIdentity", "name": "plan-arm-with-template-ending-in-a-newline", "input": candidate, "digest": P.configuration_identity(candidate)})
+stripped = dict(candidate, prompts=[dict(p, template=p["template"].strip()) for p in candidate["prompts"]])
+vectors.append({"kind": "configurationIdentityRefused", "name": "template-digest-is-of-the-bytes-as-written", "input": stripped, "digest": ""})
+assert P.compute(vectors[-1]) == ""
 for name, bad in [("unknown-top-level-member", dict(config, tools=["search"])), ("unknown-prompt-member", dict(config, prompts=[dict(p, templat="x") for p in config["prompts"]])), ("template-contradicts-digest", dict(config, prompts=[dict(p, template="not the digested text") for p in config["prompts"]]))]:
     if P.compute({"kind": "configurationIdentityRefused", "input": bad}) == "":
         vectors.append({"kind": "configurationIdentityRefused", "name": name, "input": bad, "digest": ""})
@@ -54,6 +61,49 @@ for name, changed in [
     ("exposure-included", dict(case, provenance=dict(case["provenance"], exposure="sealed"))),
     ("data-class-included", dict(case, dataClass="personal")),
 ]:
+    vectors.append({"kind": "caseDigest", "name": name, "input": changed, "digest": P.case_digest(changed)})
+# One vector per provenance arm, and one per provenance member that decides the digest. The lists
+# below are written by hand and checked here against the projection: a member listed as included
+# must change the digest, and one listed as excluded must not. They do not read the rule file.
+def provenance(**members):
+    return dict(case, provenance=dict(case["provenance"], **members))
+
+
+generated_with = {"method": "template expansion", "model": "generator-1", "seedSource": "fixed"}
+reused_with = {"name": "public support questions", "version": "2", "limits": "English only"}
+arms = {
+    "authored": case,
+    "generated": provenance(source="generated", generator=generated_with),
+    "reused": provenance(source="reused", reusedDataset=reused_with),
+    "collected": provenance(source="collected", collected="2026-10-20"),
+    "promoted": provenance(source="promoted", finding="finding-17"),
+}
+for arm, record in arms.items():
+    vectors.append({"kind": "caseDigest", "name": f"provenance-{arm}", "input": record, "digest": P.case_digest(record)})
+included = [
+    ("generator-method-included", arms["generated"], provenance(source="generated", generator=dict(generated_with, method="paraphrase"))),
+    ("generator-model-included", arms["generated"], provenance(source="generated", generator=dict(generated_with, model="generator-2"))),
+    ("generator-seed-source-included", arms["generated"], provenance(source="generated", generator=dict(generated_with, seedSource="clock"))),
+    ("reused-dataset-name-included", arms["reused"], provenance(source="reused", reusedDataset=dict(reused_with, name="other dataset"))),
+    ("reused-dataset-version-included", arms["reused"], provenance(source="reused", reusedDataset=dict(reused_with, version="3"))),
+    ("reused-dataset-limits-included", arms["reused"], provenance(source="reused", reusedDataset=dict(reused_with, limits="German only"))),
+    ("collected-date-included", arms["collected"], provenance(source="collected", collected="2026-10-21")),
+    ("finding-included", arms["promoted"], provenance(source="promoted", finding="finding-18")),
+    ("created-date-included", case, provenance(created="2026-11-02")),
+    ("licence-included", case, provenance(licence="MIT")),
+    ("source-included", provenance(collected="2026-10-20"), provenance(source="collected", collected="2026-10-20")),
+]
+for name, base, changed in included:
+    assert P.case_digest(changed) != P.case_digest(base), name
+    vectors.append({"kind": "caseDigest", "name": name, "input": changed, "digest": P.case_digest(changed)})
+excluded = [
+    ("author-excluded", case, provenance(author="another person")),
+    ("review-status-excluded", case, dict(case, validation={"status": "suspect", "note": "checked"})),
+    ("case-set-pointer-excluded", case, dict(case, caseSet="another-set")),
+    ("case-without-case-set-pointer", case, {k: v for k, v in case.items() if k != "caseSet"}),
+]
+for name, base, changed in excluded:
+    assert P.case_digest(changed) == P.case_digest(base), name
     vectors.append({"kind": "caseDigest", "name": name, "input": changed, "digest": P.case_digest(changed)})
 proto = dict(case, input=dict(case["input"], **{"__proto__": "data, not a prototype"}))
 vectors.append({"kind": "caseDigest", "name": "proto-member-in-input", "input": proto, "digest": P.case_digest(proto)})

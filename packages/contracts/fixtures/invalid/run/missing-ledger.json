@@ -74,7 +74,7 @@
     {
       "name": "candidate",
       "role": "candidate",
-      "identity": "sha256:8b362c5ea2573cd56f4805357bbdf852ce3720bd31bfe7c9db2d2a4603a641ae",
+      "identity": "sha256:c383073ea5eb0360cf34b919bc66798faf965041a9e83dfcf0f219221a4c18ee",
       "configuration": {
         "schema": "ichnaea.configuration/1",
         "description": "Support assistant: retrieval over the help centre, one answer model.",
@@ -114,8 +114,10 @@
         "prompts": [
           {
             "name": "answer",
-            "digest": "sha256:e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2",
-            "status": "pinned"
+            "digest": "sha256:480362e425dc4a4037b0c693478f47e9d4fb20c2af52bbbcf6bf1f4fa53e8dd4",
+            "status": "pinned",
+            "template": "Answer from the help centre only. Be brief.\n",
+            "uri": "file:prompts/answer.txt"
           }
         ],
         "factors": {

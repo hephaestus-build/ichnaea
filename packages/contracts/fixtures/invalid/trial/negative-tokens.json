@@ -5,7 +5,7 @@
   "run": "run-2026-11-15-a",
   "case": "refund-window-de",
   "unit": "session",
-  "configuration": "sha256:8b362c5ea2573cd56f4805357bbdf852ce3720bd31bfe7c9db2d2a4603a641ae",
+  "configuration": "sha256:c383073ea5eb0360cf34b919bc66798faf965041a9e83dfcf0f219221a4c18ee",
   "arm": "candidate",
   "replicate": 0,
   "outcome": "completed",
@@ -46,5 +46,5 @@
   },
   "startedAt": "2026-11-15T10:01:00Z",
   "endedAt": "2026-11-15T10:01:02Z",
-  "caseDigest": "sha256:15bdfbacfeec640c0920887b95257d087a1d257aefcb1be8fb71f0fa4033c389"
+  "caseDigest": "sha256:6cebd0ed9f33fcab7e3dd00943d1121465be1a9a372da959c817bb9b7465c5ac"
 }

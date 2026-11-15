@@ -2,7 +2,6 @@
   "case": {
     "members": [
       "id",
-      "caseSet",
       "unit",
       "dataClass",
       "input",
@@ -17,6 +16,7 @@
     ],
     "excluded": {
       "schema": "The major version. A major that keeps this projection keeps identities; one that changes it is listed in majors.json, and its migration recomputes them.",
+      "caseSet": "A pointer to the set that holds the case. The same case in another set, or in a renamed set, keeps its digest, so a case is traced by its digest across sets. The set's own digest covers its membership.",
       "validation": "The review status. Reviewing a case does not change what it asks or grades."
     }
   },

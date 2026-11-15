@@ -106,13 +106,37 @@ export const Unit = z.enum(["turn", "trace", "session", "episode"]);
 /** The unit of a case or trial. */
 export type Unit = z.infer<typeof Unit>;
 
+/** The largest unsigned 64-bit integer, in decimal. */
+const SEED_MAX = "18446744073709551615";
+
 /**
- * A seed of a named generator, in decimal without leading zeros. At most 19 digits, so every seed
- * fits in an unsigned 64-bit integer.
+ * The source of a regular expression that matches the decimals from 0 to `max`, without leading
+ * zeros. A schema cannot compare numbers in a string, so the bound is written out digit by digit:
+ * a decimal that is shorter than `max` has any digits, and one of the same length shares a prefix
+ * with `max` and then has a smaller digit.
+ */
+function decimalsUpTo(max: string): string {
+  const alternatives = ["0", `[1-9][0-9]{0,${max.length - 2}}`];
+  for (let i = 0; i < max.length; i++) {
+    const smallest = i === 0 ? 1 : 0;
+    const largest = Number(max[i]) - 1;
+    if (largest < smallest) continue;
+    const digit = largest === smallest ? String(smallest) : `[${smallest}-${largest}]`;
+    const rest = max.length - i - 1;
+    const tail = rest === 0 ? "" : rest === 1 ? "[0-9]" : `[0-9]{${rest}}`;
+    alternatives.push(`${max.slice(0, i)}${digit}${tail}`);
+  }
+  alternatives.push(max);
+  return `^(?:${alternatives.join("|")})$`;
+}
+
+/**
+ * A seed of a named generator, in decimal without leading zeros. Exactly the integers from 0 to
+ * 2^64 - 1 are valid: every unsigned 64-bit seed is accepted and no larger value is.
  */
 export const Seed = z.strictObject({
   algorithm: none(Text),
-  value: none(z.string().regex(/^(0|[1-9][0-9]{0,18})$/)),
+  value: none(z.string().regex(new RegExp(decimalsUpTo(SEED_MAX)))),
 });
 
 /** A named pointer to a file or artefact with its digest. */
@@ -128,7 +152,7 @@ export const DigestRef = z.strictObject({
  * that cannot tell), or a proportion of items inside one
  * trial (for example the expected findings an output raised: 3 of 4). A schema cannot compare two
  * fields, so a proportion whose successes exceed its trials validates here. `proportionProblem`
- * names it, and the decision rule refuses it.
+ * names it; a step that uses the value must call it, because reading a record does not.
  */
 export const MeasuredValue = z.discriminatedUnion("type", [
   z.strictObject({ type: none(z.literal("binary")), pass: none(z.boolean()) }),
