@@ -77,9 +77,16 @@ Out of scope:
 
 Independent of this reporting channel, the repository has:
 
-- **Dependency updates:** Dependabot proposes updates of the npm dependencies and the GitHub
-  Actions every week, each at least 7 days after its release
-  ([`.github/dependabot.yml`](.github/dependabot.yml)).
+- **Dependency updates:** Renovate proposes updates of the npm dependencies, the GitHub Actions,
+  the oracle images and the oracle requirements every week, each at least 7 days after its release
+  ([`.github/renovate.json`](.github/renovate.json)). A vulnerability fix skips that wait in
+  Renovate, but pnpm's own minimum release age still applies to a newly resolved npm version.
+  Oracle updates wait for a maintainer's approval on the dependency dashboard.
+- **Static analysis and dependency review:** CodeQL checks the TypeScript code and the workflows,
+  dependency review blocks a pull request that adds a dependency with a high or critical advisory
+  or an unlisted licence, and OpenSSF Scorecard rates the repository. They run once the repository
+  is public; while it is private they skip and say so
+  ([`.github/workflows/`](.github/workflows)).
 - **Install policy:** pnpm installs a version only when it is at least 7 days old, runs no install
   script of a dependency, and refuses a version that was published with less trust evidence than
   an earlier version of the same package ([`pnpm-workspace.yaml`](pnpm-workspace.yaml)).
