@@ -14,6 +14,7 @@ import {
   EstimandError,
   exactStratifiedTest,
   fixedCasesFloor,
+  fixedCasesInterval,
   fixedCasesMde,
   qnorm,
   restrictedMle,
@@ -620,6 +621,31 @@ describe("what compareCounts refuses or does not validate", () => {
       expect(result.nonInferiority.limitations).toContain(MARGIN_FLOOR_NOT_SET);
       // The regression test does not depend on the margin.
       expect(result.regression).toEqual({ validated: true, limitations: [] });
+    }
+  });
+
+  it("takes no score options, so no caller can select a variant outside the validated method", () => {
+    // 17 cases at 2 of 2 in both arms; the candidate passes 1 of 2 in 2 cases.
+    const cases = counts(17, 2, 2, 2).map((c, i) =>
+      i < 2 ? { ...c, candidate: { successes: 1, trials: 2 } } : c,
+    );
+    const validated = compareCounts({ ...input, cases });
+    expect(validated.difference.method).toBe("stratified-score-rd-bc");
+    expect(validated.difference.lower).toBeCloseTo(-0.1934, 4);
+    // The variant without the N/(N−1) factor gives another bound, so an option that reached the
+    // method would show.
+    const { strata } = fixedCasesInterval(cases, 0.95);
+    const variant = { biasCorrection: false, weights: "equal" } as const;
+    expect(scoreDifferenceInterval(strata, 0.95, "lower", variant).lower).toBeCloseTo(-0.1717, 4);
+    for (const score of [
+      { biasCorrection: false },
+      { skewnessCorrection: true },
+      { biasCorrection: false, skewnessCorrection: true },
+      { weights: "mantel-haenszel" },
+    ]) {
+      // An untyped caller can still pass them; compareCounts reads none of them.
+      // @ts-expect-error ComparisonInput has no score options.
+      expect(compareCounts({ ...input, cases, score })).toEqual(validated);
     }
   });
 

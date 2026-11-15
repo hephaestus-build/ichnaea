@@ -466,6 +466,12 @@ export const MUTANTS: readonly Mutant[] = [
     to: "export const VALIDATED_MARGIN_FLOOR = 0;",
   },
   {
+    id: "source: score options reach the fixed-cases interval and test",
+    file: "src/compare.ts",
+    from: "const { interval, strata, options } = fixedCasesInterval(used, level);",
+    to: 'const { strata } = fixedCasesInterval(used, level);\n    const options: ScoreOptions = { ...(input as { score?: ScoreOptions }).score, weights: "equal" };\n    const interval = { ...scoreDifferenceInterval(strata, level, "lower", options), estimand: "fixed-cases" as const };',
+  },
+  {
     id: "mt19937 shift",
     file: "src/mt19937.ts",
     from: "const M = 397;",
