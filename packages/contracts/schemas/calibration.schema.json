@@ -11,7 +11,11 @@
       "const": "ichnaea.calibration/1",
       "x-ichnaea-data": {
         "class": "none",
-        "identifier": "none"
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     },
     "judge": {
@@ -19,7 +23,11 @@
       "pattern": "^[a-z0-9][a-z0-9-]*\\/[a-z0-9][a-z0-9._-]*$",
       "x-ichnaea-data": {
         "class": "none",
-        "identifier": "none"
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     },
     "judgeDigest": {
@@ -27,7 +35,11 @@
       "pattern": "^sha256:[0-9a-f]{64}$",
       "x-ichnaea-data": {
         "class": "none",
-        "identifier": "none"
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     },
     "measure": {
@@ -35,7 +47,11 @@
       "pattern": "^[a-z0-9][a-z0-9-]*\\/[a-z0-9][a-z0-9._-]*$",
       "x-ichnaea-data": {
         "class": "none",
-        "identifier": "none"
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     },
     "calibrationSet": {
@@ -43,7 +59,11 @@
       "pattern": "^sha256:[0-9a-f]{64}$",
       "x-ichnaea-data": {
         "class": "none",
-        "identifier": "none"
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     },
     "humanHuman": {
@@ -61,28 +81,44 @@
             ],
             "x-ichnaea-data": {
               "class": "none",
-              "identifier": "none"
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
             }
           },
           "estimate": {
             "type": "number",
             "x-ichnaea-data": {
               "class": "none",
-              "identifier": "none"
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
             }
           },
           "lower": {
             "type": "number",
             "x-ichnaea-data": {
               "class": "none",
-              "identifier": "none"
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
             }
           },
           "upper": {
             "type": "number",
             "x-ichnaea-data": {
               "class": "none",
-              "identifier": "none"
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
             }
           },
           "n": {
@@ -91,7 +127,11 @@
             "maximum": 9007199254740991,
             "x-ichnaea-data": {
               "class": "none",
-              "identifier": "none"
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
             }
           }
         },
@@ -119,28 +159,44 @@
             ],
             "x-ichnaea-data": {
               "class": "none",
-              "identifier": "none"
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
             }
           },
           "estimate": {
             "type": "number",
             "x-ichnaea-data": {
               "class": "none",
-              "identifier": "none"
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
             }
           },
           "lower": {
             "type": "number",
             "x-ichnaea-data": {
               "class": "none",
-              "identifier": "none"
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
             }
           },
           "upper": {
             "type": "number",
             "x-ichnaea-data": {
               "class": "none",
-              "identifier": "none"
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
             }
           },
           "n": {
@@ -149,7 +205,11 @@
             "maximum": 9007199254740991,
             "x-ichnaea-data": {
               "class": "none",
-              "identifier": "none"
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
             }
           }
         },
@@ -173,7 +233,8 @@
             "x-ichnaea-data": {
               "class": "pseudonymous",
               "identifier": "direct",
-              "egress": []
+              "egress": [],
+              "retention": "record"
             }
           },
           "items": {
@@ -182,7 +243,11 @@
             "maximum": 9007199254740991,
             "x-ichnaea-data": {
               "class": "none",
-              "identifier": "none"
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
             }
           },
           "agreement": {
@@ -200,28 +265,44 @@
                   ],
                   "x-ichnaea-data": {
                     "class": "none",
-                    "identifier": "none"
+                    "identifier": "none",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "record"
                   }
                 },
                 "estimate": {
                   "type": "number",
                   "x-ichnaea-data": {
                     "class": "none",
-                    "identifier": "none"
+                    "identifier": "none",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "record"
                   }
                 },
                 "lower": {
                   "type": "number",
                   "x-ichnaea-data": {
                     "class": "none",
-                    "identifier": "none"
+                    "identifier": "none",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "record"
                   }
                 },
                 "upper": {
                   "type": "number",
                   "x-ichnaea-data": {
                     "class": "none",
-                    "identifier": "none"
+                    "identifier": "none",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "record"
                   }
                 },
                 "n": {
@@ -230,7 +311,11 @@
                   "maximum": 9007199254740991,
                   "x-ichnaea-data": {
                     "class": "none",
-                    "identifier": "none"
+                    "identifier": "none",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "record"
                   }
                 }
               },
@@ -263,7 +348,11 @@
       },
       "x-ichnaea-data": {
         "class": "none",
-        "identifier": "none"
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     },
     "strata": {
@@ -274,7 +363,11 @@
       },
       "x-ichnaea-data": {
         "class": "none",
-        "identifier": "none"
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     },
     "tolerance": {
@@ -283,7 +376,11 @@
       "maximum": 1,
       "x-ichnaea-data": {
         "class": "none",
-        "identifier": "none"
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     },
     "status": {
@@ -295,7 +392,11 @@
       ],
       "x-ichnaea-data": {
         "class": "none",
-        "identifier": "none"
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     },
     "expiry": {
@@ -306,16 +407,24 @@
       },
       "x-ichnaea-data": {
         "class": "none",
-        "identifier": "none"
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     },
     "createdAt": {
       "type": "string",
       "format": "date-time",
-      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
       "x-ichnaea-data": {
         "class": "none",
-        "identifier": "none"
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     }
   },

@@ -1,60 +1,128 @@
-// REQ-135 (and the contract half of REQ-126): unknown and unclassified fields never pass an egress;
-// personal and content fields pass only within the destination's class and purpose.
+// REQ-135 (and the contract half of REQ-126): unknown, unclassified and off-schema values never
+// pass an egress; personal and content fields pass only within the destination's class and
+// purpose. The planter walks the normative JSON Schema, not the zod schema the projection uses.
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
-import type * as z from "zod";
-
-import { Label, projectForEgress, RECORD_CONTRACTS, Trial } from "../src/index.ts";
-import { children, defType, unwrap } from "../src/walk.ts";
+import {
+  type DataClass,
+  DATA_CLASSES,
+  DATA_POLICY_KEY,
+  Label,
+  MeasureValue,
+  Monitor,
+  projectForEgress,
+  RECORD_CONTRACTS,
+  Trial,
+  Calibration,
+  Configuration,
+} from "../src/index.ts";
+import { committedSchema } from "./support/ajv.ts";
 import { arbitraryFor } from "./support/arbitrary.ts";
 
-const MARK = "__ichnaea_unknown__";
+type JsonSchema = Record<string, unknown>;
+const MARK = "__ichnaea_planted__";
+const containsMark = (value: unknown): boolean => JSON.stringify(value ?? null).includes(MARK);
 
-/** Adds an unknown member to every object that the schema defines (not inside opaque JSON). */
-function plantUnknown(schema: z.ZodType, value: unknown): unknown {
-  const inner = unwrap(schema);
-  const type = defType(inner);
-  if (type === "object" && value && typeof value === "object" && !Array.isArray(value)) {
-    const shape = Object.fromEntries(children(inner));
-    const out: Record<string, unknown> = { [MARK]: "secret" };
-    for (const [k, v] of Object.entries(value)) out[k] = shape[k] ? plantUnknown(shape[k], v) : v;
-    return out;
-  }
-  if (type === "array" && Array.isArray(value)) {
-    const element = children(inner)[0]![1];
-    return value.map((v) => plantUnknown(element, v));
-  }
-  if (type === "union") {
-    const option = children(inner)
-      .map(([, o]) => o)
-      .find((o) => o.safeParse(value).success);
-    return option ? plantUnknown(option, value) : value;
-  }
-  return value;
+/** Matches a value to the JSON Schema branch it validates against, structurally. */
+function branchFor(node: JsonSchema, value: unknown): JsonSchema | undefined {
+  const options = (node["anyOf"] ?? node["oneOf"]) as JsonSchema[] | undefined;
+  if (!options) return node;
+  return options.find((o) => {
+    if (o["type"] === "object") {
+      if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+      const props = (o["properties"] ?? {}) as Record<string, JsonSchema>;
+      return Object.entries(props).every(
+        ([k, p]) => !("const" in p) || (value as Record<string, unknown>)[k] === p["const"],
+      );
+    }
+    if (o["type"] === "array") return Array.isArray(value);
+    if (o["type"] === "null") return value === null;
+    return typeof value === (o["type"] === "integer" ? "number" : o["type"]);
+  });
 }
 
-const containsMark = (value: unknown): boolean => JSON.stringify(value ?? null).includes(MARK);
+/**
+ * Plants an unknown member into every object the JSON Schema defines, and, at a chosen leaf,
+ * replaces the value by an off-schema object that carries the mark.
+ */
+function plant(node: JsonSchema, value: unknown, corrupt: () => boolean): unknown {
+  const branch = branchFor(node, value) ?? node;
+  if (branch["$ref"]) return value; // opaque JSON content: its members are content, not schema fields
+  if (branch["type"] === "object" && value && typeof value === "object" && !Array.isArray(value)) {
+    const props = (branch["properties"] ?? {}) as Record<string, JsonSchema>;
+    const extra = branch["additionalProperties"] as JsonSchema | undefined;
+    // Only closed shapes get a planted member: a record (open keys) holds content keys by design.
+    const out: Record<string, unknown> = extra && typeof extra === "object" ? {} : { [MARK]: "x" };
+    for (const [k, v] of Object.entries(value)) {
+      const child = props[k] ?? (extra && typeof extra === "object" ? extra : undefined);
+      out[k] = child ? plant(child, v, corrupt) : v;
+    }
+    return out;
+  }
+  if (branch["type"] === "array" && Array.isArray(value))
+    return value.map((v) => plant(branch["items"] as JsonSchema, v, corrupt));
+  return corrupt() ? { [MARK]: "off-schema", email: "alice@example.com" } : value;
+}
+
+/** Asserts that every value in an egress output has an effective class of `none`. */
+function assertOnlyNone(node: JsonSchema, v: unknown, recordClass: string): void {
+  if (v === undefined) return;
+  const policy = node[DATA_POLICY_KEY] as { class: string } | undefined;
+  if (policy) expect(policy.class === "inherit" ? recordClass : policy.class).toBe("none");
+  const branch = branchFor(node, v) ?? node;
+  if (branch["type"] === "object" && v && typeof v === "object") {
+    const props = (branch["properties"] ?? {}) as Record<string, JsonSchema>;
+    const extra = branch["additionalProperties"] as JsonSchema | undefined;
+    for (const [k, child] of Object.entries(v)) {
+      const s = props[k] ?? extra;
+      if (s && typeof s === "object") assertOnlyNone(s, child, recordClass);
+    }
+  } else if (branch["type"] === "array" && Array.isArray(v)) {
+    v.forEach((c) => assertOnlyNone(branch["items"] as JsonSchema, c, recordClass));
+  }
+}
 
 describe("egress projection", () => {
   it.each(RECORD_CONTRACTS.map((c) => [c.name, c] as const))(
-    "%s: an unknown field never passes",
-    (_, contract) => {
+    "%s: planted members and off-schema values never pass",
+    (name, contract) => {
+      const schema = committedSchema(name);
       fc.assert(
         fc.property(
           arbitraryFor(contract.schema),
-          fc.constantFrom("none", "pseudonymous", "personal", "special" as const),
-          (record, maxClass) => {
-            const planted = plantUnknown(contract.schema, record);
+          fc.constantFrom(...DATA_CLASSES),
+          fc.integer({ min: 0, max: 7 }),
+          (record, maxClass: DataClass, every) => {
+            let n = 0;
+            const planted = plant(schema, record, () => every > 0 && n++ % (every + 1) === every);
             expect(containsMark(planted)).toBe(true);
             const { value, dropped } = projectForEgress(contract.schema, planted, {
               purpose: "PU-1",
               maxClass,
             });
             expect(containsMark(value)).toBe(false);
-            expect(dropped.some((p) => p.endsWith(MARK))).toBe(true);
+            expect(dropped.length).toBeGreaterThan(0);
           },
         ),
+        { seed: 20261115, numRuns: 150 },
+      );
+    },
+  );
+
+  it.each(RECORD_CONTRACTS.map((c) => [c.name, c] as const))(
+    "%s: at maxClass none, no output leaf has a policy above none",
+    (name, contract) => {
+      const schema = committedSchema(name);
+      fc.assert(
+        fc.property(arbitraryFor(contract.schema), (record) => {
+          const { value } = projectForEgress(contract.schema, record, {
+            purpose: "PU-1",
+            maxClass: "none",
+          });
+          const recordClass = (record as { dataClass?: string }).dataClass ?? "special";
+          assertOnlyNone(schema, value, recordClass);
+        }),
         { seed: 20261115, numRuns: 100 },
       );
     },
@@ -78,8 +146,9 @@ describe("egress projection", () => {
 
   it("lets content of a synthetic record leave under the default-deny destination", () => {
     const trial = Trial.parse({ ...baseTrial, dataClass: "none", output: { text: "synthetic" } });
-    const { value } = projectForEgress(Trial, trial, { purpose: "PU-2", maxClass: "none" });
-    expect(value).toHaveProperty("output", { text: "synthetic" });
+    expect(
+      projectForEgress(Trial, trial, { purpose: "PU-2", maxClass: "none" }).value,
+    ).toHaveProperty("output", { text: "synthetic" });
   });
 
   it("treats content of a record without a declared class as the most sensitive", () => {
@@ -92,18 +161,96 @@ describe("egress projection", () => {
   });
 
   it("drops a pseudonym unless the purpose is on its allow-list", () => {
-    const label = Label.parse({ ...baseLabel });
-    const deny = projectForEgress(Label, label, { purpose: "PU-3", maxClass: "personal" });
-    expect(deny.value).not.toHaveProperty("rater");
-    const tooLow = projectForEgress(Label, label, { purpose: "PU-3", maxClass: "none" });
-    expect(tooLow.value).not.toHaveProperty("rater");
+    const label = Label.parse(baseLabel);
+    expect(
+      projectForEgress(Label, label, { purpose: "PU-3", maxClass: "personal" }).value,
+    ).not.toHaveProperty("rater");
+    expect(
+      projectForEgress(Label, label, { purpose: "PU-3", maxClass: "none" }).value,
+    ).not.toHaveProperty("rater");
   });
 
-  it("drops join keys (pseudonymous, no allow-list) at every destination", () => {
-    const trial = Trial.parse({ ...baseTrial, joinKeys: { session: "psn1_s_abc" } });
+  it("drops join keys and pointers (quasi-identifiers without an allow-list) at every destination", () => {
+    const trial = Trial.parse({
+      ...baseTrial,
+      joinKeys: { session: "psn1_s_abc" },
+      pointer: "app://item/42",
+    });
+    const { value } = projectForEgress(Trial, trial, { purpose: "PU-1", maxClass: "special" });
+    expect(value).not.toHaveProperty("joinKeys");
+    expect(value).not.toHaveProperty("pointer");
+  });
+
+  it("drops a monitor's owner, which may name a person", () => {
+    const monitor = Monitor.parse({
+      schema: "ichnaea.monitor/1",
+      id: "m",
+      measure: "app/rate",
+      sampling: "census",
+      statistic: "bernoulli-cusum",
+      parameters: {},
+      reference: 0.1,
+      falseAlarmsPerYear: 1,
+      practicalMargin: 0.02,
+      owner: "Alice Example",
+      action: "page",
+      severity: "warning",
+    });
     expect(
-      projectForEgress(Trial, trial, { purpose: "PU-1", maxClass: "special" }).value,
-    ).not.toHaveProperty("joinKeys");
+      projectForEgress(Monitor, monitor, { purpose: "PU-1", maxClass: "none" }).value,
+    ).not.toHaveProperty("owner");
+  });
+
+  it.each([
+    [
+      "an off-schema object in a union",
+      MeasureValue,
+      {
+        ...baseValue,
+        value: { type: "score", value: { nonFinite: "NaN", email: "alice@example.com" } },
+      },
+    ],
+    [
+      "an object inside a numeric matrix",
+      Calibration,
+      { ...baseCalibration, confusion: [[{ email: "alice@example.com" }]] },
+    ],
+  ])("drops %s instead of copying it", (_, schema, record) => {
+    const { value } = projectForEgress(schema, record, { purpose: "PU-1", maxClass: "none" });
+    expect(JSON.stringify(value)).not.toContain("alice@example.com");
+  });
+
+  it.each(["constructor", "toString", "__proto__", "hasOwnProperty", "valueOf"])(
+    "drops a member named %s without failing",
+    (key) => {
+      const record = JSON.parse(
+        `{"schema":"ichnaea.trial/1","id":"t-1","${key}":{"email":"alice@example.com"}}`,
+      ) as unknown;
+      const { value } = projectForEgress(Trial, record, { purpose: "PU-1", maxClass: "none" });
+      expect(JSON.stringify(value)).not.toContain("alice@example.com");
+    },
+  );
+
+  it("keeps classified members of records such as configuration parameters and factors", () => {
+    const config = Configuration.parse({
+      schema: "ichnaea.configuration/1",
+      description: "d",
+      models: [
+        {
+          role: "a",
+          provider: { value: "p", status: "pinned" },
+          id: { value: "m", status: "pinned" },
+        },
+      ],
+      parameters: [{ name: "t", value: 0.2, status: "pinned", origin: "explicit" }],
+      prompts: [],
+      factors: { "code.commit": { value: "abc", status: "pinned", part: "code" } },
+    });
+    const { value } = projectForEgress(Configuration, config, {
+      purpose: "PU-1",
+      maxClass: "none",
+    });
+    expect(value).toEqual(config);
   });
 });
 
@@ -119,16 +266,38 @@ const baseTrial = {
   dataClass: "none",
   input: { q: "?" },
 };
-
 const baseLabel = {
   schema: "ichnaea.label/1",
   trial: "t-1",
   measure: "app/grounded",
-  value: true,
+  value: { type: "binary", pass: true },
   rater: "psn1_r_x",
   raterRole: "expert",
   source: "bundle",
   rubricDigest: `sha256:${"b".repeat(64)}`,
   labelledAt: "2026-11-15T12:00:00Z",
   dataClass: "none",
+};
+const baseValue = {
+  schema: "ichnaea.measureValue/1",
+  trial: "t-1",
+  measure: "app/m",
+  version: "1.0.0",
+  applicable: true,
+  source: "ichnaea",
+  dataClass: "none",
+};
+const baseCalibration = {
+  schema: "ichnaea.calibration/1",
+  judge: "app/j",
+  judgeDigest: `sha256:${"c".repeat(64)}`,
+  measure: "app/m",
+  calibrationSet: `sha256:${"d".repeat(64)}`,
+  humanHuman: [],
+  judgeHuman: [],
+  confusion: [[1]],
+  tolerance: 0.1,
+  status: "diagnostic",
+  expiry: [],
+  createdAt: "2026-11-15T12:00:00Z",
 };

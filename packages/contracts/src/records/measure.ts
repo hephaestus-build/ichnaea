@@ -4,9 +4,11 @@ import { content, none } from "../data-class.ts";
 import {
   Digest,
   JudgeId,
+  MeasuredValue,
   MeasureId,
-  Real,
+  RecordDataClass,
   SemVer,
+  Text,
   Timestamp,
   TrialId,
   Unit,
@@ -17,18 +19,19 @@ export const MeasureCard = z.object({
   schema: none(z.literal("ichnaea.measureCard/1")),
   id: none(MeasureId),
   version: none(SemVer),
-  construct: none(z.string().min(1)),
-  operationalDefinition: none(z.string().min(1)),
-  valueType: none(z.enum(["binary", "score"])),
-  unit: none(z.string().min(1)),
+  construct: none(Text),
+  operationalDefinition: none(Text),
+  valueType: none(z.enum(["binary", "score", "level", "preference"])),
+  levels: none(z.array(Text).min(2)).optional(),
+  unit: none(Text),
   direction: none(z.enum(["higher", "lower"])),
   scale: z.object({ min: none(z.number()), max: none(z.number()) }).optional(),
-  justification: none(z.string().min(1)),
-  errorModel: none(z.string().min(1)),
-  applicability: none(z.string().min(1)),
+  justification: none(Text),
+  errorModel: none(Text),
+  applicability: none(Text),
   tier: none(z.enum(["primary", "secondary", "diagnostic"])),
   unitOfEvaluation: none(Unit),
-  establishes: none(z.string().min(1)),
+  establishes: none(Text),
   computedBy: none(z.enum(["ichnaea", "application", "judge"])),
   judge: none(JudgeId).optional(),
   validation: z
@@ -48,19 +51,21 @@ export const MeasureCard = z.object({
 export type MeasureCard = z.infer<typeof MeasureCard>;
 
 /**
- * One measure value on one trial. `applicable: false` is not applicable, never zero or missing
- * (REQ-30). An application-computed value names its source (REQ-31).
+ * One measure value on one trial (or one turn of it). `applicable: false` is not applicable,
+ * never zero or missing, and has no value (REQ-30). An application-computed value names its source
+ * (REQ-31).
  */
 export const MeasureValue = z.object({
   schema: none(z.literal("ichnaea.measureValue/1")),
   trial: none(TrialId),
+  turn: none(z.int().min(0)).optional(),
   measure: none(MeasureId),
   version: none(SemVer),
   applicable: none(z.boolean()),
-  value: none(Real).optional(),
+  value: MeasuredValue.optional(),
   source: none(z.enum(["ichnaea", "application", "judge", "human"])),
   detail: content(z.string()).optional(),
-  dataClass: none(z.enum(["none", "pseudonymous", "personal", "special"])),
+  dataClass: none(RecordDataClass),
 });
 /** A measure value. */
 export type MeasureValue = z.infer<typeof MeasureValue>;

@@ -1,7 +1,8 @@
 import * as z from "zod";
 
-import { classified, content, none } from "../data-class.ts";
+import { content, none, quasi } from "../data-class.ts";
 import {
+  ArmName,
   CaseId,
   ConfigurationIdentity,
   Digest,
@@ -9,6 +10,7 @@ import {
   Json,
   RecordDataClass,
   RunId,
+  Text,
   Timestamp,
   TrialId,
   Unit,
@@ -33,8 +35,8 @@ export type Outcome = z.infer<typeof Outcome>;
 /** One step inside a trial: a model call, a tool call, a retrieval or a user turn. */
 export const Step = z.object({
   kind: none(z.enum(["model_call", "tool_call", "retrieval", "user_turn", "other"])),
-  name: none(z.string().min(1)).optional(),
-  model: none(z.string().min(1)).optional(),
+  name: none(Text).optional(),
+  model: none(Text).optional(),
   outcome: none(z.enum(["ok", "error", "refused", "timeout"])).optional(),
   inputTokens: none(z.int().min(0)).optional(),
   outputTokens: none(z.int().min(0)).optional(),
@@ -48,13 +50,16 @@ export const Usage = z.object({
   inputTokens: none(z.int().min(0)).optional(),
   outputTokens: none(z.int().min(0)).optional(),
   cost: none(z.number().min(0)).optional(),
-  costUnit: none(z.string().min(1)).optional(),
+  costUnit: none(Text).optional(),
   wallMs: none(z.number().min(0)).optional(),
 });
 
-/** An observed factor value reported by the system for this trial. */
+/**
+ * An observed factor value reported by the system for this trial, for example the model identity
+ * a provider returned or a provider fingerprint (informational, never part of the identity).
+ */
 export const Observation = z.object({
-  name: none(z.string().min(1)),
+  name: none(Text),
   value: none(Json),
   expected: none(Json).optional(),
 });
@@ -66,28 +71,24 @@ export const Trial = z.object({
   source: none(z.enum(["offline", "online"])),
   run: none(RunId).optional(),
   case: none(CaseId.nullable()),
+  caseDigest: none(Digest).optional(),
   unit: none(Unit),
   configuration: none(ConfigurationIdentity),
-  arm: none(z.enum(["base", "candidate"])).optional(),
+  arm: none(ArmName).optional(),
   replicate: none(z.int().min(0)),
   outcome: none(Outcome),
   dataClass: none(RecordDataClass),
   input: content(Json).optional(),
   output: content(Json).optional(),
-  pointer: none(z.string().min(1)).optional(),
+  pointer: quasi(Text).optional(),
   steps: z.array(Step).optional(),
   usage: Usage.optional(),
   observed: z.array(Observation).optional(),
   signals: content(z.record(z.string(), Json)).optional(),
   cache: z.object({ hit: none(z.boolean()), from: none(TrialId).optional() }).optional(),
   evidence: z.array(DigestRef).optional(),
-  joinKeys: classified(z.record(z.string(), z.string()), {
-    class: "pseudonymous",
-    identifier: "quasi",
-  }).optional(),
-  error: z
-    .object({ kind: none(z.string().min(1)), message: content(z.string()).optional() })
-    .optional(),
+  joinKeys: quasi(z.record(z.string(), z.string())).optional(),
+  error: z.object({ kind: none(Text), message: content(z.string()).optional() }).optional(),
   startedAt: none(Timestamp).optional(),
   endedAt: none(Timestamp).optional(),
   inputDigest: none(Digest).optional(),

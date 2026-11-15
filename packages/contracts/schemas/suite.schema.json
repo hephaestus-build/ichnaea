@@ -11,7 +11,11 @@
       "const": "ichnaea.suite/1",
       "x-ichnaea-data": {
         "class": "none",
-        "identifier": "none"
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     },
     "id": {
@@ -19,7 +23,11 @@
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
       "x-ichnaea-data": {
         "class": "none",
-        "identifier": "none"
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     },
     "version": {
@@ -27,7 +35,11 @@
       "minLength": 1,
       "x-ichnaea-data": {
         "class": "none",
-        "identifier": "none"
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     },
     "objective": {
@@ -35,7 +47,11 @@
       "minLength": 1,
       "x-ichnaea-data": {
         "class": "none",
-        "identifier": "none"
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     },
     "construct": {
@@ -43,7 +59,11 @@
       "minLength": 1,
       "x-ichnaea-data": {
         "class": "none",
-        "identifier": "none"
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     },
     "decision": {
@@ -51,7 +71,11 @@
       "minLength": 1,
       "x-ichnaea-data": {
         "class": "none",
-        "identifier": "none"
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     },
     "scope": {
@@ -59,7 +83,11 @@
       "minLength": 1,
       "x-ichnaea-data": {
         "class": "none",
-        "identifier": "none"
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     },
     "nonCoverage": {
@@ -67,7 +95,11 @@
       "minLength": 1,
       "x-ichnaea-data": {
         "class": "none",
-        "identifier": "none"
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     },
     "estimand": {
@@ -78,7 +110,11 @@
       ],
       "x-ichnaea-data": {
         "class": "none",
-        "identifier": "none"
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     },
     "caseSet": {
@@ -89,7 +125,11 @@
           "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
           "x-ichnaea-data": {
             "class": "none",
-            "identifier": "none"
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
           }
         },
         "path": {
@@ -97,7 +137,11 @@
           "minLength": 1,
           "x-ichnaea-data": {
             "class": "none",
-            "identifier": "none"
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
           }
         },
         "digest": {
@@ -105,7 +149,11 @@
           "pattern": "^sha256:[0-9a-f]{64}$",
           "x-ichnaea-data": {
             "class": "none",
-            "identifier": "none"
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
           }
         }
       },
@@ -128,7 +176,11 @@
       },
       "x-ichnaea-data": {
         "class": "none",
-        "identifier": "none"
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     },
     "replicates": {
@@ -137,7 +189,11 @@
       "maximum": 9007199254740991,
       "x-ichnaea-data": {
         "class": "none",
-        "identifier": "none"
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     },
     "alpha": {
@@ -146,7 +202,11 @@
       "exclusiveMaximum": 0.5,
       "x-ichnaea-data": {
         "class": "none",
-        "identifier": "none"
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     },
     "primary": {
@@ -159,7 +219,11 @@
             "pattern": "^[a-z0-9][a-z0-9-]*\\/[a-z0-9][a-z0-9._-]*$",
             "x-ichnaea-data": {
               "class": "none",
-              "identifier": "none"
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
             }
           },
           "margin": {
@@ -167,7 +231,11 @@
             "minimum": 0,
             "x-ichnaea-data": {
               "class": "none",
-              "identifier": "none"
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
             }
           },
           "marginReason": {
@@ -175,7 +243,11 @@
             "minLength": 1,
             "x-ichnaea-data": {
               "class": "none",
-              "identifier": "none"
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
             }
           },
           "safetyMargin": {
@@ -183,7 +255,11 @@
             "minimum": 0,
             "x-ichnaea-data": {
               "class": "none",
-              "identifier": "none"
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
             }
           },
           "coverageFloor": {
@@ -192,7 +268,11 @@
             "maximum": 1,
             "x-ichnaea-data": {
               "class": "none",
-              "identifier": "none"
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
             }
           }
         },
@@ -211,7 +291,11 @@
       },
       "x-ichnaea-data": {
         "class": "none",
-        "identifier": "none"
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     },
     "hardGates": {
@@ -222,7 +306,11 @@
       },
       "x-ichnaea-data": {
         "class": "none",
-        "identifier": "none"
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     },
     "budget": {
@@ -234,7 +322,11 @@
           "maximum": 9007199254740991,
           "x-ichnaea-data": {
             "class": "none",
-            "identifier": "none"
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
           }
         },
         "callsPerTrial": {
@@ -243,7 +335,11 @@
           "maximum": 9007199254740991,
           "x-ichnaea-data": {
             "class": "none",
-            "identifier": "none"
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
           }
         },
         "maxCost": {
@@ -251,7 +347,11 @@
           "minimum": 0,
           "x-ichnaea-data": {
             "class": "none",
-            "identifier": "none"
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
           }
         },
         "costUnit": {
@@ -259,7 +359,11 @@
           "minLength": 1,
           "x-ichnaea-data": {
             "class": "none",
-            "identifier": "none"
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
           }
         }
       },
@@ -279,7 +383,11 @@
           ],
           "x-ichnaea-data": {
             "class": "none",
-            "identifier": "none"
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
           }
         },
         "onInconclusive": {
@@ -290,7 +398,11 @@
           ],
           "x-ichnaea-data": {
             "class": "none",
-            "identifier": "none"
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
           }
         },
         "onEstimateOnly": {
@@ -301,7 +413,11 @@
           ],
           "x-ichnaea-data": {
             "class": "none",
-            "identifier": "none"
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
           }
         },
         "onInvalid": {
@@ -312,7 +428,11 @@
           ],
           "x-ichnaea-data": {
             "class": "none",
-            "identifier": "none"
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
           }
         }
       },
@@ -331,7 +451,11 @@
       },
       "x-ichnaea-data": {
         "class": "none",
-        "identifier": "none"
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     },
     "measureReviewDate": {
@@ -340,7 +464,11 @@
       "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
       "x-ichnaea-data": {
         "class": "none",
-        "identifier": "none"
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     },
     "paths": {
@@ -351,7 +479,11 @@
       },
       "x-ichnaea-data": {
         "class": "none",
-        "identifier": "none"
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     }
   },

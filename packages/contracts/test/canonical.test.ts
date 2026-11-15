@@ -1,5 +1,6 @@
 // REQ-03, REQ-04: RFC 8785 canonical form and SHA-256 digests, checked against the RFC's own
-// examples, an independent implementation, and node:crypto.
+// examples, a second JavaScript implementation and node:crypto. digests.test.ts checks vectors
+// from an implementation in another language.
 import { createHash } from "node:crypto";
 
 import canonicalizeOracle from "canonicalize";
@@ -65,9 +66,9 @@ describe("RFC 8785 canonical form", () => {
     expect(canonicalize(value)).toBe(expected);
   });
 
-  it("agrees with an independent implementation on 1,000 generated JSON values", () => {
+  it("agrees with a second JavaScript implementation on 1,000 generated Unicode JSON values", () => {
     fc.assert(
-      fc.property(fc.jsonValue(), (value) => {
+      fc.property(fc.jsonValue({ stringUnit: "grapheme" }), (value) => {
         expect(canonicalize(value)).toBe(oracle(value));
       }),
       { seed: 20261115, numRuns: 1000 },
@@ -96,6 +97,52 @@ describe("RFC 8785 canonical form", () => {
     },
   );
 
+  it.each([
+    ["a lone high surrogate in a string", { s: String.fromCharCode(0xd800) }],
+    ["a lone low surrogate in a string", { s: `a${String.fromCharCode(0xdc00)}` }],
+    ["a lone surrogate in a member name", { [String.fromCharCode(0xd800)]: 1 }],
+  ])("refuses %s (RFC 8785 requires well-formed Unicode)", (_, value) => {
+    expect(() => canonicalize(value)).toThrow(NonJsonValueError);
+  });
+
+  it("refuses a sparse array and a symbol key", () => {
+    // oxlint-disable-next-line no-sparse-arrays
+    expect(() => canonicalize({ a: [1, , 2] })).toThrow("sparse");
+    expect(() => canonicalize({ [Symbol("k")]: 1, a: 1 })).toThrow("symbol");
+  });
+
+  it.each(RECORD_CONTRACTS.map((c) => [c.name, c] as const))(
+    "%s: a non-finite number anywhere in a record can never be written (REQ-04)",
+    (_, contract) => {
+      fc.assert(
+        fc.property(
+          arbitraryFor(contract.schema),
+          fc.nat(),
+          fc.constantFrom(NaN, Infinity, -Infinity),
+          (record, pick, bad) => {
+            const leaves: Array<[Record<string, unknown> | unknown[], string | number]> = [];
+            const walk = (node: unknown): void => {
+              if (Array.isArray(node))
+                node.forEach((v, i) => (typeof v === "number" ? leaves.push([node, i]) : walk(v)));
+              else if (node && typeof node === "object")
+                for (const [k, v] of Object.entries(node)) {
+                  if (typeof v === "number") leaves.push([node as Record<string, unknown>, k]);
+                  else walk(v);
+                }
+            };
+            const copy = structuredClone(record);
+            walk(copy);
+            if (leaves.length === 0) return;
+            const [parent, key] = leaves[pick % leaves.length]!;
+            (parent as Record<string | number, unknown>)[key] = bad;
+            expect(() => canonicalize(copy)).toThrow(NonJsonValueError);
+          },
+        ),
+        { seed: 20261115, numRuns: 100 },
+      );
+    },
+  );
+
   it("refuses circular references", () => {
     const a: Record<string, unknown> = {};
     a["self"] = a;
@@ -114,7 +161,7 @@ describe("digests", () => {
   });
 
   it.each(RECORD_CONTRACTS.map((c) => [c.name, c] as const))(
-    "%s: equal records hash the same as a reference implementation, and output is standard JSON",
+    "%s: equal records hash the same as a second implementation, and output is standard JSON",
     async (_, contract) => {
       await fc.assert(
         fc.asyncProperty(arbitraryFor(contract.schema), async (record) => {

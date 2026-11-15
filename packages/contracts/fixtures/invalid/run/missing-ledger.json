@@ -1,0 +1,20 @@
+{
+  "schema": "ichnaea.run/1",
+  "id": "run-2026-11-15-a",
+  "plan": "sha256:1313131313131313131313131313131313131313131313131313131313131313",
+  "exploratory": false,
+  "environment": {
+    "node": "24.22.2",
+    "platform": "linux-x64",
+    "ichnaea": "0.1.0"
+  },
+  "lineage": [
+    {
+      "kind": "plugin",
+      "id": "support",
+      "version": "0.1.0"
+    }
+  ],
+  "startedAt": "2026-11-15T10:00:30Z",
+  "completedAt": "2026-11-15T10:20:00Z"
+}

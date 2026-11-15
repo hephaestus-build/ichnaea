@@ -30,6 +30,7 @@ function serialise(value: unknown, path: string, seen: Set<object>): string {
     case "boolean":
       return value ? "true" : "false";
     case "string":
+      if (!value.isWellFormed()) throw new NonJsonValueError(path, "lone surrogate in string");
       return JSON.stringify(value);
     case "number":
       if (!Number.isFinite(value)) throw new NonJsonValueError(path, String(value));
@@ -44,13 +45,24 @@ function serialise(value: unknown, path: string, seen: Set<object>): string {
   seen.add(object);
   let out: string;
   if (Array.isArray(object)) {
-    out = `[${object.map((item, index) => serialise(item, `${path}/${index}`, seen)).join(",")}]`;
+    const items: string[] = [];
+    for (let index = 0; index < object.length; index++) {
+      if (!Object.hasOwn(object, index))
+        throw new NonJsonValueError(`${path}/${index}`, "hole in sparse array");
+      items.push(serialise(object[index], `${path}/${index}`, seen));
+    }
+    out = `[${items.join(",")}]`;
   } else {
     const proto = Object.getPrototypeOf(object) as unknown;
     if (proto !== Object.prototype && proto !== null) {
       throw new NonJsonValueError(path, `instance of ${object.constructor.name}`);
     }
+    if (Object.getOwnPropertySymbols(object).length > 0)
+      throw new NonJsonValueError(path, "symbol key");
     const entries = Object.entries(object).filter(([, v]) => v !== undefined);
+    for (const [key] of entries) {
+      if (!key.isWellFormed()) throw new NonJsonValueError(path, "lone surrogate in member name");
+    }
     // Default string comparison orders by UTF-16 code units, as RFC 8785 § 3.2.3 requires.
     entries.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
     out = `{${entries

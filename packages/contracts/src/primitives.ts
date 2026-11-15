@@ -10,6 +10,9 @@ export type Digest = z.infer<typeof Digest>;
 const idPattern = /^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$/;
 const id = (): z.ZodString => z.string().regex(idPattern);
 
+/** A non-empty string. */
+export const Text = z.string().min(1);
+
 /** A case identifier, unique within a case set. */
 export const CaseId = id().brand<"CaseId">();
 /** A case identifier. */
@@ -38,6 +41,10 @@ export type FindingId = z.infer<typeof FindingId>;
 export const MonitorId = id().brand<"MonitorId">();
 /** A monitor identifier. */
 export type MonitorId = z.infer<typeof MonitorId>;
+/** The name of an arm (a compared configuration) within a plan, for example `base`. */
+export const ArmName = id().brand<"ArmName">();
+/** An arm name. */
+export type ArmName = z.infer<typeof ArmName>;
 
 const namespaced = /^[a-z0-9][a-z0-9-]*\/[a-z0-9][a-z0-9._-]*$/;
 /** A namespaced measure identifier, `<plugin>/<measure>`. */
@@ -67,8 +74,8 @@ export const SemVer = z
   .string()
   .regex(/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/);
 
-/** A UTC timestamp in ISO 8601 with a `Z` suffix. */
-export const Timestamp = z.iso.datetime();
+/** An ISO 8601 timestamp with a `Z` suffix or a numeric offset. */
+export const Timestamp = z.iso.datetime({ offset: true });
 /** A calendar date, `YYYY-MM-DD`. */
 export const CalendarDate = z.iso.date();
 
@@ -95,9 +102,31 @@ export const Unit = z.enum(["turn", "trace", "session", "episode"]);
 /** The unit of a case or trial. */
 export type Unit = z.infer<typeof Unit>;
 
+/** A seed of a named generator, as decimal digits so 64-bit seeds fit. */
+export const Seed = z.object({
+  algorithm: none(Text),
+  value: none(z.string().regex(/^\d{1,20}$/)),
+});
+
 /** A named pointer to a file or artefact with its digest. */
 export const DigestRef = z.object({
-  name: none(z.string().min(1)),
+  name: none(Text),
   digest: none(Digest),
-  uri: none(z.string().min(1)).optional(),
+  uri: none(Text).optional(),
 });
+
+/**
+ * The result of one measurement or annotation, tagged by kind: a pass or fail, a score, a level
+ * of an anchored scale, or a preference between two outputs.
+ */
+export const MeasuredValue = z.discriminatedUnion("type", [
+  z.object({ type: none(z.literal("binary")), pass: none(z.boolean()) }),
+  z.object({ type: none(z.literal("score")), value: none(Real) }),
+  z.object({ type: none(z.literal("level")), level: none(Text) }),
+  z.object({
+    type: none(z.literal("preference")),
+    preferred: none(z.enum(["first", "second", "tie"])),
+  }),
+]);
+/** A measured value. */
+export type MeasuredValue = z.infer<typeof MeasuredValue>;

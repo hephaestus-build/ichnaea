@@ -11,7 +11,11 @@
       "const": "ichnaea.case/1",
       "x-ichnaea-data": {
         "class": "none",
-        "identifier": "none"
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     },
     "id": {
@@ -19,7 +23,11 @@
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
       "x-ichnaea-data": {
         "class": "none",
-        "identifier": "none"
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     },
     "caseSet": {
@@ -27,7 +35,11 @@
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
       "x-ichnaea-data": {
         "class": "none",
-        "identifier": "none"
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     },
     "unit": {
@@ -40,7 +52,11 @@
       ],
       "x-ichnaea-data": {
         "class": "none",
-        "identifier": "none"
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     },
     "dataClass": {
@@ -53,7 +69,11 @@
       ],
       "x-ichnaea-data": {
         "class": "none",
-        "identifier": "none"
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     },
     "input": {
@@ -66,7 +86,11 @@
       },
       "x-ichnaea-data": {
         "class": "inherit",
-        "identifier": "content"
+        "identifier": "content",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     },
     "turns": {
@@ -78,18 +102,27 @@
             "type": "string",
             "enum": [
               "user",
+              "assistant",
               "system",
               "tool"
             ],
             "x-ichnaea-data": {
               "class": "none",
-              "identifier": "none"
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
             }
           },
           "content": {
             "x-ichnaea-data": {
               "class": "inherit",
-              "identifier": "content"
+              "identifier": "content",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
             },
             "$ref": "#/$defs/JsonValue"
           }
@@ -110,7 +143,11 @@
             "minLength": 1,
             "x-ichnaea-data": {
               "class": "none",
-              "identifier": "none"
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
             }
           },
           "digest": {
@@ -118,7 +155,11 @@
             "pattern": "^sha256:[0-9a-f]{64}$",
             "x-ichnaea-data": {
               "class": "none",
-              "identifier": "none"
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
             }
           },
           "uri": {
@@ -126,7 +167,11 @@
             "minLength": 1,
             "x-ichnaea-data": {
               "class": "none",
-              "identifier": "none"
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
             }
           }
         },
@@ -146,7 +191,11 @@
       },
       "x-ichnaea-data": {
         "class": "inherit",
-        "identifier": "content"
+        "identifier": "content",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     },
     "family": {
@@ -154,7 +203,11 @@
       "minLength": 1,
       "x-ichnaea-data": {
         "class": "none",
-        "identifier": "none"
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     },
     "slices": {
@@ -167,7 +220,11 @@
       },
       "x-ichnaea-data": {
         "class": "none",
-        "identifier": "none"
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     },
     "criticality": {
@@ -180,148 +237,645 @@
       ],
       "x-ichnaea-data": {
         "class": "none",
-        "identifier": "none"
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     },
     "provenance": {
-      "type": "object",
-      "properties": {
-        "source": {
-          "type": "string",
-          "minLength": 1,
-          "x-ichnaea-data": {
-            "class": "none",
-            "identifier": "none"
-          }
-        },
-        "selection": {
-          "type": "string",
-          "enum": [
-            "curated",
-            "random",
-            "promoted",
-            "generated"
-          ],
-          "x-ichnaea-data": {
-            "class": "none",
-            "identifier": "none"
-          }
-        },
-        "author": {
-          "type": "string",
-          "minLength": 1,
-          "x-ichnaea-data": {
-            "class": "none",
-            "identifier": "none"
-          }
-        },
-        "created": {
-          "type": "string",
-          "format": "date",
-          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
-          "x-ichnaea-data": {
-            "class": "none",
-            "identifier": "none"
-          }
-        },
-        "collected": {
-          "type": "string",
-          "format": "date",
-          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
-          "x-ichnaea-data": {
-            "class": "none",
-            "identifier": "none"
-          }
-        },
-        "licence": {
-          "type": "string",
-          "minLength": 1,
-          "x-ichnaea-data": {
-            "class": "none",
-            "identifier": "none"
-          }
-        },
-        "exposure": {
-          "type": "string",
-          "enum": [
-            "public",
-            "private",
-            "sealed"
-          ],
-          "x-ichnaea-data": {
-            "class": "none",
-            "identifier": "none"
-          }
-        },
-        "reusedDataset": {
+      "oneOf": [
+        {
           "type": "object",
           "properties": {
-            "name": {
+            "source": {
+              "type": "string",
+              "const": "authored",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "selection": {
+              "type": "string",
+              "enum": [
+                "curated",
+                "random",
+                "promoted",
+                "generated"
+              ],
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "author": {
+              "type": "string",
+              "minLength": 1,
+              "x-ichnaea-data": {
+                "class": "personal",
+                "identifier": "direct",
+                "egress": [],
+                "retention": "record"
+              }
+            },
+            "created": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "collected": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "licence": {
               "type": "string",
               "minLength": 1,
               "x-ichnaea-data": {
                 "class": "none",
-                "identifier": "none"
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
               }
             },
-            "version": {
+            "exposure": {
               "type": "string",
+              "enum": [
+                "public",
+                "private",
+                "sealed"
+              ],
               "x-ichnaea-data": {
                 "class": "none",
-                "identifier": "none"
-              }
-            },
-            "limits": {
-              "type": "string",
-              "minLength": 1,
-              "x-ichnaea-data": {
-                "class": "none",
-                "identifier": "none"
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
               }
             }
           },
           "required": [
-            "name",
-            "limits"
+            "source",
+            "selection",
+            "created",
+            "licence",
+            "exposure"
           ]
         },
-        "generator": {
+        {
           "type": "object",
           "properties": {
-            "method": {
+            "source": {
+              "type": "string",
+              "const": "generated",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "selection": {
+              "type": "string",
+              "enum": [
+                "curated",
+                "random",
+                "promoted",
+                "generated"
+              ],
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "author": {
+              "type": "string",
+              "minLength": 1,
+              "x-ichnaea-data": {
+                "class": "personal",
+                "identifier": "direct",
+                "egress": [],
+                "retention": "record"
+              }
+            },
+            "created": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "collected": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "licence": {
               "type": "string",
               "minLength": 1,
               "x-ichnaea-data": {
                 "class": "none",
-                "identifier": "none"
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
               }
             },
-            "model": {
+            "exposure": {
               "type": "string",
+              "enum": [
+                "public",
+                "private",
+                "sealed"
+              ],
               "x-ichnaea-data": {
                 "class": "none",
-                "identifier": "none"
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
               }
             },
-            "seedSource": {
+            "generator": {
+              "type": "object",
+              "properties": {
+                "method": {
+                  "type": "string",
+                  "minLength": 1,
+                  "x-ichnaea-data": {
+                    "class": "none",
+                    "identifier": "none",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "record"
+                  }
+                },
+                "model": {
+                  "type": "string",
+                  "minLength": 1,
+                  "x-ichnaea-data": {
+                    "class": "none",
+                    "identifier": "none",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "record"
+                  }
+                },
+                "seedSource": {
+                  "type": "string",
+                  "minLength": 1,
+                  "x-ichnaea-data": {
+                    "class": "none",
+                    "identifier": "none",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "record"
+                  }
+                }
+              },
+              "required": [
+                "method"
+              ]
+            }
+          },
+          "required": [
+            "source",
+            "selection",
+            "created",
+            "licence",
+            "exposure",
+            "generator"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "source": {
               "type": "string",
+              "const": "reused",
               "x-ichnaea-data": {
                 "class": "none",
-                "identifier": "none"
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "selection": {
+              "type": "string",
+              "enum": [
+                "curated",
+                "random",
+                "promoted",
+                "generated"
+              ],
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "author": {
+              "type": "string",
+              "minLength": 1,
+              "x-ichnaea-data": {
+                "class": "personal",
+                "identifier": "direct",
+                "egress": [],
+                "retention": "record"
+              }
+            },
+            "created": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "collected": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "licence": {
+              "type": "string",
+              "minLength": 1,
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "exposure": {
+              "type": "string",
+              "enum": [
+                "public",
+                "private",
+                "sealed"
+              ],
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "reusedDataset": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "x-ichnaea-data": {
+                    "class": "none",
+                    "identifier": "none",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "record"
+                  }
+                },
+                "version": {
+                  "type": "string",
+                  "minLength": 1,
+                  "x-ichnaea-data": {
+                    "class": "none",
+                    "identifier": "none",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "record"
+                  }
+                },
+                "limits": {
+                  "type": "string",
+                  "minLength": 1,
+                  "x-ichnaea-data": {
+                    "class": "none",
+                    "identifier": "none",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "record"
+                  }
+                }
+              },
+              "required": [
+                "name",
+                "limits"
+              ]
+            }
+          },
+          "required": [
+            "source",
+            "selection",
+            "created",
+            "licence",
+            "exposure",
+            "reusedDataset"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "string",
+              "const": "collected",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "selection": {
+              "type": "string",
+              "enum": [
+                "curated",
+                "random",
+                "promoted",
+                "generated"
+              ],
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "author": {
+              "type": "string",
+              "minLength": 1,
+              "x-ichnaea-data": {
+                "class": "personal",
+                "identifier": "direct",
+                "egress": [],
+                "retention": "record"
+              }
+            },
+            "created": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "collected": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "licence": {
+              "type": "string",
+              "minLength": 1,
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "exposure": {
+              "type": "string",
+              "enum": [
+                "public",
+                "private",
+                "sealed"
+              ],
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
               }
             }
           },
           "required": [
-            "method"
+            "source",
+            "selection",
+            "created",
+            "collected",
+            "licence",
+            "exposure"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "string",
+              "const": "promoted",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "selection": {
+              "type": "string",
+              "enum": [
+                "curated",
+                "random",
+                "promoted",
+                "generated"
+              ],
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "author": {
+              "type": "string",
+              "minLength": 1,
+              "x-ichnaea-data": {
+                "class": "personal",
+                "identifier": "direct",
+                "egress": [],
+                "retention": "record"
+              }
+            },
+            "created": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "collected": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "licence": {
+              "type": "string",
+              "minLength": 1,
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "exposure": {
+              "type": "string",
+              "enum": [
+                "public",
+                "private",
+                "sealed"
+              ],
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "finding": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            }
+          },
+          "required": [
+            "source",
+            "selection",
+            "created",
+            "licence",
+            "exposure",
+            "finding"
           ]
         }
-      },
-      "required": [
-        "source",
-        "selection",
-        "created",
-        "licence",
-        "exposure"
       ]
     },
     "pool": {
@@ -334,7 +888,11 @@
       ],
       "x-ichnaea-data": {
         "class": "none",
-        "identifier": "none"
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     },
     "validation": {
@@ -350,14 +908,22 @@
           ],
           "x-ichnaea-data": {
             "class": "none",
-            "identifier": "none"
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
           }
         },
         "note": {
           "type": "string",
           "x-ichnaea-data": {
-            "class": "none",
-            "identifier": "none"
+            "class": "inherit",
+            "identifier": "content",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
           }
         }
       },

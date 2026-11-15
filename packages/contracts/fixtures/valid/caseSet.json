@@ -2,7 +2,7 @@
   "schema": "ichnaea.caseSet/1",
   "id": "support-answers",
   "version": "3",
-  "digest": "sha256:b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1",
+  "digest": "sha256:970c1ffdd7da0b4c547160d768cd9f7ccdbcbfe66aab0ac7c4a6cef9ce01ba42",
   "cases": [
     {
       "id": "refund-window-de",

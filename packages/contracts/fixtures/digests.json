@@ -1,0 +1,384 @@
+{
+  "oracle": "python rfc8785 0.1.4",
+  "vectors": [
+    {
+      "kind": "canonical",
+      "name": "numbers",
+      "input": [
+        0,
+        -0.0,
+        1,
+        -1,
+        0.1,
+        1e+21,
+        1e-07,
+        5e-324,
+        1.7976931348623157e+308,
+        9007199254740992.0,
+        333333333.3333333,
+        1.2345678901234568e+20,
+        1e-06,
+        1e-06,
+        4.5,
+        0.002
+      ],
+      "canonical": "[0,0,1,-1,0.1,1e+21,1e-7,5e-324,1.7976931348623157e+308,9007199254740992,333333333.3333333,123456789012345680000,0.000001,0.000001,4.5,0.002]",
+      "digest": "sha256:cfc8efe829bdcd23fe3fa7aa854522e4449b106aa96a00282b4555bd186e4129"
+    },
+    {
+      "kind": "canonical",
+      "name": "unicode-members",
+      "input": {
+        "€": 1,
+        "\r": 2,
+        "דּ": 3,
+        "1": 4,
+        "😀": 5,
+        "": 6,
+        "ö": 7,
+        "á": 8,
+        "": 9
+      },
+      "canonical": "{\"\\r\":2,\"1\":4,\"á\":8,\"\":6,\"ö\":7,\"€\":1,\"😀\":5,\"\":9,\"דּ\":3}",
+      "digest": "sha256:1e97f1b2b53b06528253a6f8bd9428c0ed335835d6936a88525eae03ecabb653"
+    },
+    {
+      "kind": "canonical",
+      "name": "escapes",
+      "input": {
+        "s": "\u0000\u001f\"\\/\b\f\n\r\t  😀 é"
+      },
+      "canonical": "{\"s\":\"\\u0000\\u001f\\\"\\\\/\\b\\f\\n\\r\\t  😀 é\"}",
+      "digest": "sha256:2e678908194080b9340a0513a791b1e151c520c5a1a4a106215a048d9495dbe2"
+    },
+    {
+      "kind": "canonical",
+      "name": "nesting",
+      "input": {
+        "z": [
+          {
+            "b": null,
+            "a": true
+          },
+          [],
+          {}
+        ],
+        "a": {
+          "y": false,
+          "x": "text"
+        }
+      },
+      "canonical": "{\"a\":{\"x\":\"text\",\"y\":false},\"z\":[{\"a\":true,\"b\":null},[],{}]}",
+      "digest": "sha256:a2abd9e8eb061145218dc94f77c84508888936d6eb7704a8ef751385e3598b19"
+    },
+    {
+      "kind": "configurationIdentity",
+      "name": "valid-configuration",
+      "input": {
+        "schema": "ichnaea.configuration/1",
+        "description": "Support assistant: retrieval over the help centre, one answer model.",
+        "models": [
+          {
+            "role": "answer",
+            "provider": {
+              "value": "openai-compatible",
+              "status": "pinned"
+            },
+            "id": {
+              "value": "example-model-2026-10",
+              "status": "pinned"
+            }
+          }
+        ],
+        "parameters": [
+          {
+            "name": "answer.temperature",
+            "value": 0.2,
+            "status": "pinned",
+            "origin": "explicit"
+          },
+          {
+            "name": "answer.maxTokens",
+            "value": 800,
+            "status": "pinned",
+            "origin": "explicit"
+          },
+          {
+            "name": "answer.topP",
+            "value": 1,
+            "status": "declared",
+            "origin": "default"
+          }
+        ],
+        "prompts": [
+          {
+            "name": "answer",
+            "digest": "sha256:e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1",
+            "status": "pinned"
+          }
+        ],
+        "factors": {
+          "code.commit": {
+            "value": "4f2a9c1",
+            "status": "pinned",
+            "part": "code"
+          },
+          "data.helpCentre": {
+            "value": "sha256:f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1",
+            "status": "observed",
+            "part": "data"
+          }
+        },
+        "label": "current"
+      },
+      "digest": "sha256:6cd7f0cade65a3dc0cabc89a282f235436456392d18b07c3271bcde68c26c82c"
+    },
+    {
+      "kind": "configurationIdentity",
+      "name": "reordered-and-relabelled",
+      "input": {
+        "schema": "ichnaea.configuration/1",
+        "description": "Support assistant: retrieval over the help centre, one answer model.",
+        "models": [
+          {
+            "role": "answer",
+            "provider": {
+              "value": "openai-compatible",
+              "status": "pinned"
+            },
+            "id": {
+              "value": "example-model-2026-10",
+              "status": "pinned"
+            }
+          }
+        ],
+        "parameters": [
+          {
+            "name": "answer.topP",
+            "value": 1,
+            "status": "declared",
+            "origin": "default"
+          },
+          {
+            "name": "answer.maxTokens",
+            "value": 800,
+            "status": "pinned",
+            "origin": "explicit"
+          },
+          {
+            "name": "answer.temperature",
+            "value": 0.2,
+            "status": "pinned",
+            "origin": "explicit"
+          }
+        ],
+        "prompts": [
+          {
+            "name": "answer",
+            "digest": "sha256:e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1",
+            "status": "pinned"
+          }
+        ],
+        "factors": {
+          "code.commit": {
+            "value": "4f2a9c1",
+            "status": "pinned",
+            "part": "code"
+          },
+          "data.helpCentre": {
+            "value": "sha256:f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1",
+            "status": "observed",
+            "part": "data"
+          }
+        },
+        "label": "renamed"
+      },
+      "digest": "sha256:6cd7f0cade65a3dc0cabc89a282f235436456392d18b07c3271bcde68c26c82c"
+    },
+    {
+      "kind": "configurationIdentity",
+      "name": "three-models-unicode-roles",
+      "input": {
+        "schema": "ichnaea.configuration/1",
+        "description": "Support assistant: retrieval over the help centre, one answer model.",
+        "models": [
+          {
+            "role": "answer",
+            "provider": {
+              "value": "openai-compatible",
+              "status": "pinned"
+            },
+            "id": {
+              "value": "example-model-2026-10",
+              "status": "pinned"
+            }
+          },
+          {
+            "role": "Rerank",
+            "provider": {
+              "value": "p",
+              "status": "pinned"
+            },
+            "id": {
+              "value": "r-1",
+              "status": "declared"
+            }
+          },
+          {
+            "role": "éval",
+            "provider": {
+              "value": "p",
+              "status": "pinned"
+            },
+            "id": {
+              "value": "e-1",
+              "status": "pinned"
+            }
+          }
+        ],
+        "parameters": [
+          {
+            "name": "answer.temperature",
+            "value": 0.2,
+            "status": "pinned",
+            "origin": "explicit"
+          },
+          {
+            "name": "answer.maxTokens",
+            "value": 800,
+            "status": "pinned",
+            "origin": "explicit"
+          },
+          {
+            "name": "answer.topP",
+            "value": 1,
+            "status": "declared",
+            "origin": "default"
+          }
+        ],
+        "prompts": [
+          {
+            "name": "answer",
+            "digest": "sha256:e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1",
+            "status": "pinned"
+          }
+        ],
+        "factors": {
+          "code.commit": {
+            "value": "4f2a9c1",
+            "status": "pinned",
+            "part": "code"
+          },
+          "data.helpCentre": {
+            "value": "sha256:f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1",
+            "status": "observed",
+            "part": "data"
+          }
+        },
+        "label": "current"
+      },
+      "digest": "sha256:105bf6944e97bbb4700672a774453108461d5a65a21f54cae2721831c9e85f68"
+    },
+    {
+      "kind": "caseDigest",
+      "name": "valid-case",
+      "input": {
+        "schema": "ichnaea.case/1",
+        "id": "refund-window-de",
+        "caseSet": "support-answers",
+        "unit": "session",
+        "dataClass": "none",
+        "input": {
+          "question": "Kann ich nach 40 Tagen noch zurückgeben?",
+          "lang": "de"
+        },
+        "turns": [
+          {
+            "role": "user",
+            "content": "Und mit Kassenbon?"
+          }
+        ],
+        "fixtures": [
+          {
+            "name": "policy.md",
+            "digest": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+          }
+        ],
+        "references": {
+          "facts": [
+            {
+              "text": "Return window is 30 days",
+              "polarity": "positive"
+            }
+          ]
+        },
+        "family": "refund-window",
+        "slices": {
+          "lang": "de",
+          "intent": "returns"
+        },
+        "criticality": "high",
+        "provenance": {
+          "source": "authored",
+          "selection": "curated",
+          "author": "suite maintainers",
+          "created": "2026-11-01",
+          "licence": "CC-BY-4.0",
+          "exposure": "public"
+        },
+        "pool": "development",
+        "validation": {
+          "status": "reviewed"
+        }
+      },
+      "digest": "sha256:69f673d459f80b6df5fb37c3384d61371b01f7722c8a3cff4e5e2b2f2d76b154"
+    },
+    {
+      "kind": "caseSetDigest",
+      "name": "valid-case-set",
+      "input": [
+        {
+          "id": "refund-window-de",
+          "digest": "sha256:a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2",
+          "pool": "development",
+          "family": "refund-window"
+        },
+        {
+          "id": "refund-window-en",
+          "digest": "sha256:a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3a3",
+          "pool": "development",
+          "family": "refund-window"
+        }
+      ],
+      "digest": "sha256:970c1ffdd7da0b4c547160d768cd9f7ccdbcbfe66aab0ac7c4a6cef9ce01ba42"
+    },
+    {
+      "kind": "caseSetDigest",
+      "name": "mixed-case-ids",
+      "input": [
+        {
+          "id": "b-2",
+          "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+          "pool": "sealed"
+        },
+        {
+          "id": "Z-1",
+          "digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+          "pool": "development",
+          "family": "f"
+        },
+        {
+          "id": "a-3",
+          "digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+          "pool": "validation"
+        },
+        {
+          "id": "9.x",
+          "digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+          "pool": "promoted"
+        }
+      ],
+      "digest": "sha256:8d02d1a712d98d5ff509a077f9d01c7f75427cf67d8dd5c1efbf1858da822c17"
+    }
+  ]
+}

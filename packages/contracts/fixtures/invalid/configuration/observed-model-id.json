@@ -1,0 +1,57 @@
+{
+  "schema": "ichnaea.configuration/1",
+  "description": "Support assistant: retrieval over the help centre, one answer model.",
+  "models": [
+    {
+      "role": "answer",
+      "provider": {
+        "value": "openai-compatible",
+        "status": "pinned"
+      },
+      "id": {
+        "value": "example-model-2026-10",
+        "status": "uncontrollable"
+      }
+    }
+  ],
+  "parameters": [
+    {
+      "name": "answer.temperature",
+      "value": 0.2,
+      "status": "pinned",
+      "origin": "explicit"
+    },
+    {
+      "name": "answer.maxTokens",
+      "value": 800,
+      "status": "pinned",
+      "origin": "explicit"
+    },
+    {
+      "name": "answer.topP",
+      "value": 1,
+      "status": "declared",
+      "origin": "default"
+    }
+  ],
+  "prompts": [
+    {
+      "name": "answer",
+      "digest": "sha256:e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1",
+      "status": "pinned"
+    }
+  ],
+  "factors": {
+    "code.commit": {
+      "value": "4f2a9c1",
+      "status": "pinned",
+      "part": "code"
+    },
+    "data.helpCentre": {
+      "value": "sha256:f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1",
+      "status": "observed",
+      "part": "data"
+    }
+  },
+  "label": "current"
+}

@@ -11,7 +11,11 @@
       "const": "ichnaea.configuration/1",
       "x-ichnaea-data": {
         "class": "none",
-        "identifier": "none"
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     },
     "description": {
@@ -19,7 +23,11 @@
       "minLength": 1,
       "x-ichnaea-data": {
         "class": "none",
-        "identifier": "none"
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     },
     "models": {
@@ -33,199 +41,155 @@
             "minLength": 1,
             "x-ichnaea-data": {
               "class": "none",
-              "identifier": "none"
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
             }
           },
           "provider": {
             "type": "object",
             "properties": {
               "value": {
+                "type": "string",
+                "minLength": 1,
                 "x-ichnaea-data": {
                   "class": "none",
-                  "identifier": "none"
-                },
-                "$ref": "#/$defs/JsonValue"
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
               },
               "status": {
                 "type": "string",
                 "enum": [
                   "pinned",
-                  "observed",
-                  "declared",
-                  "uncontrollable"
+                  "declared"
                 ],
                 "x-ichnaea-data": {
                   "class": "none",
-                  "identifier": "none"
-                }
-              },
-              "part": {
-                "type": "string",
-                "enum": [
-                  "code",
-                  "prompt",
-                  "model",
-                  "runtime",
-                  "parameter",
-                  "tool",
-                  "setting",
-                  "data",
-                  "other"
-                ],
-                "x-ichnaea-data": {
-                  "class": "none",
-                  "identifier": "none"
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
                 }
               }
             },
             "required": [
               "value",
-              "status",
-              "part"
+              "status"
             ]
           },
           "id": {
             "type": "object",
             "properties": {
               "value": {
+                "type": "string",
+                "minLength": 1,
                 "x-ichnaea-data": {
                   "class": "none",
-                  "identifier": "none"
-                },
-                "$ref": "#/$defs/JsonValue"
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
               },
               "status": {
                 "type": "string",
                 "enum": [
                   "pinned",
-                  "observed",
-                  "declared",
-                  "uncontrollable"
+                  "declared"
                 ],
                 "x-ichnaea-data": {
                   "class": "none",
-                  "identifier": "none"
-                }
-              },
-              "part": {
-                "type": "string",
-                "enum": [
-                  "code",
-                  "prompt",
-                  "model",
-                  "runtime",
-                  "parameter",
-                  "tool",
-                  "setting",
-                  "data",
-                  "other"
-                ],
-                "x-ichnaea-data": {
-                  "class": "none",
-                  "identifier": "none"
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
                 }
               }
             },
             "required": [
               "value",
-              "status",
-              "part"
+              "status"
             ]
           },
           "version": {
             "type": "object",
             "properties": {
               "value": {
+                "type": "string",
+                "minLength": 1,
                 "x-ichnaea-data": {
                   "class": "none",
-                  "identifier": "none"
-                },
-                "$ref": "#/$defs/JsonValue"
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
               },
               "status": {
                 "type": "string",
                 "enum": [
                   "pinned",
-                  "observed",
-                  "declared",
-                  "uncontrollable"
+                  "declared"
                 ],
                 "x-ichnaea-data": {
                   "class": "none",
-                  "identifier": "none"
-                }
-              },
-              "part": {
-                "type": "string",
-                "enum": [
-                  "code",
-                  "prompt",
-                  "model",
-                  "runtime",
-                  "parameter",
-                  "tool",
-                  "setting",
-                  "data",
-                  "other"
-                ],
-                "x-ichnaea-data": {
-                  "class": "none",
-                  "identifier": "none"
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
                 }
               }
             },
             "required": [
               "value",
-              "status",
-              "part"
+              "status"
             ]
           },
           "route": {
             "type": "object",
             "properties": {
               "value": {
+                "type": "string",
+                "minLength": 1,
                 "x-ichnaea-data": {
                   "class": "none",
-                  "identifier": "none"
-                },
-                "$ref": "#/$defs/JsonValue"
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
               },
               "status": {
                 "type": "string",
                 "enum": [
                   "pinned",
-                  "observed",
-                  "declared",
-                  "uncontrollable"
+                  "declared"
                 ],
                 "x-ichnaea-data": {
                   "class": "none",
-                  "identifier": "none"
-                }
-              },
-              "part": {
-                "type": "string",
-                "enum": [
-                  "code",
-                  "prompt",
-                  "model",
-                  "runtime",
-                  "parameter",
-                  "tool",
-                  "setting",
-                  "data",
-                  "other"
-                ],
-                "x-ichnaea-data": {
-                  "class": "none",
-                  "identifier": "none"
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
                 }
               }
             },
             "required": [
               "value",
-              "status",
-              "part"
+              "status"
             ]
           }
         },
@@ -237,18 +201,31 @@
       }
     },
     "parameters": {
-      "type": "object",
-      "propertyNames": {
-        "type": "string",
-        "minLength": 1
-      },
-      "additionalProperties": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
         "type": "object",
         "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
+            }
+          },
           "value": {
             "x-ichnaea-data": {
               "class": "none",
-              "identifier": "none"
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
             },
             "$ref": "#/$defs/JsonValue"
           },
@@ -262,32 +239,34 @@
             ],
             "x-ichnaea-data": {
               "class": "none",
-              "identifier": "none"
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
             }
           },
-          "part": {
+          "origin": {
             "type": "string",
             "enum": [
-              "code",
-              "prompt",
-              "model",
-              "runtime",
-              "parameter",
-              "tool",
-              "setting",
-              "data",
-              "other"
+              "explicit",
+              "default"
             ],
             "x-ichnaea-data": {
               "class": "none",
-              "identifier": "none"
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
             }
           }
         },
         "required": [
+          "name",
           "value",
           "status",
-          "part"
+          "origin"
         ]
       }
     },
@@ -301,7 +280,11 @@
             "minLength": 1,
             "x-ichnaea-data": {
               "class": "none",
-              "identifier": "none"
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
             }
           },
           "digest": {
@@ -309,7 +292,11 @@
             "pattern": "^sha256:[0-9a-f]{64}$",
             "x-ichnaea-data": {
               "class": "none",
-              "identifier": "none"
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
             }
           },
           "status": {
@@ -322,7 +309,11 @@
             ],
             "x-ichnaea-data": {
               "class": "none",
-              "identifier": "none"
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
             }
           }
         },
@@ -345,7 +336,11 @@
           "value": {
             "x-ichnaea-data": {
               "class": "none",
-              "identifier": "none"
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
             },
             "$ref": "#/$defs/JsonValue"
           },
@@ -359,7 +354,11 @@
             ],
             "x-ichnaea-data": {
               "class": "none",
-              "identifier": "none"
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
             }
           },
           "part": {
@@ -377,7 +376,11 @@
             ],
             "x-ichnaea-data": {
               "class": "none",
-              "identifier": "none"
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
             }
           }
         },
@@ -392,7 +395,11 @@
       "type": "string",
       "x-ichnaea-data": {
         "class": "none",
-        "identifier": "none"
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
       }
     }
   },

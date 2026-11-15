@@ -20,12 +20,17 @@ function fromJsonSchema(node: JsonSchema): fc.Arbitrary<unknown> {
   if (typeof node["$ref"] === "string") {
     if (node["$ref"] !== "#/$defs/JsonValue")
       throw new Error(`unknown reference ${String(node["$ref"])}`);
-    return fc.jsonValue({ maxDepth: 2 }).map((v) => JSON.parse(JSON.stringify(v)) as unknown);
+    return fc
+      .jsonValue({ maxDepth: 2, stringUnit: "grapheme" })
+      .map((v) => JSON.parse(JSON.stringify(v)) as unknown);
   }
   if ("const" in node) return fc.constant(node["const"]);
   if (Array.isArray(node["enum"])) return fc.constantFrom(...(node["enum"] as unknown[]));
-  if (Array.isArray(node["anyOf"]))
-    return fc.oneof(...(node["anyOf"] as JsonSchema[]).map((o) => fromJsonSchema(o)));
+  for (const key of ["anyOf", "oneOf"]) {
+    const options = node[key];
+    if (Array.isArray(options))
+      return fc.oneof(...(options as JsonSchema[]).map((o) => fromJsonSchema(o)));
+  }
   switch (node["type"]) {
     case "string": {
       if (node["format"] === "date-time") return isoDateTime;
@@ -36,7 +41,9 @@ function fromJsonSchema(node: JsonSchema): fc.Arbitrary<unknown> {
           .stringMatching(new RegExp(node["pattern"]))
           .filter((s) => s.length <= max && s.length <= 200);
       }
+      // Full Unicode, including astral characters, so canonical ordering and escaping are tested.
       return fc.string({
+        unit: "grapheme",
         minLength: (node["minLength"] as number | undefined) ?? 0,
         maxLength: 12,
       });
@@ -94,7 +101,7 @@ function fromJsonSchema(node: JsonSchema): fc.Arbitrary<unknown> {
       if (extra && typeof extra === "object" && Object.keys(extra).length > 0) {
         const keys = node["propertyNames"]
           ? (fromJsonSchema(node["propertyNames"] as JsonSchema) as fc.Arbitrary<string>)
-          : fc.string({ minLength: 1, maxLength: 8 });
+          : fc.string({ unit: "grapheme", minLength: 1, maxLength: 8 });
         return fc
           .tuple(
             fixed,

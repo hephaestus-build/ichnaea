@@ -9,6 +9,7 @@ import {
   MeasureId,
   Probability,
   SuiteId,
+  Text,
 } from "../primitives.ts";
 
 /** The question an estimate answers (REQ-49). */
@@ -32,14 +33,14 @@ export const Budget = z.object({
   maxCalls: none(z.int().min(0)),
   callsPerTrial: none(z.int().min(1)),
   maxCost: none(z.number().min(0)).optional(),
-  costUnit: none(z.string().min(1)).optional(),
+  costUnit: none(Text).optional(),
 });
 
 /** A primary measure with its margin and optional safety margin. */
 export const PrimaryMeasure = z.object({
   measure: none(MeasureId),
   margin: none(z.number().min(0)),
-  marginReason: none(z.string().min(1)),
+  marginReason: none(Text),
   safetyMargin: none(z.number().min(0)).optional(),
   coverageFloor: none(Probability).optional(),
 });
@@ -47,7 +48,7 @@ export const PrimaryMeasure = z.object({
 /** A reference to the case set a suite evaluates. */
 export const CaseSetRef = z.object({
   id: none(CaseSetId),
-  path: none(z.string().min(1)),
+  path: none(Text),
   digest: none(Digest).optional(),
 });
 
@@ -55,12 +56,12 @@ export const CaseSetRef = z.object({
 export const Suite = z.object({
   schema: none(z.literal("ichnaea.suite/1")),
   id: none(SuiteId),
-  version: none(z.string().min(1)),
-  objective: none(z.string().min(1)),
-  construct: none(z.string().min(1)),
-  decision: none(z.string().min(1)),
-  scope: none(z.string().min(1)),
-  nonCoverage: none(z.string().min(1)),
+  version: none(Text),
+  objective: none(Text),
+  construct: none(Text),
+  decision: none(Text),
+  scope: none(Text),
+  nonCoverage: none(Text),
   estimand: none(Estimand),
   caseSet: CaseSetRef,
   pools: none(

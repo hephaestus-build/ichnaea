@@ -1,17 +1,25 @@
 import * as z from "zod";
 
-import { none } from "../data-class.ts";
-import { FindingId, MeasureId, MonitorId, Timestamp, TrialId } from "../primitives.ts";
+import { none, personal, quasi } from "../data-class.ts";
+import {
+  CaseId,
+  FindingId,
+  MeasureId,
+  MonitorId,
+  Text,
+  Timestamp,
+  TrialId,
+} from "../primitives.ts";
 
 /**
- * An online or scheduled check (REQ-60). An alert without an owner and an action is
- * a dashboard series, so both are required.
+ * An online or scheduled check (REQ-60). An alert without an owner and an action is a dashboard
+ * series, so both are required. The owner may be a person, so it is classed personal.
  */
 export const Monitor = z.object({
   schema: none(z.literal("ichnaea.monitor/1")),
   id: none(MonitorId),
   measure: none(MeasureId),
-  strata: none(z.array(z.string().min(1))).optional(),
+  strata: none(z.array(Text)).optional(),
   sampling: none(z.enum(["census", "random", "triage"])),
   statistic: none(
     z.enum(["bernoulli-cusum", "poisson-cusum", "confidence-sequence", "age-threshold"]),
@@ -20,8 +28,8 @@ export const Monitor = z.object({
   reference: none(z.number()),
   falseAlarmsPerYear: none(z.number().gt(0)),
   practicalMargin: none(z.number().min(0)),
-  owner: none(z.string().min(1)),
-  action: none(z.string().min(1)),
+  owner: personal(Text),
+  action: none(Text),
   severity: none(z.enum(["info", "warning", "critical"])),
 });
 /** A monitor. */
@@ -33,13 +41,13 @@ export const Finding = z.object({
   id: none(FindingId),
   source: none(z.enum(["monitor", "canary", "check", "triage", "manual"])),
   trials: none(z.array(TrialId)),
-  pointers: none(z.array(z.string().min(1))),
-  failureClass: none(z.string().min(1)),
+  pointers: quasi(z.array(Text)),
+  failureClass: none(Text),
   confirmedAt: none(Timestamp).optional(),
-  confirmerRole: none(z.string().min(1)).optional(),
+  confirmerRole: none(Text).optional(),
   promotion: none(z.enum(["none", "synthetic", "consented", "rejected"])),
-  linkedCase: none(z.string().min(1)).optional(),
-  action: none(z.string().min(1)).optional(),
+  linkedCase: none(CaseId).optional(),
+  action: none(Text).optional(),
 });
 /** A finding. */
 export type Finding = z.infer<typeof Finding>;

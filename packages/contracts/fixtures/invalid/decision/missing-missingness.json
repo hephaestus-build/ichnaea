@@ -6,8 +6,18 @@
   "plan": "sha256:1313131313131313131313131313131313131313131313131313131313131313",
   "run": "run-2026-11-15-a",
   "runDigest": "sha256:1414141414141414141414141414141414141414141414141414141414141414",
-  "base": "sha256:c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1",
-  "candidate": "sha256:c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2",
+  "arms": [
+    {
+      "name": "base",
+      "role": "base",
+      "identity": "sha256:c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1"
+    },
+    {
+      "name": "candidate",
+      "role": "candidate",
+      "identity": "sha256:c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2"
+    }
+  ],
   "differingFactors": [
     "prompt.answer"
   ],
@@ -16,61 +26,71 @@
     {
       "measure": "support/facts-correct",
       "version": "1.0.0",
+      "tier": "primary",
       "estimand": "fixed-cases",
-      "base": {
-        "rate": {
-          "estimate": 0.9,
-          "lower": 0.86,
-          "upper": 0.93,
-          "level": 0.95,
-          "sided": "two",
-          "method": "wilson"
-        },
-        "availability": {
-          "planned": 180,
-          "available": 180,
-          "notApplicable": 0,
-          "missing": 0
-        }
-      },
-      "candidate": {
-        "rate": {
-          "estimate": 0.91,
-          "lower": 0.87,
-          "upper": 0.94,
-          "level": 0.95,
-          "sided": "two",
-          "method": "wilson"
-        },
-        "availability": {
-          "planned": 180,
-          "available": 179,
-          "notApplicable": 0,
-          "missing": 1
-        }
-      },
-      "difference": {
-        "estimate": 0.01,
-        "lower": -0.02,
-        "upper": {
-          "nonFinite": "inf"
-        },
-        "level": 0.95,
-        "sided": "lower",
-        "method": "stratified-mn"
-      },
-      "margin": 0.05,
-      "safetyMargin": 0,
-      "verdict": "NON-INFERIOR",
-      "coverage": 0.994,
-      "flips": [
+      "arms": [
         {
-          "case": "refund-window-de",
-          "direction": "negative",
-          "base": 1,
-          "candidate": 0.33
+          "arm": "base",
+          "rate": {
+            "estimate": 0.9,
+            "lower": 0.86,
+            "upper": 0.93,
+            "level": 0.95,
+            "sided": "two",
+            "method": "wilson"
+          },
+          "availability": {
+            "planned": 180,
+            "available": 180,
+            "notApplicable": 0,
+            "missing": 0
+          }
+        },
+        {
+          "arm": "candidate",
+          "rate": {
+            "estimate": 0.91,
+            "lower": 0.87,
+            "upper": 0.94,
+            "level": 0.95,
+            "sided": "two",
+            "method": "wilson"
+          },
+          "availability": {
+            "planned": 180,
+            "available": 179,
+            "notApplicable": 0,
+            "missing": 1
+          }
         }
       ],
+      "comparison": {
+        "base": "base",
+        "candidate": "candidate",
+        "difference": {
+          "estimate": 0.01,
+          "lower": -0.02,
+          "upper": 1,
+          "level": 0.95,
+          "sided": "lower",
+          "method": "stratified-score-rd-bc"
+        },
+        "margin": 0.05,
+        "safetyMargin": 0,
+        "nonInferiorityP": 0.004,
+        "regressionP": 0.71,
+        "regressionPAdjusted": 0.71,
+        "flips": [
+          {
+            "case": "refund-window-de",
+            "direction": "negative",
+            "base": 1,
+            "candidate": 0.33
+          }
+        ]
+      },
+      "verdict": "NON-INFERIOR",
+      "coverage": 0.994,
       "notes": []
     }
   ],
@@ -88,7 +108,7 @@
   ],
   "seed": {
     "algorithm": "mt19937",
-    "value": 20261115
+    "value": "20261115"
   },
   "decidedAt": "2026-11-15T10:21:00Z",
   "ichnaea": "0.1.0",

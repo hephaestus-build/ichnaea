@@ -18,7 +18,7 @@
     "format:check": "oxfmt --check .",
     "generate": "pnpm -r --filter './packages/*' run generate",
     "check": "pnpm run format:check && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run check:generated",
-    "check:generated": "pnpm run generate && git diff --exit-code -- packages/*/schemas packages/*/fixtures",
+    "check:generated": "pnpm run generate && git status --porcelain -- packages && test -z \"$(git status --porcelain -- packages/*/schemas packages/*/fixtures)\"",
     "changeset": "changeset"
   },
   "devDependencies": {
@@ -34,7 +34,7 @@
     "vitest": "5.0.5"
   },
   "engines": {
-    "node": ">=22.12"
+    "node": ">=22.18"
   },
   "packageManager": "pnpm@12.3.4"
 }

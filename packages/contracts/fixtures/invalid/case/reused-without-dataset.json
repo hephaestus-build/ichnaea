@@ -1,0 +1,49 @@
+{
+  "schema": "ichnaea.case/1",
+  "id": "refund-window-de",
+  "caseSet": "support-answers",
+  "unit": "session",
+  "dataClass": "none",
+  "input": {
+    "question": "Kann ich nach 40 Tagen noch zurückgeben?",
+    "lang": "de"
+  },
+  "turns": [
+    {
+      "role": "user",
+      "content": "Und mit Kassenbon?"
+    }
+  ],
+  "fixtures": [
+    {
+      "name": "policy.md",
+      "digest": "sha256:a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1"
+    }
+  ],
+  "references": {
+    "facts": [
+      {
+        "text": "Return window is 30 days",
+        "polarity": "positive"
+      }
+    ]
+  },
+  "family": "refund-window",
+  "slices": {
+    "lang": "de",
+    "intent": "returns"
+  },
+  "criticality": "high",
+  "provenance": {
+    "source": "reused",
+    "selection": "curated",
+    "author": "suite maintainers",
+    "created": "2026-11-01",
+    "licence": "CC-BY-4.0",
+    "exposure": "public"
+  },
+  "pool": "development",
+  "validation": {
+    "status": "reviewed"
+  }
+}

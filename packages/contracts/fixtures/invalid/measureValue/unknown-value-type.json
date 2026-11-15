@@ -4,7 +4,13 @@
   "measure": "support/facts-correct",
   "version": "1.0.0",
   "applicable": true,
-  "value": "1",
+  "value": {
+    "type": "ranking",
+    "order": [
+      1,
+      2
+    ]
+  },
   "source": "ichnaea",
   "dataClass": "none"
 }

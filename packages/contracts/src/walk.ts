@@ -57,7 +57,21 @@ export function children(schema: z.ZodType): Array<[string, z.ZodType]> {
     case "optional":
     case "nullable":
     case "readonly":
+    case "nonoptional":
+    case "default":
+    case "prefault":
+    case "catch":
       return [["?", def["innerType"] as z.ZodType]];
+    case "tuple": {
+      const items = (def["items"] as z.ZodType[]).map((t, i): [string, z.ZodType] => [`(${i})`, t]);
+      if (def["rest"]) items.push(["(...)", def["rest"] as z.ZodType]);
+      return items;
+    }
+    case "pipe":
+      return [
+        ["|in", def["in"] as z.ZodType],
+        ["|out", def["out"] as z.ZodType],
+      ];
     case "intersection":
       return [
         ["&l", def["left"] as z.ZodType],

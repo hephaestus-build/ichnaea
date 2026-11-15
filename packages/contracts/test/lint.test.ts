@@ -27,6 +27,13 @@ describe("contract lint", () => {
     ["custom", z.object({ a: z.custom<string>(() => true) })],
     ["date", z.object({ a: z.date() })],
     ["nested in array", z.object({ a: z.array(z.object({ b: z.number().default(1) })) })],
+    ["trim", z.object({ a: z.string().trim() })],
+    ["toLowerCase", z.object({ a: z.string().toLowerCase() })],
+    ["overwrite", z.object({ a: z.number().overwrite((n) => n + 1) })],
+    ["refine inside a tuple", z.object({ a: z.tuple([z.string().refine(() => true)]) })],
+    ["default under nonoptional", z.object({ a: z.string().default("x").nonoptional() })],
+    ["any", z.object({ a: z.any() })],
+    ["unknown", z.object({ a: z.unknown() })],
   ])("rejects a planted %s", (_, schema) => {
     expect(lintContractSchema(schema).length).toBeGreaterThan(0);
   });

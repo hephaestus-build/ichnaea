@@ -46,7 +46,7 @@
   ],
   "seed": {
     "algorithm": "mt19937",
-    "value": 20261115
+    "value": "20261115"
   },
   "createdAt": "2026-11-15T10:00:00Z",
   "ichnaea": "0.1.0"

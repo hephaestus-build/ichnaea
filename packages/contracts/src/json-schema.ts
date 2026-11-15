@@ -2,10 +2,13 @@ import * as z from "zod";
 
 import type { RecordContract } from "./registry.ts";
 
-/** The JSON Schema `$id` of a record contract. */
-export function schemaUri(contract: RecordContract): string {
+/** The JSON Schema `$id` of a record contract. Reader schemas add `:reader`. */
+export function schemaUri(
+  contract: RecordContract,
+  variant: "writer" | "reader" = "writer",
+): string {
   const [name, major] = contract.id.replace(/^ichnaea\./, "").split("/");
-  return `urn:ichnaea:schema:${name}:${major}`;
+  return `urn:ichnaea:schema:${name}:${major}${variant === "reader" ? ":reader" : ""}`;
 }
 
 /**
@@ -50,4 +53,30 @@ function nameDefinitions(schema: Record<string, unknown>): Record<string, unknow
   renamedDefs["JsonValue"] = renamedDefs[from];
   delete renamedDefs[from];
   return renamed;
+}
+
+function relax(node: unknown): unknown {
+  if (Array.isArray(node)) return node.map(relax);
+  if (!node || typeof node !== "object") return node;
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(node)) out[key] = relax(value);
+  if (out["type"] === "string" && Array.isArray(out["enum"])) {
+    out["x-ichnaea-known"] = out["enum"];
+    delete out["enum"];
+  }
+  return out;
+}
+
+/**
+ * The reader variant of a record's JSON Schema (REQ-05): every enumeration of strings becomes a
+ * plain string with the known values kept as the `x-ichnaea-known` annotation, so a value added in
+ * a later minor version still validates. Discriminators (`const`) stay strict.
+ */
+export function toReaderJsonSchema(contract: RecordContract): Record<string, unknown> {
+  const writer = toJsonSchema(contract);
+  return {
+    ...(relax(writer) as Record<string, unknown>),
+    $id: schemaUri(contract, "reader"),
+    title: `${contract.id} (reader)`,
+  };
 }

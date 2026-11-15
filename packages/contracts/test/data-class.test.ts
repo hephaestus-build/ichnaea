@@ -22,20 +22,32 @@ function unclassified(schema: JsonSchema): { missing: string[]; inherits: boolea
   const missing: string[] = [];
   let inherits = false;
   const visit = (node: JsonSchema, path: string, classified: boolean): void => {
-    const policy = node[DATA_POLICY_KEY] as { class?: string } | undefined;
+    const policy = node[DATA_POLICY_KEY] as
+      | { class?: string; identifier?: string; egress?: unknown; retention?: string }
+      | undefined;
     if (policy?.class === "inherit") inherits = true;
+    if (
+      policy &&
+      (!policy.class || !policy.identifier || !Array.isArray(policy.egress) || !policy.retention)
+    ) {
+      missing.push(`${path} (incomplete policy)`);
+    }
     const here = classified || policy !== undefined;
     const props = node["properties"] as Record<string, JsonSchema> | undefined;
     const items = node["items"] as JsonSchema | undefined;
-    const anyOf = node["anyOf"] as JsonSchema[] | undefined;
+    const anyOf = (node["anyOf"] ?? node["oneOf"]) as JsonSchema[] | undefined;
     const extra = node["additionalProperties"] as JsonSchema | undefined;
-    if (extra && typeof extra === "object" && (extra["properties"] || extra["anyOf"])) {
+    if (
+      extra &&
+      typeof extra === "object" &&
+      (extra["properties"] || extra["anyOf"] || extra["oneOf"])
+    ) {
       visit(extra, `${path}/*`, here);
     } else if (props) {
       for (const [key, child] of Object.entries(props)) visit(child, `${path}/${key}`, here);
-    } else if (items && (items["properties"] || items["anyOf"])) {
+    } else if (items && (items["properties"] || items["anyOf"] || items["oneOf"])) {
       visit(items, `${path}/[]`, here);
-    } else if (anyOf && anyOf.some((o) => o["properties"])) {
+    } else if (anyOf && anyOf.some((o) => o["properties"] || o["anyOf"] || o["oneOf"])) {
       anyOf.forEach((o, i) => visit(o, `${path}|${i}`, here));
     } else if (!here) {
       missing.push(path);
@@ -64,6 +76,17 @@ describe("data classes", () => {
       if (inherits) expect(Object.keys(props)).toContain("dataClass");
     },
   );
+
+  it("the lint fails on a planted incomplete policy", () => {
+    const planted: RecordContract = {
+      name: "planted",
+      id: "ichnaea.planted/1",
+      stability: "development",
+      description: "planted",
+      schema: z.object({ partial: z.string().meta({ [DATA_POLICY_KEY]: { class: "none" } }) }),
+    };
+    expect(unclassified(toJsonSchema(planted)).missing).toEqual(["/partial (incomplete policy)"]);
+  });
 
   it("the lint fails on a planted unclassified field", () => {
     const planted: RecordContract = {

@@ -2,6 +2,7 @@ import * as z from "zod";
 
 import { content, none } from "../data-class.ts";
 import {
+  ArmName,
   CaseId,
   ConfigurationIdentity,
   Digest,
@@ -9,8 +10,11 @@ import {
   MeasureId,
   PlanDigest,
   Real,
+  RecordDataClass,
   RunId,
+  Seed,
   SemVer,
+  Text,
   Timestamp,
 } from "../primitives.ts";
 import { PowerEntry } from "./plan.ts";
@@ -44,10 +48,10 @@ export const Estimate = z.object({
   upper: none(Real),
   level: none(z.number().gt(0).lt(1)),
   sided: none(z.enum(["two", "lower", "upper"])),
-  method: none(z.string().min(1)),
+  method: none(Text),
 });
 
-/** A case whose binary outcome changed between arms (REQ-52). */
+/** A case whose binary outcome changed between two arms (REQ-52). Rates are per-case pass rates. */
 export const Flip = z.object({
   case: none(CaseId),
   direction: none(z.enum(["negative", "positive"])),
@@ -55,23 +59,37 @@ export const Flip = z.object({
   candidate: none(z.number().min(0).max(1)),
 });
 
-/** The result for one primary measure. */
-export const MeasureResult = z.object({
-  measure: none(MeasureId),
-  version: none(SemVer),
-  estimand: none(Estimand),
-  base: z.object({ rate: Estimate, availability: Availability }),
-  candidate: z.object({ rate: Estimate, availability: Availability }),
+/** One arm's estimate for a measure. */
+export const ArmEstimate = z.object({
+  arm: none(ArmName),
+  rate: Estimate,
+  availability: Availability,
+});
+
+/** The comparison of a candidate with the base for one measure. Absent in estimate-only mode. */
+export const Comparison = z.object({
+  base: none(ArmName),
+  candidate: none(ArmName),
   difference: Estimate,
   margin: none(z.number().min(0)),
   safetyMargin: none(z.number().min(0)),
-  nonInferiorityP: none(Real).optional(),
-  regressionP: none(Real).optional(),
-  regressionPAdjusted: none(Real).optional(),
+  nonInferiorityP: none(Real),
+  regressionP: none(Real),
+  regressionPAdjusted: none(Real),
+  flips: z.array(Flip),
+});
+
+/** The result for one primary or secondary measure. */
+export const MeasureOutcome = z.object({
+  measure: none(MeasureId),
+  version: none(SemVer),
+  tier: none(z.enum(["primary", "secondary"])),
+  estimand: none(Estimand),
+  arms: z.array(ArmEstimate).min(1),
+  comparison: Comparison.optional(),
   verdict: none(MeasureVerdict),
   coverage: none(z.number().min(0).max(1)),
-  flips: z.array(Flip),
-  notes: none(z.array(z.string().min(1))),
+  notes: none(z.array(Text)),
 });
 
 /** The result of one hard gate. */
@@ -84,8 +102,9 @@ export const GateResult = z.object({
 
 /** The comparison of missing trials between arms (REQ-56). */
 export const Missingness = z.object({
-  base: none(z.int().min(0)),
-  candidate: none(z.int().min(0)),
+  byArm: z.array(
+    z.object({ arm: none(ArmName), missing: none(z.int().min(0)), planned: none(z.int().min(0)) }),
+  ),
   differs: none(z.boolean()),
   sensitivity: none(z.enum(["unchanged", "changes-verdict", "not-needed"])),
 });
@@ -95,24 +114,31 @@ export const Decision = z.object({
   schema: none(z.literal("ichnaea.decision/1")),
   mode: none(z.enum(["decision", "estimate-only"])),
   verdict: none(Verdict.nullable()),
-  reason: none(z.string().min(1)),
+  reason: none(Text),
   plan: none(PlanDigest),
   run: none(RunId),
   runDigest: none(Digest),
-  base: none(ConfigurationIdentity),
-  candidate: none(ConfigurationIdentity),
-  differingFactors: none(z.array(z.string().min(1))),
+  arms: z
+    .array(
+      z.object({
+        name: none(ArmName),
+        role: none(z.enum(["base", "candidate", "reference"])),
+        identity: none(ConfigurationIdentity),
+      }),
+    )
+    .min(1),
+  differingFactors: none(z.array(Text)),
   alpha: none(z.number().gt(0).lt(0.5)),
-  measures: z.array(MeasureResult),
+  measures: z.array(MeasureOutcome),
   gates: z.array(GateResult),
   power: z.array(PowerEntry),
   missingness: Missingness,
-  invalidReasons: none(z.array(z.string().min(1))),
-  limitations: none(z.array(z.string().min(1))),
-  seed: z.object({ algorithm: none(z.string().min(1)), value: none(z.int().min(0)) }),
+  invalidReasons: none(z.array(Text)),
+  limitations: none(z.array(Text)),
+  seed: Seed,
   decidedAt: none(Timestamp),
   ichnaea: none(SemVer),
-  dataClass: none(z.enum(["none", "pseudonymous", "personal", "special"])),
+  dataClass: none(RecordDataClass),
 });
 /** A decision. */
 export type Decision = z.infer<typeof Decision>;

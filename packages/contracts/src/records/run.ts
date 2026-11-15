@@ -1,7 +1,7 @@
 import * as z from "zod";
 
 import { none } from "../data-class.ts";
-import { PlanDigest, RunId, SemVer, Timestamp, TrialId } from "../primitives.ts";
+import { PlanDigest, RunId, SemVer, Text, Timestamp, TrialId } from "../primitives.ts";
 import { LineageItem } from "./plan.ts";
 import { Outcome } from "./trial.ts";
 
@@ -19,10 +19,10 @@ export const Run = z.object({
   plan: none(PlanDigest),
   exploratory: none(z.boolean()),
   environment: z.object({
-    node: none(z.string().min(1)),
-    platform: none(z.string().min(1)),
+    node: none(Text),
+    platform: none(Text),
     ichnaea: none(SemVer),
-    ci: none(z.string().min(1)).optional(),
+    ci: none(Text).optional(),
   }),
   lineage: z.array(LineageItem),
   ledger: z.array(LedgerEntry),

@@ -6,13 +6,11 @@
       "role": "answer",
       "provider": {
         "value": "openai-compatible",
-        "status": "pinned",
-        "part": "model"
+        "status": "pinned"
       },
       "id": {
         "value": "example-model-2026-10",
-        "status": "pinned",
-        "part": "model"
+        "status": "pinned"
       }
     }
   ],

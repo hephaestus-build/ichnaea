@@ -23,7 +23,14 @@ export const FORBIDDEN_DEF_TYPES: readonly string[] = [
   "map",
   "set",
   "nan",
+  "any",
+  "unknown",
+  "never",
+  "void",
 ];
+
+/** Check kinds that rewrite a value (trim, case changes, overwrite) or run arbitrary code. */
+export const FORBIDDEN_CHECKS: readonly string[] = ["custom", "overwrite"];
 
 /** One violation of the contract rules. */
 export interface ContractViolation {
@@ -47,8 +54,9 @@ export function lintContractSchema(schema: z.ZodType, path = "$"): ContractViola
     const checks = (node._zod.def as { checks?: Array<{ _zod: { def: { check: string } } }> })
       .checks;
     for (const check of checks ?? []) {
-      if (check._zod.def.check === "custom")
-        out.push({ path: at, rule: "no refinements in contracts" });
+      const kind = check._zod.def.check;
+      if (FORBIDDEN_CHECKS.includes(kind))
+        out.push({ path: at, rule: `no '${kind}' check in contracts` });
     }
     if (type === "lazy") {
       visit((node._zod.def as unknown as { getter: () => z.ZodType }).getter(), at);

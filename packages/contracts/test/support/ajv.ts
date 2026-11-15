@@ -20,15 +20,24 @@ export function createAjv(): Ajv2020 {
   addFormats(ajv);
   ajv.addKeyword({ keyword: DATA_POLICY_KEY, schemaType: "object" });
   ajv.addKeyword({ keyword: "x-ichnaea-stability", schemaType: "string" });
-  for (const contract of RECORD_CONTRACTS) ajv.addSchema(committedSchema(contract.name));
+  ajv.addKeyword({ keyword: "x-ichnaea-known", schemaType: "array" });
+  for (const contract of RECORD_CONTRACTS) {
+    ajv.addSchema(committedSchema(contract.name));
+    ajv.addSchema(committedSchema(`${contract.name}.reader`));
+  }
   return ajv;
 }
 
 /** Validates a value with ajv against the committed schema of a contract. */
-export function ajvValidate(ajv: Ajv2020, name: string, value: unknown): boolean {
+export function ajvValidate(
+  ajv: Ajv2020,
+  name: string,
+  value: unknown,
+  variant: "writer" | "reader" = "writer",
+): boolean {
   const contract = RECORD_CONTRACTS.find((c) => c.name === name);
   if (!contract) throw new Error(`no contract ${name}`);
-  const validate = ajv.getSchema(schemaUri(contract));
+  const validate = ajv.getSchema(schemaUri(contract, variant));
   if (!validate) throw new Error(`no schema for ${name}`);
   return validate(value) as boolean;
 }

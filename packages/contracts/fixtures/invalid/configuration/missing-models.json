@@ -1,18 +1,26 @@
 {
   "schema": "ichnaea.configuration/1",
   "description": "Support assistant: retrieval over the help centre, one answer model.",
-  "parameters": {
-    "answer.temperature": {
+  "parameters": [
+    {
+      "name": "answer.temperature",
       "value": 0.2,
       "status": "pinned",
-      "part": "parameter"
+      "origin": "explicit"
     },
-    "answer.maxTokens": {
+    {
+      "name": "answer.maxTokens",
       "value": 800,
       "status": "pinned",
-      "part": "parameter"
+      "origin": "explicit"
+    },
+    {
+      "name": "answer.topP",
+      "value": 1,
+      "status": "declared",
+      "origin": "default"
     }
-  },
+  ],
   "prompts": [
     {
       "name": "answer",

@@ -2,9 +2,7 @@
   "schema": "ichnaea.label/1",
   "trial": "t-0001",
   "measure": "support/grounded",
-  "value": {
-    "yes": true
-  },
+  "value": true,
   "rater": "psn1_r_7k3q2m9x4c8v1b5n6z0a2s4d",
   "raterRole": "expert",
   "source": "bundle",

@@ -4,9 +4,7 @@
   "measure": "support/facts-correct",
   "version": "1.0.0",
   "applicable": true,
-  "value": {
-    "nonFinite": "infinity"
-  },
+  "value": 1,
   "source": "ichnaea",
   "dataClass": "none"
 }

@@ -6,6 +6,35 @@ const d = (c: string): string => `sha256:${c.repeat(64).slice(0, 64)}`;
 const config = d("c1");
 const configB = d("c2");
 
+const CONFIGURATION = {
+  schema: "ichnaea.configuration/1",
+  description: "Support assistant: retrieval over the help centre, one answer model.",
+  models: [
+    {
+      role: "answer",
+      provider: { value: "openai-compatible", status: "pinned" },
+      id: { value: "example-model-2026-10", status: "pinned" },
+    },
+  ],
+  parameters: [
+    { name: "answer.temperature", value: 0.2, status: "pinned", origin: "explicit" },
+    { name: "answer.maxTokens", value: 800, status: "pinned", origin: "explicit" },
+    { name: "answer.topP", value: 1, status: "declared", origin: "default" },
+  ],
+  prompts: [{ name: "answer", digest: d("e1"), status: "pinned" }],
+  factors: {
+    "code.commit": { value: "4f2a9c1", status: "pinned", part: "code" },
+    "data.helpCentre": { value: d("f1"), status: "observed", part: "data" },
+  },
+  label: "current",
+};
+
+const CONFIGURATION_B = {
+  ...CONFIGURATION,
+  prompts: [{ name: "answer", digest: d("e2"), status: "pinned" }],
+  label: "candidate",
+};
+
 export const VALID: Record<string, Record<string, unknown>> = {
   case: {
     schema: "ichnaea.case/1",
@@ -41,27 +70,7 @@ export const VALID: Record<string, Record<string, unknown>> = {
       { id: "refund-window-en", digest: d("a3"), pool: "development", family: "refund-window" },
     ],
   },
-  configuration: {
-    schema: "ichnaea.configuration/1",
-    description: "Support assistant: retrieval over the help centre, one answer model.",
-    models: [
-      {
-        role: "answer",
-        provider: { value: "openai-compatible", status: "pinned", part: "model" },
-        id: { value: "example-model-2026-10", status: "pinned", part: "model" },
-      },
-    ],
-    parameters: {
-      "answer.temperature": { value: 0.2, status: "pinned", part: "parameter" },
-      "answer.maxTokens": { value: 800, status: "pinned", part: "parameter" },
-    },
-    prompts: [{ name: "answer", digest: d("e1"), status: "pinned" }],
-    factors: {
-      "code.commit": { value: "4f2a9c1", status: "pinned", part: "code" },
-      "data.helpCentre": { value: d("f1"), status: "observed", part: "data" },
-    },
-    label: "current",
-  },
+  configuration: CONFIGURATION,
   suite: {
     schema: "ichnaea.suite/1",
     id: "support-answers",
@@ -104,8 +113,8 @@ export const VALID: Record<string, Record<string, unknown>> = {
     alpha: 0.05,
     replicates: 3,
     arms: [
-      { name: "base", configuration: config },
-      { name: "candidate", configuration: configB },
+      { name: "base", role: "base", identity: config, configuration: CONFIGURATION },
+      { name: "candidate", role: "candidate", identity: configB, configuration: CONFIGURATION_B },
     ],
     measures: [{ kind: "measure", id: "support/facts-correct", version: "1.0.0", digest: d("12") }],
     power: [
@@ -122,7 +131,7 @@ export const VALID: Record<string, Record<string, unknown>> = {
     ],
     budget: { worstCaseCalls: 720, maxCalls: 800 },
     trials: [{ id: "t-0001", case: "refund-window-de", arm: "candidate", replicate: 0, batch: 0 }],
-    seed: { algorithm: "mt19937", value: 20261115 },
+    seed: { algorithm: "mt19937", value: "20261115" },
     createdAt: "2026-11-15T10:00:00Z",
     ichnaea: "0.1.0",
   },
@@ -196,7 +205,7 @@ export const VALID: Record<string, Record<string, unknown>> = {
     measure: "support/facts-correct",
     version: "1.0.0",
     applicable: true,
-    value: 1,
+    value: { type: "binary", pass: true },
     source: "ichnaea",
     dataClass: "none",
   },
@@ -208,61 +217,82 @@ export const VALID: Record<string, Record<string, unknown>> = {
     plan: d("13"),
     run: "run-2026-11-15-a",
     runDigest: d("14"),
-    base: config,
-    candidate: configB,
+    arms: [
+      { name: "base", role: "base", identity: config },
+      { name: "candidate", role: "candidate", identity: configB },
+    ],
     differingFactors: ["prompt.answer"],
     alpha: 0.05,
     measures: [
       {
         measure: "support/facts-correct",
         version: "1.0.0",
+        tier: "primary",
         estimand: "fixed-cases",
-        base: {
-          rate: {
-            estimate: 0.9,
-            lower: 0.86,
-            upper: 0.93,
-            level: 0.95,
-            sided: "two",
-            method: "wilson",
+        arms: [
+          {
+            arm: "base",
+            rate: {
+              estimate: 0.9,
+              lower: 0.86,
+              upper: 0.93,
+              level: 0.95,
+              sided: "two",
+              method: "wilson",
+            },
+            availability: { planned: 180, available: 180, notApplicable: 0, missing: 0 },
           },
-          availability: { planned: 180, available: 180, notApplicable: 0, missing: 0 },
-        },
-        candidate: {
-          rate: {
-            estimate: 0.91,
-            lower: 0.87,
-            upper: 0.94,
-            level: 0.95,
-            sided: "two",
-            method: "wilson",
+          {
+            arm: "candidate",
+            rate: {
+              estimate: 0.91,
+              lower: 0.87,
+              upper: 0.94,
+              level: 0.95,
+              sided: "two",
+              method: "wilson",
+            },
+            availability: { planned: 180, available: 179, notApplicable: 0, missing: 1 },
           },
-          availability: { planned: 180, available: 179, notApplicable: 0, missing: 1 },
+        ],
+        comparison: {
+          base: "base",
+          candidate: "candidate",
+          difference: {
+            estimate: 0.01,
+            lower: -0.02,
+            upper: 1,
+            level: 0.95,
+            sided: "lower",
+            method: "stratified-score-rd-bc",
+          },
+          margin: 0.05,
+          safetyMargin: 0,
+          nonInferiorityP: 0.004,
+          regressionP: 0.71,
+          regressionPAdjusted: 0.71,
+          flips: [{ case: "refund-window-de", direction: "negative", base: 1, candidate: 0.33 }],
         },
-        difference: {
-          estimate: 0.01,
-          lower: -0.02,
-          upper: { nonFinite: "inf" },
-          level: 0.95,
-          sided: "lower",
-          method: "stratified-mn",
-        },
-        margin: 0.05,
-        safetyMargin: 0,
         verdict: "NON-INFERIOR",
         coverage: 0.994,
-        flips: [{ case: "refund-window-de", direction: "negative", base: 1, candidate: 0.33 }],
         notes: [],
       },
     ],
     gates: [{ gate: "support/schema-valid", passed: true, failures: 0 }],
     power: [],
-    missingness: { base: 0, candidate: 1, differs: false, sensitivity: "unchanged" },
+    missingness: {
+      byArm: [
+        { arm: "base", missing: 0, planned: 180 },
+        { arm: "candidate", missing: 1, planned: 180 },
+      ],
+      differs: false,
+      sensitivity: "unchanged",
+    },
     invalidReasons: [],
     limitations: [
       "An observed model identity cannot detect a silent update behind the same identity.",
     ],
-    seed: { algorithm: "mt19937", value: 20261115 },
+    seed: { algorithm: "mt19937", value: "20261115" },
     decidedAt: "2026-11-15T10:21:00Z",
     ichnaea: "0.1.0",
     dataClass: "none",
@@ -286,7 +316,7 @@ export const VALID: Record<string, Record<string, unknown>> = {
     schema: "ichnaea.label/1",
     trial: "t-0001",
     measure: "support/grounded",
-    value: true,
+    value: { type: "binary", pass: true },
     rater: "psn1_r_7k3q2m9x4c8v1b5n6z0a2s4d",
     raterRole: "expert",
     source: "bundle",
@@ -344,7 +374,10 @@ type Mutation = (record: Record<string, unknown>) => void;
 export const INVALID: Record<string, Record<string, Mutation>> = {
   case: {
     "missing-unit": (r) => delete r["unit"],
-    "unknown-unit": (r) => (r["unit"] = "conversation"),
+    "reused-without-dataset": (r) =>
+      (r["provenance"] = { ...(r["provenance"] as object), source: "reused" }),
+    "unknown-provenance-source": (r) =>
+      (r["provenance"] = { ...(r["provenance"] as object), source: "scraped" }),
     "wrong-schema-id": (r) => (r["schema"] = "ichnaea.case/2"),
     "missing-provenance-licence": (r) =>
       delete (r["provenance"] as Record<string, unknown>)["licence"],
@@ -359,22 +392,22 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
     "missing-models": (r) => delete r["models"],
     "empty-models": (r) => (r["models"] = []),
     "missing-parameters": (r) => delete r["parameters"],
-    "factor-without-status": (r) =>
-      delete (
-        (r["parameters"] as Record<string, Record<string, unknown>>)[
-          "answer.temperature"
-        ] as Record<string, unknown>
-      )["status"],
-    "unknown-status": (r) => {
-      (r["factors"] as Record<string, Record<string, unknown>>)["code.commit"]!["status"] =
-        "assumed";
-    },
+    "no-parameters": (r) => (r["parameters"] = []),
+    "empty-model-id": (r) =>
+      ((r["models"] as Array<Record<string, Record<string, unknown>>>)[0]!["id"]!["value"] = ""),
+    "null-model-id": (r) =>
+      ((r["models"] as Array<Record<string, Record<string, unknown>>>)[0]!["id"]!["value"] = null),
+    "observed-model-id": (r) =>
+      ((r["models"] as Array<Record<string, Record<string, unknown>>>)[0]!["id"]!["status"] =
+        "uncontrollable"),
+    "parameter-without-origin": (r) =>
+      delete (r["parameters"] as Array<Record<string, unknown>>)[0]!["origin"],
   },
   suite: {
     "missing-policy-inconclusive": (r) =>
       delete (r["policy"] as Record<string, unknown>)["onInconclusive"],
     "zero-replicates": (r) => (r["replicates"] = 0),
-    "unknown-estimand": (r) => (r["estimand"] = "population"),
+    "estimand-not-a-string": (r) => (r["estimand"] = ["fixed-cases"]),
     "negative-margin": (r) =>
       ((r["primary"] as Array<Record<string, unknown>>)[0]!["margin"] = -0.05),
     "margin-without-reason": (r) =>
@@ -384,39 +417,39 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
   },
   plan: {
     "no-arms": (r) => (r["arms"] = []),
-    "bad-seed": (r) => (r["seed"] = { algorithm: "mt19937", value: -1 }),
-    "local-time": (r) => (r["createdAt"] = "2026-11-15T10:00:00+01:00"),
+    "bad-seed": (r) => (r["seed"] = { algorithm: "mt19937", value: "-1" }),
+    "date-without-time": (r) => (r["createdAt"] = "2026-11-15"),
+    "arm-without-configuration": (r) =>
+      delete (r["arms"] as Array<Record<string, unknown>>)[0]!["configuration"],
   },
   trial: {
-    "unknown-outcome": (r) => (r["outcome"] = "skipped"),
+    "outcome-not-a-string": (r) => (r["outcome"] = 3),
     "missing-configuration": (r) => delete r["configuration"],
     "negative-tokens": (r) => ((r["usage"] as Record<string, unknown>)["inputTokens"] = -1),
     "missing-data-class": (r) => delete r["dataClass"],
     "fractional-replicate": (r) => (r["replicate"] = 0.5),
   },
   run: {
-    "unknown-ledger-state": (r) =>
-      ((r["ledger"] as Array<Record<string, unknown>>)[0]!["state"] = "skipped"),
+    "missing-ledger": (r) => delete r["ledger"],
     "missing-lineage": (r) => delete r["lineage"],
   },
   measureCard: {
     "missing-construct": (r) => delete r["construct"],
-    "unknown-tier": (r) => (r["tier"] = "headline"),
+    "missing-direction": (r) => delete r["direction"],
     "bad-version": (r) => (r["version"] = "1.0"),
   },
   measureValue: {
-    "string-value": (r) => (r["value"] = "1"),
-    "bad-non-finite": (r) => (r["value"] = { nonFinite: "infinity" }),
+    "untagged-value": (r) => (r["value"] = 1),
+    "unknown-value-type": (r) => (r["value"] = { type: "ranking", order: [1, 2] }),
   },
   decision: {
-    "unknown-verdict": (r) => (r["verdict"] = "PASSED"),
-    "level-out-of-range": (r) =>
-      ((
-        (r["measures"] as Array<Record<string, unknown>>)[0]!["difference"] as Record<
-          string,
-          unknown
-        >
-      )["level"] = 1.5),
+    "no-arms": (r) => (r["arms"] = []),
+    "level-out-of-range": (r) => {
+      const outcome = (
+        r["measures"] as Array<Record<string, Record<string, Record<string, unknown>>>>
+      )[0]!;
+      outcome["comparison"]!["difference"]!["level"] = 1.5;
+    },
     "missing-missingness": (r) => delete r["missingness"],
   },
   judge: {
@@ -425,10 +458,10 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
   },
   label: {
     "missing-rater": (r) => delete r["rater"],
-    "object-value": (r) => (r["value"] = { yes: true }),
+    "untagged-value": (r) => (r["value"] = true),
   },
   calibration: {
-    "unknown-status": (r) => (r["status"] = "trusted"),
+    "missing-status": (r) => delete r["status"],
     "negative-confusion": (r) => (r["confusion"] = [[-1]]),
   },
   monitor: {
@@ -437,6 +470,24 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
     "zero-budget": (r) => (r["falseAlarmsPerYear"] = 0),
   },
   finding: {
-    "unknown-promotion": (r) => (r["promotion"] = "auto"),
+    "missing-promotion": (r) => delete r["promotion"],
   },
+};
+
+/**
+ * Variants that a writer must not produce but a reader must accept (REQ-05): values added to an
+ * enumeration in a later minor version.
+ */
+export const READER_ONLY: Record<string, Record<string, Mutation>> = {
+  case: { "future-unit": (r) => (r["unit"] = "conversation") },
+  trial: { "future-outcome": (r) => (r["outcome"] = "partial") },
+  run: {
+    "future-ledger-state": (r) =>
+      ((r["ledger"] as Array<Record<string, unknown>>)[0]!["state"] = "skipped"),
+  },
+  measureCard: { "future-tier": (r) => (r["tier"] = "headline") },
+  decision: { "future-verdict": (r) => (r["verdict"] = "PASS-WITH-NOTES") },
+  calibration: { "future-status": (r) => (r["status"] = "provisional") },
+  finding: { "future-promotion": (r) => (r["promotion"] = "auto") },
+  suite: { "future-estimand": (r) => (r["estimand"] = "population") },
 };

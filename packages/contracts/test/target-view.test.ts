@@ -14,9 +14,7 @@ describe("target view of a case", () => {
           references: { gold: "HIDDEN-REFERENCE" },
         });
         const view = caseForTarget(record);
-        expect(Object.keys(view).toSorted()).toEqual(
-          expect.arrayContaining(["id", "input", "unit"]),
-        );
+        expect(Object.keys(view)).toEqual(expect.arrayContaining(["id", "input", "unit"]));
         for (const key of Object.keys(view))
           expect(["id", "unit", "input", "turns", "fixtures"]).toContain(key);
         expect(JSON.stringify(view)).not.toContain("HIDDEN-REFERENCE");

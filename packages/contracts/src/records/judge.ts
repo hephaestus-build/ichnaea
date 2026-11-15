@@ -5,10 +5,12 @@ import {
   Digest,
   JudgeId,
   Json,
+  MeasuredValue,
   MeasureId,
   Probability,
   RecordDataClass,
   SemVer,
+  Text,
   Timestamp,
   TrialId,
 } from "../primitives.ts";
@@ -19,12 +21,8 @@ export const Judge = z.object({
   id: none(JudgeId),
   version: none(SemVer),
   evaluatorKind: none(z.enum(["model", "human", "code"])),
-  model: z.object({
-    provider: none(z.string().min(1)),
-    id: none(z.string().min(1)),
-    version: none(z.string()).optional(),
-  }),
-  endpointClass: none(z.string().min(1)),
+  model: z.object({ provider: none(Text), id: none(Text), version: none(Text).optional() }),
+  endpointClass: none(Text),
   promptDigest: none(Digest),
   rubricDigest: none(Digest),
   outputSchema: none(Json),
@@ -36,14 +34,18 @@ export const Judge = z.object({
 /** A judge record. */
 export type Judge = z.infer<typeof Judge>;
 
+/** A label's value: a measured value, or an explicit `unknown` when the rater cannot tell. */
+export const LabelValue = z.union([MeasuredValue, z.object({ type: none(z.literal("unknown")) })]);
+
 /** One human or judge annotation on one trial record for one measure (REQ-44). */
 export const Label = z.object({
   schema: none(z.literal("ichnaea.label/1")),
   trial: none(TrialId),
+  turn: none(z.int().min(0)).optional(),
   measure: none(MeasureId),
-  value: none(z.union([z.boolean(), z.number(), z.string(), z.literal("unknown")])),
-  responseSet: none(z.array(z.string().min(1))).optional(),
-  rater: pseudonym(z.string().min(1)),
+  value: LabelValue,
+  responseSet: none(z.array(Text)).optional(),
+  rater: pseudonym(Text),
   raterRole: none(z.enum(["expert", "crowd", "developer", "user", "judge"])),
   source: none(z.enum(["bundle", "application", "tool", "judge"])),
   rubricDigest: none(Digest),
@@ -76,17 +78,17 @@ export const Calibration = z.object({
   perRater: z
     .array(
       z.object({
-        rater: pseudonym(z.string().min(1)),
+        rater: pseudonym(Text),
         items: none(z.int().min(0)),
         agreement: z.array(Agreement),
       }),
     )
     .optional(),
   confusion: none(z.array(z.array(z.int().min(0)))),
-  strata: none(z.array(z.string().min(1))).optional(),
+  strata: none(z.array(Text)).optional(),
   tolerance: none(Probability),
   status: none(z.enum(["diagnostic", "calibrated", "expired"])),
-  expiry: none(z.array(z.string().min(1))),
+  expiry: none(z.array(Text)),
   createdAt: none(Timestamp),
 });
 /** A calibration record. */

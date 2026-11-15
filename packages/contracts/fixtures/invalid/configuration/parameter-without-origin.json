@@ -6,28 +6,33 @@
       "role": "answer",
       "provider": {
         "value": "openai-compatible",
-        "status": "pinned",
-        "part": "model"
+        "status": "pinned"
       },
       "id": {
         "value": "example-model-2026-10",
-        "status": "pinned",
-        "part": "model"
+        "status": "pinned"
       }
     }
   ],
-  "parameters": {
-    "answer.temperature": {
+  "parameters": [
+    {
+      "name": "answer.temperature",
       "value": 0.2,
-      "status": "pinned",
-      "part": "parameter"
+      "status": "pinned"
     },
-    "answer.maxTokens": {
+    {
+      "name": "answer.maxTokens",
       "value": 800,
       "status": "pinned",
-      "part": "parameter"
+      "origin": "explicit"
+    },
+    {
+      "name": "answer.topP",
+      "value": 1,
+      "status": "declared",
+      "origin": "default"
     }
-  },
+  ],
   "prompts": [
     {
       "name": "answer",
@@ -38,7 +43,7 @@
   "factors": {
     "code.commit": {
       "value": "4f2a9c1",
-      "status": "assumed",
+      "status": "pinned",
       "part": "code"
     },
     "data.helpCentre": {

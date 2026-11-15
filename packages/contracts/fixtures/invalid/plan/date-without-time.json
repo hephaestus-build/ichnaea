@@ -1,0 +1,178 @@
+{
+  "schema": "ichnaea.plan/1",
+  "suite": "support-answers",
+  "suiteVersion": "1",
+  "suiteDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "caseSet": "support-answers",
+  "caseSetDigest": "sha256:b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1b1",
+  "trigger": "code",
+  "mode": "decision",
+  "estimand": "fixed-cases",
+  "alpha": 0.05,
+  "replicates": 3,
+  "arms": [
+    {
+      "name": "base",
+      "role": "base",
+      "identity": "sha256:c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1",
+      "configuration": {
+        "schema": "ichnaea.configuration/1",
+        "description": "Support assistant: retrieval over the help centre, one answer model.",
+        "models": [
+          {
+            "role": "answer",
+            "provider": {
+              "value": "openai-compatible",
+              "status": "pinned"
+            },
+            "id": {
+              "value": "example-model-2026-10",
+              "status": "pinned"
+            }
+          }
+        ],
+        "parameters": [
+          {
+            "name": "answer.temperature",
+            "value": 0.2,
+            "status": "pinned",
+            "origin": "explicit"
+          },
+          {
+            "name": "answer.maxTokens",
+            "value": 800,
+            "status": "pinned",
+            "origin": "explicit"
+          },
+          {
+            "name": "answer.topP",
+            "value": 1,
+            "status": "declared",
+            "origin": "default"
+          }
+        ],
+        "prompts": [
+          {
+            "name": "answer",
+            "digest": "sha256:e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1",
+            "status": "pinned"
+          }
+        ],
+        "factors": {
+          "code.commit": {
+            "value": "4f2a9c1",
+            "status": "pinned",
+            "part": "code"
+          },
+          "data.helpCentre": {
+            "value": "sha256:f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1",
+            "status": "observed",
+            "part": "data"
+          }
+        },
+        "label": "current"
+      }
+    },
+    {
+      "name": "candidate",
+      "role": "candidate",
+      "identity": "sha256:c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2",
+      "configuration": {
+        "schema": "ichnaea.configuration/1",
+        "description": "Support assistant: retrieval over the help centre, one answer model.",
+        "models": [
+          {
+            "role": "answer",
+            "provider": {
+              "value": "openai-compatible",
+              "status": "pinned"
+            },
+            "id": {
+              "value": "example-model-2026-10",
+              "status": "pinned"
+            }
+          }
+        ],
+        "parameters": [
+          {
+            "name": "answer.temperature",
+            "value": 0.2,
+            "status": "pinned",
+            "origin": "explicit"
+          },
+          {
+            "name": "answer.maxTokens",
+            "value": 800,
+            "status": "pinned",
+            "origin": "explicit"
+          },
+          {
+            "name": "answer.topP",
+            "value": 1,
+            "status": "declared",
+            "origin": "default"
+          }
+        ],
+        "prompts": [
+          {
+            "name": "answer",
+            "digest": "sha256:e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2",
+            "status": "pinned"
+          }
+        ],
+        "factors": {
+          "code.commit": {
+            "value": "4f2a9c1",
+            "status": "pinned",
+            "part": "code"
+          },
+          "data.helpCentre": {
+            "value": "sha256:f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1",
+            "status": "observed",
+            "part": "data"
+          }
+        },
+        "label": "candidate"
+      }
+    }
+  ],
+  "measures": [
+    {
+      "kind": "measure",
+      "id": "support/facts-correct",
+      "version": "1.0.0",
+      "digest": "sha256:1212121212121212121212121212121212121212121212121212121212121212"
+    }
+  ],
+  "power": [
+    {
+      "measure": "support/facts-correct",
+      "applicableCases": 60,
+      "replicates": 3,
+      "margin": 0.05,
+      "mde": 0.031,
+      "floor": 0.015,
+      "assumption": "within-case variance of run 2026-11-10",
+      "decidable": true
+    }
+  ],
+  "budget": {
+    "worstCaseCalls": 720,
+    "maxCalls": 800
+  },
+  "trials": [
+    {
+      "id": "t-0001",
+      "case": "refund-window-de",
+      "arm": "candidate",
+      "replicate": 0,
+      "batch": 0
+    }
+  ],
+  "seed": {
+    "algorithm": "mt19937",
+    "value": "20261115"
+  },
+  "createdAt": "2026-11-15",
+  "ichnaea": "0.1.0"
+}

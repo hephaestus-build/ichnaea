@@ -4,7 +4,10 @@
   "measure": "support/facts-correct",
   "version": "1.0.0",
   "applicable": true,
-  "value": 1,
+  "value": {
+    "type": "binary",
+    "pass": true
+  },
   "source": "ichnaea",
   "dataClass": "none"
 }

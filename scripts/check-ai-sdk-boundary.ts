@@ -1,6 +1,6 @@
 // The Vercel AI SDK may be imported only in adapter packages.
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 const ADAPTER = /^packages\/(judge-aisdk|otel)\//;
 const files = execFileSync(
@@ -9,7 +9,7 @@ const files = execFileSync(
   { encoding: "utf8" },
 )
   .split("\n")
-  .filter((f) => /\.(ts|tsx|json)$/.test(f) && !ADAPTER.test(f));
+  .filter((f) => existsSync(f) && /\.(ts|tsx|json)$/.test(f) && !ADAPTER.test(f));
 const offenders = files.filter((f) =>
   /from\s+["'](ai|@ai-sdk\/[^"']+)["']|"(ai|@ai-sdk\/[^"]+)"\s*:/.test(readFileSync(f, "utf8")),
 );

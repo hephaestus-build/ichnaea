@@ -8,7 +8,7 @@
   "configuration": "sha256:c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2c2",
   "arm": "candidate",
   "replicate": 0,
-  "outcome": "skipped",
+  "outcome": "partial",
   "dataClass": "none",
   "input": {
     "question": "Kann ich nach 40 Tagen noch zurückgeben?"

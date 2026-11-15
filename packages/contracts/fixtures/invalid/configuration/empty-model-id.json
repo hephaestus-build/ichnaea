@@ -6,27 +6,34 @@
       "role": "answer",
       "provider": {
         "value": "openai-compatible",
-        "status": "pinned",
-        "part": "model"
+        "status": "pinned"
       },
       "id": {
-        "value": "example-model-2026-10",
-        "status": "pinned",
-        "part": "model"
+        "value": "",
+        "status": "pinned"
       }
     }
   ],
-  "parameters": {
-    "answer.temperature": {
+  "parameters": [
+    {
+      "name": "answer.temperature",
       "value": 0.2,
-      "part": "parameter"
+      "status": "pinned",
+      "origin": "explicit"
     },
-    "answer.maxTokens": {
+    {
+      "name": "answer.maxTokens",
       "value": 800,
       "status": "pinned",
-      "part": "parameter"
+      "origin": "explicit"
+    },
+    {
+      "name": "answer.topP",
+      "value": 1,
+      "status": "declared",
+      "origin": "default"
     }
-  },
+  ],
   "prompts": [
     {
       "name": "answer",

@@ -2,24 +2,28 @@ import * as z from "zod";
 
 import { none } from "../data-class.ts";
 import {
+  ArmName,
   CaseId,
   CaseSetId,
   ConfigurationIdentity,
   Digest,
   MeasureId,
   Real,
+  Seed,
   SemVer,
   SuiteId,
+  Text,
   Timestamp,
   TrialId,
 } from "../primitives.ts";
+import { Configuration } from "./configuration.ts";
 import { Estimand } from "./suite.ts";
 
 /** A versioned part that can change a verdict, with its hash (REQ-17). */
 export const LineageItem = z.object({
   kind: none(z.enum(["measure", "judge", "preset", "plugin", "featureGate", "gate", "package"])),
-  id: none(z.string().min(1)),
-  version: none(z.string().min(1)),
+  id: none(Text),
+  version: none(Text),
   digest: none(Digest).optional(),
 });
 
@@ -32,21 +36,26 @@ export const PowerEntry = z.object({
   mde: none(Real),
   floor: none(Real),
   sampledCasesFloor: none(Real).optional(),
-  assumption: none(z.string().min(1)),
+  assumption: none(Text),
   decidable: none(z.boolean()),
 });
 
-/** One compared configuration of a plan. */
+/**
+ * One configuration of a plan with its role. A comparison has a `base` and one or more
+ * `candidate` arms. An estimate-only run may have a single arm.
+ */
 export const Arm = z.object({
-  name: none(z.enum(["base", "candidate"])),
-  configuration: none(ConfigurationIdentity),
+  name: none(ArmName),
+  role: none(z.enum(["base", "candidate", "reference"])),
+  identity: none(ConfigurationIdentity),
+  configuration: Configuration,
 });
 
 /** One planned trial. */
 export const PlannedTrial = z.object({
   id: none(TrialId),
   case: none(CaseId),
-  arm: none(z.enum(["base", "candidate"])),
+  arm: none(ArmName),
   replicate: none(z.int().min(0)),
   batch: none(z.int().min(0)),
 });
@@ -71,7 +80,7 @@ export const TriggerKind = z.enum([
 export const Plan = z.object({
   schema: none(z.literal("ichnaea.plan/1")),
   suite: none(SuiteId),
-  suiteVersion: none(z.string().min(1)),
+  suiteVersion: none(Text),
   suiteDigest: none(Digest),
   caseSet: none(CaseSetId),
   caseSetDigest: none(Digest),
@@ -89,7 +98,7 @@ export const Plan = z.object({
     monthlyRemaining: none(z.int().min(0)).optional(),
   }),
   trials: z.array(PlannedTrial),
-  seed: z.object({ algorithm: none(z.string().min(1)), value: none(z.int().min(0)) }),
+  seed: Seed,
   createdAt: none(Timestamp),
   ichnaea: none(SemVer),
 });

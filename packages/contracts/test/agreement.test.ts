@@ -5,7 +5,7 @@ import { join } from "node:path";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
-import { RECORD_CONTRACTS, toJsonSchema } from "../src/index.ts";
+import { readRecord, RECORD_CONTRACTS, toJsonSchema, toReaderJsonSchema } from "../src/index.ts";
 import { ajvValidate, committedSchema, createAjv } from "./support/ajv.ts";
 import { arbitraryFor } from "./support/arbitrary.ts";
 
@@ -18,6 +18,9 @@ describe("normative JSON Schema files", () => {
     "%s is committed and current",
     (name, contract) => {
       expect(committedSchema(name)).toEqual(JSON.parse(JSON.stringify(toJsonSchema(contract))));
+      expect(committedSchema(`${name}.reader`)).toEqual(
+        JSON.parse(JSON.stringify(toReaderJsonSchema(contract))),
+      );
     },
   );
 });
@@ -83,4 +86,45 @@ describe("generated records", () => {
       );
     },
   );
+});
+
+describe("tolerant readers (REQ-05)", () => {
+  const readerOnly = RECORD_CONTRACTS.flatMap((c) => {
+    const dir = join(fixtures, "reader-only", c.name);
+    try {
+      return readdirSync(dir).map((file) => [`${c.name}/${file}`, c] as const);
+    } catch {
+      return [];
+    }
+  });
+
+  it("covers at least eight records with a future enumeration value", () => {
+    expect(new Set(readerOnly.map(([, c]) => c.name)).size).toBeGreaterThanOrEqual(8);
+  });
+
+  it.each(readerOnly)(
+    "%s: writers reject it, readers accept it and report the value",
+    (file, contract) => {
+      const value = read(join(fixtures, "reader-only", file));
+      expect(contract.schema.safeParse(value).success).toBe(false);
+      expect(ajvValidate(ajv, contract.name, value)).toBe(false);
+      expect(ajvValidate(ajv, contract.name, value, "reader")).toBe(true);
+      const result = readRecord(contract, value);
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.unknownValues.length).toBe(1);
+        const [unknown] = result.unknownValues;
+        expect(JSON.stringify(result.record)).toContain(JSON.stringify(unknown?.value));
+      }
+    },
+  );
+
+  it.each(
+    RECORD_CONTRACTS.flatMap((c) =>
+      readdirSync(join(fixtures, "invalid", c.name)).map((f) => [`${c.name}/${f}`, c] as const),
+    ),
+  )("%s stays invalid for the reader in zod and ajv alike", (file, contract) => {
+    const value = read(join(fixtures, "invalid", file));
+    expect(ajvValidate(ajv, contract.name, value, "reader")).toBe(readRecord(contract, value).ok);
+  });
 });

@@ -33,7 +33,7 @@
     ]
   ],
   "tolerance": 0.1,
-  "status": "trusted",
+  "status": "provisional",
   "expiry": [
     "judge change",
     "output distribution shift"

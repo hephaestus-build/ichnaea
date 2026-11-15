@@ -5,6 +5,7 @@ export * from "./identity.ts";
 export * from "./json-schema.ts";
 export * from "./lint.ts";
 export * from "./primitives.ts";
+export * from "./reader.ts";
 export * from "./records/case.ts";
 export * from "./records/configuration.ts";
 export * from "./records/decision.ts";
