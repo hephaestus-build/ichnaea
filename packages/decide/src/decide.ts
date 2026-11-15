@@ -2,6 +2,7 @@ import {
   Decision,
   digest,
   type GateResult,
+  type MeasuredValue,
   type MeasureValue,
   type Plan,
   proportionProblem,
@@ -19,6 +20,7 @@ import {
   fixedCasesMde,
   holm,
   sampledCasesFloor,
+  type ValueType,
   wilson,
 } from "@hephaestus-build/ichnaea-stats";
 import type * as z from "zod";
@@ -42,6 +44,13 @@ type MeasureVerdict = MeasureResult["verdict"];
 /** Outcomes that leave a planned trial without a value: they are missing, never a failure. */
 const MISSING = new Set(["infrastructure_failure", "not_run", "invalid_configuration"]);
 const DEFAULT_COVERAGE_FLOOR = 0.9;
+/** The statistics package's name for a value type. A type it has no name for has no method. */
+const STATS_VALUE_TYPE: Partial<Record<MeasuredValue["type"], ValueType>> = {
+  binary: "binary",
+  proportion: "proportion",
+  score: "score",
+  level: "ordinal",
+};
 const NAN = { nonFinite: "nan" } as const;
 const NEG_INF = { nonFinite: "-inf" } as const;
 const POS_INF = { nonFinite: "inf" } as const;
@@ -61,6 +70,8 @@ interface Tally {
   readonly arms: Map<string, Availability>;
   /** A value whose type the decision rule cannot use, if any. */
   readonly unsupported?: string;
+  /** The type of the measure's values in these records; binary when it has none. */
+  readonly valueType: MeasuredValue["type"];
 }
 
 /** Planned trials per case in one arm (a suite can give some cases more, `replicatesFor`). */
@@ -108,6 +119,7 @@ function tally(
   const cases = new Map<string, CaseCounts>();
   const availability = new Map<string, Availability>();
   let unsupported: string | undefined;
+  let valueType: MeasuredValue["type"] = "binary";
   for (const planned of plan.trials) {
     const av = availability.get(planned.arm) ?? emptyAvailability();
     availability.set(planned.arm, av);
@@ -127,6 +139,7 @@ function tally(
       pass = value.value.pass;
       av.available++;
     } else {
+      valueType = value.value.type;
       unsupported = `measure '${measure}' has a ${value.value.type} value; the decision rule decides binary values only (DN-8)`;
       av.missing++;
       continue;
@@ -146,7 +159,12 @@ function tally(
       [side]: { successes: entry[side].successes + (pass ? 1 : 0), trials: entry[side].trials + 1 },
     });
   }
-  return { cases, arms: availability, ...(unsupported === undefined ? {} : { unsupported }) };
+  return {
+    cases,
+    arms: availability,
+    valueType,
+    ...(unsupported === undefined ? {} : { unsupported }),
+  };
 }
 
 function flipsOf(cases: ReadonlyMap<string, CaseCounts>): ComparisonResult["flips"] {
@@ -294,8 +312,12 @@ function primaryVerdicts(
       continue;
     }
     try {
+      const valueType = STATS_VALUE_TYPE[t.valueType];
+      if (valueType === undefined)
+        throw new EstimandError(`a ${t.valueType} measure has no paired method`);
       const comparison = compareCounts({
         estimand: plan.estimand,
+        valueType,
         cases: [...t.cases.values()],
         alpha: plan.alpha,
         margin: effective,
