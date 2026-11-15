@@ -47,8 +47,8 @@ language. An application in any language can write records that validate against
 
 ## Develop
 
-The packages need Node 22.12 or later. Developing Ichnaea needs Node 22.18 or later (the repository
-scripts run TypeScript directly) and pnpm.
+The packages and the CLI need Node 22.18 or later: the CLI loads `ichnaea.config.ts`, and Node runs
+TypeScript files without a flag from 22.18. Developing Ichnaea needs the same version and pnpm.
 
 ```sh
 pnpm install

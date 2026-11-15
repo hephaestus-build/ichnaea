@@ -37,6 +37,6 @@
     "test:sim": "vitest run --config vitest.sim.config.ts --silent=false"
   },
   "engines": {
-    "node": ">=22.12"
+    "node": ">=22.18.0"
   }
 }

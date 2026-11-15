@@ -470,6 +470,15 @@ describe("measures (REQ-20, REQ-30, REQ-33)", () => {
   });
 });
 
+// Node before 22.18 fails to import a .ts file with this code.
+const unknownExtension = (): Promise<never> =>
+  Promise.reject(
+    Object.assign(new TypeError('Unknown file extension ".ts"'), {
+      code: "ERR_UNKNOWN_FILE_EXTENSION",
+    }),
+  );
+const failing = (): Promise<never> => Promise.reject(new Error("boom"));
+
 describe("CLI (REQ-26, REQ-114)", () => {
   it("prints schemas and refuses unknown commands with a usage error", async () => {
     const out: string[] = [];
@@ -514,6 +523,25 @@ describe("CLI (REQ-26, REQ-114)", () => {
     expect(await main(["nothing", "--config", config], (t) => out.push(t))).toBe(2);
     expect(out[0]).toBe("unknown command 'nothing'. Commands: help, schema, doctor, import");
     expect(await main([...base], () => undefined)).toBe(2);
+  });
+
+  it("names the Node version a .ts configuration needs when Node cannot load it, and exits 2", async () => {
+    const out: string[] = [];
+    expect(
+      await main(["doctor", "--config", "ichnaea.config.ts"], (t) => out.push(t), unknownExtension),
+    ).toBe(2);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatch(/^configuration error: ichnaea\.config\.ts is TypeScript/);
+    expect(out[0]).toContain("Ichnaea needs Node 22.18.0 or later");
+    // Another failure of the loader, or the same code on a file that is not TypeScript, is not rewritten.
+    out.length = 0;
+    expect(await main(["doctor", "--config", "c.ts"], (t) => out.push(t), failing)).toBe(2);
+    expect(out).toEqual(["configuration error: boom"]);
+    out.length = 0;
+    expect(await main(["doctor", "--config", "c.txt"], (t) => out.push(t), unknownExtension)).toBe(
+      2,
+    );
+    expect(out[0]).toBe('configuration error: Unknown file extension ".ts"');
   });
 
   it("runs doctor with no plugins and reports a clean configuration (REQ-06)", async () => {

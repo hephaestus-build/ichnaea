@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { extname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 
@@ -11,10 +11,31 @@ import { testMeasure } from "./measures.ts";
 import type { Config } from "./plugin.ts";
 import { CORE_VERSION } from "./version.ts";
 
+/** Loads a module by URL. The CLI uses `import()`; a test injects another. */
+export type ModuleLoader = (url: string) => Promise<unknown>;
+
+const importModule: ModuleLoader = (url) => import(url);
+
+/** Node runs a `.ts` file without a flag from this version (type stripping). */
+const NODE_WITHOUT_FLAG = "22.18.0";
+
 /** Loads `ichnaea.config.ts` (or another file) and returns its default export. */
-export async function loadConfig(path: string): Promise<Config> {
+export async function loadConfig(path: string, load: ModuleLoader = importModule): Promise<Config> {
   const url = pathToFileURL(resolve(path)).href;
-  const module = (await import(url)) as { default?: Config };
+  let module: { default?: Config };
+  try {
+    module = (await load(url)) as { default?: Config };
+  } catch (error) {
+    if (
+      (error as { code?: unknown }).code === "ERR_UNKNOWN_FILE_EXTENSION" &&
+      extname(path) === ".ts"
+    )
+      throw new Error(
+        `${path} is TypeScript, and this Node (${process.version}) cannot run it: Ichnaea needs Node ${NODE_WITHOUT_FLAG} or later to load a .ts configuration`,
+        { cause: error },
+      );
+    throw error;
+  }
   if (!module.default || !Array.isArray(module.default.plugins))
     throw new Error(`${path} must export a configuration (defineConfig) as default`);
   return module.default;
@@ -48,16 +69,21 @@ Exit codes: 0 success, 1 a CI policy blocks, 2 an error (usage, configuration or
 export async function main(
   argv: readonly string[],
   out: (text: string) => void = (t) => process.stdout.write(`${t}\n`),
+  load: ModuleLoader = importModule,
 ): Promise<number> {
   try {
-    return await dispatch(argv, out);
+    return await dispatch(argv, out, load);
   } catch (error) {
     out(`error: ${error instanceof Error ? error.message : String(error)}`);
     return 2;
   }
 }
 
-async function dispatch(argv: readonly string[], out: (text: string) => void): Promise<number> {
+async function dispatch(
+  argv: readonly string[],
+  out: (text: string) => void,
+  load: ModuleLoader,
+): Promise<number> {
   const [command, ...rest] = argv;
   if (!command || command === "help" || command === "--help") {
     out(HELP);
@@ -82,7 +108,7 @@ async function dispatch(argv: readonly string[], out: (text: string) => void): P
   let host: Host;
   try {
     host = createHost(
-      await loadConfig(configPath),
+      await loadConfig(configPath, load),
       { core: CORE_VERSION, contracts: await contractsVersion() },
       (m) => out(`warning: ${m}`),
     );
