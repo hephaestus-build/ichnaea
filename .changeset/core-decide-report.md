@@ -14,6 +14,7 @@ First end-to-end slice: import another runner's results, decide, report.
 - **Planner.** It lists every trial before any call. A suite can give the cases of one slice more trials (`replicatesFor`). A placeholder margin, and anything else no validated method can decide, runs estimate-only with its reasons.
 - **Triggers.** Each trigger declares what the arms may vary (`TRIGGER_VARIES`). Anything else a change varies is declared with `ichnaea import --vary <factor key>`.
 - **Node.** The packages need Node 22.18 or later, the first version that loads `ichnaea.config.ts` without a flag. On an older Node, the CLI says so and exits with 2.
+- **CLI.** `ichnaea --version` and `-v` print the version. A missing `ichnaea.config.ts` gives a short message and exit code 2, not a module error.
 - **Import.** `ichnaea import` reads another runner's results and makes no model calls. A completed record without captured output becomes an infrastructure failure (`NOT_CAPTURED`). A failed trial that carries a passing value is refused. Import prints the plan's power statement.
 
 `decide`, in order:

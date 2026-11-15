@@ -1,5 +1,5 @@
-import { readFile } from "node:fs/promises";
-import { extname, resolve } from "node:path";
+import { readFile, stat } from "node:fs/promises";
+import { basename, dirname, extname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 
@@ -57,6 +57,7 @@ Commands from the core:
                       [--vary <factor key>] (repeat: what the change varies beyond its trigger)
   doctor              Check the configuration: plugins, measures, testers, warnings
   help                Show this help
+  --version, -v       Print the version
 
 Plugins in the configuration add commands (for example decide and report).
 Options: --config <file> (default ichnaea.config.ts)
@@ -89,6 +90,10 @@ async function dispatch(
     out(HELP);
     return command ? 0 : 2;
   }
+  if (command === "--version" || command === "-v") {
+    out(CORE_VERSION);
+    return 0;
+  }
   if (command === "schema") {
     const name = rest[0];
     const contract = RECORD_CONTRACTS.find((c) => c.name === name);
@@ -105,6 +110,17 @@ async function dispatch(
     (parseArgs({ args: [...rest], options: { config: { type: "string" } }, strict: false }).values[
       "config"
     ] as string | undefined) ?? "ichnaea.config.ts";
+  // A missing file is a usage error with its own message, before any command is looked up.
+  const configFile = resolve(configPath);
+  if (
+    !(await stat(configFile).then(
+      (s) => s.isFile(),
+      () => false,
+    ))
+  ) {
+    out(`no ${basename(configFile)} in ${dirname(configFile)}; see the README's quick start`);
+    return 2;
+  }
   let host: Host;
   try {
     host = createHost(

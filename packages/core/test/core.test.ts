@@ -4,6 +4,7 @@ import {
   mkdir,
   mkdtemp,
   readdir,
+  realpath,
   readFile,
   rm,
   utimes,
@@ -26,6 +27,7 @@ import { describe, expect, it } from "vitest";
 import {
   AppendOnlyError,
   CallLedger,
+  CORE_VERSION,
   createHost,
   decideEgress,
   definePlugin,
@@ -526,22 +528,56 @@ describe("CLI (REQ-26, REQ-114)", () => {
   });
 
   it("names the Node version a .ts configuration needs when Node cannot load it, and exits 2", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "ichnaea-cli-"));
+    const ts = join(dir, "ichnaea.config.ts");
+    const txt = join(dir, "ichnaea.config.txt");
+    for (const file of [ts, txt]) await writeFile(file, "export default { plugins: [] };\n");
     const out: string[] = [];
-    expect(
-      await main(["doctor", "--config", "ichnaea.config.ts"], (t) => out.push(t), unknownExtension),
-    ).toBe(2);
+    expect(await main(["doctor", "--config", ts], (t) => out.push(t), unknownExtension)).toBe(2);
     expect(out).toHaveLength(1);
-    expect(out[0]).toMatch(/^configuration error: ichnaea\.config\.ts is TypeScript/);
+    expect(out[0]).toMatch(/^configuration error: .*ichnaea\.config\.ts is TypeScript/);
     expect(out[0]).toContain("Ichnaea needs Node 22.18.0 or later");
     // Another failure of the loader, or the same code on a file that is not TypeScript, is not rewritten.
     out.length = 0;
-    expect(await main(["doctor", "--config", "c.ts"], (t) => out.push(t), failing)).toBe(2);
+    expect(await main(["doctor", "--config", ts], (t) => out.push(t), failing)).toBe(2);
     expect(out).toEqual(["configuration error: boom"]);
     out.length = 0;
-    expect(await main(["doctor", "--config", "c.txt"], (t) => out.push(t), unknownExtension)).toBe(
-      2,
-    );
-    expect(out[0]).toBe('configuration error: Unknown file extension ".ts"');
+    expect(await main(["doctor", "--config", txt], (t) => out.push(t), unknownExtension)).toBe(2);
+    expect(out).toEqual(['configuration error: Unknown file extension ".ts"']);
+  });
+
+  it("prints the version with --version and -v, with no configuration", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "ichnaea-cli-"));
+    const cwd = process.cwd();
+    process.chdir(dir);
+    try {
+      for (const flag of ["--version", "-v"]) {
+        const out: string[] = [];
+        expect(await main([flag], (t) => out.push(t))).toBe(0);
+        expect(out).toEqual([CORE_VERSION]);
+      }
+    } finally {
+      process.chdir(cwd);
+    }
+    expect(CORE_VERSION).toMatch(/^\d+\.\d+\.\d+/);
+  });
+
+  it("says where the configuration is missing, for every command that needs it, and exits 2", async () => {
+    const dir = await realpath(await mkdtemp(join(tmpdir(), "ichnaea-cli-")));
+    const cwd = process.cwd();
+    process.chdir(dir);
+    try {
+      for (const argv of [["doctor"], ["decide"], ["nothing"], ["import"]]) {
+        const out: string[] = [];
+        expect(await main(argv, (t) => out.push(t))).toBe(2);
+        expect(out).toEqual([`no ichnaea.config.ts in ${dir}; see the README's quick start`]);
+      }
+      const out: string[] = [];
+      expect(await main(["doctor", "--config", "other.config.ts"], (t) => out.push(t))).toBe(2);
+      expect(out).toEqual([`no other.config.ts in ${dir}; see the README's quick start`]);
+    } finally {
+      process.chdir(cwd);
+    }
   });
 
   it("runs doctor with no plugins and reports a clean configuration (REQ-06)", async () => {
