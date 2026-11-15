@@ -12,14 +12,14 @@ First end-to-end slice: import another runner's results, decide, report.
 - **Plugin host.** Seven lifecycle hooks, and measure cards validated at load. A primary measure needs a primary card, and is never a composite. Egress is denied by default. Only the plugin that the configuration names as `governance` can open it.
 - **Store and ledger.** A file store writes each run once and atomically. It refuses duplicate records, and reads a missing records file as a damaged run. A monthly call ledger takes over a lock left by a crashed run.
 - **Planner.** It lists every trial before any call. A suite can give the cases of one slice more trials (`replicatesFor`). A placeholder margin, and anything else no validated method can decide, runs estimate-only with its reasons.
-- **Triggers.** Each trigger declares what the arms may vary (`TRIGGER_VARIES`). Anything else a change varies is declared with `ichnaea import --vary <factor key>`.
+- **Triggers.** Each trigger declares what the arms may vary (`TRIGGER_VARIES`). Anything else a change varies is declared with `ichnaea import --vary <factor key>`. `ichnaea help` lists each trigger and what it varies.
 - **Node.** The packages need Node 22.18 or later, the first version that loads `ichnaea.config.ts` without a flag. On an older Node, the CLI says so and exits with 2.
 - **CLI.** `ichnaea --version` and `-v` print the version. A missing `ichnaea.config.ts` gives a short message and exit code 2, not a module error.
 - **Import.** `ichnaea import` reads another runner's results and makes no model calls. A completed record without captured output becomes an infrastructure failure (`NOT_CAPTURED`). A failed trial that carries a passing value is refused. Import prints the plan's power statement.
 
 `decide`, in order:
 
-- **INVALID** when the records fail a check, and it always blocks. That covers a run of another plan, records that contradict themselves, and arms that differ beyond what the trigger varies and the plan declares, in configuration or in what the trials report.
+- **INVALID** when the records fail a check, and it always blocks. That covers a run of another plan, records that contradict themselves, and arms that differ beyond what the trigger varies and the plan declares, in configuration or in what the trials report. For a difference in configuration, the reason names the `--trigger` values and the `--vary` flag that allow it.
 - **REGRESSION** when a hard gate failed, in either mode.
 - **No verdict** for an estimate-only plan or an exploratory run.
 - **Statistics** otherwise. Non-inferiority on every primary measure at the unadjusted level gives PASS. REGRESSION uses Holm across the validated comparisons. System failures are failed trials, whatever value they carry.

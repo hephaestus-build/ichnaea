@@ -35,7 +35,10 @@ describe("trigger factors (REQ-15)", () => {
       }),
     );
     expect(d.verdict).toBe("INVALID");
-    expect(d.reason).toMatch(/but the arms also differ in parameter\.temperature$/);
+    // No trigger varies a generation parameter, so the run can only declare it.
+    expect(d.reason).toMatch(
+      /but the arms also differ in parameter\.temperature\. To allow it, use parameter\.temperature: --vary parameter\.temperature$/,
+    );
   });
 
   it("a code change whose candidate changes a model-part factor (an endpoint) is INVALID", async () => {
@@ -52,7 +55,9 @@ describe("trigger factors (REQ-15)", () => {
       }),
     );
     expect(d.verdict).toBe("INVALID");
-    expect(d.reason).toMatch(/differ in factor\.model\.endpoint$/);
+    expect(d.reason).toMatch(
+      /differ in factor\.model\.endpoint\. To allow it, use factor\.model\.endpoint: --trigger new-model or --vary factor\.model\.endpoint$/,
+    );
   });
 
   it("a code change whose arms' trials report different model digests is INVALID", async () => {
@@ -79,7 +84,7 @@ describe("trigger factors (REQ-15)", () => {
     );
     expect(undeclared.verdict).toBe("INVALID");
     expect(undeclared.reason).toBe(
-      "a configuration change may vary only what the plan declares as varied, but the arms also differ in factor.code.commit, model.answer",
+      "a configuration change may vary only what the plan declares as varied, but the arms also differ in factor.code.commit, model.answer. To allow them, use factor.code.commit: --trigger code, --trigger dependency or --vary factor.code.commit; model.answer: --trigger new-model or --vary model.answer",
     );
     const partly = await run(
       await scenario({
@@ -89,7 +94,7 @@ describe("trigger factors (REQ-15)", () => {
         varies: ["model.answer"],
       }),
     );
-    expect(partly.reason).toMatch(/also differ in factor\.code\.commit$/);
+    expect(partly.reason).toMatch(/also differ in factor\.code\.commit\. To allow it, use /);
   });
 
   it("a judge or case-set change may not vary the system at all", async () => {
@@ -97,7 +102,8 @@ describe("trigger factors (REQ-15)", () => {
       const d = await run(await scenario({ ...small, trigger, candidateModel: "model-b" }));
       expect(d.verdict).toBe("INVALID");
       expect(d.reason).toBe(
-        `a ${trigger} change may not vary the system at all, but the arms also differ in factor.code.commit, model.answer`,
+        // --vary is refused on such a trigger, so only another trigger can allow a difference.
+        `a ${trigger} change may not vary the system at all, but the arms also differ in factor.code.commit, model.answer. To allow them, use factor.code.commit: --trigger code or --trigger dependency; model.answer: --trigger new-model`,
       );
     }
   });
@@ -107,7 +113,7 @@ describe("trigger factors (REQ-15)", () => {
     const withPrompt = (await scenario({ ...base, candidateConfig: prompt })) as Scenario;
     // The base has no prompt and commit a1; the candidate differs in model, prompt and commit.
     expect((await run(withPrompt)).reason).toMatch(
-      /^a new-model change may vary only the model part and what the plan declares as varied, but the arms also differ in factor\.code\.commit, prompt\.answer$/,
+      /^a new-model change may vary only the model part and what the plan declares as varied, but the arms also differ in factor\.code\.commit, prompt\.answer\. To allow them, use factor\.code\.commit: --trigger code, --trigger dependency or --vary factor\.code\.commit; prompt\.answer: --vary prompt\.answer$/,
     );
     const declared = await scenario({
       ...base,

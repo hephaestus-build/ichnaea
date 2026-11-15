@@ -44,6 +44,7 @@ import {
   STALE_LOCK_MS,
   StoreError,
   testMeasure,
+  TRIGGER_VARIES,
 } from "../src/index.ts";
 
 const fixture = async (name: string): Promise<unknown> =>
@@ -544,6 +545,24 @@ describe("CLI (REQ-26, REQ-114)", () => {
     out.length = 0;
     expect(await main(["doctor", "--config", txt], (t) => out.push(t), unknownExtension)).toBe(2);
     expect(out).toEqual(['configuration error: Unknown file extension ".ts"']);
+  });
+
+  it("lists every trigger and what its arms may differ in, from the rule decide applies", async () => {
+    const out: string[] = [];
+    expect(await main(["help"], (t) => out.push(t))).toBe(0);
+    const lines = (out[0] as string).split("\n").map((l) => l.trim());
+    expect(lines).toContain("Triggers (--trigger, default code) and what the arms may differ in:");
+    for (const [trigger, parts] of Object.entries(TRIGGER_VARIES)) {
+      const line = lines.find((l) => l.startsWith(`${trigger} `));
+      expect(line, trigger).toBeDefined();
+      if (parts === null) expect(line).toContain("nothing in the system");
+      else for (const part of parts) expect(line).toContain(`the ${part} part`);
+    }
+    expect(lines.find((l) => l.startsWith("new-model "))).toMatch(/the model part/);
+    expect(lines.find((l) => l.startsWith("configuration "))).toMatch(
+      /^configuration\s+what --vary declares$/,
+    );
+    expect(out[0]).toContain("Exit codes: 0 success");
   });
 
   it("prints the version with --version and -v, with no configuration", async () => {

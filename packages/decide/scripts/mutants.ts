@@ -144,6 +144,36 @@ export const MUTANTS: readonly Mutant[] = [
     to: "const same = true;",
   },
   {
+    id: "advice omitted from the reason",
+    file: D,
+    from: "${howToAllow(plan, undeclared)}",
+    to: "",
+  },
+  {
+    id: "advice names no trigger",
+    file: D,
+    from: "        .filter(([, parts]) => parts?.includes(part))",
+    to: "        .filter(() => false)",
+  },
+  {
+    id: "advice offers --vary where it is refused",
+    file: D,
+    from: "const canVary = TRIGGER_VARIES[plan.trigger] !== null;",
+    to: "const canVary = true;",
+  },
+  {
+    id: "advice never offers --vary",
+    file: D,
+    from: "      ...(canVary ? [`--vary ${key}`] : []),",
+    to: "      ...[],",
+  },
+  {
+    id: "advice counts one difference as many",
+    file: D,
+    from: 'advice.length > 1 ? "them" : "it"',
+    to: '"them"',
+  },
+  {
     id: "trigger lets a case-set change vary the system",
     file: "../core/src/planner.ts",
     from: '  "case-set": null,',

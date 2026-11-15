@@ -13,6 +13,7 @@ const at = (path: string): string => resolve(here, path);
 async function flow(
   candidateResults: string,
   varies: readonly string[] = ["prompt.answer"],
+  trigger: string | null = "new-model",
 ): Promise<{ store: string; out: string[]; codes: number[] }> {
   const store = await mkdtemp(join(tmpdir(), "ichnaea-e2e-"));
   const out: string[] = [];
@@ -49,8 +50,7 @@ async function flow(
         "7",
         // The candidate is a new model with a new prompt: a new-model change varies the model, and
         // the prompt it also changes is declared.
-        "--trigger",
-        "new-model",
+        ...(trigger === null ? [] : ["--trigger", trigger]),
         ...varies.flatMap((v) => ["--vary", v]),
       ],
       log,
@@ -117,6 +117,15 @@ describe("example application, end to end", () => {
     const { codes, out } = await flow("results/candidate-same.json", []);
     expect(codes[1]).toBe(1);
     expect(out.join("\n")).toMatch(/INVALID: a new-model change may vary only the model part/);
+  });
+
+  it("a first run without --trigger new-model is INVALID, and the message names the flags that fix it", async () => {
+    const { codes, out } = await flow("results/candidate-same.json", [], null);
+    expect(codes[1]).toBe(1);
+    const message = out.find((line) => line.startsWith("INVALID:")) ?? "";
+    expect(message).toContain("the arms also differ in model.answer, prompt.answer");
+    expect(message).toContain("model.answer: --trigger new-model or --vary model.answer");
+    expect(message).toContain("prompt.answer: --vary prompt.answer");
   });
 
   it("the doctor passes: every measure's tester passes", async () => {

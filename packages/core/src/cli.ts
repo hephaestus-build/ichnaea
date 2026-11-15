@@ -8,6 +8,7 @@ import { RECORD_CONTRACTS, toJsonSchema, TriggerKind } from "@hephaestus-build/i
 import { CORE_COMMANDS, createHost, type Host } from "./host.ts";
 import { importRun } from "./import.ts";
 import { testMeasure } from "./measures.ts";
+import { TRIGGER_VARIES } from "./planner.ts";
 import type { Config } from "./plugin.ts";
 import { CORE_VERSION } from "./version.ts";
 
@@ -46,7 +47,7 @@ async function contractsVersion(): Promise<string> {
   return (JSON.parse(await readFile(new URL(url), "utf8")) as { version: string }).version;
 }
 
-const HELP = `Usage: ichnaea <command> [options]
+const HELP_COMMANDS = `Usage: ichnaea <command> [options]
 
 Commands from the core:
   schema <record>     Print the normative JSON Schema of a record (case, trial, decision, ...)
@@ -60,8 +61,24 @@ Commands from the core:
   --version, -v       Print the version
 
 Plugins in the configuration add commands (for example decide and report).
-Options: --config <file> (default ichnaea.config.ts)
-Exit codes: 0 success, 1 a CI policy blocks, 2 an error (usage, configuration or records).`;
+Options: --config <file> (default ichnaea.config.ts)`;
+
+/**
+ * Each trigger and what its arms may differ in, from `TRIGGER_VARIES`, so the help cannot drift
+ * from the rule that `decide` applies.
+ */
+function triggerHelp(): string {
+  const lines = Object.entries(TRIGGER_VARIES).map(([trigger, parts]) => {
+    const varies =
+      parts === null
+        ? "nothing in the system (--vary is refused)"
+        : `${parts.length > 0 ? `the ${parts.join(" and ")} part, and ` : ""}what --vary declares`;
+    return `  ${trigger.padEnd(22)}${varies}`;
+  });
+  return `Triggers (--trigger, default code) and what the arms may differ in:\n${lines.join("\n")}`;
+}
+
+const HELP = `${HELP_COMMANDS}\n\n${triggerHelp()}\n\nExit codes: 0 success, 1 a CI policy blocks, 2 an error (usage, configuration or records).`;
 
 /**
  * Runs the CLI. Returns the exit code: 0 on success, 1 when a command's policy blocks, 2 on any

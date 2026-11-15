@@ -268,6 +268,32 @@ function observationPart(name: string): FactorPartName {
 }
 
 /**
+ * What a run can change to allow each undeclared difference: a trigger that varies its part, or
+ * `--vary` for the factor. A trigger that varies nothing in the system takes no `--vary`.
+ */
+function howToAllow(
+  plan: Plan,
+  undeclared: ReadonlyArray<{ readonly key: string; readonly part: FactorPartName }>,
+): string {
+  const canVary = TRIGGER_VARIES[plan.trigger] !== null;
+  const advice = undeclared.flatMap(({ key, part }) => {
+    const options = [
+      ...Object.entries(TRIGGER_VARIES)
+        .filter(([, parts]) => parts?.includes(part))
+        .map(([trigger]) => `--trigger ${trigger}`),
+      ...(canVary ? [`--vary ${key}`] : []),
+    ];
+    const last = options.pop();
+    return last === undefined
+      ? []
+      : [`${key}: ${options.length > 0 ? `${options.join(", ")} or ` : ""}${last}`];
+  });
+  return advice.length > 0
+    ? `. To allow ${advice.length > 1 ? "them" : "it"}, use ${advice.join("; ")}`
+    : "";
+}
+
+/**
  * REQ-15: arms may differ only in what the trigger varies by its kind and what the plan declares
  * as varied. This covers the whole identity projection (models, parameters, prompts, factors) and
  * the factors each arm's trials report: an observation present in both arms whose reported values
@@ -294,7 +320,7 @@ function triggerCheck(
   const undeclared = diffs.filter((d) => !allowed.has(d.part) && !declared.has(d.key));
   if (undeclared.length > 0)
     problems.push(
-      `a ${plan.trigger} change ${may}, but the arms also differ in ${undeclared.map((d) => d.key).join(", ")}`,
+      `a ${plan.trigger} change ${may}, but the arms also differ in ${undeclared.map((d) => d.key).join(", ")}${howToAllow(plan, undeclared)}`,
     );
   // Observations may differ in the parts the change varies, including the parts of what it declares.
   const observable = new Set<FactorPartName>(allowed);

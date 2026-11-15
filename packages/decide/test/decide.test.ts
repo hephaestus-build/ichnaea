@@ -292,7 +292,7 @@ describe("INVALID (REQ-53): every check, and INVALID always blocks", () => {
   it("a code change whose arms run different models (REQ-15); a declared configuration change may", async () => {
     const code = await scenario({ ...refusal, candidateModel: "model-b" });
     expect((await invalidOf(code)).reason).toBe(
-      "a code change may vary only the code part and what the plan declares as varied, but the arms also differ in model.answer",
+      "a code change may vary only the code part and what the plan declares as varied, but the arms also differ in model.answer. To allow it, use model.answer: --trigger new-model or --vary model.answer",
     );
     const dependency = await scenario({
       ...refusal,
