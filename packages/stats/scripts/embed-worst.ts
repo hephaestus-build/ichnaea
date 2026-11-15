@@ -1,9 +1,10 @@
 // Embeds the worst structures of an exact sweep in larger suites, for scripts/simulate-structures.ts.
 //
 // 1. Reads the sweep's TSVs (scripts/study-heterogeneous.ts, each with its sidecar, which must pass
-//    scripts/check-sweep-provenance.ts) and takes the --top structures (default 20) with the lowest
-//    exact coverage over all margins at k = 11 to 17, from the per-cell rows ("k<cell>"). Ties go
-//    to the smaller margin, then the smaller k, then the cell, the file and the line.
+//    scripts/check-sweep-provenance.ts). At each margin it takes the --top structures (default 20)
+//    with the lowest exact coverage at k = 11 to 17, from the per-cell rows ("k<cell>"), because
+//    coverage is not monotone in the margin. Ties go to the smaller k, then the cell, the file and
+//    the line.
 // 2. Rebuilds each structure from its row: k, r, the noisy cases' rates and trials, the stable
 //    base and candidate rates, the stable cases at 3 trials and the one-trial cells. The margin is
 //    the sweep's own value, from + i·step, from the sidecar's arguments. The TSV prints rates to 4
@@ -264,21 +265,30 @@ export function marginsOf(args: readonly string[]): (printed: string) => number 
   };
 }
 
-/** The --top rows, lowest coverage first; ties by margin, k, cell, file and line. */
+/**
+ * The --top rows of each margin, lowest coverage first; ties by k, cell, file and line. Margins come
+ * in ascending order. Coverage is not monotone in the margin, so each margin gets its own worst rows.
+ */
 export function worstRows(rows: readonly Row[], top: number): Row[] {
   const k = (r: Row): number => Number(r.fields[5]);
-  return rows
-    .filter((r) => k(r) >= 11 && k(r) <= 17)
-    .toSorted(
-      (a, b) =>
-        a.coverage - b.coverage ||
-        Number(a.margin) - Number(b.margin) ||
-        k(a) - k(b) ||
-        a.rank.localeCompare(b.rank) ||
-        a.file.localeCompare(b.file) ||
-        a.line - b.line,
-    )
-    .slice(0, top);
+  const byMargin = Map.groupBy(
+    rows.filter((r) => k(r) >= 11 && k(r) <= 17),
+    (r) => r.margin,
+  );
+  return [...byMargin.keys()]
+    .toSorted((a, b) => Number(a) - Number(b))
+    .flatMap((m) =>
+      (byMargin.get(m) ?? [])
+        .toSorted(
+          (a, b) =>
+            a.coverage - b.coverage ||
+            k(a) - k(b) ||
+            a.rank.localeCompare(b.rank) ||
+            a.file.localeCompare(b.file) ||
+            a.line - b.line,
+        )
+        .slice(0, top),
+    );
 }
 
 function main(): void {
@@ -331,6 +341,9 @@ function main(): void {
       });
   }
   const worst = worstRows(rows, Number(values.top)) as typeof rows;
+  /** The rank of the i-th selected row within its margin, from 1. */
+  const perMargin = (i: number): number =>
+    worst.slice(0, i + 1).filter((r) => r.margin === worst[i]!.margin).length;
   const lines: string[] = [];
   const impossible: unknown[] = [];
   const sources: unknown[] = [];
@@ -339,7 +352,7 @@ function main(): void {
     const margin = row.marginOf(row.margin);
     const b = rebuild(row, margin, row.oneTrial);
     if (b.resolved) resolved++;
-    const rank = String(i + 1).padStart(2, "0");
+    const rank = `m${row.margin}-w${String(perMargin(i)).padStart(2, "0")}`;
     const source = {
       file: row.file,
       line: row.line,
@@ -362,7 +375,7 @@ function main(): void {
         }
         lines.push(
           JSON.stringify({
-            id: `w${rank}-K${K}-${mode}`,
+            id: `${rank}-K${K}-${mode}`,
             margin: -e.truth,
             k: K,
             r: b.s.r,

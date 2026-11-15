@@ -175,18 +175,20 @@ describe("rebuilding a sweep row", () => {
     expect(rows.map((r) => r.rank)).toEqual(["k11|2+1t"]);
   });
 
-  it("orders the worst by coverage, then margin, then k", () => {
+  it("takes the worst of each margin, by coverage, then k, with margins ascending", () => {
     const rows = [
       orderRow("0.100", 12, 0.95),
       orderRow("0.050", 13, 0.95),
       orderRow("0.050", 12, 0.95),
+      orderRow("0.050", 14, 0.948),
       orderRow("0.300", 17, 0.949),
       orderRow("0.050", 10, 0.9),
     ];
-    expect(worstRows(rows, 3).map((r) => [r.margin, r.fields[5]])).toEqual([
-      ["0.300", "17"],
+    expect(worstRows(rows, 2).map((r) => [r.margin, r.fields[5]])).toEqual([
+      ["0.050", "14"],
       ["0.050", "12"],
-      ["0.050", "13"],
+      ["0.100", "12"],
+      ["0.300", "17"],
     ]);
   });
 });
