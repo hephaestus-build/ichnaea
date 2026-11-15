@@ -86,7 +86,7 @@ export function tangoTest(
   const statistic = tangoScore(table, skew)(delta0);
   return {
     statistic,
-    p: alternative === "greater" ? 1 - pnorm(statistic) : pnorm(statistic),
+    p: alternative === "greater" ? pnorm(-statistic) : pnorm(statistic),
     method,
   };
 }

@@ -11,6 +11,8 @@ export interface Interval {
   readonly sided: Sided;
   /** The method's stable name, recorded in decisions. */
   readonly method: string;
+  /** The question the interval answers, where the method fixes one (REQ-49). */
+  readonly estimand?: "fixed-cases" | "sampled-cases";
 }
 
 /** A hypothesis test result. */

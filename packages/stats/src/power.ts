@@ -26,12 +26,13 @@ export function fixedCasesFloor(
   return -scoreDifferenceInterval(strata, 1 - alpha, "lower", options).lower;
 }
 
-/** The same floor under `sampled-cases`: every pair concordant, Tango's bound. */
+/** The same floor under `sampled-cases`: every pair concordant, the skewness-corrected Tango bound. */
 export function sampledCasesFloor(cases: number, alpha = 0.05): number {
   return -tangoInterval(
     { both: cases, candidateOnly: 0, baseOnly: 0, neither: 0 },
     1 - alpha,
     "lower",
+    true,
   ).lower;
 }
 

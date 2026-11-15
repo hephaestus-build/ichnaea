@@ -23,6 +23,7 @@ const reference = JSON.parse(
   stratified: Array<
     Bounds & { x1: number[]; n1: number[]; x2: number[]; n2: number[]; skew: boolean; bcf: boolean }
   >;
+  stratifiedEqual: Array<Bounds & { x1: number[]; n1: number[]; x2: number[]; n2: number[] }>;
   tango: Array<
     Bounds & {
       both: number;
@@ -84,8 +85,22 @@ describe("reference values (ratesci)", () => {
     const i = scoreDifferenceInterval(strata, r.level, "two", {
       skewnessCorrection: r.skew,
       biasCorrection: r.bcf,
+      weights: "mantel-haenszel",
     });
     if (!r.skew) close(i.estimate, r.estimate);
+    close(i.lower, r.lower);
+    close(i.upper, r.upper);
+  });
+
+  it.each(
+    reference.stratifiedEqual.map((r, k) => [`set ${Math.floor(k / 2)} @${r.level}`, r] as const),
+  )("stratified score difference with equal case weights %s", (_, r) => {
+    const strata = r.x1.map((x1, k) => ({
+      candidate: { successes: x1, trials: r.n1[k] as number },
+      base: { successes: r.x2[k] as number, trials: r.n2[k] as number },
+    }));
+    const i = scoreDifferenceInterval(strata, r.level, "two");
+    close(i.estimate, r.estimate);
     close(i.lower, r.lower);
     close(i.upper, r.upper);
   });

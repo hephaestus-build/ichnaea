@@ -27,6 +27,13 @@ export interface ScoreOptions {
   readonly biasCorrection?: boolean;
   /** Gart–Nam skewness correction (Laud 2017). Default false. */
   readonly skewnessCorrection?: boolean;
+  /**
+   * Stratum weights. `equal` (the default) weights every case alike, so the estimate is the mean
+   * of the per-case differences: the fixed-cases estimand, whatever the replicate counts.
+   * `mantel-haenszel` weights by n1·n2/(n1+n2), which equals `equal` when every case has the same
+   * counts.
+   */
+  readonly weights?: "equal" | "mantel-haenszel";
 }
 
 interface Restricted {
@@ -75,7 +82,10 @@ interface Prepared {
   readonly estimate: number;
 }
 
-function prepare(strata: readonly Stratum[]): Prepared {
+function prepare(
+  strata: readonly Stratum[],
+  weights: "equal" | "mantel-haenszel" = "equal",
+): Prepared {
   const usable = strata
     .map((s, i) => {
       assertCount(s.candidate, `stratum ${i} candidate`);
@@ -89,9 +99,7 @@ function prepare(strata: readonly Stratum[]): Prepared {
     })
     // A stratum with one arm missing carries no paired information (it is reported, not used).
     .filter((s) => s.n1 > 0 && s.n2 > 0);
-  // Mantel–Haenszel weights. With equal replicates per arm they are equal, so the estimate is the
-  // mean per-case difference: the fixed-cases estimand.
-  const raw = usable.map((s) => (s.n1 * s.n2) / (s.n1 + s.n2));
+  const raw = usable.map((s) => (weights === "equal" ? 1 : (s.n1 * s.n2) / (s.n1 + s.n2)));
   const total = raw.reduce((acc, w) => acc + w, 0);
   const withWeights = usable.map((s, i) => ({ ...s, w: (raw[i] as number) / total }));
   const estimate = withWeights.reduce((acc, s) => acc + s.w * (s.x1 / s.n1 - s.x2 / s.n2), 0);
@@ -127,14 +135,17 @@ function scoreFunction(prepared: Prepared, options: ScoreOptions): (delta: numbe
 export function skewCorrected(score: number, c: number): number {
   if (c === 0 || !Number.isFinite(score)) return score;
   const discriminant = 1 + 4 * c * (score + c);
-  if (discriminant < 0) return score > 0 ? Infinity : -Infinity;
-  return (-1 + Math.sqrt(discriminant)) / (2 * c);
+  // No real root: fall back to the uncorrected score, as ratesci does.
+  if (discriminant < 0) return score;
+  // The rationalised root avoids cancellation when c is tiny: (-1 + √D) / (2c) = 2(s + c) / (1 + √D).
+  return (2 * (score + c)) / (1 + Math.sqrt(discriminant));
 }
 
 function methodName(options: ScoreOptions, stratified: boolean): string {
   const skew = options.skewnessCorrection ?? false;
   const bias = options.biasCorrection ?? true;
-  return `${stratified ? "stratified-" : ""}score-rd${skew ? "-skew" : ""}${bias ? "-bc" : ""}`;
+  const weights = stratified && options.weights === "mantel-haenszel" ? "-mh" : "";
+  return `${stratified ? "stratified-" : ""}score-rd${skew ? "-skew" : ""}${bias ? "-bc" : ""}${weights}`;
 }
 
 /**
@@ -150,7 +161,7 @@ export function scoreDifferenceInterval(
   options: ScoreOptions = {},
 ): Interval {
   assertLevel(level);
-  const prepared = prepare(strata);
+  const prepared = prepare(strata, options.weights);
   const method = methodName(options, strata.length > 1);
   if (prepared.strata.length === 0)
     return { estimate: Number.NaN, lower: -1, upper: 1, level, sided, method };
@@ -171,10 +182,10 @@ export function scoreDifferenceTest(
   alternative: "greater" | "less",
   options: ScoreOptions = {},
 ): TestResult {
-  const prepared = prepare(strata);
+  const prepared = prepare(strata, options.weights);
   const method = methodName(options, strata.length > 1);
   if (prepared.strata.length === 0) return { statistic: 0, p: 1, method };
   const statistic = scoreFunction(prepared, options)(delta0);
-  const p = alternative === "greater" ? 1 - pnorm(statistic) : pnorm(statistic);
+  const p = alternative === "greater" ? pnorm(-statistic) : pnorm(statistic);
   return { statistic, p, method };
 }

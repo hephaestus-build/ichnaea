@@ -220,11 +220,22 @@ describe("method choice per estimand", () => {
     expect(result.difference.sided).toBe("lower");
   });
 
-  it("sampled-cases uses Tango for one trial per case, and sign-flip on families otherwise", () => {
+  it("sampled-cases uses Tango from 300 single-trial cases, and the sign-flip regression test otherwise", () => {
     expect(
-      compareCounts({ estimand: "sampled-cases", cases: cases(1, 20), alpha: 0.05, margin: 0.1 })
+      compareCounts({ estimand: "sampled-cases", cases: cases(1, 300), alpha: 0.05, margin: 0.1 })
         .difference.method,
     ).toMatch(/^tango/);
+    const small = compareCounts({
+      estimand: "sampled-cases",
+      cases: cases(1, 20),
+      alpha: 0.05,
+      margin: 0.5,
+      rng: createRng(3),
+    });
+    expect(small.difference.method).toMatch(/^sign-flip/);
+    // No validated non-inferiority method exists for this path: it never shows non-inferiority.
+    expect(small.difference.lower).toBe(-1);
+    expect(small.nonInferiorityP).toBe(1);
     const families = cases(1, 20).map((c, i) => ({ ...c, family: `f${i % 5}` }));
     expect(
       compareCounts({ estimand: "sampled-cases", cases: families, alpha: 0.05, margin: 0.1 })
@@ -233,7 +244,10 @@ describe("method choice per estimand", () => {
   });
 
   it("drops cases with one arm missing and reports them", () => {
-    const input = [...cases(2, 5), { id: "x", base: countsFromOutcomes([1, 1]), candidate: countsFromOutcomes([]) }];
+    const input = [
+      ...cases(2, 5),
+      { id: "x", base: countsFromOutcomes([1, 1]), candidate: countsFromOutcomes([]) },
+    ];
     expect(
       compareCounts({ estimand: "fixed-cases", cases: input, alpha: 0.05, margin: 0.1 })
         .droppedCases,

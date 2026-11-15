@@ -3,6 +3,8 @@
  * each block a release.
  */
 export function holm(pValues: readonly number[]): number[] {
+  if (pValues.some((p) => !(p >= 0 && p <= 1)))
+    throw new RangeError("Holm needs p-values in [0, 1]");
   const m = pValues.length;
   const order = pValues.map((p, i) => [p, i] as const).toSorted((a, b) => a[0] - b[0]);
   const adjusted = Array.from({ length: m }, () => 1);
@@ -19,6 +21,8 @@ export function holm(pValues: readonly number[]): number[] {
  * Used for explored slices, which never get a verdict.
  */
 export function benjaminiYekutieli(pValues: readonly number[]): number[] {
+  if (pValues.some((p) => !(p >= 0 && p <= 1)))
+    throw new RangeError("Benjamini–Yekutieli needs p-values in [0, 1]");
   const m = pValues.length;
   if (m === 0) return [];
   let harmonic = 0;
