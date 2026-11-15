@@ -56,14 +56,20 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "floor default alpha 0.025",
     file: "src/power.ts",
-    from: "  replicates: number,\n  alpha = 0.05,\n  options: ScoreOptions = {},\n): number {\n  const strata",
-    to: "  replicates: number,\n  alpha = 0.025,\n  options: ScoreOptions = {},\n): number {\n  const strata",
+    from: "  replicates: number,\n  alpha = 0.05,",
+    to: "  replicates: number,\n  alpha = 0.025,",
+  },
+  {
+    id: "floor default alpha 0.025 (per-case trials)",
+    file: "src/power.ts",
+    from: "  trials: readonly number[],\n  alpha = 0.05,",
+    to: "  trials: readonly number[],\n  alpha = 0.025,",
   },
   {
     id: "res53 wrong shift",
     file: "src/rng.ts",
-    from: "(generator() >>> 5) * 67108864",
-    to: "(generator() >>> 4) * 67108864",
+    from: "(next() >>> 5) * 67108864",
+    to: "(next() >>> 4) * 67108864",
   },
   {
     id: "N/(N-1) default dropped",
@@ -179,6 +185,68 @@ export const MUTANTS: readonly Mutant[] = [
     file: "src/compare.ts",
     from: "const balanced = new Set(cells).size === 1;",
     to: "const balanced = true;",
+  },
+  {
+    id: "pnorm central coefficient typo",
+    file: "src/normal.ts",
+    from: "161.02823106855587",
+    to: "161.02832106855587",
+  },
+  {
+    id: "pnorm tail coefficient typo",
+    file: "src/normal.ts",
+    from: "0.023073441764940174",
+    to: "0.023073414764940174",
+  },
+  {
+    id: "pnorm square not split",
+    file: "src/normal.ts",
+    from: "Math.trunc(x * 16) / 16",
+    to: "x",
+  },
+  // Moving this boundary down to 0.5 is equivalent: both approximations stay within 2 ulps of R
+  // there. A digit typo is not.
+  {
+    id: "pnorm branch boundary typo",
+    file: "src/normal.ts",
+    from: "y <= 0.67448975",
+    to: "y <= 0.067448975",
+  },
+  {
+    id: "qnorm central coefficient typo",
+    file: "src/normal.ts",
+    from: "13731.69376550946",
+    to: "13731.69367550946",
+  },
+  {
+    id: "qnorm far-tail coefficient typo",
+    file: "src/normal.ts",
+    from: "0.014875361290850615",
+    to: "0.014875316290850615",
+  },
+  {
+    id: "mt19937 shift",
+    file: "src/mt19937.ts",
+    from: "const M = 397;",
+    to: "const M = 396;",
+  },
+  {
+    id: "mt19937 tempering",
+    file: "src/mt19937.ts",
+    from: "0x9d2c5680",
+    to: "0x9d2c5780",
+  },
+  {
+    id: "mt19937 seeding multiplier",
+    file: "src/mt19937.ts",
+    from: "1812433253",
+    to: "1812433254",
+  },
+  {
+    id: "res53 low bits",
+    file: "src/rng.ts",
+    from: "(next() >>> 6)",
+    to: "(next() >>> 5)",
   },
 ];
 

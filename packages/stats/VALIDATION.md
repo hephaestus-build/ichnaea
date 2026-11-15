@@ -35,6 +35,26 @@ thresholds in effect (`test:sim` runs Vitest with `--silent=false`, so CI logs s
 | Tango paired intervals, plain and skewness-corrected, every table with n = 10 and n = 25                                                                    | 834  | 1e-6          |
 | Non-inferiority p-values (ratesci's score test at −margin) and regression p-values (exact Mantel–Haenszel) through `compareCounts`, with the reported bound | 16   | 1e-6 and 1e-9 |
 
+### The generator and the normal functions
+
+The package has no runtime dependency. Its generator and its normal functions are its own, and
+each is pinned against an independent implementation:
+
+- `test/reference-numpy-mt19937.json` comes from numpy 2.3.4 (`scripts/reference-mt19937.py`):
+  `MT19937` with legacy integer seeding, for seeds 1, 42, 5489, 2026 and 2^32 − 1. Ichnaea gives
+  the same 1,300 raw 32-bit outputs per seed (two state regenerations) and the same 700
+  `random_sample` doubles, bit for bit. This is the sequence that every seeded result before this
+  change used, so no recorded result changes.
+- `test/reference-r-normal.json` comes from R 4.5.2 (`scripts/reference-normal.R`): `pnorm` at
+  334 points from −38 to 38 and `qnorm` at 140 probabilities from 1e-300 to 1 − 1e-15, with
+  points on both sides of every branch boundary. Ichnaea uses the same algorithms as R (Cody for
+  `pnorm`, AS 241 for `qnorm`). It agrees within 4 units in the last place: the worst
+  measured differences are 1.8 for `pnorm` and 1.7 for `qnorm`. For comparison, the library that
+  was used before was up to 774 units in the last place from R for `pnorm`.
+
+Property tests add symmetry, `pnorm(−x) = 1 − pnorm(x)`, and the inverse,
+`qnorm(pnorm(x)) = x`, at or below the median, where p keeps its full relative precision.
+
 ## fixed-cases: what counts
 
 `compareCounts` takes binary outcomes: per case and arm, the completed trials that passed, of all

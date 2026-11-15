@@ -1,4 +1,4 @@
-import mt19937 from "@stdlib/random-base-mt19937";
+import { mt19937 } from "./mt19937.ts";
 
 /** A seeded pseudo-random number generator. Its algorithm and seed are recorded in decisions. */
 export interface Rng {
@@ -15,10 +15,9 @@ export function createRng(seed: number): Rng {
   if (!Number.isInteger(seed) || seed < 1 || seed > 4294967295) {
     throw new RangeError(`seed must be an integer in [1, 2^32 - 1], got ${seed}`);
   }
-  const generator = mt19937.factory({ seed });
+  const next = mt19937(seed);
   // genrand_res53 of the reference implementation: a uniform double with 53 random bits.
-  const uniform = (): number =>
-    ((generator() >>> 5) * 67108864 + (generator() >>> 6)) / 9007199254740992;
+  const uniform = (): number => ((next() >>> 5) * 67108864 + (next() >>> 6)) / 9007199254740992;
   return {
     algorithm: "mt19937",
     seed,

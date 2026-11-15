@@ -36,11 +36,6 @@
     "build": "tsc -p tsconfig.build.json",
     "test:sim": "vitest run --config vitest.sim.config.ts --silent=false"
   },
-  "dependencies": {
-    "@stdlib/random-base-mt19937": "0.2.3",
-    "@stdlib/stats-base-dists-normal-cdf": "0.3.1",
-    "@stdlib/stats-base-dists-normal-quantile": "0.3.1"
-  },
   "engines": {
     "node": ">=22.12"
   }

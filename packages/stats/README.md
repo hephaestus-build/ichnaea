@@ -8,7 +8,7 @@ Benjamini–Yekutieli adjustment, floors and minimum detectable effects, and one
 the validated domain and, if not, why. No verdict may rest on a comparison outside it. Score,
 proportion and ordinal measures have no validated method yet, so they are estimate-only.
 
-The package has no dependency on other Ichnaea packages and no Python or R at runtime. Its methods
+The package has no runtime dependency, and no Python or R at runtime. Its methods
 are checked against an independent implementation and by simulation: see
 [VALIDATION.md](VALIDATION.md), which also lists the methods that are not yet validated.
 

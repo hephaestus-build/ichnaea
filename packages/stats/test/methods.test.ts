@@ -1,6 +1,5 @@
 // REQ-48, REQ-50, REQ-111: unit tests against hand-computed values, with stated tolerances.
 import fc from "fast-check";
-import mt19937 from "@stdlib/random-base-mt19937";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -86,10 +85,6 @@ describe("exact stratified conditional test", () => {
 });
 
 describe("generator", () => {
-  it("is the 32-bit Mersenne Twister: the reference output for seed 5489 is 3499211612", () => {
-    expect(mt19937.factory({ seed: 5489 })()).toBe(3499211612);
-  });
-
   it("is deterministic for a seed and different across seeds", () => {
     const a = createRng(42);
     const b = createRng(42);
