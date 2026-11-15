@@ -32,7 +32,7 @@ Inspect's log format) instead of building its own store, dashboard or labelling 
 | Package                                        | Content                                                                                                                                 | State          |
 | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
 | `@hephaestus-build/ichnaea-contracts`          | zod schemas, the normative JSON Schema 2020-12 files, shared fixtures, RFC 8785 canonical hashing, configuration identity, data classes | in development |
-| `@hephaestus-build/ichnaea-stats`              | Intervals, paired tests, power, validated by simulation                                                                                 | planned        |
+| `@hephaestus-build/ichnaea-stats`              | Intervals, paired and stratified tests, power. The regression test is validated; non-inferiority is not, until the margin floor is set  | in development |
 | `@hephaestus-build/ichnaea-core`               | Plugin host, lifecycle, planner, import mode, file store, call ledger, CLI                                                              | in development |
 | `@hephaestus-build/ichnaea-decide`, `-report`  | Decision rule with its power statement; Markdown and HTML reports with an interval lint                                                 | in development |
 | `@hephaestus-build/ichnaea-runner`, `-testkit` | Runner, conformance kits                                                                                                                | planned        |
