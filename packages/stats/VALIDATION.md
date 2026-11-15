@@ -103,7 +103,7 @@ reported in `excludedCases`, and counts against coverage in the decision. Droppi
 than two trials, as an earlier version did, hid a regression: losing 6 of 60 cases' remaining
 failing candidate trials turned a −0.10 drop (regression p = 1.6e-8) into a pass.
 
-`validated: true` assumes that missingness within a case does not depend on the outcome. When the
+A validated result assumes that missingness within a case does not depend on the outcome. When the
 failing trials of a case go missing, the estimate moves towards a pass: 6 of 60 cases that lose their
 2 failing candidate trials of 3 give an estimate of 0.000 instead of −0.067. The decision layer
 therefore runs a sensitivity analysis whenever a trial is missing.
@@ -135,8 +135,11 @@ skewness correction (decision 0004), chosen by a 252-point study at 10,000 repet
 
 ## The validated domain (decision 0007)
 
-`compareCounts` returns `validated: true` for `fixed-cases` only when every condition holds, and
-otherwise lists each one that fails in `limitations`:
+Every `fixed-cases` comparison has two results of the same shape, `{ validated, limitations }`.
+`regression` covers the regression test: it is validated only when every condition below holds,
+and it does not depend on the margin. `nonInferiority` covers the interval against the margin: it
+needs the same conditions, an established margin floor and a margin inside the range below. Each
+result lists every condition that fails in its `limitations`.
 
 - at least 5 cases with a completed trial in each arm (at 3 and 4 cases with 2 trials, exact
   coverage dips to 0.9385 and 0.9394 on a wide grid; from 5 to 9 cases every exact point on the grid
@@ -147,18 +150,32 @@ otherwise lists each one that fails in `limitations`:
 - at least 90% of case-arm cells with 2 or more completed trials (one trial per case and arm by
   design is not studied; missingness that leaves some cells with one trial is).
 
-- for non-inferiority, an effective margin (the declared margin minus any safety margin) from the
-  validated margin floor up to 0.30, the validated margin ceiling. A margin of 0 is not a
+- for `nonInferiority` only: an established margin floor, and an effective margin (the declared
+  margin minus any safety margin) from that floor up to 0.30, the validated margin ceiling. A margin of 0 is not a
   non-inferiority test. A declared 0.10 with a safety margin of 0.06 is tested at 0.04. The range
   covers only this `fixed-cases` interval; every other method states its own validated domain.
 
-**The validated margin floor is not yet established.** When most cases pass every base trial and
-drop under the candidate, while a few noisy cases offset the drops, the lower bound can undercover.
-An exact search over such structures found coverage below 0.94 at several margins between 0.05 and
-0.19, with 5 to 9 cases or mixed trial counts. `VALIDATED_MARGIN_FLOOR` (0.05) is a placeholder.
-Known gap: `compareCounts` still reports `validated: true` for a non-inferiority result from that
-placeholder upward, so read `validated` as "inside the studied domain except the margin floor".
-The change that sets the floor removes this gap, and brings the search, its space and its results.
+**No non-inferiority result is validated: the margin floor is not set yet.** Every
+`nonInferiority` result is `validated: false` with the reason "the validated margin floor is not
+set yet", at every margin. A unit test checks this for every margin from 0.05 to 0.30 in steps of
+0.005. `regression` is unaffected. `VALIDATED_MARGIN_FLOOR` (0.05) is a placeholder that bounds the
+margins a plan may declare.
+
+The floor is pending because the lower bound can undercover when most cases pass every base trial
+and drop under the candidate while a few noisy cases offset the drops. A first exact search over
+such structures, at a true difference of minus the margin, found these points below 0.94:
+
+| Margin | Exact coverage | Cases | Trials per case and arm |
+| ------ | -------------- | ----- | ----------------------- |
+| 0.050  | 0.93782        | 8     | 3                       |
+| 0.055  | 0.93712        | 7     | 3                       |
+| 0.060  | 0.93505        | 6     | 3                       |
+| 0.070  | 0.93667        | 5     | 3                       |
+| 0.155  | 0.93904        | 5     | 3                       |
+| 0.185  | 0.93997        | 5     | 3                       |
+
+The change that sets the floor brings the search, its space, its seeds and the structures it
+skipped, and makes `nonInferiority` validated only where the search found no failure.
 
 Unequal binary trial counts are inside the domain. `sampled-cases` results are never validated
 (see below). `sampled-cases` needs at least 300 cases, one trial per case and arm and one case per

@@ -21,8 +21,10 @@ import {
   scoreDifferenceTest,
   tangoInterval,
   tangoTest,
+  MARGIN_FLOOR_NOT_SET,
   VALIDATED_MARGIN_CEILING,
   VALIDATED_MARGIN_FLOOR,
+  VALIDATED_MARGIN_FLOOR_SET,
   zeroNoiseFloor,
 } from "../src/index.ts";
 
@@ -478,8 +480,8 @@ describe("input validation", () => {
     });
     expect(result.usedCases).toBe(4);
     expect(result.excludedCases).toBe(1);
-    expect(result.validated).toBe(false);
-    expect(result.limitations).toContain(
+    expect(result.regression.validated).toBe(false);
+    expect(result.regression.limitations).toContain(
       "1 case(s) have no completed trial in an arm and are excluded",
     );
     expect(() =>
@@ -518,8 +520,8 @@ describe("input validation", () => {
 
   it("marks results outside the validated domain, naming each reason (decision 0007)", () => {
     const five = ["a", "b", "c", "d", "e"].map((id) => ({ ...ok, id }));
-    expect(at(five)).toMatchObject({ validated: true, limitations: [] });
-    expect(at(five.slice(0, 4)).limitations).toEqual([
+    expect(at(five).regression).toEqual({ validated: true, limitations: [] });
+    expect(at(five.slice(0, 4)).regression.limitations).toEqual([
       "4 case(s); the validated domain starts at 5",
     ]);
     // Unequal binary trial counts are inside the grid.
@@ -528,25 +530,25 @@ describe("input validation", () => {
       { id: "f", base: { successes: 2, trials: 3 }, candidate: { successes: 1, trials: 2 } },
     ];
     expect(at(unequal)).toMatchObject({
-      validated: true,
+      regression: { validated: true },
       regressionMethod: "within-case-permutation",
     });
     const many = [
       ...five,
       { id: "f", base: { successes: 4, trials: 4 }, candidate: { successes: 4, trials: 4 } },
     ];
-    expect(at(many).limitations).toEqual([
+    expect(at(many).regression.limitations).toEqual([
       "more than 3 trials per case and arm is outside the studied grid",
     ]);
     // 2 of 12 cells with one trial: below 90% with two or more.
     const thin = { successes: 1, trials: 1 };
     const sparse = [...five, { id: "f", base: thin, candidate: thin }];
-    expect(at(sparse).limitations).toEqual([
+    expect(at(sparse).regression.limitations).toEqual([
       "fewer than 90% of case-arm cells have 2 or more completed trials",
     ]);
     // 1 of 10 cells with one trial: exactly 90%, inside.
     const edge = [...five.slice(0, 4), { id: "e", base: ok.base, candidate: thin }];
-    expect(at(edge).validated).toBe(true);
+    expect(at(edge).regression.validated).toBe(true);
   });
 });
 
@@ -609,29 +611,45 @@ describe("what compareCounts refuses or does not validate", () => {
       expect(() => compareCounts({ ...input, valueType })).toThrow(EstimandError);
   });
 
-  it(`validates non-inferiority only at margins of ${VALIDATED_MARGIN_FLOOR} or more`, () => {
-    expect(compareCounts({ ...input, margin: VALIDATED_MARGIN_FLOOR }).validated).toBe(true);
+  it("validates no non-inferiority result while the margin floor is not set, at any margin from 0.05 to 0.30", () => {
+    expect(VALIDATED_MARGIN_FLOOR_SET).toBe(false);
+    for (let i = 0; i <= 50; i++) {
+      const margin = 0.05 + i * 0.005;
+      const result = compareCounts({ ...input, margin });
+      expect(result.nonInferiority.validated, `margin ${margin}`).toBe(false);
+      expect(result.nonInferiority.limitations).toContain(MARGIN_FLOOR_NOT_SET);
+      // The regression test does not depend on the margin.
+      expect(result.regression).toEqual({ validated: true, limitations: [] });
+    }
+  });
+
+  it("names a margin outside the range, below the floor or above the ceiling", () => {
     for (const margin of [0, 0.02, VALIDATED_MARGIN_FLOOR - 1e-9]) {
       const result = compareCounts({ ...input, margin });
-      expect(result.validated).toBe(false);
-      expect(result.limitations.join(" ")).toMatch(/below the validated margin floor/);
+      expect(result.nonInferiority.limitations.join(" ")).toMatch(
+        /below the validated margin floor/,
+      );
+      expect(result.regression.validated).toBe(true);
     }
-  });
-
-  it(`validates non-inferiority only at margins up to ${VALIDATED_MARGIN_CEILING}`, () => {
-    expect(compareCounts({ ...input, margin: VALIDATED_MARGIN_CEILING }).validated).toBe(true);
     for (const margin of [VALIDATED_MARGIN_CEILING + 1e-9, 0.5, 0.99]) {
       const result = compareCounts({ ...input, margin });
-      expect(result.validated).toBe(false);
-      expect(result.limitations.join(" ")).toMatch(/above the validated margin ceiling/);
+      expect(result.nonInferiority.limitations.join(" ")).toMatch(
+        /above the validated margin ceiling/,
+      );
     }
+    for (const margin of [VALIDATED_MARGIN_FLOOR, VALIDATED_MARGIN_CEILING])
+      expect(compareCounts({ ...input, margin }).nonInferiority.limitations).toEqual([
+        MARGIN_FLOOR_NOT_SET,
+      ]);
   });
 
-  it("validates at most 3 trials per case and arm", () => {
-    expect(compareCounts({ ...input, cases: counts(17, 3, 3, 3) }).validated).toBe(true);
+  it("validates at most 3 trials per case and arm, for both results", () => {
+    expect(compareCounts({ ...input, cases: counts(17, 3, 3, 3) }).regression.validated).toBe(true);
     const four = compareCounts({ ...input, cases: counts(17, 4, 4, 4) });
-    expect(four.validated).toBe(false);
-    expect(four.limitations.join(" ")).toMatch(/more than 3 trials per case and arm/);
+    for (const result of [four.regression, four.nonInferiority]) {
+      expect(result.validated).toBe(false);
+      expect(result.limitations.join(" ")).toMatch(/more than 3 trials per case and arm/);
+    }
   });
 
   it("refuses a margin of 1 or more, and a negative one", () => {

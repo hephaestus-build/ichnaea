@@ -240,7 +240,7 @@ describe("method choice per estimand", () => {
         cases: cases(1, 20),
         alpha: 0.05,
         margin: 0.1,
-      }).validated,
+      }).regression.validated,
     ).toBe(false);
   });
 
@@ -254,7 +254,8 @@ describe("method choice per estimand", () => {
     });
     expect(tango.difference.method).toMatch(/^tango/);
     expect(tango.regressionMethod).toBe("tango-score-skew");
-    expect(tango.validated).toBe(false);
+    expect(tango.regression.validated).toBe(false);
+    expect(tango.nonInferiority.validated).toBe(false);
     for (const input of [
       cases(1, 299),
       cases(2, 400),

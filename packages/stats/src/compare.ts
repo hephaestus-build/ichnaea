@@ -69,13 +69,30 @@ export interface Comparison {
   /** Cases with no completed trial in an arm. They are missing and count against coverage. */
   readonly excludedCases: number;
   /**
-   * Whether the call lies inside the domain the simulation studies validate (VALIDATION.md). No
-   * verdict may rest on a result that is not validated (decision 0008).
+   * Whether the regression test's result lies inside the domain where its type-I error is shown
+   * (VALIDATION.md). It does not depend on the margin, and it never vouches for the interval.
    */
+  readonly regression: Validity;
+  /**
+   * Whether the non-inferiority result, the interval against the margin, lies inside the domain
+   * where its coverage is shown: the regression domain, plus an established margin floor and an
+   * effective margin from that floor up to VALIDATED_MARGIN_CEILING. No verdict may rest on a
+   * result that is not validated (decision 0008).
+   */
+  readonly nonInferiority: Validity;
+}
+
+/** Whether one result of a comparison is validated, and why not. */
+export interface Validity {
   readonly validated: boolean;
   /** Why the result is not validated. Empty when it is. */
   readonly limitations: readonly string[];
 }
+
+const validity = (limitations: readonly string[]): Validity => ({
+  validated: limitations.length === 0,
+  limitations,
+});
 
 /** Thrown when the data cannot support the estimand. The decision then runs estimate-only. */
 export class EstimandError extends Error {
@@ -139,6 +156,15 @@ export const SAMPLED_CASES_MIN_CASES = 300;
 export const VALIDATED_MARGIN_FLOOR = 0.05;
 
 /**
+ * Whether the margin floor is established. Until a reviewed search sets it, every non-inferiority
+ * result is not validated, whatever its margin (VALIDATION.md, "The validated domain").
+ */
+export const VALIDATED_MARGIN_FLOOR_SET = false;
+
+/** The reason every non-inferiority result gives while the floor is not set. */
+export const MARGIN_FLOOR_NOT_SET = "the validated margin floor is not set yet";
+
+/**
  * Largest effective non-inferiority margin for the fixed-cases interval. A margin above 30 points
  * says nothing useful about a drop.
  */
@@ -183,18 +209,18 @@ export function compareCounts(input: ComparisonInput): Comparison {
     const { interval, strata, options } = fixedCasesInterval(used, level, input.score);
     const cells = used.flatMap((c) => [c.base.trials, c.candidate.trials]);
     const balanced = new Set(cells).size === 1;
-    let regression: { p: number; method: string };
+    let regressionTest: { p: number; method: string };
     if (balanced) {
-      regression = exactStratifiedTest(strata, "less");
+      regressionTest = exactStratifiedTest(strata, "less");
     } else {
       if (!input.rng)
         throw new EstimandError(
           "unequal trial counts need a seeded generator for the within-case permutation test",
         );
-      regression = withinCasePermutationTest(strata, input.rng);
+      regressionTest = withinCasePermutationTest(strata, input.rng);
     }
     const domain = VALIDATED_FIXED_CASES;
-    const limitations = [
+    const domainLimitations = [
       ...(used.length < domain.minCases
         ? [`${used.length} case(s); the validated domain starts at ${domain.minCases}`]
         : []),
@@ -204,6 +230,14 @@ export function compareCounts(input: ComparisonInput): Comparison {
       ...(Math.max(...cells) > domain.maxTrials
         ? [`more than ${domain.maxTrials} trials per case and arm is outside the studied grid`]
         : []),
+      ...(cells.filter((n) => n >= 2).length < domain.minShareWithTwoTrials * cells.length
+        ? [
+            `fewer than ${domain.minShareWithTwoTrials * 100}% of case-arm cells have 2 or more completed trials`,
+          ]
+        : []),
+    ];
+    const marginLimitations = [
+      ...(VALIDATED_MARGIN_FLOOR_SET ? [] : [MARGIN_FLOOR_NOT_SET]),
       ...(input.margin < VALIDATED_MARGIN_FLOOR
         ? [`margin ${input.margin} is below the validated margin floor ${VALIDATED_MARGIN_FLOOR}`]
         : []),
@@ -212,22 +246,17 @@ export function compareCounts(input: ComparisonInput): Comparison {
             `margin ${input.margin} is above the validated margin ceiling ${VALIDATED_MARGIN_CEILING}`,
           ]
         : []),
-      ...(cells.filter((n) => n >= 2).length < domain.minShareWithTwoTrials * cells.length
-        ? [
-            `fewer than ${domain.minShareWithTwoTrials * 100}% of case-arm cells have 2 or more completed trials`,
-          ]
-        : []),
     ];
     return {
       estimand: input.estimand,
       difference: interval,
       nonInferiorityP: scoreDifferenceTest(strata, -input.margin, "greater", options).p,
-      regressionP: regression.p,
-      regressionMethod: regression.method,
+      regressionP: regressionTest.p,
+      regressionMethod: regressionTest.method,
       usedCases: used.length,
       excludedCases,
-      validated: limitations.length === 0,
-      limitations,
+      regression: validity(domainLimitations),
+      nonInferiority: validity([...domainLimitations, ...marginLimitations]),
     };
   }
 
@@ -244,16 +273,17 @@ export function compareCounts(input: ComparisonInput): Comparison {
     baseOnly: used.filter((c) => c.base.successes === 1 && c.candidate.successes === 0).length,
     neither: used.filter((c) => c.base.successes === 0 && c.candidate.successes === 0).length,
   };
-  const regression = tangoTest(table, 0, "less", true);
+  const regressionTest = tangoTest(table, 0, "less", true);
+  const experimental = ["Tango's skewness-corrected interval is experimental (VALIDATION.md)"];
   return {
     estimand: input.estimand,
     difference: { ...tangoInterval(table, level, "lower", true), estimand: "sampled-cases" },
     nonInferiorityP: tangoTest(table, -input.margin, "greater", true).p,
-    regressionP: regression.p,
-    regressionMethod: regression.method,
+    regressionP: regressionTest.p,
+    regressionMethod: regressionTest.method,
     usedCases: used.length,
     excludedCases,
-    validated: false,
-    limitations: ["Tango's skewness-corrected interval is experimental (VALIDATION.md)"],
+    regression: validity(experimental),
+    nonInferiority: validity(experimental),
   };
 }

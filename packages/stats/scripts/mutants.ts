@@ -26,14 +26,14 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "regression tail (fixed-cases)",
     file: "src/compare.ts",
-    from: 'regression = exactStratifiedTest(strata, "less");',
-    to: 'regression = exactStratifiedTest(strata, "greater");',
+    from: 'regressionTest = exactStratifiedTest(strata, "less");',
+    to: 'regressionTest = exactStratifiedTest(strata, "greater");',
   },
   {
     id: "regression tail (Tango)",
     file: "src/compare.ts",
-    from: 'const regression = tangoTest(table, 0, "less", true);',
-    to: 'const regression = tangoTest(table, 0, "greater", true);',
+    from: 'const regressionTest = tangoTest(table, 0, "less", true);',
+    to: 'const regressionTest = tangoTest(table, 0, "greater", true);',
   },
   {
     id: "score test tails swapped",
@@ -92,8 +92,8 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "validated everywhere",
     file: "src/compare.ts",
-    from: "      validated: limitations.length === 0,",
-    to: "      validated: true,",
+    from: "  validated: limitations.length === 0,",
+    to: "  validated: true,",
   },
   {
     id: "exact test counts ties out",
@@ -428,6 +428,36 @@ export const MUTANTS: readonly Mutant[] = [
     file: "src/compare.ts",
     from: "export const VALIDATED_MARGIN_CEILING = 0.3;",
     to: "export const VALIDATED_MARGIN_CEILING = 1;",
+  },
+  {
+    id: "source: the margin floor counts as set",
+    file: "src/compare.ts",
+    from: "export const VALIDATED_MARGIN_FLOOR_SET = false;",
+    to: "export const VALIDATED_MARGIN_FLOOR_SET = true;",
+  },
+  {
+    id: "source: the floor-not-set reason dropped",
+    file: "src/compare.ts",
+    from: "...(VALIDATED_MARGIN_FLOOR_SET ? [] : [MARGIN_FLOOR_NOT_SET]),",
+    to: "...([] as string[]),",
+  },
+  {
+    id: "source: regression depends on the margin",
+    file: "src/compare.ts",
+    from: "regression: validity(domainLimitations),",
+    to: "regression: validity([...domainLimitations, ...marginLimitations]),",
+  },
+  {
+    id: "source: non-inferiority ignores the domain",
+    file: "src/compare.ts",
+    from: "nonInferiority: validity([...domainLimitations, ...marginLimitations]),",
+    to: "nonInferiority: validity(marginLimitations),",
+  },
+  {
+    id: "source: sampled-cases regression validated",
+    file: "src/compare.ts",
+    from: "    regression: validity(experimental),",
+    to: "    regression: validity([]),",
   },
   {
     id: "source: margin floor 0",
