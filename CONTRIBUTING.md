@@ -26,6 +26,34 @@ Thank you for helping. Ichnaea is a general framework: it must work for any GenA
    follows the same commit rule; the `pull request text` check lints it. CI must be green and a maintainer must
    approve it.
 
+## Signed commits
+
+A commit pushed to a branch in this repository must be signed. Its commit email must be an address
+verified on your GitHub account, so set `git config user.email` to one before you commit. The
+repository refuses a push that carries an unsigned commit.
+
+A pull request from a fork needs none of this. GitHub creates and signs the commit that enters
+`main`.
+
+Sign with the SSH key you already push with.
+[GitHub accepts an authentication key a second time as a signing key](https://docs.github.com/en/authentication/managing-commit-signature-verification/about-commit-signature-verification):
+
+```sh
+git config --global gpg.format ssh
+git config --global user.signingkey ~/.ssh/id_ed25519.pub
+git config --global commit.gpgsign true
+```
+
+Then register that public key on GitHub as a signing key: Settings → SSH and GPG keys → New SSH
+key, with the key type **Signing Key**, or `gh ssh-key add ~/.ssh/id_ed25519.pub --type signing`.
+Until you register the key as a signing key, signatures made with it stay unverified.
+
+If a push is refused, sign the commits that your branch already carries and force-push:
+
+```sh
+git rebase --exec 'git commit --amend --no-edit -S' origin/main
+```
+
 ## Regenerate artefacts
 
 `pnpm generate` rewrites the JSON Schema files and the shared fixtures from their sources. Commit
