@@ -4,7 +4,10 @@ export interface LedgerBooking {
     readonly run: string;
     /** The number of calls booked, a non-negative integer. */
     readonly calls: number;
-    /** The ISO 8601 timestamp of the booking; its `YYYY-MM` prefix selects the month's file. */
+    /**
+     * The ISO 8601 timestamp of the booking, with an offset or `Z`. Its month in UTC selects the
+     * month's file.
+     */
     readonly at: string;
 }
 /**

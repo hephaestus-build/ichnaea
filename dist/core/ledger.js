@@ -1,7 +1,7 @@
 import { appendFile, mkdir, open, readFile, rm, stat } from "node:fs/promises";
 import { setTimeout as delay } from "node:timers/promises";
 import { join } from "node:path";
-import { canonicalize } from "../contracts/index.js";
+import { canonicalize, Timestamp } from "../contracts/index.js";
 import * as z from "zod";
 /**
  * What every ledger line must hold: the run and a non-negative whole number of calls. Other
@@ -22,6 +22,15 @@ function bookingProblem(value) {
     if (!issue)
         return undefined;
     return issue.path.length > 0 ? `${issue.path.join(".")}: ${issue.message}` : issue.message;
+}
+/**
+ * The UTC month, `YYYY-MM`, of a booking time. A time that is not an ISO 8601 timestamp is
+ * refused: its file name would fall outside the month scheme, and its calls outside the cap.
+ */
+function monthOf(at) {
+    if (!Timestamp.safeParse(at).success)
+        throw new LedgerError(`'${at}' is not an ISO 8601 timestamp, so it names no month`);
+    return new Date(at).toISOString().slice(0, 7);
 }
 /** Age after which a ledger lock is taken to belong to a crashed run. */
 export const STALE_LOCK_MS = 30_000;
@@ -46,7 +55,7 @@ export class CallLedger {
     file(endpoint, at) {
         if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(endpoint))
             throw new Error(`endpoint name '${endpoint}' cannot name a directory`);
-        return join(this.root, "ledger", endpoint, `${at.slice(0, 7)}.jsonl`);
+        return join(this.root, "ledger", endpoint, `${monthOf(at)}.jsonl`);
     }
     /**
      * Calls booked against an endpoint in the month of `at`. Only a missing file counts as 0. A line
