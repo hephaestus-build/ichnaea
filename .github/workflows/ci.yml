@@ -138,6 +138,20 @@ jobs:
           node scripts/reference-normal-coefficients.ts
           git diff --exit-code -- test/reference-r-normal.json test/reference-numpy-mt19937.json \
             test/reference-mpmath-normal.json test/reference-normal-coefficients.json
+      # The score permutation test's tables, and its two oracles: coin, and an exact enumeration in
+      # Python that was written from the formulas alone and checks itself first.
+      - name: The score permutation reference values are what their oracles write
+        working-directory: packages/stats
+        run: |
+          node scripts/score-permutation-tables.ts
+          docker run --rm -v "$PWD":/w -w /w "$R_IMAGE" Rscript scripts/reference-score-permutation.R
+          docker run --rm -v "$PWD":/w -w /w "$PYTHON_IMAGE" sh -c \
+            "pip install --quiet --root-user-action=ignore --require-hashes -r scripts/oracle-requirements.txt \
+            && python scripts/score_permutation_oracle_test.py \
+            && python scripts/score_permutation_oracle.py test/reference-score-permutation-tables.json \
+               test/reference-python-score-permutation.json"
+          git diff --exit-code -- test/reference-score-permutation-tables.json \
+            test/reference-coin-score-permutation.json test/reference-python-score-permutation.json
 
   workflows:
     name: workflows

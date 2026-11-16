@@ -304,10 +304,11 @@ Two workflows run the studies with `pnpm --filter ./packages/stats run test:sim`
 - The `Nightly` workflow (`.github/workflows/nightly.yml`), job `simulation`: every day at 02:17
   UTC and on demand, with `ICHNAEA_SIM_REPS=10000` and a limit of 120 minutes.
 
-`test:sim` runs five study files in parallel: `test/coverage.sim.test.ts`,
+`test:sim` runs six study files in parallel: `test/coverage.sim.test.ts`,
 `test/checks-coverage.sim.test.ts`, `test/type-i-exact.sim.test.ts`,
-`test/type-i-permutation-17.sim.test.ts` and `test/type-i-permutation-60.sim.test.ts`. Candidates
-are confirmed in the same run.
+`test/type-i-permutation-17.sim.test.ts`, `test/type-i-permutation-60.sim.test.ts`, and
+`test/score-permutation-work.sim.test.ts`, which times the score permutation test at its work limit
+and judges no grid. Candidates are confirmed in the same run.
 
 The results at 6,000 repetitions, by the grid title that the CI log prints. Each study compares its
 result with its row here and fails if they differ, so a change to a grid or to its results changes
@@ -379,7 +380,160 @@ observed per-case rates.
 | ----------------------------------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
 | Tango paired score interval, skewness-corrected | `sampled-cases`, one trial per case and arm, one case per family, 300+ cases | Agrees with ratesci on every table with n = 10 and 25 (and n = 6 and 12 in a second check). `validation/tango.tsv` is a study from before the fix of its skewness root; it must be rerun under the validation rule before the method gives a verdict. | Experimental: results are never validated, so no verdict.        |
 | `sampled-cases` below 300 cases                 | —                                                                            | The sign-flip tests once used here reject far too often: non-inferiority up to 59%, and "no drop" 27.5% under a skewed null with mean 0. They were removed.                                                                                           | No method: `compareCounts` throws, the measure is estimate-only. |
-| Proportion, score and ordinal measures          | —                                                                            | See above (decision 0008).                                                                                                                                                                                                                            | No method yet: estimate-only.                                    |
+| Proportion, score and ordinal measures          | —                                                                            | See above (decision 0008). The regression test for them exists and matches its oracles; its type-I study has not run (see below).                                                                                                                     | No method yet: estimate-only.                                    |
 | Wilson interval for one proportion              | Per-arm rates in reports, never in a decision                                | Exact two-sided coverage at n = 20 is 0.9245 at p = 0.95, minimum 0.838 near p = 0.009 (`scripts/exact-wilson.ts`)                                                                                                                                    | Descriptive only.                                                |
 
 The false-alarm part of REQ-58 (monitor statistics) belongs to the drift canary (step 7).
+
+## Score measures: the regression test
+
+`scorePermutationTest` is the regression test for measures with one value in [0, 1] per trial:
+scores, proportions reduced to one value per trial (never their items as trials), and ratings whose
+levels are equally spaced. **Nothing decides with it yet.** Its type-I study has not run, so score,
+proportion and ordinal measures stay estimate-only (decision 0008).
+
+- **Statistic:** T = (1/k) Σᵢ (mean candidate value − mean base value) over the k cases with a
+  completed trial in each arm. Every case has equal weight, as in the fixed-cases estimand. A value
+  outside [0, 1], or one that is not finite, is refused. A case without a completed trial in an arm
+  does not enter.
+- **Permutation:** within each case, the pooled trials are reassigned to the arms, keeping each
+  arm's completed count. Cases are permuted independently. The null is "no difference in any case".
+  With one trial per case and arm this is a within-case sign flip.
+- **p-value:** one-sided toward a drop, P(T* ≤ T), with ties counted as at most T.
+- **The exact path:** every value is a multiple of 1/D for some D ≤ 1,000, found within 1e-9 (a
+  1–5 rating normalised as (s − 1)/4 has D = 4; 3-decimal scores have D = 1,000). T is then a
+  weighted sum of within-case candidate sums on an integer lattice, and its null distribution is
+  their convolution. It runs when every case has at most 100,000 labellings and the work estimate W
+  is at most 5·10⁷ (below). Each case's distribution comes from a dynamic programme over the smaller
+  arm. The result records W.
+- **The Monte Carlo path, otherwise:** 10,000 resamples from the caller's seed, p = (1 + count) /
+  (1 + B), reported with its standard error and seed. A p within 3 standard errors of a level it is
+  compared with (α, or a Holm level) is computed again with 100,000 resamples and the seed (seed +
+  1,000,003) mod (2³² − 1), or 1 if that gives 0, since the generator's seeds run from 1 to
+  2³² − 1. The reported p is the rerun's. The function takes a seed, not a generator, so the
+  recorded seed always reproduces the p-value.
+
+### The work limit of the exact path
+
+W = Σᵢ (support of the partial distribution before case i) × (number of distinct contributions of
+case i), with the cases taken in a canonical order computed from the table alone. W is the number of
+multiply-adds the convolution performs, so it is computed before any of them, never from a clock,
+and the same table always takes the same path. The limit counts work, not the size of the result: a
+limit of 5·10⁷ on the support times the number of cases let 146 cases of 3-decimal scores with 3
+trials run for over a minute.
+
+`scripts/benchmark-score-permutation.ts` times the exact path against W on tables like real suites
+(1–5 ratings, proportions of 20 items, 2- and 3-decimal scores, 1 to 9 trials, 12 to 300 cases).
+The time per unit of W is about 4–40 ns on an Apple M3 Max under heavy load from other jobs. The
+`simulation` CI job (`test/score-permutation-work.sim.test.ts`) takes, for five shapes, the
+largest table whose W is within the limit, runs it exactly on the CI runner, prints its time and
+fails above 3 seconds. The limit aims at about 1 second there. On the CI runner (`ubuntu-latest`,
+image 20261103.629, Node 24) the largest exact tables took:
+
+| Shape                      | Cases | W          | Seconds |
+| -------------------------- | ----- | ---------- | ------- |
+| 3-decimal scores, 3 trials | 68    | 48,987,374 | 0.136   |
+| 3-decimal scores, 2 trials | 161   | 49,456,927 | 0.184   |
+| 3-decimal scores, 1 trial  | 495   | 49,952,430 | 0.355   |
+| 2-decimal scores, 3 trials | 226   | 49,696,804 | 0.179   |
+| 3-decimal scores, 9 trials | 3     | 38,365,728 | 0.126   |
+
+The slowest is 0.36 s, so the limit stays at 5·10⁷.
+
+### Reference values
+
+`test/reference-score-permutation-tables.json` holds 248 tables (`scripts/score-permutation-tables.ts`,
+seed 20261116):
+
+- 1–5 ratings with k from 1 to 146 and 1 to 3 trials, mixed counts, arm-unequal and one-trial
+  cells;
+- proportions with 3 to 20 items, and with different item counts in one table;
+- a bimodal judge (0, 0.5 or 1);
+- scores rounded to 2 and 3 decimals (D = 100 and 1,000), with 1 to 3 trials and unequal counts;
+- edge tables: every value equal within a case, every case equal, values exactly 0 and 1, ties
+  across cases, k = 5 with one noisy case, and a case with an empty arm;
+- values off every small lattice, where Ichnaea runs Monte Carlo.
+
+Every value is an integer number of units over the table's denominator, so each oracle reads exact
+rationals. Two oracles, both test-only, rerun in the `stats oracle` CI job, which fails if a file
+changes:
+
+| Oracle                                                                                      | Result                                                                             | Agreement                                                                   |
+| ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| R coin 1.4.6, `independence_test(y ~ arm \| case)`, exact (`reference-score-permutation.R`) | 232 tables exact, 4 constant, 12 by 10⁶ resamples (values off every small lattice) | exact: within 2e-15 (bar 1e-9); resampled: within 1.8 SE of the exact value |
+| Exact enumeration in Python with rational arithmetic (`score_permutation_oracle.py`)        | All 248 tables: brute force (135) or convolution (113)                             | within 2.2e-15 (bar 1e-12)                                                  |
+
+coin's statistic is the plain candidate sum, so the R script first multiplies each case's values
+by an integer multiple of (nC + nB)/(nC·nB); scaling inside a stratum commutes with permutation
+inside it. The Python oracle was written from a formula-only specification, without the TypeScript,
+and checks itself first: brute force equals its convolution on 200 random tables, and its own Monte
+Carlo is within 4 SE on 13. Ichnaea enumerates 236 tables exactly. The other 12 run Monte Carlo and
+are within 2.0 SE of the exact value (bar 4 SE).
+
+The unit suite pins every limit at its edge: D = 1,000 is found and 1/1,001 is not; a value 5e-10
+off a multiple of 1/1,000 is off the lattice; values whose products with D fall just below an
+integer (0.57, 0.58 and 0.29 at D = 100) round to it; a case with 100,000 labellings enumerates and
+one with 100,001 does not; the largest table within the work limit enumerates and the next runs
+Monte Carlo; the rerun seed at the wrap; and that the reported p is the rerun's, equal to a fresh
+run at the rerun's seed. `scripts/mutants.ts` changes the test in 19 ways (ties, weights, tails, the
++1, sampling with replacement, the range check, the case count, the recomputation near a level, the
+enumeration cap, the lattice size, tolerance and rounding, the work limit, the rerun seed and the p
+it reports), and the unit suite detects every one.
+
+### The type-I study (fixed before it runs; it has not run)
+
+The study judges the test on the two-stage rule above, at one-sided α = 0.05, at a true difference
+of 0. Inside the simulation the test runs Monte Carlo with 99 resamples: (B + 1)·α is a whole
+number, so it keeps its level. Seeds are MT19937: 2,000,000 + 1,000·g + c for generator g and cell
+c when screening, and 3,000,000 + 1,000·g + c when confirming. Every output records its commit,
+script sha256, seeds, arguments, Node version and runner.
+
+- **Generators**, each at a true difference of 0:
+  - per-case beta scores, Beta(μν, (1 − μ)ν) with μ from {0.05, 0.2, 0.5, 0.8, 0.95} and ν ∈
+    {2, 10, 50};
+  - heterogeneous per-case effects with mean 0, in two families: most cases near the top (μ = 0.95)
+    drop slightly and 1–3 noisy cases rise to offset them; and its mirror, most cases near the floor
+    (μ = 0.05) rise slightly and the noisy cases carry the drop, so the long tail of the per-case
+    differences lies on the side the test looks at. 500 random structures per cell, with
+    refinement around the worst 5, and symmetric ±d with d ∈ {0.05, 0.1, 0.2}. Structure s of G2
+    cell c′ uses seed 10,000,000 + 1,000·c′ + s (confirmation 20,000,000 + …), and every cell
+    asserts s < 1,000;
+  - unequal variances in the two arms at the same mean (ν 2 against 50, either way);
+  - run-level shocks per replicate and arm, with SD 0, 0.01, 0.02, 0.05 and 0.10, shared across
+    arms (interleaved) or not; with one trial per case only shared shocks, because a separate shock
+    cannot be told apart from an effect;
+  - proportions from a beta-binomial with 3, 5, 10 or 20 items and intra-output correlation 0, 0.2
+    or 0.5;
+  - a bimodal judge: 0 or 1, and 0.5 with probability 0.1 or 0.3;
+  - 1–5 ratings from a latent normal with even or skewed thresholds.
+- **Grid:** k ∈ {5, 8, 10, 12, 17, 20, 30, 60, 146} with 2 or 3 trials per case and arm, equal or
+  mixed across cases, up to 10% of cells with one trial; and one trial per case and arm at
+  k ∈ {12, 17, 30, 60, 100, 146, 300}. Arm-unequal cells (3 against 2) run and are reported, outside
+  the domain.
+- **Reported, outside the grid:** the top family with one trial per case at k = 5, 8 and 10. A
+  prototype found the sign flip above the bar there: 0.0575 ± 0.0016 at k = 5 and 0.0585 ± 0.0017
+  at k = 8, the case-level form of the sign flip's known failure with few clusters. These points
+  never set the domain.
+- **Re-check with the shipped test:** every point that is confirmed or fails, and the 10 worst of
+  each generator, run again with the shipped test (exact, or 10,000 resamples with the rerun) at
+  20,000 repetitions, a standard error of about 0.0015 at 0.05. A point fails if its estimate −
+  3·SE is above 0.05. Over all re-checked points, the mean of (shipped − study) must lie within 3
+  pooled standard errors of 0. The validity claim rests on the study's own points at SE ≤ 0.0005;
+  the re-check shows that the shipped path behaves as the study's.
+- **What decides:**
+  - The validated domain will need equal completed counts in the two arms of every case. A
+    variant fills missing trials as the sensitivity analysis does against a drop (a missing
+    candidate trial scores 1, a missing base trial 0), with up to 10% of trials missing at random
+    or tied to the outcome, in either arm. If it passes, a run with missing trials can give a
+    validated REGRESSION through it; otherwise any missing trial leaves the domain.
+  - The domain will need interleaved arms, checked from the trial records, and states the largest
+    run-level shock SD that passes.
+  - With one trial per case, the domain starts at k1, the smallest grid k from which every larger
+    grid k passes.
+  - A failing structure class leaves the domain and is named here.
+- **Must fail**, so the harness is shown to catch a failure: a proportion's items run through the
+  binary exact test as independent trials; the test under a run-level shock of SD 0.15 without
+  interleaving; a Wald z-test with plug-in within-case variances and no floor, under the mirrored
+  family; and, with one trial per case, the paired t-test at k = 5 under the top family. A
+  permutation across cases is reported, not used as a must-fail: pooling adds the spread between
+  cases, so it is conservative (0.000–0.016 in a prototype) and cannot fail.
