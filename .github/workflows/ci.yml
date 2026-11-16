@@ -171,13 +171,17 @@ jobs:
                test/stats/reference-python-score-intervals.json"
           git diff --exit-code -- test/stats/reference-r-score-intervals.json \
             test/stats/reference-python-score-intervals.json
-      # Agreement between raters: irr and Gwet's irrCAC in R.
+      # Agreement between raters: irr and Gwet's irrCAC in R, and a base-R alpha written from Krippendorff's
+      # definition by a separate author.
       - name: The agreement reference values are what their oracles write
         working-directory: packages/ichnaea
         run: |
           node scripts/stats/agreement-fixtures.ts
           docker run --rm -v "$PWD":/w -w /w "$R_IMAGE" Rscript scripts/stats/reference-agreement.R
-          git diff --exit-code -- test/stats/reference-agreement-inputs.json test/stats/reference-r-agreement.json
+          docker run --rm --network none -v "$PWD":/w -w /w "$R_IMAGE" Rscript scripts/stats/reference-base-r-alpha.R \
+            test/stats/reference-alpha-units.tsv test/stats/reference-base-r-alpha.tsv
+          git diff --exit-code -- test/stats/reference-agreement-inputs.json test/stats/reference-r-agreement.json \
+            test/stats/reference-alpha-units.tsv test/stats/reference-base-r-alpha.tsv
 
   workflows:
     name: workflows

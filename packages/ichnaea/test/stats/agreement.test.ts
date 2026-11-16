@@ -38,6 +38,20 @@ interface RReference {
 
 const inputs = read<Inputs>("reference-agreement-inputs.json");
 const r = read<RReference>("reference-r-agreement.json");
+// The base-R alpha, written from Krippendorff's definition by a separate author: one row per matrix.
+const baseR = new Map(
+  readFileSync(new URL("./reference-base-r-alpha.tsv", import.meta.url), "utf8")
+    .trim()
+    .split("\n")
+    .slice(1)
+    .map((line) => {
+      const [id, nominal, ordinal, interval] = line.split("\t");
+      return [
+        id!,
+        { nominal: Number(nominal), ordinal: Number(ordinal), interval: Number(interval) },
+      ];
+    }),
+);
 const TOLERANCE = 1e-12;
 // irrCAC's krippen.alpha.raw rounds alpha to 5 decimals, so its comparison allows that rounding.
 const IRRCAC_ALPHA_TOLERANCE = 6e-6;
@@ -77,6 +91,13 @@ describe("agreement against R (irr, irrCAC)", () => {
         const alpha = krippendorffAlpha(units, metric);
         expect(Math.abs(alpha - fromR[metric])).toBeLessThan(TOLERANCE);
       }
+      // The base-R implementation from the specification, an independent second author.
+      const independent = baseR.get(_id)!;
+      for (const metric of metrics) {
+        expect(Math.abs(krippendorffAlpha(units, metric) - independent[metric])).toBeLessThan(
+          TOLERANCE,
+        );
+      }
       // irrCAC as a second R source, for the nominal and interval metrics only.
       expect(Math.abs(krippendorffAlpha(units, "nominal") - fromR.nominalIrrCAC)).toBeLessThan(
         IRRCAC_ALPHA_TOLERANCE,
@@ -86,6 +107,10 @@ describe("agreement against R (irr, irrCAC)", () => {
       );
     },
   );
+
+  it("has a base-R value for every reliability matrix", () => {
+    expect([...baseR.keys()]).toEqual(inputs.reliability.map((u) => u.id));
+  });
 
   it("reproduces Krippendorff's published example (2011): 0.743, 0.815, 0.849", () => {
     const units = inputs.reliability.find((u) => u.id === "krippendorff-2011")!.units;
