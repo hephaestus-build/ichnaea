@@ -1,6 +1,6 @@
 {
   "name": "@hephaestus-build/ichnaea-stats",
-  "version": "0.1.0",
+  "version": "0.0.0",
   "description": "Statistics for paired GenAI evaluations: exact regression test, non-inferiority pending its validated floor",
   "keywords": [
     "confidence-interval",
@@ -16,15 +16,14 @@
     "directory": "packages/stats"
   },
   "files": [
-    "dist",
     "src"
   ],
   "type": "module",
   "sideEffects": false,
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
     },
     "./package.json": "./package.json"
   },
@@ -33,10 +32,9 @@
     "provenance": true
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
     "test:sim": "vitest run --config vitest.sim.config.ts --silent=false"
   },
   "engines": {
-    "node": ">=22.18.0"
+    "node": ">=24.3"
   }
 }

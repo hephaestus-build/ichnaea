@@ -39,13 +39,12 @@ its tags or its releases to show it.
 
 ## Supported versions
 
-Before 1.0, releases are pre-releases `v0.<minor>.<patch>`: tarballs on
-[GitHub releases](https://github.com/hephaestus-build/ichnaea/releases), not npm packages. All
-packages have the same version. **Only the latest pre-release receives security fixes.** A fix
-ships as a new pre-release. We do not patch older pre-releases.
+Releases are paused. You pin a commit of this repository as a git submodule, as the
+[README](README.md#use-ichnaea-from-a-typescript-project) shows. **Only the latest commit on `main`
+receives security fixes.** A fix ships as a new commit on `main`. Update your pin to take it.
 
-Verify each tarball with `gh attestation verify` before you use it, as the
-[README](README.md#verify) shows.
+Every commit on every branch is signed. Check the signature of the commit that you pin, as the
+[README](README.md#why-the-pin-is-the-integrity) shows.
 
 ## Scope
 
@@ -67,8 +66,7 @@ Out of scope:
 - the application under evaluation, its model providers and the services that it calls;
 - vulnerabilities in third-party dependencies, zod included, without an Ichnaea-specific exploit
   path: report those upstream;
-- a tarball that does not come from this repository's GitHub releases, or that fails
-  `gh attestation verify`;
+- code that does not come from a signed commit of this repository;
 - denial of service through input that you control, and scanner output without a demonstrated
   impact;
 - social engineering or phishing of maintainers or users.

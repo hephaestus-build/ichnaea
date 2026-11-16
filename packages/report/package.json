@@ -1,6 +1,6 @@
 {
   "name": "@hephaestus-build/ichnaea-report",
-  "version": "0.1.0",
+  "version": "0.0.0",
   "description": "Ichnaea reports: one view model per decision, rendered as a Markdown CI summary and a static HTML report, with a recompute check.",
   "license": "MIT",
   "repository": {
@@ -9,7 +9,6 @@
     "directory": "packages/report"
   },
   "files": [
-    "dist",
     "src",
     "README.md"
   ],
@@ -17,17 +16,14 @@
   "sideEffects": false,
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
     },
     "./package.json": "./package.json"
   },
   "publishConfig": {
     "access": "public",
     "provenance": true
-  },
-  "scripts": {
-    "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
     "@hephaestus-build/ichnaea-contracts": "workspace:*",
@@ -43,6 +39,6 @@
     "zod": "^4.6.0"
   },
   "engines": {
-    "node": ">=22.18.0"
+    "node": ">=24.3"
   }
 }

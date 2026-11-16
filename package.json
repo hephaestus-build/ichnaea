@@ -9,7 +9,6 @@
   },
   "type": "module",
   "scripts": {
-    "build": "pnpm -r --filter './packages/*' run build",
     "typecheck": "node scripts/typecheck.ts",
     "test": "vitest run",
     "test:types": "vitest run --typecheck.only",
@@ -20,10 +19,9 @@
     "check": "pnpm run format:check && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run check:generated",
     "check:generated": "pnpm run generate && git status --porcelain -- packages && test -z \"$(git status --porcelain -- packages/*/schemas packages/*/fixtures)\"",
     "changeset": "changeset",
-    "check:package": "pnpm run build && pnpm -r --filter './packages/*' exec publint --strict && pnpm -r --filter './packages/*' exec attw --pack --profile esm-only && pnpm -r --filter './packages/*' --if-present run check:api"
+    "check:api": "pnpm -r --filter './packages/*' --if-present run check:api"
   },
   "devDependencies": {
-    "@arethetypeswrong/cli": "0.18.5",
     "@changesets/cli": "3.0.3",
     "@commitlint/cli": "21.2.4",
     "@commitlint/config-conventional": "21.2.4",
@@ -33,12 +31,11 @@
     "fast-check": "4.10.2",
     "oxfmt": "0.77.0",
     "oxlint": "1.92.0",
-    "publint": "0.3.25",
     "typescript": "7.0.2",
     "vitest": "5.1.0"
   },
   "engines": {
-    "node": ">=22.18.0"
+    "node": ">=24.3"
   },
   "packageManager": "pnpm@12.3.4"
 }

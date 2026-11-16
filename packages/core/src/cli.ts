@@ -22,8 +22,8 @@ export type ModuleLoader = (url: string) => Promise<unknown>;
 
 const importModule: ModuleLoader = (url) => import(url);
 
-/** Node runs a `.ts` file without a flag from this version (type stripping). */
-const NODE_WITHOUT_FLAG = "22.18.0";
+/** The Node that Ichnaea needs: it runs the `.ts` sources and configuration with type stripping. */
+const NODE_WITHOUT_FLAG = "24.3";
 
 /** Loads `ichnaea.config.ts` (or another file) and returns its default export. */
 export async function loadConfig(path: string, load: ModuleLoader = importModule): Promise<Config> {

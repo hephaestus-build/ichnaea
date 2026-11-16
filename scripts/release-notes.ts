@@ -4,8 +4,8 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 /**
- * How a consumer verifies a downloaded tarball. The README shows the same commands, and a test
- * keeps the two equal. Only the release workflow on main can sign an attestation that passes.
+ * How a consumer verifies a downloaded tarball. Only the release workflow on main can sign an
+ * attestation that passes.
  */
 export const VERIFY = `\`\`\`sh
 # Build provenance: built by the release workflow from a commit on main, on a GitHub-hosted runner
@@ -25,7 +25,7 @@ sha256sum --check --ignore-missing SHA256SUMS
 export const downloadUrl = (tag: string, file: string): string =>
   `https://github.com/hephaestus-build/ichnaea/releases/download/${tag}/${file}`;
 
-/** The pnpm overrides that map each package to its tarball on the release. The README has v0.1.0's. */
+/** The pnpm overrides that map each package to its tarball on the release. */
 export function overrides(tag: string, names: readonly string[]): string {
   const version = tag.replace(/^v/, "");
   const url = (name: string): string =>
