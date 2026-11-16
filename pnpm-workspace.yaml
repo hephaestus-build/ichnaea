@@ -1,6 +1,7 @@
 packages:
   - packages/*
   - examples/*
+  - docs/site
 
 # Supply-chain policy: a version must be seven days old,
 # install scripts are blocked unless listed, and a lockfile never downgrades trust.

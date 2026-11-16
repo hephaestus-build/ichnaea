@@ -1,0 +1,59 @@
+---
+title: Ichnaea
+description: Ichnaea tells you whether a change made your AI feature worse, from paired statistics.
+template: splash
+hero:
+  tagline: Find out whether a change made your AI feature worse.
+  actions:
+    - text: Read the README
+      link: https://github.com/hephaestus-build/ichnaea#readme
+      icon: right-arrow
+    - text: See the statistics evidence
+      link: https://github.com/hephaestus-build/ichnaea/blob/main/packages/ichnaea/src/stats/VALIDATION.md
+      variant: minimal
+---
+
+import { Card, CardGrid } from "@astrojs/starlight/components";
+
+## What Ichnaea does
+
+You change a prompt, a model or your code.
+Ichnaea compares the old configuration (the base) and the new one (the candidate) on the same cases.
+It tests the difference case by case and gives one of four verdicts.
+
+<CardGrid>
+  <Card title="REGRESSION">
+    The candidate is worse, beyond run-to-run noise. A CI job can block the change.
+  </Card>
+  <Card title="PASS">
+    The candidate is not worse than the base by more than a margin that you set before the run.
+  </Card>
+  <Card title="INCONCLUSIVE">
+    Your cases cannot decide. The card says why, for example that too few cases were run.
+  </Card>
+  <Card title="INVALID">
+    The run cannot be trusted. For example, the two configurations differ in more than you declared.
+  </Card>
+</CardGrid>
+
+Each verdict comes with reason codes that a CI job can read.
+A trial with no answer stays visible as missing. Ichnaea never counts it as a failure of your system.
+
+## What it is not
+
+- It does not host anything. Ichnaea is a TypeScript library and a command line tool. It has no server, and it sends nothing.
+- It does not rank models on public benchmarks.
+- It does not run your system yet. You bring results from your own runner. A runner of its own is planned.
+
+## Status
+
+Ichnaea is 0.x. It is not on npm before 1.0.
+
+| What                                                                               | Status                                                                 |
+| ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| REGRESSION for pass/fail measures, with 2 or 3 trials per case and 5 or more cases | Validated                                                              |
+| PASS                                                                               | Not validated yet. An unchanged candidate gets INCONCLUSIVE, not PASS. |
+| Measures with scores, and model judges                                             | Estimates only. They give no verdict.                                  |
+
+The [statistics validation](https://github.com/hephaestus-build/ichnaea/blob/main/packages/ichnaea/src/stats/VALIDATION.md) gives the evidence for each row.
+This site grows page by page. Until then, the [README](https://github.com/hephaestus-build/ichnaea#readme) is the guide.
