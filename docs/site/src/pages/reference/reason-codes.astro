@@ -1,7 +1,7 @@
 ---
 import StarlightPage from "@astrojs/starlight/components/StarlightPage.astro";
 
-import { reasonSections, templateParts } from "../../reference/reasons.ts";
+import { reasonSections, SLOT_NOTES, templateParts } from "../../reference/reasons.ts";
 
 const sections = reasonSections();
 ---
@@ -61,7 +61,15 @@ const sections = reasonSections();
               {reason.context.length > 0 && (
                 <>
                   <dt>Filled from the decision</dt>
-                  <dd>{reason.context.map((name, i) => <>{i > 0 && ", "}<var>{`{${name}}`}</var></>)}</dd>
+<dd>
+                    {reason.context.map((name, i) => (
+                      <>
+                        {i > 0 && ", "}
+                        <var>{`{${name}}`}</var>
+                        {SLOT_NOTES[name] && ` (${SLOT_NOTES[name]})`}
+                      </>
+                    ))}
+                  </dd>
                 </>
               )}
               {reason.action && (

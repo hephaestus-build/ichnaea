@@ -1,7 +1,7 @@
 import { REASON_CODES } from "@hephaestus-build/ichnaea/contracts";
 import { describe, expect, it } from "vitest";
 
-import { reasonSections, templateParts } from "../src/reference/reasons.ts";
+import { reasonSections, SLOT_NOTES, templateParts } from "../src/reference/reasons.ts";
 
 describe("reason-code reference", () => {
   it("puts every code in exactly one section", () => {
@@ -24,6 +24,11 @@ describe("reason-code reference", () => {
     const regression = reasons.find((reason) => reason.code === "REGRESSION_DETECTED");
     expect(regression?.params).toEqual([]);
     expect(regression?.context).toContain("margin");
+  });
+
+  it("explains that {arm} is a name and {side} is base or candidate", () => {
+    expect(SLOT_NOTES.arm).toContain("name");
+    expect(SLOT_NOTES.side).toBe("base or candidate");
   });
 
   it("marks the slots of a sentence template", () => {

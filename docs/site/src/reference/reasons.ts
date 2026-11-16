@@ -85,6 +85,12 @@ export function reasonSections(): ReasonSection[] {
   }));
 }
 
+/** What a slot holds, for slots whose name alone could mislead. Shown wherever a reason uses them. */
+export const SLOT_NOTES: Readonly<Record<string, string>> = {
+  arm: "the name of an arm, as the plan gives it",
+  side: "base or candidate",
+};
+
 /** Splits a sentence template into text and `{slot}` parts, so the page can mark the slots. */
 export function templateParts(
   text: string,
