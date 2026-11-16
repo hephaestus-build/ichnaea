@@ -10,6 +10,29 @@ const files =
     entries[path];
 
 describe("page scripts", () => {
+  it("finds a script in any letter case, with any attributes and end tag, as a browser does", () => {
+    const html = page(
+      [
+        "<SCRIPT>upper()</SCRIPT>",
+        "<ScRiPt data-x='1' defer>mixed()</sCrIpT >",
+        "<script type=module src=/ichnaea/_astro/a.js></script>",
+        "<script src='/ichnaea/_astro/b.js' type=\"module\"></script>",
+        '<SCRIPT TYPE="APPLICATION/LD+JSON">{"not":"code"}</SCRIPT>',
+      ].join(""),
+    );
+    const read = files({ "_astro/a.js": "aa", "_astro/b.js": "bbb" });
+    const report = checkPage("guide/index.html", html, read, base);
+    // The two inline scripts and both files count; the JSON data block does not.
+    expect(report.bytes).toBe("upper()".length + "mixed()".length + 2 + 3);
+  });
+
+  it("refuses Ichnaea code in an upper-case inline script", () => {
+    const html = page("<SCRIPT>const g = 'mt19937';</SCRIPT>");
+    expect(checkPage("guide/index.html", html, files({}), base).problems).toContain(
+      "loads Ichnaea code",
+    );
+  });
+
   it("passes a prose page that loads only small site scripts", () => {
     const html = page(
       `<script>theme()</script><script type="module" src="/ichnaea/_astro/nav.js"></script>`,

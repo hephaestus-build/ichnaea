@@ -12,6 +12,9 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, posix, relative } from "node:path";
 
+import { fromHtml } from "hast-util-from-html";
+import { selectAll } from "hast-util-select";
+
 export const BUDGET_BYTES = 20 * 1024;
 
 /** Pages that may run Ichnaea in the browser, by their path under the base. */
@@ -43,11 +46,15 @@ export function pageScripts(
 ): { inline: string[]; files: Map<string, string> } {
   const inline: string[] = [];
   const pending: string[] = [];
-  for (const match of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)) {
-    const attributes = match[1] ?? "";
-    const src = /\bsrc="([^"]+)"/.exec(attributes)?.[1];
-    if (src) pending.push(src);
-    else if (!/type="application\/(ld\+)?json"/.test(attributes)) inline.push(match[2] ?? "");
+  // The page is parsed as a browser parses it, so a script is found in any letter case, with any
+  // attributes and quoting, and with any end tag the HTML standard accepts. A regular expression
+  // misses some of these, and a missed script would escape the budget.
+  for (const script of selectAll("script", fromHtml(html))) {
+    const src = script.properties["src"];
+    const type = String(script.properties["type"] ?? "");
+    if (typeof src === "string" && src !== "") pending.push(src);
+    else if (!/^application\/(ld\+)?json$/i.test(type))
+      inline.push(script.children.map((c) => (c.type === "text" ? c.value : "")).join(""));
   }
   for (const code of inline) pending.push(...references(code));
   const files = new Map<string, string>();
