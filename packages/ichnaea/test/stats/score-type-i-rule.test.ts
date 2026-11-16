@@ -278,7 +278,32 @@ describe("the verdict", () => {
       ],
       false,
     );
-    expect(j.failures).toContain("G1/a: 0.0300, 0.0150, 0.0100, 0.0075 (shipped test)");
+    // The shipped test's own estimates, 900 of 20,000 and so on, not the study's screen.
+    expect(j.failures).toContain("G1/a: 0.0450, 0.0225, 0.0200, 0.0200 (shipped test)");
+  });
+
+  it("reports both tests' estimates when both fail at a point", () => {
+    const rows = [...clean(), screenRow("G1/b", [420, 210, 140, 105])];
+    const j = judge(
+      rows,
+      [
+        {
+          id: "G1/b",
+          seed: "1",
+          reps: "20000",
+          exact: "0",
+          shipped_hits: "1400,700,500,400",
+          study_hits: "1400,700,466,350",
+          n10: "0,0,34,50",
+          n01: "0,0,0,0",
+          fails: "true",
+        },
+      ],
+      false,
+    );
+    expect(j.failures).toContain(
+      "G1/b: 0.0700, 0.0350, 0.0233, 0.0175 (study test); 0.0700, 0.0350, 0.0250, 0.0200 (shipped test)",
+    );
   });
 });
 

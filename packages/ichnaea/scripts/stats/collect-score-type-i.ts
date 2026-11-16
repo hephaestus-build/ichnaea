@@ -304,6 +304,13 @@ export function recheckBindingProblems(
   return problems;
 }
 
+/**
+ * A failing test's estimates at each level, as a failure line prints them. Each failing test is
+ * reported with its own counts: the study's final counts, or the shipped test's re-check counts.
+ */
+const estimates = (hits: readonly number[], reps: number): string =>
+  hits.map((h) => (h / reps).toFixed(4)).join(", ");
+
 /** The thresholds in effect, printed with every verdict. */
 export const THRESHOLDS = {
   levels: "0.05, 0.025, 0.05/3 and 0.0125, from the same repetitions",
@@ -392,10 +399,19 @@ export function judge(
   for (const r of screenRows) {
     const id = r["id"] as string;
     const { hits, reps } = finalOf(r);
-    if (r["role"] === "type-I" && failed(r))
+    if (r["role"] === "type-I" && failed(r)) {
+      const shipped = rechecked.get(id);
+      const study = estimates(hits, reps);
+      const shippedText =
+        shipped?.fails === true
+          ? `${estimates(parseCounts(shipped.row["shipped_hits"]), num(shipped.row, "reps"))} (shipped test)`
+          : undefined;
       failures.push(
-        `${id}: ${hits.map((h) => (h / reps).toFixed(4)).join(", ")}${rechecked.get(id)?.fails === true ? " (shipped test)" : ""}`,
+        fails.get(id) === true
+          ? `${id}: ${study}${shippedText === undefined ? "" : ` (study test); ${shippedText}`}`
+          : `${id}: ${shippedText ?? study}`,
       );
+    }
     if (r["role"] === "must-fail")
       mustFail.push({ id, estimate: (hits[0] as number) / reps, failed: fails.get(id) === true });
   }
