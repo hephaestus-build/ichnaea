@@ -245,7 +245,7 @@ export const VALID: Record<string, Record<string, unknown>> = {
     output: { text: "Nein, die Frist beträgt 30 Tage.", sources: ["policy.md"] },
     calls: 3,
     observed: {
-      commit: "0123456789abcdef0123456789abcdef01234567",
+      code: { commit: "0123456789abcdef0123456789abcdef01234567" },
       model: "example-model-2026-10",
       route: d("e1"),
       parameters: { temperature: 0 },
@@ -604,7 +604,10 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
     "negative-calls": (r) => (r["calls"] = -1),
     "route-as-url": (r) =>
       ((r["observed"] as Record<string, unknown>)["route"] = "https://api.example.com/v1"),
-    "short-commit": (r) => ((r["observed"] as Record<string, unknown>)["commit"] = "0123456"),
+    "short-commit": (r) =>
+      ((r["observed"] as Record<string, unknown>)["code"] = { commit: "0123456" }),
+    "code-without-commit-or-image": (r) =>
+      ((r["observed"] as Record<string, unknown>)["code"] = {}),
   },
   run: {
     "missing-ledger": (r) => delete r["ledger"],
@@ -749,6 +752,14 @@ export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
       };
       r["calls"] = 1;
     },
+    "image-released-service": (r) =>
+      ((r["observed"] as Record<string, unknown>)["code"] = { image: d("b2") }),
+    "commit-and-image": (r) =>
+      ((r["observed"] as Record<string, unknown>)["code"] = {
+        commit: "0123456789abcdef0123456789abcdef01234567",
+        image: d("b2"),
+      }),
+    "with-usage": (r) => (r["usage"] = { inputTokens: 812, outputTokens: 64 }),
     "output-behind-pointer": (r) => {
       delete r["output"];
       r["pointer"] = "trace://composer/8f2c";

@@ -17,7 +17,9 @@
   },
   "calls": 3,
   "observed": {
-    "commit": "0123456789abcdef0123456789abcdef01234567",
+    "code": {
+      "commit": "0123456789abcdef0123456789abcdef01234567"
+    },
     "model": "example-model-2026-10",
     "route": "https://api.example.com/v1",
     "parameters": {
