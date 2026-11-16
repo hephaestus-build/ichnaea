@@ -84,6 +84,25 @@ describe("the README's install", () => {
     ]);
   });
 
+  it("is the install block of the documentation site's install page, byte for byte", () => {
+    const page = readFileSync(
+      join(
+        import.meta.dirname,
+        "..",
+        "docs",
+        "site",
+        "src",
+        "content",
+        "docs",
+        "how-to",
+        "install.mdx",
+      ),
+      "utf8",
+    );
+    expect(page).toContain(`\`\`\`sh\n${install.commands.join("\n")}\n\`\`\``);
+    expect(page).not.toContain("not on npm before 1.0");
+  });
+
   it("adds every package that the copied files of the example import", () => {
     expect(copiedSources(readmeExample(readme))).toEqual(["ichnaea.config.ts", "plugin.ts"]);
     expect(missingFromInstall(readme, exampleFile)).toEqual([]);

@@ -1,21 +1,77 @@
 ---
-title: Install Ichnaea and check the build
-description: Pin a commit of the build branch, check that it rebuilds byte for byte from a signed commit, and update the pin later.
+title: Install Ichnaea and check it
+description: Add @tumaet/ichnaea and zod from npm, check the signatures, and check where a version comes from.
 sidebar:
   order: 1
 ---
 
-Ichnaea is not on npm before 1.0.
-You install a commit of the `build` branch. Each build commit holds the built package of one signed commit on `main`.
+Ichnaea is on npm as `@tumaet/ichnaea`.
+Each version is staged by the release workflow, and a package owner approves it on npm.
+The first version, 0.1.0, is not published yet. Until then, [pin a commit of the build branch](#before-the-first-npm-release).
 
 ## You need
 
 - Node 24.3 or later
 - pnpm, which the install test uses
 - a project with a `package.json`
-- the GitHub CLI, `gh`, for the first step (optional)
 
 ## Install
+
+At the root of your project, run:
+
+```sh
+pnpm pkg set type=module
+pnpm add @tumaet/ichnaea zod@4.6.7
+npm audit signatures
+```
+
+The first command makes your project an ES module project, because the command line tool loads your configuration as an ES module.
+The second adds Ichnaea and zod. Each release is tested with zod 4.6.7.
+Ichnaea uses the copy of zod at the root of your project.
+The third checks the signatures, as the next section says.
+
+Your lockfile now pins the version.
+Installing the package runs no script, because its `package.json` has none.
+Check that the command line tool runs:
+
+```sh
+pnpm exec ichnaea --version
+```
+
+A pre-release has the dist-tag `next`, so you add it by its version, for example `pnpm add @tumaet/ichnaea@0.2.0-rc.1`.
+
+## Check what you installed
+
+`npm audit signatures` checks that the registry signed every installed package, and that each provenance attestation is valid.
+It does not check who built a package or from which commit.
+
+After an owner approves a version, Ichnaea's finish workflow checks more before it creates the version's GitHub release:
+
+- The provenance names `.github/workflows/release.yml` at the version's `v*` tag.
+- The provenance names the tag's commit, and that commit is on `main`.
+- npm serves the exact tarball that the release workflow staged.
+
+So install a version that has a [GitHub release](https://github.com/hephaestus-build/ichnaea/releases).
+The release holds the same tarball, its SBOM `sbom.cdx.json`, and `SHA256SUMS`.
+
+To check the commit yourself, read it in the provenance, which the version's page on npmjs.com links.
+Then, in a clone of Ichnaea, run:
+
+```sh
+git merge-base --is-ancestor <commit> origin/main && echo "on main"
+```
+
+## Update
+
+```sh
+pnpm update @tumaet/ichnaea
+npm audit signatures
+```
+
+## Before the first npm release
+
+Until 0.1.0 is on npm, pin a commit of the `build` branch.
+Each build commit holds the built package of one signed commit on `main`.
 
 1. Find the newest build commit:
 
@@ -23,56 +79,24 @@ You install a commit of the `build` branch. Each build commit holds the built pa
    gh api repos/hephaestus-build/ichnaea/commits/build --jq .sha
    ```
 
-2. Make your project an ES module project. The command line tool loads your configuration as an ES module:
-
-   ```sh
-   pnpm pkg set type=module
-   ```
-
-3. Add zod and the build commit. Replace `<build-commit>` with the commit from step 1:
+2. Add it with zod. Replace `<build-commit>` with the commit from step 1:
 
    ```sh
    pnpm add zod@4.6.7 'github:hephaestus-build/ichnaea#<build-commit>'
    ```
 
-4. Check that the command line tool runs:
+3. A build commit is not signed. Its trust comes from a rebuild.
+   Before you pin or update, rebuild the commit in a checkout of Ichnaea.
+   Use the Node version that the commit's `build.json` names:
 
    ```sh
-   pnpm exec ichnaea --version
+   git clone https://github.com/hephaestus-build/ichnaea && cd ichnaea
+   pnpm install --frozen-lockfile
+   node scripts/verify-build.ts <build-commit>
    ```
 
-Your lockfile now pins the build commit.
-zod 4.6 or later is a peer dependency. The copy at the root of your project is the one that Ichnaea uses.
-Installing the package runs no script, because its `package.json` has none.
-
-## Check a build commit
-
-A build commit is not signed. Its trust comes from a rebuild.
-Before you pin or update, rebuild the commit in a checkout of Ichnaea:
-
-```sh
-git clone https://github.com/hephaestus-build/ichnaea && cd ichnaea
-pnpm install --frozen-lockfile
-node scripts/verify-build.ts <build-commit>
-```
-
-The script reads the `Source-Commit:` trailer of the build commit.
-It checks that this commit is on `main` and that GitHub shows its signature as verified.
-Then it builds that commit again and compares every path, byte and file mode.
-It names the first difference, then lists the rest.
-It also checks the pnpm version and the SBOM, the list of what the package ships.
-
-Run it with the Node version that the build commit's `build.json` names. The script refuses another version.
-
-## Update the pin
-
-1. Find the newer build commit, as in step 1 above.
-2. Check it, as in the section above.
-3. Add it:
-
-   ```sh
-   pnpm add 'github:hephaestus-build/ichnaea#<newer-build-commit>'
-   ```
+The script checks that the source commit is on `main` and signed, builds it again, and names the first path whose bytes or mode differ.
+[Decision 0019](https://github.com/hephaestus-build/ichnaea/blob/main/docs/decisions/0019-built-package-on-a-build-branch.md) describes the build branch.
 
 ## Work on Ichnaea and your project together
 
@@ -88,7 +112,7 @@ Run it with the Node version that the build commit's `build.json` names. The scr
    pnpm link <path-to-ichnaea>/packages/ichnaea
    ```
 
-3. When you are done, remove the link and install the pinned commit again:
+3. When you are done, remove the link and install the pinned version again:
 
    ```sh
    pnpm unlink @tumaet/ichnaea
@@ -97,8 +121,10 @@ Run it with the Node version that the build commit's `build.json` names. The scr
 
 Do not commit the link. It changes your `package.json` and lockfile to a path on your machine.
 
-## Why there is no npm package yet
+## Why every version needs an owner
 
-The build branch lets anyone rebuild what they install, with no release step for each change.
-At 1.0, the same tree goes to npm with provenance.
-[Decision 0019](https://github.com/hephaestus-build/ichnaea/blob/main/docs/decisions/0019-built-package-on-a-build-branch.md) gives the reasons.
+A version on npm cannot be taken back.
+So no workflow, token or person with write access to the repository can publish one alone.
+The release workflow only stages a version.
+A package owner approves it on npm with two-factor authentication.
+[Decision 0021](https://github.com/hephaestus-build/ichnaea/blob/main/docs/decisions/0021-npm-staged-publishing.md) gives the chain.
