@@ -1,13 +1,38 @@
 name: Docs
 
-# Builds the docs site on every pull request and on main, and deploys it to GitHub Pages from main
-# only. The github-pages environment allows main only (.github/environments/github-pages.json), so
-# no other ref can deploy even if this file changes.
+# Builds the docs site when it or the library changes, and deploys it to GitHub Pages from main only.
+# The github-pages environment allows main only (.github/environments/github-pages.json), so no other
+# ref can deploy even if this file changes.
+#
+# The build is also the library's browser check. The library has no bundler of its own. The site
+# bundles the interactive pages from the library's sources, and docs/site/browser-only.ts fails the
+# build when browser code imports a Node built-in. So it runs on every change to the library's
+# sources.
 
 on:
   pull_request:
+    paths:
+      - docs/site/**
+      - packages/ichnaea/src/**
+      - packages/ichnaea/schemas/**
+      - packages/ichnaea/package.json
+      - examples/**
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - .github/workflows/docs.yml
   push:
     branches: [main]
+    paths:
+      - docs/site/**
+      - packages/ichnaea/src/**
+      - packages/ichnaea/schemas/**
+      - packages/ichnaea/package.json
+      - examples/**
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - .github/workflows/docs.yml
   workflow_dispatch:
 
 permissions:

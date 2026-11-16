@@ -3,6 +3,8 @@ import { defineConfig, passthroughImageService } from "astro/config";
 import starlightLinksValidator from "starlight-links-validator";
 import starlightLlmsTxt from "starlight-llms-txt";
 
+import { browserOnly } from "./browser-only.ts";
+
 // DOCS_URL is the one setting for where the site lives. Its origin is `site`, and its path is
 // `base`. Links between pages carry the base path (`/ichnaea/…`), and the links validator fails the
 // build when one does not, so a change of base shows every link to update.
@@ -19,6 +21,8 @@ export default defineConfig({
   // site needs no package build and always shows the statistics of its own commit.
   vite: {
     resolve: { conditions: ["ichnaea-source", "module", "browser", "development|production"] },
+    plugins: [browserOnly()],
+    worker: { plugins: () => [browserOnly()] },
   },
   integrations: [
     starlight({
