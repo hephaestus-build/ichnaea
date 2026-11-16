@@ -115,13 +115,22 @@ function argument(args: readonly string[], name: string): string | undefined {
   return i < 0 ? undefined : args[i + 1];
 }
 
+/** The runtime a sidecar records: the engine's name and version, the platform and the CPU architecture. */
+export interface Runtime {
+  readonly name: string;
+  readonly version: string;
+  readonly platform: string;
+  readonly arch: string;
+}
+
 /**
  * The runtime that computes a shard. V8's Math is not bit-identical across platforms, so a study's
  * shards and their later phases must all run on one runtime, and its outputs compare byte for byte
  * only within it.
  */
-export const runtime = (): { node: string; platform: string; arch: string } => ({
-  node: process.version,
+export const runtime = (): Runtime => ({
+  name: "node",
+  version: process.version,
   platform: process.platform,
   arch: process.arch,
 });

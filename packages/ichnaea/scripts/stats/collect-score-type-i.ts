@@ -28,7 +28,7 @@ import {
   G2_STRUCTURES,
   R1_CASE_COUNTS,
 } from "./score-type-i-points.ts";
-import { RECHECK_COLUMNS, SCREEN_COLUMNS } from "./study-score-type-i.ts";
+import { RECHECK_COLUMNS, type Runtime, SCREEN_COLUMNS } from "./study-score-type-i.ts";
 
 /** Worst points of each generator that the shipped test re-checks, candidates or not. */
 export const WORST_PER_GENERATOR = 10;
@@ -43,12 +43,12 @@ interface Meta {
   readonly reps: number;
   readonly confirmSe?: number;
   readonly shard: { index: number; count: number };
-  readonly runtime?: { node: string; platform: string; arch: string };
+  readonly runtime?: Runtime;
 }
 
-/** A runtime as one comparable string: Node version, platform and CPU architecture. */
+/** A runtime as one comparable string: the engine and its version, the platform and the CPU architecture. */
 const runtimeKey = (r: Meta["runtime"]): string =>
-  r === undefined ? "unrecorded" : `${r.node} ${r.platform} ${r.arch}`;
+  r === undefined ? "unrecorded" : `${r.name} ${r.version} ${r.platform} ${r.arch}`;
 
 const sha256 = (file: string): string =>
   createHash("sha256").update(readFileSync(file)).digest("hex");

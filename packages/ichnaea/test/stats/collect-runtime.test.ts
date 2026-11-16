@@ -10,6 +10,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { readPhase } from "../../scripts/stats/collect-score-type-i.ts";
+import type { Runtime } from "../../scripts/stats/study-score-type-i.ts";
 
 const COLUMNS = ["id", "value"] as const;
 const dirs: string[] = [];
@@ -18,9 +19,7 @@ afterEach(() => {
 });
 
 /** Two screen shards with the given runtimes (undefined: not recorded). */
-function shards(
-  runtimes: ({ node: string; platform: string; arch: string } | undefined)[],
-): string {
+function shards(runtimes: (Runtime | undefined)[]): string {
   const dir = mkdtempSync(join(tmpdir(), "ichnaea-runtime-"));
   dirs.push(dir);
   runtimes.forEach((runtime, i) => {
@@ -45,8 +44,8 @@ function shards(
   return dir;
 }
 
-const linux = { node: "v24.22.2", platform: "linux", arch: "x64" };
-const mac = { node: "v24.22.2", platform: "darwin", arch: "arm64" };
+const linux: Runtime = { name: "node", version: "v24.22.2", platform: "linux", arch: "x64" };
+const mac: Runtime = { name: "node", version: "v24.22.2", platform: "darwin", arch: "arm64" };
 
 describe("the collector and the runtime", () => {
   it("accepts shards from one runtime and reports it", () => {
@@ -61,13 +60,21 @@ describe("the collector and the runtime", () => {
     );
     expect(problems).toEqual([]);
     expect(rows).toHaveLength(2);
-    expect(runtime).toBe("v24.22.2 linux x64");
+    expect(runtime).toBe("node v24.22.2 linux x64");
   });
 
   it("refuses shards from different runtimes", () => {
     const problems: string[] = [];
     readPhase(shards([linux, mac]), "screen", COLUMNS, 6000, false, problems);
-    expect(problems.some((p) => p.includes("different runtimes"))).toBe(true);
+    // The refusal names both runtimes.
+    expect(
+      problems.some(
+        (p) =>
+          p.includes("different runtimes") &&
+          p.includes("node v24.22.2 linux x64") &&
+          p.includes("node v24.22.2 darwin arm64"),
+      ),
+    ).toBe(true);
   });
 
   it("refuses a sidecar that records no runtime", () => {
