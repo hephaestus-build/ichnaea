@@ -323,6 +323,22 @@ describe("the worker protocol", () => {
       ).toMatchObject({ class: "inherit", identifier: "content" });
   });
 
+  it("reports an unknown member of an untagged union, such as a cancel, as unknown", () => {
+    // The union's one option that fails only on unknown members is the one that was meant.
+    const cancel = { ...fixture("valid", "cancel.json"), reason: "deadline" };
+    const read = readRecord(contractFor("ichnaea.cancel/1")!, cancel);
+    expect(read.ok && read.unknownMembers).toEqual([["reason"]]);
+    expect(read.ok && read.unknownValues).toEqual([]);
+    const result = fixture("valid", "trialResult.json");
+    const observed = result["observed"] as Record<string, unknown>;
+    const code = { ...(observed["code"] as object), signed: true };
+    const nested = readRecord(contractFor("ichnaea.trialResult/1")!, {
+      ...result,
+      observed: { ...observed, code },
+    });
+    expect(nested.ok && nested.unknownMembers).toEqual([["observed", "code", "signed"]]);
+  });
+
   it("cancels one trial by its identity, and says nothing else", () => {
     const cancel = Cancel.parse(fixture("valid", "cancel.json"));
     expect(Object.keys(cancel).toSorted()).toEqual(["schema", "trial"]);

@@ -126,7 +126,7 @@ export function readRecord<T>(
     };
   }
   const strict = contract.schema.safeParse(value);
-  const issues = strict.success ? [] : strict.error.issues;
+  const issues = strict.success ? [] : meantIssues(strict.error.issues);
   const unknownMembers = issues.flatMap((i) =>
     i.code === "unrecognized_keys" ? i.keys.map((k) => [...i.path, k]) : [],
   );
@@ -134,6 +134,24 @@ export function readRecord<T>(
     .filter((i) => i.code !== "unrecognized_keys")
     .map((i) => ({ path: i.path, value: valueAt(value, i.path) }));
   return { ok: true, record: structuredClone(value) as Lenient<T>, unknownValues, unknownMembers };
+}
+
+/**
+ * The issues of the option that a value meant, inside an untagged union. When exactly one option
+ * fails only on unknown members, that option is the one meant, so its unknown members are reported
+ * as such, with the union's path in front. Otherwise the union stays one issue: an unknown value.
+ */
+function meantIssues(issues: readonly z.core.$ZodIssue[]): z.core.$ZodIssue[] {
+  return issues.flatMap((issue) => {
+    if (issue.code !== "invalid_union") return [issue];
+    const near = issue.errors.filter((option) =>
+      option.every((i) => i.code === "unrecognized_keys"),
+    );
+    if (near.length !== 1) return [issue];
+    return meantIssues(
+      (near[0] as z.core.$ZodIssue[]).map((i) => ({ ...i, path: [...issue.path, ...i.path] })),
+    );
+  });
 }
 
 function valueAt(root: unknown, path: readonly PropertyKey[]): unknown {
