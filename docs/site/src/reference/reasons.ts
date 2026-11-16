@@ -2,17 +2,27 @@
 // come from `REASONS` in the contracts, the one source that `report` reads too. This module only
 // orders them into sections.
 import {
+  CONTEXT_SLOTS,
   REASON_CODES,
+  REASON_PARAMS,
   REASONS,
   type Reason,
   type ReasonCode,
 } from "@hephaestus-build/ichnaea/contracts";
 
+/** One reason, with the slots its sentences use, split by who fills them. */
+export type ReasonEntry = { readonly code: ReasonCode } & Reason & {
+    /** The reason's own parameters, which the code that emits it supplies. */
+    readonly params: readonly string[];
+    /** The slots that the report fills from the decision and the suite. */
+    readonly context: readonly string[];
+  };
+
 export interface ReasonSection {
   readonly title: string;
   /** Says what the section covers, and what the current build does with it. */
   readonly intro: string;
-  readonly reasons: ReadonlyArray<{ readonly code: ReasonCode } & Reason>;
+  readonly reasons: ReadonlyArray<ReasonEntry>;
 }
 
 const SECTIONS: ReadonlyArray<{
@@ -50,15 +60,28 @@ const SECTIONS: ReadonlyArray<{
   },
 ];
 
+const CONTEXT: ReadonlySet<string> = new Set(CONTEXT_SLOTS);
+
+function entry(code: ReasonCode): ReasonEntry {
+  const reason = REASONS[code];
+  const texts = [...reason.sentences.map((sentence) => sentence.text), reason.action ?? ""];
+  const slots = new Set(
+    texts.flatMap((text) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1] ?? "")),
+  );
+  return {
+    code,
+    ...reason,
+    params: [...REASON_PARAMS[code]],
+    context: [...slots].filter((slot) => CONTEXT.has(slot)),
+  };
+}
+
 /** Every reason code, in its section, in the order the contracts list them. */
 export function reasonSections(): ReasonSection[] {
   return SECTIONS.map(({ title, intro, match }) => ({
     title,
     intro,
-    reasons: REASON_CODES.filter((code) => match(code, REASONS[code])).map((code) => ({
-      code,
-      ...REASONS[code],
-    })),
+    reasons: REASON_CODES.filter((code) => match(code, REASONS[code])).map((code) => entry(code)),
   }));
 }
 

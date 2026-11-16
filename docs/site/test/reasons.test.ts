@@ -17,6 +17,15 @@ describe("reason-code reference", () => {
     expect(sections.get("Invalid runs")?.every((code) => code.startsWith("INVALID_"))).toBe(true);
   });
 
+  it("splits each reason's slots into its own parameters and the decision's context", () => {
+    const reasons = reasonSections().flatMap((section) => section.reasons);
+    const hard = reasons.find((reason) => reason.code === "HARD_CHECK_FAILED");
+    expect(hard?.params).toEqual(["check", "failures", "checked"]);
+    const regression = reasons.find((reason) => reason.code === "REGRESSION_DETECTED");
+    expect(regression?.params).toEqual([]);
+    expect(regression?.context).toContain("margin");
+  });
+
   it("marks the slots of a sentence template", () => {
     expect(templateParts("The {margin}-point margin.")).toEqual([
       { slot: false, text: "The " },

@@ -22,7 +22,7 @@ const sections = reasonSections();
     <strong>Status:</strong> today a decision carries its reason in words, and the exit code tells a
     CI job what to do. Decisions carry these codes from a later change.
   </p>
-  <p>A word in braces, such as <code>{"{margin}"}</code>, is filled in from the decision.</p>
+  <p>A word in braces, such as <code>{"{margin}"}</code>, is a slot. The report fills it from the decision, or from the reason's own parameters.</p>
   {
     sections.map((section) => (
       <section>
@@ -54,6 +54,14 @@ const sections = reasonSections();
                       ))}
                     </ul>
                   </dd>
+                </>
+              )}
+              <dt>Parameters</dt>
+              <dd>{reason.params.length > 0 ? reason.params.map((name, i) => <>{i > 0 && ", "}<var>{`{${name}}`}</var></>) : "none"}</dd>
+              {reason.context.length > 0 && (
+                <>
+                  <dt>Filled from the decision</dt>
+                  <dd>{reason.context.map((name, i) => <>{i > 0 && ", "}<var>{`{${name}}`}</var></>)}</dd>
                 </>
               )}
               {reason.action && (
