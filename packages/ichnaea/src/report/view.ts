@@ -156,6 +156,18 @@ export interface DecisionView {
 /** The label of a bound that its comparison's non-inferiority result does not vouch for. */
 export const NOT_VALIDATED = "(not validated)";
 
+/** The start of a bound cell that has no bound; its reason follows in parentheses. */
+export const NO_BOUND = "no bound";
+
+/** Why a difference has no bound, in words, from what the record says about it. */
+export function noBoundReason(
+  difference: Decision["measures"][number]["comparisons"][number]["difference"],
+): string {
+  if (typeof difference.estimate !== "number") return "an arm has no value to compare";
+  if (difference.method === "descriptive (no interval)") return "descriptive only, no interval";
+  return `the ${difference.method} method gives none`;
+}
+
 /**
  * A difference and its one-sided bound, or dashes when there is no interval to show. A bound is
  * labelled "not validated" unless the non-inferiority result is validated; the regression result
@@ -168,8 +180,12 @@ function differenceCells(
   estimate: string;
   bound: string;
 } {
-  // An estimate is never shown without its interval (REQ-129); the notes say why there is none.
-  if (typeof difference.lower !== "number") return { estimate: "–", bound: "–" };
+  // An estimate is never shown without its interval or a stated reason why there is none (REQ-129).
+  if (typeof difference.lower !== "number")
+    return {
+      estimate: typeof difference.estimate === "number" ? points(difference.estimate) : "–",
+      bound: `${NO_BOUND} (${noBoundReason(difference)})`,
+    };
   return {
     estimate: points(difference.estimate),
     bound: `≥ ${points(difference.lower)}${nonInferiority.validated ? "" : ` ${NOT_VALIDATED}`}`,
