@@ -170,15 +170,15 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "S12",
     file: "src/contracts/records/configuration.ts",
-    from: 'status: none(z.enum(["pinned", "declared"])),',
-    to: 'status: none(z.enum(["pinned", "declared", "observed"])),',
+    from: 'z.enum(["pinned", "declared"]).describe("Whether the value is pinned or only declared."),',
+    to: 'z.enum(["pinned", "declared", "observed"]).describe("Whether the value is pinned or only declared."),',
     regen: true,
   },
   {
     id: "S13",
     file: "src/contracts/records/configuration.ts",
-    from: "  value: none(Json),\n  status: none(FactorStatus),\n  part:",
-    to: "  value: none(Json),\n  status: none(FactorStatus).optional(),\n  part:",
+    from: '  value: none(Json),\n  status: none(\n    FactorStatus.describe(\n      "The control status of the value: pinned, observed, declared or uncontrollable.",\n    ),\n  ),\n  part:',
+    to: '  value: none(Json),\n  status: none(\n    FactorStatus.describe(\n      "The control status of the value: pinned, observed, declared or uncontrollable.",\n    ),\n  ).optional(),\n  part:',
     regen: true,
   },
   {
