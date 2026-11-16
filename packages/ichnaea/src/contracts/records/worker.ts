@@ -88,14 +88,15 @@ export type TrialRequest = z.infer<typeof TrialRequest>;
  * - `system`: the system's own failure. Ichnaea does not retry it, and the trial counts as failed;
  * - `not_run`: the worker never reached the case. Ichnaea retries it, and it counts as missing;
  * - `protocol`: the request broke the protocol, for example kind `bad-request`. That is a fault of
- *   Ichnaea or the harness, never of the system: Ichnaea does not retry it, never counts it as a pass
- *   or a failure, and makes the whole run INVALID on the first one.
+ *   Ichnaea or the harness, never of the system: Ichnaea does not retry it, never counts it as a
+ *   pass or a failure, and makes the whole run INVALID on the first one.
  *
  * Which record a worker writes depends on whether it can read the request's `trial`. When `trial`
- * parses as a trial identity, the worker answers with a `protocol` failure that carries that
- * identity, for example for a missing `plan` or a limit it cannot honor. Otherwise, for a line that
- * is not JSON, not a trial request, or has no readable `trial`, it writes an `ichnaea.workerError/1`
- * line, never a guessed identity.
+ * parses as a trial identity under the reader schema, so that a newer member in it does not matter,
+ * the worker answers with a `protocol` failure that carries that identity, for example for a
+ * missing `plan` or a limit it cannot honor. Otherwise, for a line that is not JSON, not a trial
+ * request, or has no readable `trial`, it writes an `ichnaea.workerError/1` line, never a guessed
+ * identity.
  */
 export const TrialFailure = z.strictObject({
   /** The failure's class. */
@@ -155,8 +156,9 @@ export type ObservedConfiguration = z.infer<typeof ObservedConfiguration>;
 /**
  * What a worker answers for one trial request: one JSON line on its standard output, in request
  * order. For a request line it cannot read, the worker writes an `ichnaea.workerError/1` line in
- * that place instead, and Ichnaea stops the run there, so that line needs no trial identity. It carries the raw output, never a score or a verdict, because the base suite's scorers
- * read the output later (REQ-22). It carries no times: Ichnaea measures `startedAt` and `endedAt`
+ * that place instead, and Ichnaea stops the run there, so that line needs no trial identity. It
+ * carries the raw output, never a score or a verdict, because the base suite's scorers read the
+ * output later (REQ-22). It carries no times: Ichnaea measures `startedAt` and `endedAt`
  * itself: a writer never sends them, and a reader ignores them as unknown members. The same record is the row that
  * `importResults` takes for results that already exist. A result without `failure` and with neither
  * `output` nor `pointer` is recorded as an infrastructure failure of kind `NOT_CAPTURED`, as import
@@ -201,7 +203,11 @@ export const WorkerError = z.strictObject({
   dataClass: none(z.literal("none")),
   /** A short, stable kind, such as `bad-json` or `not-a-request`. */
   kind: none(Text),
-  /** What was wrong, such as the position of a JSON error. It never quotes the line itself. */
+  /**
+   * What was wrong, in the worker's own words, such as "line 3: not JSON at column 41". It never
+   * quotes the line, so a worker never passes a JSON parser's error text through: that text often
+   * quotes the input.
+   */
   message: none(Text).optional(),
 });
 /** A worker error. */
