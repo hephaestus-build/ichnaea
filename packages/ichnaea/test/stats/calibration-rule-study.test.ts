@@ -52,6 +52,9 @@ describe("the judge calibration rule study, smoke run", () => {
       expect(result.nanShare).toBeGreaterThanOrEqual(0);
       expect(row(result, 200).split("\t")).toHaveLength(COLUMNS.length);
     },
+    // A draw cell of several hundred answers runs its studies twice here, which takes longer than
+    // the default 5 s on a shared runner.
+    60_000,
   );
 
   it("holds a judge as good as a rater to its conditions far more often than a clearly worse one", () => {
