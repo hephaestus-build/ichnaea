@@ -3,6 +3,8 @@
 // rebuilt for the re-check from what the screening output stores.
 import { describe, expect, it } from "vitest";
 
+import { createRng } from "../../src/stats/index.ts";
+
 import {
   cells,
   G2_STRUCTURES,
@@ -88,5 +90,21 @@ describe("score type-I study: points and seeds", () => {
     expect(pointById(byCell, (cell.points[3] as (typeof points)[number]).id, undefined)).toBe(
       cell.points[3],
     );
+    // The stored structure is exact, so the rebuilt step draws what the step drew, seed for seed.
+    const drawn = (pt: typeof rebuilt): unknown[] => {
+      const rng = createRng(pt.seed);
+      return Array.from({ length: 3 }, () => pt.draw(rng));
+    };
+    expect(drawn(rebuilt)).toEqual(drawn(step as typeof rebuilt));
+  });
+
+  it("finds every G2 point by its ID, a symmetric one too", () => {
+    const byCell = new Map(all.map((c) => [c.id, c]));
+    const symmetric = points.filter((p) => p.family.startsWith("symmetric"));
+    expect(symmetric.length).toBeGreaterThan(0);
+    for (const p of symmetric)
+      expect(pointById(byCell, p.id, p.params["structure"] as string)).toBe(p);
+    for (const p of points.filter((x) => x.generator === 2).slice(0, 2000))
+      expect(pointById(byCell, p.id, p.params["structure"] as string)).toBe(p);
   });
 });

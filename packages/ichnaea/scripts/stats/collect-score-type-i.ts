@@ -158,12 +158,20 @@ function checkPoints(rows: readonly Row[], problems: string[]): void {
 
 const num = (r: Row, column: string): number => Number(r[column]);
 
-function select(dir: string, smoke: boolean): void {
-  const problems: string[] = [];
-  const { rows } = readPhase(dir, "screen", SCREEN_COLUMNS, 6000, smoke, problems);
-  checkPoints(rows, problems);
-  if (problems.length > 0)
-    throw new Error(`the screen outputs fail their checks:\n${problems.join("\n")}`);
+/** One point of the re-check list: its ID, its stored structure, and the study's estimate. */
+export interface RecheckPoint {
+  readonly id: string;
+  readonly structure?: string;
+  readonly value: number;
+  readonly se: number;
+}
+
+/**
+ * The re-check list that the screen outputs determine: every confirmed or failing point that runs
+ * the permutation test, and the 10 worst of each generator, sorted by ID. `select` writes it, and
+ * `verdict` rebuilds it to check the list the re-check ran.
+ */
+export function recheckSelection(rows: readonly Row[]): RecheckPoint[] {
   const checkable = rows.filter((r) => r["test"] === "permutation");
   const chosen = new Map<string, Row>();
   for (const r of checkable)
@@ -174,14 +182,64 @@ function select(dir: string, smoke: boolean): void {
       .toSorted((a, b) => num(b, "value") - num(a, "value"))
       .slice(0, WORST_PER_GENERATOR))
       chosen.set(r["id"] as string, r);
-  const points = [...chosen.values()]
+  return [...chosen.values()]
     .toSorted((a, b) => ((a["id"] as string) < (b["id"] as string) ? -1 : 1))
     .map((r) => ({
-      id: r["id"],
-      ...(r["structure"] === "" ? {} : { structure: r["structure"] }),
+      id: r["id"] as string,
+      ...(r["structure"] === "" ? {} : { structure: r["structure"] as string }),
       value: num(r, "value"),
       se: num(r, "se"),
     }));
+}
+
+/**
+ * The checks that bind the re-check to the screen: the list equals the one the screen outputs
+ * determine (IDs, structures and estimates), every re-check sidecar ran that very list (its sha256),
+ * every selected point was re-checked once and no other, and every re-check row carries the screen
+ * row's estimate. Returns the problems, empty when everything holds.
+ */
+export function recheckBindingProblems(
+  screenRows: readonly Row[],
+  listText: string,
+  recheckRows: readonly Row[],
+  sidecarSha256s: readonly (string | undefined)[],
+): string[] {
+  const problems: string[] = [];
+  const expected = recheckSelection(screenRows);
+  const listed = (JSON.parse(listText) as { points: RecheckPoint[] }).points;
+  if (JSON.stringify(listed) !== JSON.stringify(expected))
+    problems.push("recheck.json differs from the list that the screen outputs determine");
+  const listSha = createHash("sha256").update(listText).digest("hex");
+  sidecarSha256s.forEach((sha, i) => {
+    if (sha !== listSha)
+      problems.push(`re-check shard ${i}: ran a different list (${sha ?? "none recorded"})`);
+  });
+  const byId = new Map(expected.map((p) => [p.id, p]));
+  const seen = new Set<string>();
+  for (const r of recheckRows) {
+    const id = r["id"] as string;
+    if (seen.has(id)) problems.push(`${id}: re-checked more than once`);
+    seen.add(id);
+    const p = byId.get(id);
+    if (p === undefined) {
+      problems.push(`${id}: re-checked but not selected`);
+      continue;
+    }
+    if (num(r, "study_value") !== p.value || num(r, "study_se") !== p.se)
+      problems.push(`${id}: the re-check carries an estimate that is not the screen's`);
+  }
+  for (const p of expected)
+    if (!seen.has(p.id)) problems.push(`${p.id}: selected but not re-checked`);
+  return problems;
+}
+
+function select(dir: string, smoke: boolean): void {
+  const problems: string[] = [];
+  const { rows } = readPhase(dir, "screen", SCREEN_COLUMNS, 6000, smoke, problems);
+  checkPoints(rows, problems);
+  if (problems.length > 0)
+    throw new Error(`the screen outputs fail their checks:\n${problems.join("\n")}`);
+  const points = recheckSelection(rows);
   writeFileSync(path.join(dir, "recheck.json"), `${JSON.stringify({ points }, null, 1)}\n`);
   console.log(`${rows.length} points checked; ${points.length} selected for the re-check`);
 }
@@ -196,16 +254,24 @@ function verdict(dir: string, smoke: boolean): void {
   // one runtime: outputs compare byte for byte only within one.
   if (screen.runtime !== recheck.runtime)
     problems.push(`the screen ran on ${screen.runtime} and the re-check on ${recheck.runtime}`);
-  const selected = (
-    JSON.parse(readFileSync(path.join(dir, "recheck.json"), "utf8")) as { points: { id: string }[] }
-  ).points.map((p) => p.id);
+  // The re-check is bound to the screen: the list, the list each shard ran, and the estimates.
+  const sidecars = readdirSync(dir)
+    .filter((f) => /^recheck-\d+-of-\d+\.tsv\.meta\.json$/.test(f))
+    .map(
+      (f) =>
+        (JSON.parse(readFileSync(path.join(dir, f), "utf8")) as { pointsSha256?: string })
+          .pointsSha256,
+    );
+  problems.push(
+    ...recheckBindingProblems(
+      screen.rows,
+      readFileSync(path.join(dir, "recheck.json"), "utf8"),
+      recheck.rows,
+      sidecars,
+    ),
+  );
   const rechecked = new Map(recheck.rows.map((r) => [r["id"] as string, r]));
-  if (rechecked.size !== recheck.rows.length)
-    problems.push("the re-check has a point more than once");
-  for (const id of selected)
-    if (!rechecked.has(id)) problems.push(`${id}: selected but not re-checked`);
-  for (const id of rechecked.keys())
-    if (!selected.includes(id)) problems.push(`${id}: re-checked but not selected`);
+  const screened = new Map(screen.rows.map((r) => [r["id"] as string, r]));
   if (problems.length > 0)
     throw new Error(`the outputs fail their checks:\n${problems.join("\n")}`);
 
@@ -232,10 +298,12 @@ function verdict(dir: string, smoke: boolean): void {
   }
   const harness = mustFail.filter((m) => !m.failed).map((m) => `must-fail ${m.id} did not fail`);
 
-  // Pooled check: the shipped test's type-I error minus the study's, over every re-checked point.
-  const diffs = recheck.rows.map((r) => num(r, "value") - num(r, "study_value"));
+  // Pooled check: the shipped test's type-I error minus the study's, over every re-checked point,
+  // with the study's estimates taken from the screen rows themselves.
+  const study = (r: Row): Row => screened.get(r["id"] as string) as Row;
+  const diffs = recheck.rows.map((r) => num(r, "value") - num(study(r), "value"));
   const pooledSe =
-    Math.sqrt(recheck.rows.reduce((a, r) => a + num(r, "se") ** 2 + num(r, "study_se") ** 2, 0)) /
+    Math.sqrt(recheck.rows.reduce((a, r) => a + num(r, "se") ** 2 + num(study(r), "se") ** 2, 0)) /
     Math.max(1, recheck.rows.length);
   const meanDiff = diffs.reduce((a, b) => a + b, 0) / Math.max(1, diffs.length);
   const pooledPasses = Math.abs(meanDiff) <= 3 * pooledSe;

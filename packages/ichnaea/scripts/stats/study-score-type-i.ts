@@ -13,6 +13,7 @@
 // Each output has a sidecar `<output>.meta.json` (scripts/provenance.ts) with the commit, the
 // script hashes, the arguments, the Node version, the runner image, the phase, the shard and the
 // seed range. `scripts/collect-score-type-i.ts` checks completeness and digests and applies the rule.
+import { createHash } from "node:crypto";
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -241,17 +242,21 @@ function recheck(args: readonly string[]): void {
   mkdirSync(dir, { recursive: true });
   const output = path.join(dir, `recheck-${index}-of-${count}.tsv`);
   const meta = provenance(local("./study-score-type-i.ts"), SCRIPTS, 4_000_000, [...args]);
+  const listText = readFileSync(list, "utf8");
   const selected = (
-    JSON.parse(readFileSync(list, "utf8")) as {
+    JSON.parse(listText) as {
       points: { id: string; structure?: string; value: number; se: number }[];
     }
   ).points.filter((_point, i) => i % count === index);
+  // The collector checks that every shard ran the list it rebuilds from the screen outputs.
+  const pointsSha256 = createHash("sha256").update(listText).digest("hex");
   const byCell = new Map(cells().map((cell) => [cell.id, cell]));
   const seeds: number[] = [];
   const extra = (): Record<string, unknown> => ({
     phase: "recheck",
     shard: { index, count },
     points: selected.length,
+    pointsSha256,
     reps: RECHECK_REPS,
     seedRange: seeds.length === 0 ? null : [Math.min(...seeds), Math.max(...seeds)],
     runtime: runtime(),

@@ -432,7 +432,9 @@ export function structurePoint(
     shape,
     params: {
       nu,
-      structure: JSON.stringify(structure.map(([b, c]) => [+b.toFixed(6), +c.toFixed(6)])),
+      // The exact means: JSON keeps every double, so a point rebuilt from this draws as the
+      // original does.
+      structure: JSON.stringify(structure),
     },
     seed: 10_000_000 + 1_000 * cPrime + s,
     confirmSeed: 20_000_000 + 1_000 * cPrime + s,
@@ -531,7 +533,8 @@ export function cells(): Cell[] {
         return [b, b + sign * d] as const;
       });
       const point = structurePoint(index, 0, `symmetric-d${d}`, shape, 10, structure);
-      out.push({ id: point.id, points: [point] });
+      // A G2 cell's ID is its points' ID without "/s<n>", as pointById looks it up.
+      out.push({ id: `G2/symmetric-d${d}-nu10/${shapeId(shape)}`, points: [point] });
     }
   // Reported only: one trial per case below the grid, where the sign flip fails.
   for (const nu of [1, 2])
