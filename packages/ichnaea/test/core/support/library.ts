@@ -92,8 +92,8 @@ export const DEFINITION = {
   measures: { answered, declines },
   policy: {
     primary: {
-      answered: { margin: 0.2, reason: "Six cases see only large drops." },
-      declines: { margin: 0.2, reason: "Six cases see only large drops." },
+      answered: { margin: 0.3, reason: "Six cases at two trials see only drops above 0.23." },
+      declines: { margin: 0.3, reason: "Six cases at two trials see only drops above 0.23." },
     },
     onRegression: "block",
     onInconclusive: "report",

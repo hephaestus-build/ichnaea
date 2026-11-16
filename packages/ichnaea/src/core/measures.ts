@@ -88,7 +88,7 @@ export interface TesterResult {
  * not give its expected value, when a known-bad example passes as good, or when the measure has no
  * good and no bad example.
  */
-export async function testMeasure(measure: MeasureDefinition): Promise<TesterResult> {
+export function testMeasure(measure: MeasureDefinition): TesterResult {
   const failures: string[] = [];
   const examples = measure.examples;
   if (!examples || examples.good.length === 0 || examples.bad.length === 0) {
@@ -112,6 +112,6 @@ export async function testMeasure(measure: MeasureDefinition): Promise<TesterRes
       }
     }
   }
-  const hash = await digest({ card: measure.card, examples: examples ?? null });
+  const hash = digest({ card: measure.card, examples: examples ?? null });
   return { status: failures.length === 0 ? "passed" : "failed", failures, digest: hash };
 }

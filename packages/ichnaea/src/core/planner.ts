@@ -23,8 +23,10 @@ export class PlanError extends Error {
 
 /** Everything a plan is resolved from. */
 export interface PlanInput {
-  /** The suite to resolve. */
-  readonly suite: Suite;
+  /** The suite to resolve. Its `measureReviewDate` is recorded in its digest only. */
+  readonly suite: Omit<Suite, "measureReviewDate"> & {
+    readonly measureReviewDate?: string | undefined;
+  };
   /** The case set that the suite runs on; its digest must match its entries. */
   readonly caseSet: CaseSet;
   /** The cases that the case set lists; each must match its entry's digest, pool and family. */
@@ -61,6 +63,12 @@ export interface PlanInput {
   /** The A/A decisions the plan cites, by run and decision digest. */
   readonly aa?: Plan["aa"];
 }
+
+/**
+ * The seeds a plan accepts are the integers from 0 to below this, as `ichnaea import --seed`
+ * accepts them.
+ */
+export const MAX_SEED = 1_000_000_000;
 
 /** Fewest cases a fixed-cases decision is validated for (VALIDATED_FIXED_CASES in stats). */
 export const MIN_DECISION_CASES = 5;
@@ -105,15 +113,21 @@ const ARM_NAME = /^[A-Za-z0-9][A-Za-z0-9._@+-]*$/;
  * (decision 0008), a placeholder margin (decision 0012), `sampled-cases` (no validated method yet),
  * one trial in some cases and more in others, one trial per case and arm with a primary measure
  * that is not binary, or fewer than 5 cases. A primary measure must have a primary card that
- * is not a composite (REQ-34).
+ * is not a composite (REQ-34). The seed must be an integer below 10^9.
+ *
+ * `createPlan` and `importRun` resolve their plans with it; it is not part of the package's API.
  */
-export async function createPlan(input: PlanInput): Promise<Plan> {
+export function resolvePlan(input: PlanInput): Plan {
   const { suite } = input;
   const pools = new Set(suite.pools ?? ["development", "validation", "promoted"]);
   const byId = new Map(input.cases.map((c) => [c.id as string, c]));
 
+  // seedOf in decide maps a seed to [1, 2^32 - 1] by `seed mod (2^32 - 1) + 1`, which is one to
+  // one below 2^32 - 1. Seeds below 10^9 therefore never share a generator state.
+  if (!Number.isInteger(input.seed) || input.seed < 0 || input.seed >= MAX_SEED)
+    throw new PlanError(`the seed must be an integer from 0 to below 10^9, not ${input.seed}`);
   const entries = input.caseSet.cases;
-  if ((await caseSetDigest(entries)) !== input.caseSet.digest)
+  if (caseSetDigest(entries) !== input.caseSet.digest)
     throw new PlanError(`case set '${input.caseSet.id}': its digest does not match its entries`);
   if (suite.caseSet.digest && suite.caseSet.digest !== input.caseSet.digest) {
     throw new PlanError(
@@ -123,7 +137,7 @@ export async function createPlan(input: PlanInput): Promise<Plan> {
   for (const entry of entries) {
     const c = byId.get(entry.id);
     if (!c) throw new PlanError(`case '${entry.id}' is listed in the case set but missing`);
-    if ((await caseDigest(c)) !== entry.digest)
+    if (caseDigest(c) !== entry.digest)
       throw new PlanError(`case '${entry.id}' does not match its digest in the case set`);
     if (entry.pool !== c.pool)
       throw new PlanError(
@@ -178,7 +192,7 @@ export async function createPlan(input: PlanInput): Promise<Plan> {
     // application computes carries the application's tester result on its card.
     const status =
       measure.card.computedBy === "ichnaea"
-        ? (await testMeasure(measure)).status
+        ? testMeasure(measure).status
         : measure.card.validation?.tester?.status;
     if (status !== "passed") {
       throw new PlanError(
@@ -221,14 +235,12 @@ export async function createPlan(input: PlanInput): Promise<Plan> {
     if (!input.gates.has(id))
       throw new PlanError(`hard gate '${id}' is not provided by any plugin`);
 
-  const arms = await Promise.all(
-    input.arms.map(async (a) => ({
-      name: a.name,
-      role: a.role,
-      identity: await configurationIdentity(a.configuration),
-      configuration: a.configuration,
-    })),
-  );
+  const arms = input.arms.map((a) => ({
+    name: a.name,
+    role: a.role,
+    identity: configurationIdentity(a.configuration),
+    configuration: a.configuration,
+  }));
   if (!(arms.some((a) => a.role === "base") && arms.some((a) => a.role === "candidate")))
     reasons.push("the plan has no base and candidate arm to compare");
   if (suite.primary.length === 0) reasons.push("the suite declares no primary measure");
@@ -281,7 +293,7 @@ export async function createPlan(input: PlanInput): Promise<Plan> {
       const c = selectedCases[i] as Case;
       const pair =
         base && candidate
-          ? (await candidateRunsFirst(seed, c.id))
+          ? candidateRunsFirst(seed, c.id)
             ? [candidate, base]
             : [base, candidate]
           : [];
@@ -305,18 +317,18 @@ export async function createPlan(input: PlanInput): Promise<Plan> {
   const worstCaseCalls =
     trials.filter((t) => running.has(t.arm)).length * suite.budget.callsPerTrial;
 
-  const measures = await Promise.all(
-    [...suite.primary.map((p) => p.measure), ...(suite.secondary ?? [])].map(async (id) => {
+  const measures = [...suite.primary.map((p) => p.measure), ...(suite.secondary ?? [])].map(
+    (id) => {
       const card = (input.measures.get(id) as MeasureDefinition).card;
-      return { kind: "measure" as const, id, version: card.version, digest: await digest(card) };
-    }),
+      return { kind: "measure" as const, id, version: card.version, digest: digest(card) };
+    },
   );
 
   return Plan.parse({
     schema: "ichnaea.plan/1",
     suite: suite.id,
     suiteVersion: suite.version,
-    suiteDigest: await digest(suite),
+    suiteDigest: digest(suite),
     caseSet: input.caseSet.id,
     caseSetDigest: input.caseSet.digest,
     trigger: input.trigger,

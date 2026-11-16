@@ -18,7 +18,7 @@ import {
 
 import type { Host } from "./host.ts";
 import { scoreTrials } from "./measures.ts";
-import { createPlan } from "./planner.ts";
+import { resolvePlan } from "./planner.ts";
 import { FileStore, recordProblems, StoreError } from "./store.ts";
 
 /** What `ichnaea import` needs. */
@@ -198,7 +198,7 @@ export async function importRun(
   const store = new FileStore(input.store);
   const aa = await citations(store, input.aa ?? []);
   const plan = await host.planCreated(
-    await createPlan({
+    resolvePlan({
       suite,
       caseSet,
       cases,

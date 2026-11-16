@@ -37,7 +37,6 @@ import {
   MonthlyCapError,
   type MeasureDefinition,
   type Plugin,
-  type PlanInput,
   type RunRecords,
   satisfies,
   scoreTrials,
@@ -46,6 +45,7 @@ import {
   testMeasure,
   TRIGGER_VARIES,
 } from "../../src/core/index.ts";
+import type { PlanInput } from "../../src/core/planner.ts";
 
 const fixture = async (name: string): Promise<unknown> =>
   JSON.parse(
@@ -629,7 +629,10 @@ describe("versions", () => {
 
 describe("planner (REQ-16, REQ-19, REQ-27, REQ-33, REQ-49, decision 0008)", async () => {
   const { scenario, card, configuration } = await import("../decide/support/scenario.ts");
-  const { createPlan, PlanError } = await import("../../src/core/index.ts");
+  const { PlanError } = await import("../../src/core/index.ts");
+  const { resolvePlan } = await import("../../src/core/planner.ts");
+  // The planner is synchronous; as a promise, a refusal reads as a rejection in these tests.
+  const createPlan = async (i: PlanInput): Promise<Plan> => resolvePlan(i);
   const s = await scenario({ cases: 8, replicates: 2, base: () => 1, candidate: () => 1 });
   const arms: PlanInput["arms"] = s.plan.arms.map((a) => ({
     name: a.name,

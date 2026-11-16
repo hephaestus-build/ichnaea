@@ -18,6 +18,7 @@
     "skipLibCheck": true,
     "erasableSyntaxOnly": true,
     "rewriteRelativeImportExtensions": true,
+    "resolveJsonModule": true,
     "types": ["node"],
     // Resolve the Ichnaea package to its TypeScript sources inside the repository, so that type checks
     // need no build. The shipped manifest has no such condition.

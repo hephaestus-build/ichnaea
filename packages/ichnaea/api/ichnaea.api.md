@@ -121,7 +121,7 @@ export const CORE_VERSION: string;
 export function createHost(config: Config, versions: HostVersions, log?: (message: string) => void): Host;
 
 // @public
-export function createPlan(input: PlanInput): Promise<Plan>;
+export function createPlan<const S extends SuiteDefinition>(suite: S, comparison: PlanComparison): SuitePlan<S>;
 
 // @public
 export function decide(input: DecideInput): Promise<Decision>;
@@ -501,33 +501,21 @@ export type PlanAdditions = Partial<Pick<Plan, "power" | "modeReasons">> & {
 };
 
 // @public
-export class PlanError extends Error {
-    readonly name = "PlanError";
+export interface PlanComparison {
+    readonly aa?: Plan["aa"];
+    // Warning: (ae-forgotten-export) The symbol "Configuration" needs to be exported by the entry point index.d.ts
+    readonly base: Configuration;
+    readonly candidate: Configuration;
+    readonly createdAt?: string;
+    readonly intendedChanges?: readonly string[];
+    readonly run: string;
+    readonly schedule?: Plan["schedule"];
+    readonly seed?: number;
 }
 
 // @public
-export interface PlanInput {
-    readonly aa?: Plan["aa"];
-    readonly arms: ReadonlyArray<{
-        readonly name: string;
-        readonly role: "base" | "candidate" | "reference";
-        readonly configuration: Configuration;
-    }>;
-    readonly armsToRun?: readonly string[];
-    readonly cases: readonly Case[];
-    // Warning: (ae-forgotten-export) The symbol "CaseSet" needs to be exported by the entry point index.d.ts
-    readonly caseSet: CaseSet;
-    readonly gates: ReadonlyMap<string, GateDefinition>;
-    readonly ichnaea: string;
-    readonly measures: ReadonlyMap<string, MeasureDefinition>;
-    readonly monthlyRemaining?: number;
-    readonly now: string;
-    readonly schedule?: Plan["schedule"];
-    readonly seed: number;
-    // Warning: (ae-forgotten-export) The symbol "Suite" needs to be exported by the entry point index.d.ts
-    readonly suite: Suite;
-    readonly trigger: Plan["trigger"];
-    readonly varies?: readonly string[];
+export class PlanError extends Error {
+    readonly name = "PlanError";
 }
 
 // @public
@@ -732,6 +720,13 @@ export class SuiteError extends Error {
 }
 
 // @public
+export interface SuitePlan<S extends SuiteDefinition = SuiteDefinition> {
+    readonly record: Plan;
+    readonly run: string;
+    readonly suite: S;
+}
+
+// @public
 export interface SuitePolicy<Measure extends string = string> {
     readonly onEstimateOnly: "block" | "report";
     readonly onInconclusive: "block" | "report";
@@ -750,7 +745,7 @@ export interface TesterResult {
 }
 
 // @public
-export function testMeasure(measure: MeasureDefinition): Promise<TesterResult>;
+export function testMeasure(measure: MeasureDefinition): TesterResult;
 
 // Warning: (ae-forgotten-export) The symbol "FactorPart" needs to be exported by the entry point index.d.ts
 //
@@ -758,10 +753,6 @@ export function testMeasure(measure: MeasureDefinition): Promise<TesterResult>;
 export const TRIGGER_VARIES: {
     readonly [K in Plan["trigger"]]: readonly FactorPart[] | null;
 };
-
-// Warnings were encountered during analysis:
-//
-// src/core/planner.ts:36:5 - (ae-forgotten-export) The symbol "Configuration" needs to be exported by the entry point index.d.ts
 
 // (No @packageDocumentation comment for this package)
 

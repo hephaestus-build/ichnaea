@@ -10,3 +10,4 @@ export {
 } from "./decide.ts";
 export { describeCounts, plannedTrialsPerCase, planningPower } from "./planning.ts";
 export * from "./plugin.ts";
+export { createPlan, type PlanComparison, type SuitePlan } from "./plan.ts";

@@ -5,7 +5,7 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 
 import { canonicalize, candidateRunsFirst, type Plan } from "../../src/contracts/index.ts";
-import { createPlan, type PlanInput } from "../../src/core/index.ts";
+import { type PlanInput, resolvePlan } from "../../src/core/planner.ts";
 import { card, scenario } from "../decide/support/scenario.ts";
 
 const seed = { algorithm: "mt19937", value: "7" };
@@ -48,7 +48,7 @@ describe("a plan at one trial per case and arm", async () => {
     now: "2026-11-15T10:00:00Z",
     ichnaea: "0.0.0",
   };
-  const plan = await createPlan(input);
+  const plan = await resolvePlan(input);
 
   it("lists the trials case by case, the coin's first arm first, so its order is the run order", async () => {
     expect(plan.trials).toHaveLength(24);
@@ -74,7 +74,7 @@ describe("a plan at one trial per case and arm", async () => {
   });
 
   it("stays estimate-only for a primary measure that is not binary", async () => {
-    const p = await createPlan({
+    const p = await resolvePlan({
       ...input,
       measures: new Map([["app/correct", card("app/correct", "proportion")]]),
     });
@@ -106,7 +106,11 @@ describe("a plan at one trial per case and arm", async () => {
         { run: "aa-2" as never, digest: `sha256:${"2".repeat(64)}` },
       ],
     };
-    const p = await createPlan({ ...input, schedule: { concurrency: 4, endpoint: "example" }, aa });
+    const p = await resolvePlan({
+      ...input,
+      schedule: { concurrency: 4, endpoint: "example" },
+      aa,
+    });
     expect(p.schedule).toEqual({ concurrency: 4, endpoint: "example" });
     expect(p.aa).toEqual(aa);
     expect(plan.schedule).toBeUndefined();

@@ -13,7 +13,8 @@ import {
   type Suite,
   type Trial,
 } from "../../../src/contracts/index.ts";
-import { createPlan, type MeasureDefinition } from "../../../src/core/index.ts";
+import type { MeasureDefinition } from "../../../src/core/index.ts";
+import { resolvePlan } from "../../../src/core/planner.ts";
 import { createRng } from "../../../src/stats/index.ts";
 
 export const configuration = (model: string, commit = "a1"): Configuration => ({
@@ -194,7 +195,7 @@ export async function scenario(o: ScenarioOptions): Promise<Scenario> {
     },
     measureReviewDate: "2027-01-01",
   } as Suite;
-  const plan = await createPlan({
+  const plan = await resolvePlan({
     suite,
     caseSet,
     cases,
