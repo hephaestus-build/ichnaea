@@ -29,6 +29,12 @@ import {
 } from "./build-package.ts";
 import { checkBuildSbom } from "./check-sbom.ts";
 
+/**
+ * The workspace projects the build installs: everything but the docs site, whose dependencies are
+ * not part of the package's build. The build-branch workflow's build and verify jobs use the same.
+ */
+export const BUILD_INSTALL_FILTER: readonly string[] = ["--filter", "!ichnaea-docs"];
+
 const git = (cwd: string, ...args: string[]): string =>
   execFileSync("git", ["-c", "advice.detachedHead=false", ...args], {
     cwd,
@@ -152,7 +158,10 @@ export async function verifyBuild(build: string): Promise<string[]> {
   const checkout = join(work, "source");
   try {
     git(REPOSITORY, "worktree", "add", "--quiet", "--detach", checkout, source);
-    execFileSync("pnpm", ["install", "--frozen-lockfile"], { cwd: checkout, stdio: "inherit" });
+    execFileSync("pnpm", ["install", "--frozen-lockfile", ...BUILD_INSTALL_FILTER], {
+      cwd: checkout,
+      stdio: "inherit",
+    });
     const tree = join(work, "tree");
     execFileSync("node", ["scripts/build-package.ts", tree, "--source-commit", source], {
       cwd: checkout,
