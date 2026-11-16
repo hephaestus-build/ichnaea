@@ -1,7 +1,10 @@
 /**
  * Agreement between raters: raw agreement, Cohen's kappa, Gwet's AC1 and Krippendorff's alpha.
- * Point estimates only. Intervals come from resampling whole cases, which the caller does, because
- * items that share a case are not independent and the analytic variances assume they are.
+ * Point estimates only, validated against R. No interval for them is validated: a caller that
+ * resamples cases gets an estimate-only interval with no coverage study behind it. Kappa and alpha
+ * can be NaN in a resample (one category throughout, or no paired variation). Such a caller counts
+ * the NaN replicates, reports their share, and never sorts them into a percentile or drops them
+ * silently. AC1 is never NaN.
  */
 
 /**
@@ -117,6 +120,7 @@ export function cohenKappa(table: AgreementTable): number {
  * Gwet's AC1 for two raters: (p_o − p_e) / (1 − p_e), with p_e = Σ_k π_k (1 − π_k) / (q − 1),
  * where π_k is the share of all labels, from both raters, in category k and q is the number of
  * declared categories (the table's size). Unlike kappa it stays stable when one category is rare.
+ * It is never NaN: p_e ≤ 1/q < 1.
  */
 export function gwetAc1(table: AgreementTable): number {
   const total = checkTable(table);
@@ -147,6 +151,10 @@ export type AlphaMetric = "nominal" | "ordinal" | "interval";
  * frequencies of the values in between (Krippendorff 2011), so the numbers only need to be in
  * order; the interval metric uses their differences. NaN when fewer than two values can be paired
  * or when every paired value is the same: alpha is then undefined.
+ *
+ * Meant for rating scales with a few distinct values. It keeps a v × v coincidence matrix for v
+ * distinct values, so its memory grows with v², and its time with v² plus the pairs within units;
+ * continuous scores with thousands of distinct values need another statistic.
  */
 export function krippendorffAlpha(
   units: readonly (readonly (number | null)[])[],
@@ -182,14 +190,16 @@ export function krippendorffAlpha(
   for (let c = 0; c < v; c++) n += margin[c]!;
   if (n < 2) return Number.NaN;
 
+  // Prefix sums of the margins, so the ordinal distance costs O(1) per pair of values.
+  const cumulative = new Float64Array(v + 1);
+  for (let g = 0; g < v; g++) cumulative[g + 1] = cumulative[g]! + margin[g]!;
   const distance = (c: number, k: number): number => {
     if (c === k) return 0;
     if (metric === "nominal") return 1;
     if (metric === "interval") return (levels[c]! - levels[k]!) ** 2;
     const low = Math.min(c, k);
     const high = Math.max(c, k);
-    let between = 0;
-    for (let g = low; g <= high; g++) between += margin[g]!;
+    const between = cumulative[high + 1]! - cumulative[low]!;
     return (between - (margin[low]! + margin[high]!) / 2) ** 2;
   };
 

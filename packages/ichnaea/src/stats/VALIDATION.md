@@ -431,9 +431,21 @@ docker run --rm --network none -v "$PWD":/w -w /w \
 ## Agreement between raters
 
 `rawAgreement`, `cohenKappa`, `gwetAc1` and `krippendorffAlpha` (nominal, ordinal and interval
-metrics) are point estimates. They decide nothing on their own. A calibration that uses them
-draws its intervals by resampling whole cases, because the items of one case are not independent,
-and the analytic variances assume that they are.
+metrics) are point estimates. They decide nothing on their own.
+
+**What is validated, and what is not.**
+
+- Validated: the point estimates, against the oracles below.
+- Not validated: any interval for these statistics. A caller can resample whole cases (the items of
+  one case are not independent), but no coverage study backs such an interval, and a percentile
+  interval for kappa can undercover at small n and near the boundaries. An interval from it is
+  estimate only, with coverage not studied.
+- Not implemented: weighted kappa, and kappa or AC1 for more than two raters.
+
+**NaN replicates.** Kappa is NaN when both raters put every item in one category. Alpha is NaN when
+no two values can be paired or no paired value differs. A case resample can hit either. A caller
+that resamples counts the NaN replicates and reports their share. It never sorts them into a
+percentile and never drops them silently. AC1 is never NaN: its chance term is at most 1/q.
 
 Two definitions to know:
 
@@ -444,18 +456,24 @@ Two definitions to know:
   Gwet's general formula for raw ratings also estimates category shares from unpaired ratings; this
   implementation does not, so it compares a judge and raters on exactly the same items.
 
-Undefined values are NaN, never a number that looks real: kappa when both raters put every item in
-one category, and alpha when no two values can be paired or no paired value differs.
+**Alpha's cost.** It keeps a v × v coincidence matrix for v distinct values. It is meant for rating
+scales with a few levels. With thousands of distinct values (continuous scores), use another
+statistic.
 
-The reference values come from test-only oracles in the images that CI pins. The inputs are
+The reference values come from test-only oracles in the R image that CI pins. The inputs are
 synthetic (`scripts/stats/agreement-fixtures.ts` writes them).
 
-| Set                                                                                                                                               | Oracle                                                         | Size          | Tolerance        |
-| ------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | ------------- | ---------------- |
-| Raw agreement, kappa and AC1 from tables of 2–7 categories, including the prevalence pair with equal raw agreement and a declared unused category | R irrCAC (`kappa2.table`, `gwet.ac1.table`) and irr (`kappa2`) | 35 tables     | 1e-12            |
-| Confusion tables from labels with missing values, and their kappa                                                                                 | R `table` and irr `kappa2`                                     | 5 label pairs | exact, and 1e-12 |
-| Krippendorff's alpha, three metrics, 2–5 raters, missing values                                                                                   | R irr (`kripp.alpha`) and Python `krippendorff` 0.9.0          | 11 matrices   | 1e-12            |
-| Krippendorff's published example (12 units, 4 raters): 0.743, 0.815, 0.849                                                                        | Krippendorff (2011)                                            | 1             | 3 decimals       |
+| Set                                                                                                                                               | Oracle                                                                             | Size          | Tolerance                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ------------- | ------------------------------------------------------------ |
+| Raw agreement, kappa and AC1 from tables of 2–7 categories, including the prevalence pair with equal raw agreement and a declared unused category | R irrCAC (`kappa2.table`, `gwet.ac1.table`); kappa also from irr (`kappa2`)        | 35 tables     | 1e-12                                                        |
+| Confusion tables from labels with missing values, and their kappa                                                                                 | R `table` and irr `kappa2`                                                         | 5 label pairs | exact, and 1e-12                                             |
+| Krippendorff's alpha, three metrics, 2–5 raters, missing values, including unequally spaced non-integer values                                    | R irr (`kripp.alpha`); nominal and interval also from irrCAC (`krippen.alpha.raw`) | 12 matrices   | 1e-12 (irr); 6e-6 (irrCAC, which rounds alpha to 5 decimals) |
+| Krippendorff's published example (12 units, 4 raters): 0.743, 0.815, 0.849                                                                        | Krippendorff (2011)                                                                | 1             | 3 decimals                                                   |
+
+irrCAC's ordinal weights are not Krippendorff's frequency-based metric, so the ordinal metric has
+irr and the published example as its sources. The Python package `krippendorff` agreed with these
+values too. It is GPL-licensed, which is outside the repository's licence allowlist, so it is not a
+committed oracle.
 
 Regenerate from `packages/ichnaea`, as CI does:
 
@@ -466,7 +484,7 @@ docker run --rm -v "$PWD":/w -w /w \
   Rscript scripts/stats/reference-agreement.R
 ```
 
-The R script installs irr, irrCAC and jsonlite from a dated CRAN snapshot, so it needs the network. The Python package `krippendorff` agrees with these values too. It is GPL-licensed, which is outside the repository's licence allowlist, so it is not a committed oracle. The published example is the second, independent check.
+The R script installs irr, irrCAC and jsonlite from a dated CRAN snapshot, so it needs the network.
 
 ## Floors and the minimum detectable effect
 

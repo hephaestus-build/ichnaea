@@ -26,12 +26,21 @@ interface Inputs {
 interface RReference {
   tables: { id: string; raw: number; kappa: number; ac1: number; kappaIrr: number }[];
   pairs: { id: string; table: number[][]; kappa: number }[];
-  reliability: { id: string; nominal: number; ordinal: number; interval: number }[];
+  reliability: {
+    id: string;
+    nominal: number;
+    ordinal: number;
+    interval: number;
+    nominalIrrCAC: number;
+    intervalIrrCAC: number;
+  }[];
 }
 
 const inputs = read<Inputs>("reference-agreement-inputs.json");
 const r = read<RReference>("reference-r-agreement.json");
 const TOLERANCE = 1e-12;
+// irrCAC's krippen.alpha.raw rounds alpha to 5 decimals, so its comparison allows that rounding.
+const IRRCAC_ALPHA_TOLERANCE = 6e-6;
 const metrics = ["nominal", "ordinal", "interval"] as const;
 
 describe("agreement against R (irr, irrCAC)", () => {
@@ -68,6 +77,13 @@ describe("agreement against R (irr, irrCAC)", () => {
         const alpha = krippendorffAlpha(units, metric);
         expect(Math.abs(alpha - fromR[metric])).toBeLessThan(TOLERANCE);
       }
+      // irrCAC as a second R source, for the nominal and interval metrics only.
+      expect(Math.abs(krippendorffAlpha(units, "nominal") - fromR.nominalIrrCAC)).toBeLessThan(
+        IRRCAC_ALPHA_TOLERANCE,
+      );
+      expect(Math.abs(krippendorffAlpha(units, "interval") - fromR.intervalIrrCAC)).toBeLessThan(
+        IRRCAC_ALPHA_TOLERANCE,
+      );
     },
   );
 

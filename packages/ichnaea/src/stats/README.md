@@ -100,5 +100,7 @@ const alpha = krippendorffAlpha(
 );
 ```
 
-These are point estimates. Draw intervals by resampling whole cases. Undefined values are NaN.
-`VALIDATION.md` lists the oracles.
+These are point estimates, validated against R. No interval for them is validated: an interval
+from resampling whole cases is estimate only. Kappa and alpha are NaN where they are undefined, and
+a resample can hit that: count those replicates and report their share, never drop them. AC1 is
+never NaN. `VALIDATION.md` lists the oracles and the limits.

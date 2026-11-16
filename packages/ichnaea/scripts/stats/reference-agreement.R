@@ -49,7 +49,11 @@ reliability <- lapply(input$reliability, function(r) {
     id = r$id,
     nominal = kripp.alpha(ratings, "nominal")$value,
     ordinal = kripp.alpha(ratings, "ordinal")$value,
-    interval = kripp.alpha(ratings, "interval")$value
+    interval = kripp.alpha(ratings, "interval")$value,
+    # Gwet's irrCAC as a second source for nominal and interval alpha. Its ordinal weights are not
+    # Krippendorff's frequency-based metric, so the ordinal metric is not compared with it.
+    nominalIrrCAC = krippen.alpha.raw(as_units(r$units), weights = "unweighted")$est$coeff.val,
+    intervalIrrCAC = krippen.alpha.raw(as_units(r$units), weights = "quadratic")$est$coeff.val
   )
 })
 

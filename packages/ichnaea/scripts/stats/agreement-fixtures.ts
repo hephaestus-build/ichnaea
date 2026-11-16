@@ -120,6 +120,24 @@ const reliability: { id: string; units: (number | null)[][] }[] = [
     ],
   },
 ];
+// Unequally spaced, non-integer values, so the interval and ordinal metrics see real distances.
+reliability.push({
+  id: "unequal-spacing",
+  units: [
+    [0, 0, 0.25],
+    [0.25, 0.25, 0.25],
+    [1, 1, null],
+    [2.5, 1, 2.5],
+    [0, 0.25, 0],
+    [1, 2.5, 2.5],
+    [null, 0.25, 0.25],
+    [2.5, 2.5, 2.5],
+    [0, null, 0],
+    [0.25, 1, 0.25],
+    [1, 1, 1],
+    [2.5, 2.5, 1],
+  ],
+});
 for (let r = 0; r < 10; r++) {
   const raters = 2 + (r % 4);
   const count = 10 + int(51);
