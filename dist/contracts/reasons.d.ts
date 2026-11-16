@@ -1,30 +1,26 @@
 /**
- * The verdict labels a card shows, with their symbols. A label refines the decision's verdict: NO
- * DECREASE DETECTED and INCONCLUSIVE are both an INCONCLUSIVE decision, and ESTIMATE ONLY is a
- * decision without a verdict. `✓` belongs to PASS alone.
+ * The verdict labels a card shows, with their symbols. Estimate only is a decision without a
+ * verdict. `✓` belongs to Pass alone. A run with no decrease detected is Inconclusive: its
+ * sentences say both halves, so the label never reads as reassurance.
  */
 export declare const CARD_LABELS: readonly [{
-    readonly label: "REGRESSION";
+    readonly label: "Regression";
     readonly symbol: "✗";
     readonly verdict: "REGRESSION";
 }, {
-    readonly label: "PASS";
+    readonly label: "Pass";
     readonly symbol: "✓";
     readonly verdict: "PASS";
 }, {
-    readonly label: "NO DECREASE DETECTED";
-    readonly symbol: "○";
-    readonly verdict: "INCONCLUSIVE";
-}, {
-    readonly label: "INCONCLUSIVE";
+    readonly label: "Inconclusive";
     readonly symbol: "?";
     readonly verdict: "INCONCLUSIVE";
 }, {
-    readonly label: "INVALID";
+    readonly label: "Invalid";
     readonly symbol: "!";
     readonly verdict: "INVALID";
 }, {
-    readonly label: "ESTIMATE ONLY";
+    readonly label: "Estimate only";
     readonly symbol: "·";
     readonly verdict: null;
 }];
@@ -77,10 +73,12 @@ export declare const REASONS: {
 };
 /**
  * The slots that `report` fills from the decision and the suite for any reason: the measure, its
- * margin and change, the case and trial counts, and the test result. Every other slot of a reason
- * is one of its own parameters (`ReasonParams`).
+ * margin and change, the case and trial counts, and the test result. `side` is "base" or
+ * "candidate": `report` reads it from the decision's role for the reason's `arm` parameter, because
+ * an arm name is opaque and never says its side. Every other slot of a reason is one of its own
+ * parameters (`ReasonParams`).
  */
-export declare const CONTEXT_SLOTS: readonly ["measure", "margin", "change", "bound", "cases", "caseNoun", "trials", "changed", "broke", "fixed", "test", "p", "rawP", "m"];
+export declare const CONTEXT_SLOTS: readonly ["measure", "margin", "change", "bound", "cases", "caseNoun", "trials", "changed", "broke", "fixed", "test", "p", "rawP", "m", "side"];
 /** A slot that `report` fills from the decision and the suite. */
 export type ContextSlot = (typeof CONTEXT_SLOTS)[number];
 /** A reason without parameters of its own. */
