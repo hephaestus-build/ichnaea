@@ -1,6 +1,6 @@
 {
   "node": "v24.22.2",
   "pnpm": "12.3.4",
-  "sourceCommit": "c07d4d1ca32c5edad7eaa48c32944e36ea6015f5",
-  "treeDigest": "ba1b3dbe7a287a0dd5d1b6748865307c16bd1b5758ac319a1b5e99ae618d8e25"
+  "sourceCommit": "510bf28ec52c4640fbda799f20c04d4232f94ab5",
+  "treeDigest": "56e89c521f9eb175d506f0935957ff3d1798762eeb85d82938ea18565479db14"
 }

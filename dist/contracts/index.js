@@ -7,6 +7,7 @@ export * from "./lint.js";
 export * from "./pair-order.js";
 export * from "./primitives.js";
 export * from "./reader.js";
+export * from "./reasons.js";
 export * from "./records/case.js";
 export * from "./records/configuration.js";
 export * from "./records/decision.js";

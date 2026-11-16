@@ -7,6 +7,7 @@ export * from "./lint.ts";
 export * from "./pair-order.ts";
 export * from "./primitives.ts";
 export * from "./reader.ts";
+export * from "./reasons.ts";
 export * from "./records/case.ts";
 export * from "./records/configuration.ts";
 export * from "./records/decision.ts";
