@@ -666,6 +666,21 @@ export function renderHtml(view: DecisionView): string;
 export function renderMarkdown(view: DecisionView): string;
 
 // @public
+export function report(decision: Decision, options: ReportOptions): string;
+
+// @public
+export class ReportError extends Error {
+    readonly name = "ReportError";
+}
+
+// @public
+export interface ReportOptions {
+    readonly format: "markdown" | "html" | "json";
+    readonly lineage?: Run["lineage"];
+    readonly suite?: string;
+}
+
+// @public
 export function reportPlugin(): Plugin<"report">;
 
 // @public
