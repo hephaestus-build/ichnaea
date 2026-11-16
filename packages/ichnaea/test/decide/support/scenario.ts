@@ -91,6 +91,8 @@ export interface ScenarioOptions {
   /** Slices by case index, and more trials for the cases of a slice. */
   readonly slices?: (i: number) => Record<string, string> | undefined;
   readonly replicatesFor?: Suite["replicatesFor"];
+  /** Changes the base's configuration. */
+  readonly baseConfig?: (c: Configuration) => Configuration;
   /** Changes the candidate's configuration. */
   readonly candidateConfig?: (c: Configuration) => Configuration;
   /** What the change declares as varied beyond its trigger. */
@@ -110,6 +112,11 @@ export interface ScenarioOptions {
   /** Whether a measure applies to the case of an index (default: every case). */
   readonly applies?: (measure: string, i: number) => boolean;
   readonly marginStatus?: "registered" | "placeholder";
+  /** The plan's schedule and cited A/A decisions (one trial per case). */
+  readonly schedule?: Plan["schedule"];
+  readonly aa?: Plan["aa"];
+  /** The run's ID; default run-1. */
+  readonly runId?: string;
 }
 
 export interface Scenario {
@@ -192,7 +199,11 @@ export async function scenario(o: ScenarioOptions): Promise<Scenario> {
     caseSet,
     cases,
     arms: [
-      { name: "base", role: "base", configuration: configuration("model-a", "a1") },
+      {
+        name: "base",
+        role: "base",
+        configuration: (o.baseConfig ?? ((c: Configuration) => c))(configuration("model-a", "a1")),
+      },
       {
         name: "candidate",
         role: "candidate",
@@ -208,6 +219,8 @@ export async function scenario(o: ScenarioOptions): Promise<Scenario> {
     trigger: o.trigger ?? "code",
     ...(o.varies ? { varies: o.varies } : {}),
     seed: o.seed ?? 7,
+    ...(o.schedule ? { schedule: o.schedule } : {}),
+    ...(o.aa ? { aa: o.aa } : {}),
     now: "2026-11-15T10:00:00Z",
     ichnaea: "0.0.0",
   });
@@ -225,7 +238,7 @@ export async function scenario(o: ScenarioOptions): Promise<Scenario> {
       schema: "ichnaea.trial/1",
       id: t.id,
       source: "offline",
-      run: "run-1" as Trial["run"],
+      run: (o.runId ?? "run-1") as Trial["run"],
       case: t.case,
       unit: "turn",
       configuration: identity,
@@ -269,7 +282,7 @@ export async function scenario(o: ScenarioOptions): Promise<Scenario> {
   }
   const run = Run.parse({
     schema: "ichnaea.run/1",
-    id: "run-1",
+    id: o.runId ?? "run-1",
     plan: await digest(plan),
     exploratory: false,
     environment: { node: "24", platform: "test", ichnaea: "0.0.0" },

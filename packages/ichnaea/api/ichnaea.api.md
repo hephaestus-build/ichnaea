@@ -7,6 +7,16 @@
 import * as z from 'zod';
 
 // @public
+export interface AaEvidence {
+    // Warning: (ae-forgotten-export) The symbol "Decision" needs to be exported by the entry point index.d.ts
+    readonly decision: Decision;
+    // Warning: (ae-forgotten-export) The symbol "Plan" needs to be exported by the entry point index.d.ts
+    readonly plan: Plan;
+    // Warning: (ae-forgotten-export) The symbol "Run" needs to be exported by the entry point index.d.ts
+    readonly run: Run;
+}
+
+// @public
 export class AppendOnlyError extends Error {
     readonly name = "AppendOnlyError";
 }
@@ -63,13 +73,9 @@ export const CORE_VERSION: string;
 // @public
 export function createHost(config: Config, versions: HostVersions, log?: (message: string) => void): Host;
 
-// Warning: (ae-forgotten-export) The symbol "Plan" needs to be exported by the entry point index.d.ts
-//
 // @public
 export function createPlan(input: PlanInput): Promise<Plan>;
 
-// Warning: (ae-forgotten-export) The symbol "Decision" needs to be exported by the entry point index.d.ts
-//
 // @public
 export function decide(input: DecideInput): Promise<Decision>;
 
@@ -81,12 +87,12 @@ export function decideEgress(request: EgressRequest, hooks: ReadonlyArray<[Plugi
 
 // @public
 export interface DecideInput {
+    readonly aa?: readonly AaEvidence[];
     readonly decidedAt: string;
     // Warning: (ae-forgotten-export) The symbol "GateResult" needs to be exported by the entry point index.d.ts
     readonly gates: readonly GateResult[];
     readonly ichnaea: string;
     readonly plan: Plan;
-    // Warning: (ae-forgotten-export) The symbol "Run" needs to be exported by the entry point index.d.ts
     readonly run: Run;
     // Warning: (ae-forgotten-export) The symbol "Trial" needs to be exported by the entry point index.d.ts
     readonly trials: readonly Trial[];
@@ -501,6 +507,8 @@ export interface PrimariesInput {
     readonly alpha: number;
     readonly estimand: Plan["estimand"];
     readonly measures: readonly PrimaryCounts[];
+    // Warning: (ae-forgotten-export) The symbol "OneTrialChecks" needs to be exported by the entry point index.d.ts
+    readonly oneTrial?: OneTrialChecks;
     readonly seed: number;
 }
 
