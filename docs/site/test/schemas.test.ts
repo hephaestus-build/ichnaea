@@ -37,6 +37,56 @@ describe("record schema reference", () => {
     expect(typeOf(node)).toBe(expected);
   });
 
+  it("writes an array of a union with parentheses, and a union of objects by its count", () => {
+    expect(
+      typeOf({ type: "array", items: { oneOf: [{ type: "string" }, { type: "number" }] } }),
+    ).toBe("(string | number)[]");
+    const objects = {
+      oneOf: [
+        { type: "object", properties: {} },
+        { type: "object", properties: {} },
+      ],
+    };
+    expect(typeOf(objects)).toBe("one of 2 objects");
+  });
+
+  it("lists the fields of every variant of a union once, required only when every variant requires them", () => {
+    const node = {
+      properties: {
+        source: {
+          oneOf: [
+            {
+              type: "object",
+              properties: { kind: { const: "a" }, shared: { type: "string" } },
+              required: ["kind", "shared"],
+            },
+            {
+              type: "object",
+              properties: { kind: { const: "b" }, extra: { type: "number" } },
+              required: ["kind", "extra"],
+            },
+          ],
+        },
+      },
+    };
+    expect(fieldsOf(node).map((row) => [row.path, row.type, row.required])).toEqual([
+      ["source", "one of 2 objects", false],
+      ["source.kind", '"a" | "b"', true],
+      ["source.shared", "string", false],
+      ["source.extra", "number", false],
+    ]);
+  });
+
+  it("shows the fields of the case provenance and of a comparison's validity results", () => {
+    const schemas = new Map(
+      loadSchemas().map((schema) => [schema.name, schema.fields.map((field) => field.path)]),
+    );
+    expect(schemas.get("case")).toContain("provenance.source");
+    expect(schemas.get("decision")?.some((path) => path.endsWith("regression.validated"))).toBe(
+      true,
+    );
+  });
+
   it("lists nested fields under their parent", () => {
     const node = {
       properties: {
