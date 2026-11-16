@@ -49,10 +49,18 @@ export function typeOf(node: Node): string {
   if (typeof node.$ref === "string") return node.$ref.split("/").at(-1) ?? node.$ref;
   for (const key of ["anyOf", "oneOf"] as const) {
     const options = node[key];
-    if (Array.isArray(options)) return options.filter(isNode).map(typeOf).join(" | ");
+    if (Array.isArray(options)) {
+      const types = options.filter(isNode).map(typeOf);
+      return types.every((type) => type === "object")
+        ? `one of ${types.length} objects`
+        : types.join(" | ");
+    }
   }
   const type = Array.isArray(node.type) ? node.type.join(" | ") : node.type;
-  if (type === "array") return `${isNode(node.items) ? typeOf(node.items) : "unknown"}[]`;
+  if (type === "array") {
+    const item = isNode(node.items) ? typeOf(node.items) : "unknown";
+    return item.includes(" ") ? `(${item})[]` : `${item}[]`;
+  }
   if (type === "object") {
     if (isNode(node.properties)) return "object";
     if (isNode(node.additionalProperties)) return `map of ${typeOf(node.additionalProperties)}`;
@@ -81,10 +89,30 @@ function dataPolicy(node: Node): DataPolicy | undefined {
 }
 
 /**
- * The fields of an object node, depth first. A nested object, or an array of objects, adds its own
- * fields under `parent.child` or `parent[].child`.
+ * The object shapes a node can take: itself when it has properties, each member of a `oneOf` or
+ * `anyOf`, and the members of an `allOf` merged into one.
  */
-export function fieldsOf(node: Node, prefix = ""): FieldRow[] {
+function objectVariants(node: Node): Node[] {
+  if (isNode(node.properties)) return [node];
+  for (const key of ["oneOf", "anyOf"] as const) {
+    const options = node[key];
+    if (Array.isArray(options)) return options.filter(isNode).flatMap(objectVariants);
+  }
+  if (Array.isArray(node.allOf)) {
+    const parts = node.allOf.filter(isNode).flatMap(objectVariants);
+    if (parts.length === 0) return [];
+    return [
+      {
+        properties: Object.assign({}, ...parts.map((part) => part.properties)),
+        required: parts.flatMap((part) => (Array.isArray(part.required) ? part.required : [])),
+      },
+    ];
+  }
+  return [];
+}
+
+/** The fields of one object shape, with the fields of any nested object or array of objects. */
+function variantFields(node: Node, prefix: string): FieldRow[] {
   const properties = isNode(node.properties) ? node.properties : {};
   const required = new Set(Array.isArray(node.required) ? node.required : []);
   return Object.entries(properties).flatMap(([name, child]) => {
@@ -97,11 +125,35 @@ export function fieldsOf(node: Node, prefix = ""): FieldRow[] {
       required: required.has(name),
       data: dataPolicy(child),
     };
-    if (isNode(child.properties)) return [row, ...fieldsOf(child, `${path}.`)];
-    if (isNode(child.items) && isNode(child.items.properties))
-      return [row, ...fieldsOf(child.items, `${path}[].`)];
+    const items = isNode(child.items) ? child.items : undefined;
+    if (objectVariants(child).length > 0) return [row, ...fieldsOf(child, `${path}.`)];
+    if (items && objectVariants(items).length > 0) return [row, ...fieldsOf(items, `${path}[].`)];
     return [row];
   });
+}
+
+/**
+ * The fields of a node, depth first, written `parent.child` or `parent[].child`. When the node is a
+ * union of object shapes, each field appears once: its types are joined, and it is required only
+ * when every shape requires it.
+ */
+export function fieldsOf(node: Node, prefix = ""): FieldRow[] {
+  const variants = objectVariants(node);
+  const merged = new Map<string, { row: FieldRow; types: string[]; requiredIn: number }>();
+  for (const variant of variants)
+    for (const row of variantFields(variant, prefix)) {
+      const seen = merged.get(row.path);
+      if (!seen) merged.set(row.path, { row, types: [row.type], requiredIn: row.required ? 1 : 0 });
+      else {
+        if (!seen.types.includes(row.type)) seen.types.push(row.type);
+        if (row.required) seen.requiredIn += 1;
+      }
+    }
+  return [...merged.values()].map(({ row, types, requiredIn }) => ({
+    ...row,
+    type: types.join(" | "),
+    required: requiredIn === variants.length,
+  }));
 }
 
 /** Every writer schema of the package, sorted by name. */
