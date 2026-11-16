@@ -59,7 +59,8 @@ node scripts/verify-build.ts <build-commit>
 The script reads the `Source-Commit:` trailer of the build commit.
 It checks that this commit is on `main` and that GitHub shows its signature as verified.
 Then it builds that commit again and compares every path, byte and file mode.
-It stops at the first difference and names the file.
+It names the first difference, then lists the rest.
+It also checks the pnpm version and the SBOM, the list of what the package ships.
 
 Run it with the Node version that the build commit's `build.json` names. The script refuses another version.
 
