@@ -47,9 +47,13 @@ export type RetentionRule = (typeof RETENTION_RULES)[number];
  * - `retention` is `record` or `subject` (erased with the person).
  */
 export interface DataPolicy {
+  /** The field's personal-data class, or `inherit` to take the class the record declares. */
   readonly class: DataClass | "inherit";
+  /** What kind of identifier the field is. */
   readonly identifier: IdentifierKind;
+  /** The purposes for which the field may leave; `*` permits any purpose. */
   readonly egress: readonly string[];
+  /** How long the field is kept: with its record, or until its person is erased. */
   readonly retention: RetentionRule;
 }
 

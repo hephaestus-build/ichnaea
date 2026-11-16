@@ -16,14 +16,19 @@ import type { GateDefinition, MeasureDefinition } from "./plugin.ts";
 
 /** Thrown when a suite cannot be resolved into a valid plan. The message names the fix. */
 export class PlanError extends Error {
+  /** The error's name, for `instanceof`-free checks. */
   override readonly name = "PlanError";
 }
 
 /** Everything a plan is resolved from. */
 export interface PlanInput {
+  /** The suite to resolve. */
   readonly suite: Suite;
+  /** The case set that the suite runs on; its digest must match its entries. */
   readonly caseSet: CaseSet;
+  /** The cases that the case set lists; each must match its entry's digest, pool and family. */
   readonly cases: readonly Case[];
+  /** The arms to compare, each with its name, role and configuration. */
   readonly arms: ReadonlyArray<{
     readonly name: string;
     readonly role: "base" | "candidate" | "reference";
@@ -31,13 +36,22 @@ export interface PlanInput {
   }>;
   /** Arms whose trials will be run (not imported); their calls count against the budget. */
   readonly armsToRun?: readonly string[];
+  /** The measures that the configuration defines, by card ID. */
   readonly measures: ReadonlyMap<string, MeasureDefinition>;
+  /** The gates that the configuration defines, by gate ID. */
   readonly gates: ReadonlyMap<string, GateDefinition>;
+  /**
+   * The kind of change that the plan evaluates; it decides which configuration parts the arms may
+   * vary.
+   */
   readonly trigger: Plan["trigger"];
   /** Factor keys the change varies beyond what its trigger varies by kind (REQ-15). */
   readonly varies?: readonly string[];
+  /** The seed recorded in the plan, for the `mt19937` generator. */
   readonly seed: number;
+  /** The ISO 8601 timestamp recorded as the plan's `createdAt`. */
   readonly now: string;
+  /** The Ichnaea version, a semantic version, recorded in the plan. */
   readonly ichnaea: string;
   /** Calls left this month on the endpoint, from the call ledger. */
   readonly monthlyRemaining?: number;

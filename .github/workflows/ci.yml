@@ -46,6 +46,9 @@ jobs:
         run: |
           node scripts/build-package.ts "$RUNNER_TEMP/tree"
           node scripts/check-sbom.ts --build "$RUNNER_TEMP/tree"
+      # publint --strict and Are the Types Wrong on the npm-packed build tree (REQ-110).
+      - name: The packed build tree passes publint and attw
+        run: node scripts/check-package.ts "$RUNNER_TEMP/tree"
 
   # The tests run the TypeScript sources with Node's type stripping. The consumer test builds the
   # package and runs what ships.

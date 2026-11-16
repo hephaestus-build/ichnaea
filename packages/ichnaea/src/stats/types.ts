@@ -3,11 +3,15 @@ export type Sided = "two" | "lower" | "upper";
 
 /** An estimate with its interval. One-sided intervals extend to the parameter's bound. */
 export interface Interval {
+  /** The point estimate. */
   readonly estimate: number;
+  /** The interval's lower bound. */
   readonly lower: number;
+  /** The interval's upper bound. */
   readonly upper: number;
   /** Confidence level of the interval, for example 0.95. */
   readonly level: number;
+  /** Which side of the interval is bounded. */
   readonly sided: Sided;
   /** The method's stable name, recorded in decisions. */
   readonly method: string;
@@ -17,15 +21,19 @@ export interface Interval {
 
 /** A hypothesis test result. */
 export interface TestResult {
+  /** The test statistic. */
   readonly statistic: number;
   /** One-sided p-value in the stated direction. */
   readonly p: number;
+  /** The test's stable name, recorded in decisions. */
   readonly method: string;
 }
 
 /** Successes out of trials. */
 export interface Count {
+  /** The number of successes, an integer from 0 to `trials`. */
   readonly successes: number;
+  /** The number of trials, a non-negative integer. */
   readonly trials: number;
 }
 

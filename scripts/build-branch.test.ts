@@ -59,6 +59,16 @@ describe("the build branch workflow", () => {
       expect(job(name), name).toContain("node-version: ${{ env.NODE_VERSION }}");
   });
 
+  it("uploads the tree only after publint and attw pass on it", () => {
+    const names = steps("build");
+    const check = names.findIndex((s) =>
+      s.includes('node scripts/check-package.ts "$RUNNER_TEMP/tree"'),
+    );
+    const upload = names.findIndex((s) => s.includes("actions/upload-artifact@"));
+    expect(check).toBeGreaterThan(-1);
+    expect(check).toBeLessThan(upload);
+  });
+
   it("publishes from the build-branch environment with no token permissions and no checkout", () => {
     const publish = job("publish");
     expect(publish).toMatch(/\n {4}needs: build\n/);

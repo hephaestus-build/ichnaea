@@ -6,10 +6,15 @@ import type { Case } from "./records/case.ts";
  * field added to the case later stays hidden until it is added here on purpose.
  */
 export interface TargetCase {
+  /** The case's identifier. */
   readonly id: Case["id"];
+  /** The unit of the case: a turn, trace, session or episode. */
   readonly unit: Case["unit"];
+  /** The case's input, as the target receives it. */
   readonly input: Case["input"];
+  /** The scripted turns of a session case; absent when the case has none. */
   readonly turns?: Case["turns"];
+  /** References to the case's fixtures by name and digest; absent when the case has none. */
   readonly fixtures?: Case["fixtures"];
 }
 

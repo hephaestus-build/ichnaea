@@ -21,9 +21,13 @@ export type ArmCounts = Count;
 
 /** Counts of one case under both arms. An arm without trials is missing. */
 export interface CaseCounts {
+  /** The case's ID, unique in a comparison. */
   readonly id: string;
+  /** The case's family, a group of related cases; absent means the case is a family of its own. */
   readonly family?: string;
+  /** The case's counts under the base arm. */
   readonly base: ArmCounts;
+  /** The case's counts under the candidate arm. */
   readonly candidate: ArmCounts;
 }
 
@@ -41,19 +45,26 @@ export type ValueType = "binary" | "proportion" | "score" | "ordinal";
 
 /** A paired comparison for one binary measure. */
 export interface ComparisonInput {
+  /** The question that the comparison answers; it selects the method. */
   readonly estimand: Estimand;
   /** The measure's value type; anything but `binary` is refused (EstimandError). */
   readonly valueType: ValueType;
+  /** The counts of each case; case IDs must be unique. */
   readonly cases: readonly CaseCounts[];
   /** One-sided level of the non-inferiority and regression tests. */
   readonly alpha: number;
   /** Non-inferiority margin minus the safety margin: H0 is difference <= -margin. */
   readonly margin: number;
+  /**
+   * The seeded generator for the within-case permutation test; required when trial counts differ
+   * between cells.
+   */
   readonly rng?: Rng;
 }
 
 /** The result of a paired comparison. */
 export interface Comparison {
+  /** The question that the comparison answers. */
   readonly estimand: Estimand;
   /**
    * One-sided lower interval matching the non-inferiority test. A lower bound above 0, a claim that
@@ -87,6 +98,7 @@ export interface Comparison {
 
 /** Whether one result of a comparison is validated, and why not. */
 export interface Validity {
+  /** Whether the result lies inside its validated domain. */
   readonly validated: boolean;
   /** Why the result is not validated. Empty when it is. */
   readonly limitations: readonly string[];
@@ -99,6 +111,7 @@ const validity = (limitations: readonly string[]): Validity => ({
 
 /** Thrown when the data cannot support the estimand. The decision then runs estimate-only. */
 export class EstimandError extends Error {
+  /** The error's name, for `instanceof`-free checks. */
   override readonly name = "EstimandError";
 }
 

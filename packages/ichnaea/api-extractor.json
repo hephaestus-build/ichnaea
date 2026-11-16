@@ -14,7 +14,9 @@
     "extractorMessageReporting": {
       "default": { "logLevel": "warning" },
       "ae-missing-release-tag": { "logLevel": "none" },
-      "ae-forgotten-export": { "logLevel": "error" }
+      "ae-forgotten-export": { "logLevel": "error" },
+      // Every public export and member has a doc comment (REQ-110).
+      "ae-undocumented": { "logLevel": "error" }
     },
     // The reports gate the declarations. The statistics' doc comments use mathematical notation
     // (a < b, x > y) that TSDoc reads as markup; it is not part of any declaration.
