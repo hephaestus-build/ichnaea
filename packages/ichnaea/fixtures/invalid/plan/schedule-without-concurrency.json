@@ -1,0 +1,205 @@
+{
+  "schema": "ichnaea.plan/1",
+  "suite": "support-answers",
+  "suiteVersion": "1",
+  "suiteDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+  "caseSet": "support-answers",
+  "caseSetDigest": "sha256:f0525653a3d1d9c3be1d5c4b8a72038c74f72728ea7a92ff99712e05f5c3efb7",
+  "trigger": "code",
+  "varies": [],
+  "mode": "decision",
+  "modeReasons": [],
+  "estimand": "fixed-cases",
+  "alpha": 0.05,
+  "replicates": 3,
+  "arms": [
+    {
+      "name": "base",
+      "role": "base",
+      "identity": "sha256:db383b8801fd3a846ce4bd18a348d06901748600b21cd15af3ff37b169a0d578",
+      "configuration": {
+        "schema": "ichnaea.configuration/1",
+        "description": "Support assistant: retrieval over the help centre, one answer model.",
+        "models": [
+          {
+            "role": "answer",
+            "provider": {
+              "value": "openai-compatible",
+              "status": "pinned"
+            },
+            "id": {
+              "value": "example-model-2026-10",
+              "status": "pinned"
+            }
+          }
+        ],
+        "parameters": [
+          {
+            "name": "answer.temperature",
+            "value": 0.2,
+            "status": "pinned",
+            "origin": "explicit"
+          },
+          {
+            "name": "answer.maxTokens",
+            "value": 800,
+            "status": "pinned",
+            "origin": "explicit"
+          },
+          {
+            "name": "answer.topP",
+            "value": 1,
+            "status": "declared",
+            "origin": "default"
+          }
+        ],
+        "prompts": [
+          {
+            "name": "answer",
+            "digest": "sha256:e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1",
+            "status": "pinned"
+          }
+        ],
+        "factors": {
+          "code.commit": {
+            "value": "4f2a9c1",
+            "status": "pinned",
+            "part": "code"
+          },
+          "data.helpCentre": {
+            "value": "sha256:f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1",
+            "status": "observed",
+            "part": "data"
+          }
+        },
+        "label": "current"
+      }
+    },
+    {
+      "name": "candidate",
+      "role": "candidate",
+      "identity": "sha256:c383073ea5eb0360cf34b919bc66798faf965041a9e83dfcf0f219221a4c18ee",
+      "configuration": {
+        "schema": "ichnaea.configuration/1",
+        "description": "Support assistant: retrieval over the help centre, one answer model.",
+        "models": [
+          {
+            "role": "answer",
+            "provider": {
+              "value": "openai-compatible",
+              "status": "pinned"
+            },
+            "id": {
+              "value": "example-model-2026-10",
+              "status": "pinned"
+            }
+          }
+        ],
+        "parameters": [
+          {
+            "name": "answer.temperature",
+            "value": 0.2,
+            "status": "pinned",
+            "origin": "explicit"
+          },
+          {
+            "name": "answer.maxTokens",
+            "value": 800,
+            "status": "pinned",
+            "origin": "explicit"
+          },
+          {
+            "name": "answer.topP",
+            "value": 1,
+            "status": "declared",
+            "origin": "default"
+          }
+        ],
+        "prompts": [
+          {
+            "name": "answer",
+            "digest": "sha256:480362e425dc4a4037b0c693478f47e9d4fb20c2af52bbbcf6bf1f4fa53e8dd4",
+            "status": "pinned",
+            "template": "Answer from the help centre only. Be brief.\n",
+            "uri": "file:prompts/answer.txt"
+          }
+        ],
+        "factors": {
+          "code.commit": {
+            "value": "4f2a9c1",
+            "status": "pinned",
+            "part": "code"
+          },
+          "data.helpCentre": {
+            "value": "sha256:f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1",
+            "status": "observed",
+            "part": "data"
+          }
+        },
+        "label": "candidate"
+      }
+    }
+  ],
+  "measures": [
+    {
+      "kind": "measure",
+      "id": "support/facts-correct",
+      "version": "1.0.0",
+      "digest": "sha256:1212121212121212121212121212121212121212121212121212121212121212"
+    }
+  ],
+  "power": [
+    {
+      "computed": true,
+      "measure": "support/facts-correct",
+      "applicableCases": 60,
+      "replicates": 3,
+      "margin": 0.05,
+      "mde": 0.031,
+      "floor": 0.015,
+      "assumption": "within-case variance of run 2026-11-10",
+      "decidable": true
+    }
+  ],
+  "primary": [
+    {
+      "measure": "support/facts-correct",
+      "margin": 0.05,
+      "marginStatus": "registered",
+      "marginReason": "A 5-point drop is the largest the owners accept."
+    }
+  ],
+  "secondary": [],
+  "hardGates": [
+    "support/schema-valid"
+  ],
+  "policy": {
+    "onRegression": "block",
+    "onInconclusive": "report",
+    "onEstimateOnly": "report"
+  },
+  "budget": {
+    "worstCaseCalls": 720,
+    "maxCalls": 800
+  },
+  "trials": [
+    {
+      "id": "t-0001",
+      "case": "refund-window-de",
+      "family": "refund-window",
+      "arm": "candidate",
+      "replicate": 0,
+      "batch": 0
+    }
+  ],
+  "seed": {
+    "algorithm": "mt19937",
+    "value": "20261115"
+  },
+  "createdAt": "2026-11-15T10:00:00Z",
+  "ichnaea": "0.1.0",
+  "schedule": {
+    "concurrency": 0,
+    "endpoint": "e"
+  }
+}
