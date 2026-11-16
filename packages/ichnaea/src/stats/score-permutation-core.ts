@@ -9,9 +9,13 @@ import { createRng, type Rng } from "./rng.ts";
  * already reduced to one value per trial: its items are never trials (decision 0008).
  */
 export interface CaseScores {
+  /** The case's ID. */
   readonly id: string;
+  /** The case's family, a group of related cases; absent means the case is a family of its own. */
   readonly family?: string;
+  /** The case's completed trial values under the base arm. */
   readonly base: readonly number[];
+  /** The case's completed trial values under the candidate arm. */
   readonly candidate: readonly number[];
 }
 
@@ -24,6 +28,7 @@ export interface ScorePermutationResult {
    * T observed. Monte Carlo: (1 + count) / (1 + resamples).
    */
   readonly p: number;
+  /** The test's stable name: the exact path or the Monte Carlo path. */
   readonly method: "within-case-permutation-exact" | "within-case-permutation-monte-carlo";
   /**
    * The exact path's work estimate W (SCORE_PERMUTATION_WORK_LIMIT), when the values lie on a

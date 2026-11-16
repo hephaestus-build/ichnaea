@@ -5,7 +5,9 @@ import type { RecordContract } from "./registry.ts";
 
 /** A value that the writer schema does not know, found by the tolerant reader. */
 export interface UnknownValue {
+  /** The path of the unknown value from the record's root, as zod reports it. */
   readonly path: readonly PropertyKey[];
+  /** The unknown value, as the record holds it. */
   readonly value: unknown;
 }
 
