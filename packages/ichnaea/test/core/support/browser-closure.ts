@@ -1,8 +1,14 @@
-// The static import closure of a set of modules, and what in it would not run in a browser. It
-// starts from the walk of scripts/stats/provenance.ts (localImportClosure) and adds the checks:
-// a `node:` specifier, a bare Node built-in, a package other than zod, a dynamic import of a
-// specifier that is not a literal, the Node-only globals, and import.meta.dirname, filename and
-// resolve.
+// The static import closure of a set of modules, and what in it would not run in a browser or is
+// not pure. It starts from the walk of scripts/stats/provenance.ts (localImportClosure) and adds
+// the checks: a `node:` specifier, a bare Node built-in, a package other than zod, a dynamic import
+// of a specifier that is not a literal, the Node-only globals, import.meta.dirname, filename and
+// resolve, and a read of the clock or a random draw.
+//
+// The checks read the source with its comments, strings and regular expressions blanked. A lexer
+// cannot tell a regular expression from a division in every context without parsing, so a `/`
+// starts one only where the previous token cannot end an operand, and a literal never spans a
+// line. A misread that hides code would also unbalance the brackets, so a module whose blanked
+// code does not balance them is refused rather than passed.
 import { readFileSync, realpathSync } from "node:fs";
 import { builtinModules } from "node:module";
 import path from "node:path";
@@ -16,13 +22,75 @@ const GLOBALS =
   /(?<![\w$])(process|Buffer|__dirname|__filename|require|global|setImmediate)(?![\w$])/g;
 /** The members of import.meta that exist in Node only. */
 const IMPORT_META = /\bimport\s*\.\s*meta\s*\.\s*(dirname|filename|resolve)\b/g;
+/** A read of the clock or a random draw; `new Date(value)` with an argument reads no clock. */
+const IMPURE: readonly (readonly [RegExp, string])[] = [
+  [/\bDate\s*\.\s*now\s*\(/g, "a read of the clock: Date.now("],
+  [/\bnew\s+Date\s*\(\s*\)/g, "a read of the clock: new Date()"],
+  [/\bnew\s+Date\b(?!\s*\()/g, "a read of the clock: new Date"],
+  [/\bperformance\s*\.\s*now\s*\(/g, "a read of the clock: performance.now("],
+  [/\bMath\s*\.\s*random\s*\(/g, "a random draw: Math.random("],
+  [/\bgetRandomValues\s*\(/g, "a random draw: getRandomValues("],
+  [/\brandomUUID\s*\(/g, "a random draw: randomUUID("],
+];
+/** Keywords after which a `/` starts a regular expression, not a division. */
+const BEFORE_REGEX = new Set([
+  "return",
+  "typeof",
+  "instanceof",
+  "in",
+  "of",
+  "new",
+  "delete",
+  "void",
+  "throw",
+  "case",
+  "do",
+  "else",
+  "yield",
+  "await",
+]);
 const BUILTINS = new Set(builtinModules.map((m) => m.split("/")[0]));
 const PACKAGES = new Set(["zod"]);
 
 /**
- * The source with comments and the text of string and template literals replaced by spaces, so
- * that a word in a doc comment or an error message is not read as code. Offsets stay the same,
- * and template expressions stay code.
+ * Whether a `/` at `at` starts a regular expression: the previous token in the blanked code so
+ * far is not an operand's end (a name, a number, a closing parenthesis or bracket, or a string),
+ * or it is a keyword after which an expression starts.
+ */
+function regexMayStart(out: readonly string[], at: number): boolean {
+  let k = at - 1;
+  while (k >= 0 && /\s/.test(out[k] as string)) k--;
+  if (k < 0) return true;
+  const c = out[k] as string;
+  if (/[\w$]/.test(c)) {
+    let start = k;
+    while (start > 0 && /[\w$]/.test(out[start - 1] as string)) start--;
+    return BEFORE_REGEX.has(out.slice(start, k + 1).join(""));
+  }
+  return !")]\"'`".includes(c);
+}
+
+/**
+ * The end of the regular expression literal whose opening `/` is at `at`: the index of its closing
+ * `/`, or -1 when the line ends first, so it is not one.
+ */
+function regexEnd(source: string, at: number): number {
+  let inClass = false;
+  for (let i = at + 1; i < source.length; i++) {
+    const c = source[i];
+    if (c === "\n") return -1;
+    if (c === "\\") i++;
+    else if (c === "[") inClass = true;
+    else if (c === "]") inClass = false;
+    else if (c === "/" && !inClass) return i;
+  }
+  return -1;
+}
+
+/**
+ * The source with comments and the text of string, template and regular expression literals
+ * replaced by spaces, so that a word in a doc comment or an error message is not read as code.
+ * Offsets stay the same, and template expressions stay code.
  */
 export function codeOnly(source: string): string {
   const out = [...source];
@@ -44,6 +112,10 @@ export function codeOnly(source: string): string {
       const stop = end < 0 ? source.length : end + 2;
       blank(i, stop);
       i = stop;
+    } else if (c === "/" && regexMayStart(out, i) && regexEnd(source, i) > 0) {
+      const end = regexEnd(source, i);
+      blank(i + 1, end);
+      i = end + 1;
     } else if (c === '"' || c === "'") {
       const start = ++i;
       while (i < source.length && source[i] !== c && source[i] !== "\n")
@@ -77,6 +149,17 @@ export function codeOnly(source: string): string {
   return out.join("");
 }
 
+/** Whether the brackets of blanked code balance and nest. */
+function balanced(code: string): boolean {
+  const open: string[] = [];
+  const pairs: Record<string, string> = { ")": "(", "]": "[", "}": "{" };
+  for (const c of code) {
+    if (c === "(" || c === "[" || c === "{") open.push(c);
+    else if (c in pairs && open.pop() !== pairs[c]) return false;
+  }
+  return open.length === 0;
+}
+
 /** The string literal that starts at `at` in the source, or undefined when none does. */
 function literalAt(source: string, at: number): string | undefined {
   const quote = source[at];
@@ -108,6 +191,12 @@ export function browserProblems(entries: readonly string[]): {
     if (!real.endsWith(".ts")) return;
     const source = readFileSync(real, "utf8");
     const code = codeOnly(source);
+    if (!balanced(code))
+      problems.push({
+        file: real,
+        problem:
+          "brackets that do not balance once comments, strings and regular expressions are blanked",
+      });
     const specifiers: string[] = [];
     for (const m of code.matchAll(STATIC)) {
       const spec = literalAt(source, m.index + m[0].length);
@@ -129,6 +218,8 @@ export function browserProblems(entries: readonly string[]): {
       problems.push({ file: real, problem: `the Node-only global '${global}'` });
     for (const [, member] of code.matchAll(IMPORT_META))
       problems.push({ file: real, problem: `the Node-only import.meta.${member}` });
+    for (const [pattern, problem] of IMPURE)
+      for (const _ of code.matchAll(pattern)) problems.push({ file: real, problem });
     for (const spec of specifiers) {
       if (spec.startsWith(".")) visit(path.resolve(path.dirname(real), spec));
       else if (spec.startsWith("node:"))
