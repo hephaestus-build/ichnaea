@@ -1205,6 +1205,8 @@ function inconclusiveReason(open: readonly { measure: string; cause: Cause }[]):
  * INCONCLUSIVE. Whenever a primary measure misses a trial in either arm, each measure's verdict is
  * tested against the imputation that works against it, and a verdict that changes is INCONCLUSIVE
  * (decision 0010).
+ *
+ * @deprecated Use compare; removed in the next release.
  */
 export function decide(input: DecideInput): Decision {
   return decideWith(input, compareCounts);

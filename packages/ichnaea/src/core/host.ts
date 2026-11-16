@@ -15,13 +15,21 @@ import type {
 } from "./plugin.ts";
 import { satisfies } from "./semver.ts";
 
-/** Thrown when a configuration cannot load. The message names the plugin. */
+/**
+ * Thrown when a configuration cannot load. The message names the plugin.
+ *
+ * @deprecated Call createPlan, importResults, compare and report; removed in the next release.
+ */
 export class HostError extends Error {
   /** The error's name, for `instanceof`-free checks. */
   override readonly name = "HostError";
 }
 
-/** The versions a host offers to plugins' peer ranges. */
+/**
+ * The versions a host offers to plugins' peer ranges.
+ *
+ * @deprecated Call createPlan, importResults, compare and report; removed in the next release.
+ */
 export interface HostVersions {
   /** The version of the core, checked against each plugin's `requires.core` range. */
   readonly core: string;
@@ -31,7 +39,11 @@ export interface HostVersions {
   readonly contracts: string;
 }
 
-/** A loaded configuration. */
+/**
+ * A loaded configuration.
+ *
+ * @deprecated Call createPlan, importResults, compare and report; removed in the next release.
+ */
 export interface Host extends HookRunner {
   /** The loaded plugins in hook order: `pre` plugins first, then the unplaced ones, then `post`. */
   readonly plugins: readonly Plugin[];
@@ -55,7 +67,11 @@ function ordered(plugins: readonly Plugin[]): Plugin[] {
   return plugins.toSorted((a, b) => rank(a) - rank(b));
 }
 
-/** Commands the core defines; a plugin cannot replace them. */
+/**
+ * Commands the core defines; a plugin cannot replace them.
+ *
+ * @deprecated The CLI moves onto the library API; removed in the next release.
+ */
 export const CORE_COMMANDS: readonly string[] = ["help", "schema", "doctor", "import"];
 
 function register<T>(map: Map<string, T>, id: string, value: T, owner: Plugin, kind: string): void {
@@ -71,6 +87,8 @@ function register<T>(map: Map<string, T>, id: string, value: T, owner: Plugin, k
  * Loads a configuration (REQ-80): plugins are listed explicitly, IDs are unique and namespaced,
  * peer ranges and stability opt-ins are checked, and every conflict fails at load time naming the
  * plugin. Deprecated plugins load with a warning that names the replacement.
+ *
+ * @deprecated Call createPlan, importResults, compare and report; removed in the next release.
  */
 export function createHost(
   config: Config,
@@ -183,6 +201,8 @@ export function createHost(
  * Runs the `beforeEgress` hooks in order (REQ-126). Any plugin can refuse, and the first refusal
  * wins. Without an explicit allow from the governance plugin that the configuration names, only
  * data classed `none` may leave: default deny. An allow from any other plugin counts for nothing.
+ *
+ * @deprecated The library API moves no data across a boundary; removed in the next release.
  */
 export async function decideEgress(
   request: EgressRequest,

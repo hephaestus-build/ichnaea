@@ -27,7 +27,11 @@ import { resolvePlan } from "./planner.ts";
 import { recordProblems } from "./records.ts";
 import { FileStore, StoreError } from "./store.ts";
 
-/** What `ichnaea import` needs. */
+/**
+ * What `ichnaea import` needs.
+ *
+ * @deprecated Use createPlan and importResults; removed in the next release.
+ */
 export interface ImportRunInput {
   /** The loaded configuration that provides the importer, measures and gates. */
   readonly host: Host;
@@ -106,6 +110,8 @@ async function citations(store: FileStore, runs: readonly string[]): Promise<Pla
  * scores the measures Ichnaea computes, runs the hard gates that have a check, and stores plan,
  * trials, values, gates and the run with its ledger in one atomic write. Every record is checked
  * before anything is written. Import mode makes no model call, so its worst-case calls are zero.
+ *
+ * @deprecated Use createPlan and importResults; removed in the next release.
  */
 export async function importRun(
   input: ImportRunInput,

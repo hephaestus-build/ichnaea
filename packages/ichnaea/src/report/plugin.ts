@@ -65,7 +65,11 @@ const command: CommandDefinition = {
   },
 };
 
-/** The report plugin: the `report` command. */
+/**
+ * The report plugin: the `report` command.
+ *
+ * @deprecated Use report; removed in the next release.
+ */
 export function reportPlugin(): Plugin<"report"> {
   return {
     id: "report",

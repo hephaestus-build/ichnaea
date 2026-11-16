@@ -79,7 +79,7 @@ export class CasesError extends Error {
     readonly name = "CasesError";
 }
 
-// @public
+// @public @deprecated
 export interface CommandDefinition {
     readonly description: string;
     readonly name: string;
@@ -94,7 +94,7 @@ export interface CommandDefinition {
     }, host: CommandHost) => Promise<number>;
 }
 
-// @public
+// @public @deprecated
 export interface CommandHost {
     readonly gates: ReadonlyMap<string, GateDefinition>;
     readonly hooks: HookRunner;
@@ -119,7 +119,7 @@ export interface CompletedRow extends ResultRowBase {
     readonly pointer?: string;
 }
 
-// @public
+// @public @deprecated
 export interface Config<Plugins extends readonly Plugin[] = readonly Plugin[]> {
     readonly allowStability?: readonly Exclude<Stability, "stable">[];
     readonly governance?: string;
@@ -127,22 +127,22 @@ export interface Config<Plugins extends readonly Plugin[] = readonly Plugin[]> {
     readonly store?: string;
 }
 
-// @public
+// @public @deprecated
 export const CORE_COMMANDS: readonly string[];
 
 // @public
 export const CORE_VERSION: string;
 
-// @public
+// @public @deprecated
 export function createHost(config: Config, versions: HostVersions, log?: (message: string) => void): Host;
 
 // @public
 export function createPlan<const S extends SuiteDefinition>(suite: S, comparison: PlanComparison): SuitePlan<S>;
 
-// @public
+// @public @deprecated
 export function decide(input: DecideInput): Decision;
 
-// @public
+// @public @deprecated
 export function decideEgress(request: EgressRequest, hooks: ReadonlyArray<[Plugin, NonNullable<Hooks["beforeEgress"]>]>, ctx: HookContext, governance?: string): Promise<{
     allow: boolean;
     reasons: string[];
@@ -163,7 +163,7 @@ export interface DecideInput {
     readonly values: readonly MeasureValue[];
 }
 
-// @public
+// @public @deprecated
 export function decidePlugin(): Plugin<"decide">;
 
 // @public
@@ -199,13 +199,13 @@ export interface DecisionView {
 // @public
 export function decisionView(decision: Decision, suite: string, lineage?: Run["lineage"]): DecisionView;
 
-// @public
+// @public @deprecated
 export function defineConfig<const Plugins extends readonly Plugin[]>(config: Config<Plugins>): Config<Plugins>;
 
 // @public
 export function defineMeasure<const Id extends `${string}/${string}`>(measure: MeasureDefinition<Id>): MeasureDefinition<Id>;
 
-// @public
+// @public @deprecated
 export function definePlugin<const Id extends string, const P extends Plugin<Id>>(plugin: P & {
     readonly id: Id;
 } & Plugin<NoInfer<Id>>): P;
@@ -216,7 +216,7 @@ export function defineSuite<const Measure extends string>(suite: SuiteDefinition
 // @public
 export function describeCounts(counts: readonly number[]): string;
 
-// @public
+// @public @deprecated
 export type EgressAnswer = {
     readonly allow: true;
 } | {
@@ -224,7 +224,7 @@ export type EgressAnswer = {
     readonly reason: string;
 } | undefined;
 
-// @public
+// @public @deprecated
 export interface EgressRequest {
     // Warning: (ae-forgotten-export) The symbol "DataClass" needs to be exported by the entry point index.d.ts
     readonly dataClass: DataClass;
@@ -275,22 +275,22 @@ export interface GateDefinition<Id extends string = string> {
     readonly version: string;
 }
 
-// @public
+// @public @deprecated
 export type GateIdsOf<Plugins extends readonly Plugin[]> = Plugins[number] extends infer P ? P extends {
     readonly gates: readonly GateDefinition<infer Id>[];
 } ? Id : never : never;
 
-// @public
+// @public @deprecated
 export const HOOK_MODES: {
     readonly [K in keyof Hooks]: "sequential" | "parallel";
 };
 
-// @public
+// @public @deprecated
 export interface HookContext {
     readonly log: (message: string) => void;
 }
 
-// @public
+// @public @deprecated
 export interface HookRunner {
     beforeEgress(request: EgressRequest): Promise<{
         allow: boolean;
@@ -304,7 +304,7 @@ export interface HookRunner {
     trialRecorded(trial: Trial): Promise<void>;
 }
 
-// @public
+// @public @deprecated
 export interface Hooks {
     readonly beforeEgress: (ctx: HookContext, request: EgressRequest) => EgressAnswer | Promise<EgressAnswer>;
     readonly configResolved: (ctx: HookContext) => void | Promise<void>;
@@ -315,7 +315,7 @@ export interface Hooks {
     readonly trialRecorded: (ctx: HookContext, trial: Trial) => void | Promise<void>;
 }
 
-// @public
+// @public @deprecated
 export interface Host extends HookRunner {
     readonly commands: ReadonlyMap<string, CommandDefinition>;
     readonly gates: ReadonlyMap<string, GateDefinition>;
@@ -325,18 +325,18 @@ export interface Host extends HookRunner {
     readonly warnings: readonly string[];
 }
 
-// @public
+// @public @deprecated
 export class HostError extends Error {
     readonly name = "HostError";
 }
 
-// @public
+// @public @deprecated
 export interface HostVersions {
     readonly contracts: string;
     readonly core: string;
 }
 
-// @public
+// @public @deprecated
 export interface Importer<Id extends string = string> {
     readonly description: string;
     readonly id: Id;
@@ -349,13 +349,13 @@ export class ImportError extends Error {
     readonly name = "ImportError";
 }
 
-// @public
+// @public @deprecated
 export interface ImportInput {
     readonly files: readonly string[];
     readonly options: Readonly<Record<string, unknown>>;
 }
 
-// @public
+// @public @deprecated
 export interface ImportResult {
     readonly gates?: readonly GateResult[];
     readonly trials: readonly Trial[];
@@ -370,14 +370,14 @@ export function importResults(plan: SuitePlan, rows: Iterable<ResultRow>, option
     readonly summary: ImportSummary;
 };
 
-// @public
+// @public @deprecated
 export function importRun(input: ImportRunInput): Promise<{
     plan: Plan;
     trials: number;
     values: number;
 }>;
 
-// @public
+// @public @deprecated
 export interface ImportRunInput {
     readonly aa?: readonly string[];
     readonly arms: ReadonlyArray<{
@@ -468,7 +468,7 @@ export interface MeasureExample {
     readonly trial: Trial;
 }
 
-// @public
+// @public @deprecated
 export type MeasureIdsOf<Plugins extends readonly Plugin[]> = Plugins[number] extends infer P ? P extends {
     readonly measures: readonly MeasureDefinition<infer Id>[];
 } ? Id : never : never;
@@ -537,7 +537,7 @@ export function packageVersion(from: string): string;
 // @public
 export function percent(value: Real | number): string;
 
-// @public
+// @public @deprecated
 export type PlanAdditions = Partial<Pick<Plan, "power" | "modeReasons">> & {
     readonly mode?: "estimate-only";
     readonly refuse?: string;
@@ -566,7 +566,7 @@ export function plannedTrialsPerCase(plan: Plan, arm: string): Map<string, numbe
 // @public
 export function planningPower(plan: Plan): PlanAdditions;
 
-// @public
+// @public @deprecated
 export interface Plugin<Id extends string = string> {
     readonly commands?: readonly CommandDefinition[];
     readonly deprecated?: {
@@ -680,7 +680,7 @@ export interface ReportOptions {
     readonly suite?: string;
 }
 
-// @public
+// @public @deprecated
 export function reportPlugin(): Plugin<"report">;
 
 // @public
@@ -732,7 +732,7 @@ export interface SensitivityRow {
     readonly verdict: string;
 }
 
-// @public
+// @public @deprecated
 export type Stability = "development" | "alpha" | "beta" | "stable";
 
 // @public

@@ -76,7 +76,11 @@ const command: CommandDefinition = {
   },
 };
 
-/** The decision plugin: the `decide` command over the record store. */
+/**
+ * The decision plugin: the `decide` command over the record store.
+ *
+ * @deprecated Use compare; removed in the next release.
+ */
 export function decidePlugin(): Plugin<"decide"> {
   return {
     id: "decide",

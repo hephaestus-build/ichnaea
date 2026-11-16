@@ -12,7 +12,11 @@ import type {
   Trial,
 } from "../contracts/index.ts";
 
-/** Stability of a plugin or of one of its parts. Names never encode the stage. */
+/**
+ * Stability of a plugin or of one of its parts. Names never encode the stage.
+ *
+ * @deprecated Use defineSuite; removed in the next release.
+ */
 export type Stability = "development" | "alpha" | "beta" | "stable";
 
 /** A known-good or known-bad example for a measure's tester (REQ-33). */
@@ -66,7 +70,11 @@ export interface GateDefinition<Id extends string = string> {
   }) => Omit<GateResult, "gate">;
 }
 
-/** What an importer reads and returns. */
+/**
+ * What an importer reads and returns.
+ *
+ * @deprecated Map the files to ResultRow values and use importResults; removed in the next release.
+ */
 export interface ImportInput {
   /** The paths of the other runner's result files. */
   readonly files: readonly string[];
@@ -77,7 +85,11 @@ export interface ImportInput {
   readonly options: Readonly<Record<string, unknown>>;
 }
 
-/** Records an importer produces from another runner's files. */
+/**
+ * Records an importer produces from another runner's files.
+ *
+ * @deprecated Map the files to ResultRow values and use importResults; removed in the next release.
+ */
 export interface ImportResult {
   /** The trial records, one for each planned trial that the files hold. */
   readonly trials: readonly Trial[];
@@ -92,6 +104,8 @@ export interface ImportResult {
  * was not captured is an `infrastructure_failure` with error kind `NOT_CAPTURED`, never `completed`;
  * import enforces this for a completed record with neither `output` nor `pointer`. A
  * `system_failure` or `budget_exceeded` trial never carries a passing value: import refuses one.
+ *
+ * @deprecated Map the files to ResultRow values and use importResults; removed in the next release.
  */
 export interface Importer<Id extends string = string> {
   /** The importer's ID, namespaced as `<plugin id>/…`. */
@@ -104,7 +118,11 @@ export interface Importer<Id extends string = string> {
   readonly run: (input: ImportInput) => Promise<ImportResult>;
 }
 
-/** An operation that moves data across a boundary (REQ-126). */
+/**
+ * An operation that moves data across a boundary (REQ-126).
+ *
+ * @deprecated The library API moves no data across a boundary; removed in the next release.
+ */
 export interface EgressRequest {
   /** The kind of operation that moves the data. */
   readonly operation: "sample" | "label-publish" | "promote" | "export" | "share" | "model-call";
@@ -121,13 +139,19 @@ export interface EgressRequest {
 /**
  * A plugin's answer to an egress request. Any plugin can refuse; only the plugin that the
  * configuration names as `governance` can allow data above class `none` to leave.
+ *
+ * @deprecated The library API moves no data across a boundary; removed in the next release.
  */
 export type EgressAnswer =
   | { readonly allow: true }
   | { readonly allow: false; readonly reason: string }
   | undefined;
 
-/** The context every hook receives. */
+/**
+ * The context every hook receives.
+ *
+ * @deprecated Call createPlan, importResults, compare and report; removed in the next release.
+ */
 export interface HookContext {
   /** Writes one message to the host's log. */
   readonly log: (message: string) => void;
@@ -136,6 +160,8 @@ export interface HookContext {
 /**
  * What a `planCreated` hook may add to a plan before any call: a power statement, or a switch to
  * estimate-only with its reasons. A hook can never turn an estimate-only plan into a decision.
+ *
+ * @deprecated Use createPlan, which adds the planning statement; removed in the next release.
  */
 export type PlanAdditions = Partial<Pick<Plan, "power" | "modeReasons">> & {
   readonly mode?: "estimate-only";
@@ -145,6 +171,8 @@ export type PlanAdditions = Partial<Pick<Plan, "power" | "modeReasons">> & {
 /**
  * The seven lifecycle hooks. Sequential hooks run in plugin order (with `pre` and `post`
  * placement); parallel hooks run together.
+ *
+ * @deprecated Call createPlan, importResults, compare and report; removed in the next release.
  */
 export interface Hooks {
   /** Sequential. After presets are flattened and options validated. */
@@ -169,7 +197,11 @@ export interface Hooks {
   ) => EgressAnswer | Promise<EgressAnswer>;
 }
 
-/** Execution mode of each hook. */
+/**
+ * Execution mode of each hook.
+ *
+ * @deprecated Call createPlan, importResults, compare and report; removed in the next release.
+ */
 export const HOOK_MODES: { readonly [K in keyof Hooks]: "sequential" | "parallel" } = {
   configResolved: "sequential",
   planCreated: "sequential",
@@ -180,7 +212,11 @@ export const HOOK_MODES: { readonly [K in keyof Hooks]: "sequential" | "parallel
   beforeEgress: "sequential",
 };
 
-/** A command a plugin adds to the CLI. */
+/**
+ * A command a plugin adds to the CLI.
+ *
+ * @deprecated The CLI moves onto the library API; removed in the next release.
+ */
 export interface CommandDefinition {
   /** The command's name on the command line; it cannot be a core command. */
   readonly name: string;
@@ -207,7 +243,11 @@ export interface CommandDefinition {
   ) => Promise<number>;
 }
 
-/** What a command can use from the host. */
+/**
+ * What a command can use from the host.
+ *
+ * @deprecated The CLI moves onto the library API; removed in the next release.
+ */
 export interface CommandHost {
   /** The configuration's measures, by card ID. */
   readonly measures: ReadonlyMap<string, MeasureDefinition>;
@@ -221,7 +261,11 @@ export interface CommandHost {
   readonly out: (text: string) => void;
 }
 
-/** Runs hooks across plugins. */
+/**
+ * Runs hooks across plugins.
+ *
+ * @deprecated Call createPlan, importResults, compare and report; removed in the next release.
+ */
 export interface HookRunner {
   /** Runs the `configResolved` hooks in plugin order. */
   configResolved(): Promise<void>;
@@ -242,7 +286,11 @@ export interface HookRunner {
   beforeEgress(request: EgressRequest): Promise<{ allow: boolean; reasons: string[] }>;
 }
 
-/** A plugin: an explicit, typed object listed in the configuration. */
+/**
+ * A plugin: an explicit, typed object listed in the configuration.
+ *
+ * @deprecated Use defineSuite; removed in the next release.
+ */
 export interface Plugin<Id extends string = string> {
   /** The plugin's ID: lowercase letters, digits and hyphens. It namespaces the plugin's parts. */
   readonly id: Id;
@@ -279,6 +327,8 @@ export interface Plugin<Id extends string = string> {
 /**
  * Defines a plugin, keeping its literal ID and the literal IDs of its parts. The ID is inferred from
  * `id` alone, so a part outside the plugin's namespace is a type error.
+ *
+ * @deprecated Use defineSuite; removed in the next release.
  */
 export function definePlugin<const Id extends string, const P extends Plugin<Id>>(
   plugin: P & { readonly id: Id } & Plugin<NoInfer<Id>>,
@@ -293,21 +343,33 @@ export function defineMeasure<const Id extends `${string}/${string}`>(
   return measure;
 }
 
-/** The measure IDs a list of plugins provides. */
+/**
+ * The measure IDs a list of plugins provides.
+ *
+ * @deprecated Use defineSuite, which keeps the literal measure keys; removed in the next release.
+ */
 export type MeasureIdsOf<Plugins extends readonly Plugin[]> = Plugins[number] extends infer P
   ? P extends { readonly measures: readonly MeasureDefinition<infer Id>[] }
     ? Id
     : never
   : never;
 
-/** The gate IDs a list of plugins provides. */
+/**
+ * The gate IDs a list of plugins provides.
+ *
+ * @deprecated Use defineSuite, which keeps the literal measure keys; removed in the next release.
+ */
 export type GateIdsOf<Plugins extends readonly Plugin[]> = Plugins[number] extends infer P
   ? P extends { readonly gates: readonly GateDefinition<infer Id>[] }
     ? Id
     : never
   : never;
 
-/** An Ichnaea configuration: the explicit plugin list and the stages it opts into. */
+/**
+ * An Ichnaea configuration: the explicit plugin list and the stages it opts into.
+ *
+ * @deprecated Use defineSuite; there is no configuration file. Removed in the next release.
+ */
 export interface Config<Plugins extends readonly Plugin[] = readonly Plugin[]> {
   /** The plugins to load, listed explicitly. */
   readonly plugins: Plugins;
@@ -324,7 +386,11 @@ export interface Config<Plugins extends readonly Plugin[] = readonly Plugin[]> {
   readonly governance?: string;
 }
 
-/** Defines a configuration. The measures it can name are inferred from its plugins. */
+/**
+ * Defines a configuration. The measures it can name are inferred from its plugins.
+ *
+ * @deprecated Use defineSuite; there is no configuration file. Removed in the next release.
+ */
 export function defineConfig<const Plugins extends readonly Plugin[]>(
   config: Config<Plugins>,
 ): Config<Plugins> {
