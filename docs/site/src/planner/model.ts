@@ -57,6 +57,11 @@ function simulate(design: Design, rates: readonly number[], decrease: number, rn
     margin: design.margin,
     valueType: "binary",
     rng,
+    // At one trial per case, the regression test is validated only when the caller's checks of the
+    // records passed: the pair order, the adjacency of the two trials and two clean A/A decisions
+    // (decision 0020). Simulated trials have no records, so the explorer assumes they pass and the
+    // page says so.
+    ...(design.trials === 1 ? { oneTrial: { checksPassed: true, limitations: [] } } : {}),
   });
 }
 
