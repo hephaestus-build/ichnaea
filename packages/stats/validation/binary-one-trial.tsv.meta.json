@@ -1,0 +1,20 @@
+{
+  "schema": "ichnaea.stats-provenance/1",
+  "script": "packages/stats/scripts/study-binary-one-trial.ts",
+  "commit": "c8341fd7044c4d44ccdf07ea4a1f0797b80b4bd4",
+  "files": {
+    "packages/stats/scripts/study-binary-one-trial.ts": "17fa29dc480533c60787b68fadbf45dddcad88aa9471cabfb71ace892fe2c525",
+    "packages/stats/scripts/binary-one-trial.ts": "405eac1a50bb780f894dece1b44b2e7d7f3783a5acbc4aaed1f5c5e4da70478f",
+    "packages/stats/src/compare.ts": "c10853de2d5df8a9be0993b811ac23dca6088a14341a7a3be9fcf81945de1c1c",
+    "packages/stats/src/exact-conditional.ts": "628713c2f2c06fa08e6831f03d18d4a5bf5261006cd2b18593ca39b57efe0f80"
+  },
+  "seedBase": 5000000,
+  "arguments": ["validation/binary-one-trial.tsv"],
+  "node": "v24.22.2",
+  "started": "2026-11-16T08:43:23.856Z",
+  "k1": 5,
+  "alpha": 0.05,
+  "output": "binary-one-trial.tsv",
+  "complete": true,
+  "outputSha256": "e4e4e2341200cb0d89f5871cdbad34097c081fb703edb7d6164d21fb0d601ece"
+}

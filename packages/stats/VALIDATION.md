@@ -227,6 +227,59 @@ one trial per case and arm and one case per family, so it needs as many families
 
 Each result names its regression method in `regressionMethod`.
 
+### One trial per case: the binary regression test
+
+With one trial per case and arm, the exact stratified conditional test is the exact conditional
+McNemar test: a case where both arms agree adds nothing, and given n discordant cases, the number c
+where only the candidate passes is Binomial(n, 1/2) under the sharp null. That test is exact. What
+had to be shown is the weak null: per-case effects that differ but average 0, which is what a
+fixed-cases comparison of a suite means by "no change". **The validated domain does not include one
+trial per case yet.** This study is its evidence; the domain changes in its own change, with the
+conditions below.
+
+`scripts/study-binary-one-trial.ts` computes the type-I error exactly. Cases are independent, so a
+dynamic programme over (n, c) gives the distribution of the discordant counts, and the rejection
+region comes from the decision path itself: `compareCounts` gives the p-value of every (n, c), and
+the region c ≤ c\*(n) is checked to equal the exact McNemar test's for every n up to 300. A unit
+test checks the dynamic programme against enumeration of all 4^k outcome pairs through
+`compareCounts`, at k ≤ 8 (agreement within 1e-15).
+
+- **Structures, at a true mean difference of 0:** the sharp null, a fixed grid with one to three
+  noisy cases, and 2,000 random structures per k and family, then hill-climbing from the worst 5
+  (4 rounds of 5 steps). Family "top": most cases pass the base always or nearly always and drop
+  under the candidate by unequal amounts; one to three noisy cases rise to offset the drops, the
+  shape that made the interval undercover. Family "floor" mirrors it, so the long tail of the
+  per-case differences lies on the drop side, the side the test looks at. 108,037 structures in all.
+- **Grid and seeds:** k from 5 to 20, and 25, 30, 40, 60, 100, 146, 200 and 300. MT19937, seed
+  5,000,000 + 1,000·f + the index of k, with f = 1 for "top" and 2 for "floor".
+- **Rule:** an exactly computed point fails above 0.05.
+- **Result: no point fails.** The worst type-I error per k:
+
+| Cases     | 5      | 8      | 10     | 12     | 14     | 17     | 20     | 30     | 60     | 100    | 146    | 300    |
+| --------- | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ |
+| Worst     | 0.0006 | 0.0039 | 0.0059 | 0.0067 | 0.0091 | 0.0114 | 0.0155 | 0.0207 | 0.0312 | 0.0344 | 0.0369 | 0.0392 |
+| Structure | effect | effect | effect | effect | effect | none   | none   | none   | none   | none   | none   | none   |
+
+"Effect" means a heterogeneous structure; "none" means the worst structure has no effect in any
+case. From 15 cases up, no heterogeneous structure was worse than the sharp null: effects that
+average 0 make the test more conservative. The count of candidate-only cases then varies less than
+the Binomial(n, 1/2) that the test conditions on, because a sum of unequal chances varies less than
+a sum of equal ones. Below 15 cases, the test is so discrete that every error
+stays under 0.01. `validation/binary-one-trial.tsv` lists the worst structure of each k and
+family in full, and a unit test recomputes each listed value from its structure. Its sidecar
+records the commit, the script hashes, the seeds and the Node version.
+
+- **Claim:** no failure found in this space, which is a search, not a proof. A structure outside it
+  may still fail.
+- **Conditions for a validated result at one trial per case**, which the change that widens the
+  domain must enforce: the arms ran interleaved, as the trial records show, because a run-level
+  shock between two single runs cannot be told apart from an effect; the suite's A/A runs, with at
+  least two runs per arm, show a run-level shock within the bound that the studies validate; a case
+  with a missing trial has no pair, so it is excluded and counts against coverage, and the
+  sensitivity analysis covers it. Non-inferiority at one trial per case needs its own floor sweep:
+  with one trial per arm most pairs agree, the zero-variance mechanism that sets the margin floor.
+  Until then, one trial per case can give REGRESSION but never PASS.
+
 ## Results of the CI gate
 
 Two workflows run the studies with `pnpm --filter ./packages/stats run test:sim`:

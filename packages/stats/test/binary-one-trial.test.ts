@@ -64,7 +64,8 @@ describe("binary regression test at one trial per case", () => {
     const p = bruteForceTypeI(drop);
     expect(p).toBeGreaterThan(0.3);
     expect(Math.abs(exactTypeI(drop, thresholds) - p)).toBeLessThan(1e-15);
-  });
+    // Enumeration at k = 8 runs 65,536 comparisons per structure.
+  }, 120_000);
 
   it("keeps the level under the sharp null: every case has the same rate in both arms", () => {
     for (const k of [5, 12, 60, 300]) {
