@@ -47,8 +47,8 @@ import { appendFileSync, existsSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
 
-import { createRng, type Rng } from "../src/index.ts";
-import { exactGroupCoverage, type Group, truthOfGroups } from "../test/support/exact.ts";
+import { createRng, type Rng } from "../../src/stats/index.ts";
+import { exactGroupCoverage, type Group, truthOfGroups } from "../../test/stats/support/exact.ts";
 import { provenance, writeMeta } from "./provenance.ts";
 
 /** Number of outcome multisets the enumeration visits. */
@@ -478,7 +478,7 @@ function main(): void {
     : provenance(
         import.meta.filename,
         [
-          path.join(import.meta.dirname, "../test/support/exact.ts"),
+          path.join(import.meta.dirname, "../../test/stats/support/exact.ts"),
           path.join(import.meta.dirname, "provenance.ts"),
         ],
         seedBase,

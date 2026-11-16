@@ -30,8 +30,8 @@ import { appendFileSync, existsSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
 
-import { createRng } from "../src/index.ts";
-import type { Group } from "../test/support/exact.ts";
+import { createRng } from "../../src/stats/index.ts";
+import type { Group } from "../../test/stats/support/exact.ts";
 import { provenance, writeMeta } from "./provenance.ts";
 import {
   groupsOf,
@@ -237,7 +237,7 @@ function main(): void {
     import.meta.filename,
     [
       path.join(here, "study-heterogeneous.ts"),
-      path.join(here, "../test/support/exact.ts"),
+      path.join(here, "../../test/stats/support/exact.ts"),
       path.join(here, "provenance.ts"),
     ],
     seedBase,

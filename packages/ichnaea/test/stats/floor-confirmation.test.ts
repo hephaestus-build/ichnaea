@@ -7,9 +7,9 @@ import path from "node:path";
 
 import { afterAll, describe, expect, it } from "vitest";
 
-import { createRng } from "../src/index.ts";
-import { checkProvenance } from "../scripts/check-sweep-provenance.ts";
-import { cells, cellStructures, generate } from "../scripts/generate-structures.ts";
+import { createRng } from "../../src/stats/index.ts";
+import { checkProvenance } from "../../scripts/stats/check-sweep-provenance.ts";
+import { cells, cellStructures, generate } from "../../scripts/stats/generate-structures.ts";
 import {
   git,
   localImportClosure,
@@ -17,7 +17,7 @@ import {
   PROVENANCE_SCHEMA,
   repoRoot,
   sha256,
-} from "../scripts/provenance.ts";
+} from "../../scripts/stats/provenance.ts";
 import {
   coverageRun,
   doneIds,
@@ -26,7 +26,7 @@ import {
   readStructures,
   runShard,
   seedOf,
-} from "../scripts/simulate-structures.ts";
+} from "../../scripts/stats/simulate-structures.ts";
 import {
   cost,
   groupsOf,
@@ -34,7 +34,7 @@ import {
   oneTrialOf,
   skipRecord,
   type Structure,
-} from "../scripts/study-heterogeneous.ts";
+} from "../../scripts/stats/study-heterogeneous.ts";
 import { exactGroupCoverage, type Group, truthOfGroups } from "./support/exact.ts";
 import { CONFIRM_SEED_OFFSET, estimate } from "./support/simulate.ts";
 
@@ -296,22 +296,22 @@ describe("the structure generator", () => {
   });
 });
 
-const scripts = path.join(import.meta.dirname, "../scripts");
-/** Paths relative to the stats package. */
+const scripts = path.join(import.meta.dirname, "../../scripts/stats");
+/** Paths relative to the package. */
 const relative = (files: readonly string[]): string[] =>
-  files.map((f) => path.relative(path.join(import.meta.dirname, ".."), f));
+  files.map((f) => path.relative(path.join(import.meta.dirname, "../.."), f));
 
 describe("the provenance of a study", () => {
   it("records every local module a script imports, through the statistics it calls", () => {
     const files = relative(localImportClosure([path.join(scripts, "simulate-structures.ts")]));
     expect(files).toEqual(
       expect.arrayContaining([
-        "scripts/simulate-structures.ts",
-        "scripts/provenance.ts",
-        "test/support/simulate.ts",
-        "src/index.ts",
-        "src/compare.ts",
-        "test/support/exact.ts",
+        "scripts/stats/simulate-structures.ts",
+        "scripts/stats/provenance.ts",
+        "test/stats/support/simulate.ts",
+        "src/stats/index.ts",
+        "src/stats/compare.ts",
+        "test/stats/support/exact.ts",
       ]),
     );
     expect(files.every((f) => !f.includes("node_modules"))).toBe(true);
@@ -342,7 +342,7 @@ describe("the provenance of a study", () => {
 describe("the provenance check", () => {
   const root = repoRoot(import.meta.filename);
   const head = git(["rev-parse", "HEAD"], root);
-  const file = "packages/stats/test/support/exact.ts";
+  const file = "packages/ichnaea/test/stats/support/exact.ts";
   // This change leaves the file as it is at HEAD.
   const atHead = sha256(readFileSync(path.join(root, file)));
 

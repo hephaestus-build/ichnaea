@@ -33,8 +33,8 @@ import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs
 import path from "node:path";
 import { parseArgs } from "node:util";
 
-import { fixedCasesInterval, type CaseCounts, type Rng } from "../src/index.ts";
-import { type Group, truthOfGroups } from "../test/support/exact.ts";
+import { fixedCasesInterval, type CaseCounts, type Rng } from "../../src/stats/index.ts";
+import { type Group, truthOfGroups } from "../../test/stats/support/exact.ts";
 import {
   binomial,
   CONFIRM_SE,
@@ -43,7 +43,7 @@ import {
   estimate,
   judge,
   REPS,
-} from "../test/support/simulate.ts";
+} from "../../test/stats/support/simulate.ts";
 import { metaPath, provenance, sha256, writeMeta } from "./provenance.ts";
 
 /** One structure to judge, as a JSON line. Other members (phase, seed, family) are kept out. */
@@ -298,8 +298,8 @@ function main(): void {
   const p = provenance(
     import.meta.filename,
     [
-      path.join(here, "../test/support/exact.ts"),
-      path.join(here, "../test/support/simulate.ts"),
+      path.join(here, "../../test/stats/support/exact.ts"),
+      path.join(here, "../../test/stats/support/simulate.ts"),
       path.join(here, "provenance.ts"),
     ],
     shard.seedBase,

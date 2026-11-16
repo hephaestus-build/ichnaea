@@ -15,9 +15,9 @@ import {
   structureOf,
   worstRows,
   countByKAndMargin,
-} from "../scripts/embed-worst.ts";
-import { coverageRun, readStructures, seedOf } from "../scripts/simulate-structures.ts";
-import { groupsOf, type Structure } from "../scripts/study-heterogeneous.ts";
+} from "../../scripts/stats/embed-worst.ts";
+import { coverageRun, readStructures, seedOf } from "../../scripts/stats/simulate-structures.ts";
+import { groupsOf, type Structure } from "../../scripts/stats/study-heterogeneous.ts";
 import { exactGroupCoverage, type Group, truthOfGroups } from "./support/exact.ts";
 import { estimate } from "./support/simulate.ts";
 

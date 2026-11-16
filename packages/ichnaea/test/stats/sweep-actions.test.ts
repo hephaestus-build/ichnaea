@@ -11,8 +11,13 @@ import {
   parseSimRow,
   readExactMargin,
   simulationCells,
-} from "../scripts/collect-sweep.ts";
-import { canonical, compareReplica, compareSkips, skipEntry } from "../scripts/compare-replica.ts";
+} from "../../scripts/stats/collect-sweep.ts";
+import {
+  canonical,
+  compareReplica,
+  compareSkips,
+  skipEntry,
+} from "../../scripts/stats/compare-replica.ts";
 import {
   exactFiles,
   MARGINS,
@@ -24,7 +29,7 @@ import {
   serverOrder,
   simulationInputs,
   workersOf,
-} from "../scripts/sweep-job.ts";
+} from "../../scripts/stats/sweep-job.ts";
 
 const dir = mkdtempSync(path.join(tmpdir(), "sweep-actions-"));
 afterAll(() => rmSync(dir, { recursive: true, force: true }));

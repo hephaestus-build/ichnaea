@@ -65,8 +65,8 @@ cp sweep/summary/summary.json sweep/summary/SHA256SUMS sweep/archive/confirmatio
 (cd sweep && sha256sum -c SHA256SUMS)
 mkdir sweep/in && tar -xf sweep/confirmation-sweep.tar -C sweep/in
 git checkout <commit from summary.json>
-node packages/stats/scripts/check-sweep-provenance.ts $(find sweep/in -name '*.tsv' -o -name '*.jsonl')
-node packages/stats/scripts/collect-sweep.ts --in sweep/in --out sweep/again --phases A,B,C,D,E-large,E-embedded
+node packages/ichnaea/scripts/stats/check-sweep-provenance.ts $(find sweep/in -name '*.tsv' -o -name '*.jsonl')
+node packages/ichnaea/scripts/stats/collect-sweep.ts --in sweep/in --out sweep/again --phases A,B,C,D,E-large,E-embedded
 cmp sweep/summary.json sweep/again/summary.json
 ```
 
@@ -79,7 +79,7 @@ Phases A and B replicate runs on the server.
 After you download both, `compare-replica.ts` compares them margin by margin:
 
 ```sh
-node packages/stats/scripts/compare-replica.ts --phase B --actions in \
+node packages/ichnaea/scripts/stats/compare-replica.ts --phase B --actions in \
   --server-tsv server/confirm/sweep-{0,1,2,3}.tsv \
   --server-skips server/confirm/skips-{0,1,2,3}.jsonl --out replica-B.json
 ```

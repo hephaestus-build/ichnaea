@@ -248,7 +248,9 @@ function jobRecord(kind: string, extra: Record<string, unknown>, out: string) {
     schema: JOB_SCHEMA,
     kind,
     commit: git(["rev-parse", "HEAD"], root),
-    script: { "packages/stats/scripts/sweep-job.ts": sha256(readFileSync(import.meta.filename)) },
+    script: {
+      "packages/ichnaea/scripts/stats/sweep-job.ts": sha256(readFileSync(import.meta.filename)),
+    },
     runner: {
       imageOS: env["ImageOS"] ?? null,
       imageVersion: env["ImageVersion"] ?? null,

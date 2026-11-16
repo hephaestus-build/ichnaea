@@ -31,7 +31,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
 
-import { exactGroupCoverage, type Group, truthOfGroups } from "../test/support/exact.ts";
+import { exactGroupCoverage, type Group, truthOfGroups } from "../../test/stats/support/exact.ts";
 import { checkProvenance } from "./check-sweep-provenance.ts";
 import { metaPath, provenance, repoRoot, sha256, writeMeta } from "./provenance.ts";
 import { groupsOf, type OneTrial, type Structure } from "./study-heterogeneous.ts";
@@ -315,7 +315,7 @@ function main(): void {
       path.join(here, "study-heterogeneous.ts"),
       path.join(here, "check-sweep-provenance.ts"),
       path.join(here, "provenance.ts"),
-      path.join(here, "../test/support/exact.ts"),
+      path.join(here, "../../test/stats/support/exact.ts"),
     ],
     null,
     args,
