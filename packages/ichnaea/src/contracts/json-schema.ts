@@ -151,7 +151,7 @@ function relax(node: unknown): unknown {
 
 /** A pattern matching every string except the given ones (a negative lookahead; portable ECMA-262). */
 function notOneOf(values: readonly unknown[]): string {
-  const escaped = values.map((v) => String(v).replaceAll(/[.*+?^${}()|[\]\\/-]/g, "\\$&"));
+  const escaped = values.map((v) => String(v).replaceAll(/[.*+?^${}()|[\]\\/]/g, "\\$&"));
   return `^(?!(?:${escaped.join("|")})$)`;
 }
 
