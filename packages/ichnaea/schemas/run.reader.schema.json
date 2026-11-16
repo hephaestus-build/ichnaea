@@ -790,15 +790,7 @@
           },
           "outcome": {
             "type": "string",
-            "x-ichnaea-data": {
-              "class": "none",
-              "identifier": "none",
-              "egress": [
-                "*"
-              ],
-              "retention": "record"
-            },
-            "x-ichnaea-known": [
+            "enum": [
               "completed",
               "abstained",
               "system_failure",
@@ -807,7 +799,16 @@
               "invalid_configuration",
               "not_run",
               "protocol_failure"
-            ]
+            ],
+            "x-ichnaea-closed": true,
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
+            }
           }
         },
         "required": [

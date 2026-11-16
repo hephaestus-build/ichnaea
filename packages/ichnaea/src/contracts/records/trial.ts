@@ -1,6 +1,6 @@
 import * as z from "zod";
 
-import { content, none, quasi } from "../data-class.ts";
+import { CLOSED_KEY, content, none, quasi } from "../data-class.ts";
 import {
   ArmName,
   CaseId,
@@ -20,9 +20,12 @@ import {
  * Outcome classes of a trial (REQ-20). A capture failure is never a verdict:
  * `infrastructure_failure` and `not_run` count as missing, never as a quality failure.
  * `protocol_failure` is the harness's fault, never the system's (a worker could not read its
- * request): it is never a failure or a pass, and any one makes the run INVALID. It is an outcome,
- * not a member of the run, so a reader that does not know it refuses the record instead of
- * deciding the run.
+ * request): it is never a failure or a pass, and any one makes the run INVALID.
+ *
+ * The enumeration is closed (`x-ichnaea-closed`) from this version on: a reader built from it
+ * refuses an outcome it does not know, so a later outcome fails closed. An older build's reader
+ * widens it, so it reads `protocol_failure` as an unknown outcome and counts the trial as missing:
+ * never as a pass or a failure of the system.
  */
 export const Outcome = z.enum([
   "completed",
@@ -81,7 +84,7 @@ export const Trial = z.strictObject({
   configuration: none(ConfigurationIdentity),
   arm: none(ArmName).optional(),
   replicate: none(z.int().min(0)),
-  outcome: none(Outcome),
+  outcome: none(Outcome, { [CLOSED_KEY]: true }),
   dataClass: none(RecordDataClass),
   input: content(Json).optional(),
   output: content(Json).optional(),

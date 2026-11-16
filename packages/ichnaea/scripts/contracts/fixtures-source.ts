@@ -590,6 +590,8 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
   },
   trial: {
     "outcome-not-a-string": (r) => (r["outcome"] = 3),
+    // The outcomes are closed: a reader refuses an unknown one too.
+    "unknown-outcome": (r) => (r["outcome"] = "partial"),
     "missing-configuration": (r) => delete r["configuration"],
     "negative-tokens": (r) => ((r["usage"] as Record<string, unknown>)["inputTokens"] = -1),
     "missing-data-class": (r) => delete r["dataClass"],
@@ -845,7 +847,6 @@ export const READER_ONLY: Record<string, Record<string, Mutation>> = {
   label: {
     "future-preference-value": (r) => (r["value"] = { type: "preference", preferred: "both" }),
   },
-  trial: { "future-outcome": (r) => (r["outcome"] = "partial") },
   trialRequest: {
     // Scoring comes from the base suite: a writer never sends a case's references.
     "case-with-references": (r) =>

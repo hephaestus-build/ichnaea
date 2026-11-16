@@ -292,7 +292,7 @@ describe("importResults", () => {
     ]);
   });
 
-  it("fails closed: a reader of the earlier outcomes refuses a protocol failure", () => {
+  it("is unknown to the earlier strict trial schema, which refuses a protocol failure", () => {
     const bad = answer(first, undefined, { failure: { class: "protocol", kind: "bad-request" } });
     const [trial] = importResults(plan, replace(0, { result: bad })).records.trials;
     const earlier = Trial.extend({ outcome: Outcome.exclude(["protocol_failure"]) });
