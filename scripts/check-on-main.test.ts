@@ -28,25 +28,25 @@ git("update-ref", "refs/remotes/origin/main", head);
 afterAll(() => rmSync(repo, { recursive: true, force: true }));
 
 describe("release commit on main", () => {
-  it("allows the head of main and an older commit of main", () => {
-    expect(notOnMain("refs/heads/main", head, repo)).toBeUndefined();
-    expect(notOnMain("refs/heads/main", first, repo)).toBeUndefined();
+  it("allows a release tag on the head of main and on an older commit of main", () => {
+    expect(notOnMain("refs/tags/v0.2.0", head, repo)).toBeUndefined();
+    expect(notOnMain("refs/tags/v0.1.0-rc.1", first, repo)).toBeUndefined();
   });
 
-  it("refuses a commit that is not on main", () => {
-    expect(notOnMain("refs/heads/main", offMain, repo)).toBe(
+  it("refuses a tagged commit that is not on main", () => {
+    expect(notOnMain("refs/tags/v0.2.0", offMain, repo)).toBe(
       `commit ${offMain} is not reachable from origin/main`,
     );
   });
 
   it("refuses a commit that does not exist", () => {
-    expect(notOnMain("refs/heads/main", "0".repeat(40), repo)).toMatch(/not reachable/);
+    expect(notOnMain("refs/tags/v0.2.0", "0".repeat(40), repo)).toMatch(/not reachable/);
   });
 
-  it("refuses a run on another ref, even for a commit of main", () => {
-    expect(notOnMain("refs/heads/feature", head, repo)).toBe(
-      "the release must run on refs/heads/main, not refs/heads/feature",
-    );
-    expect(notOnMain("refs/tags/v0.1.0", head, repo)).toMatch(/must run on refs\/heads\/main/);
+  it("refuses a run that a branch or another tag started, even for a commit of main", () => {
+    for (const ref of ["refs/heads/main", "refs/heads/feature", "refs/tags/build-1"])
+      expect(notOnMain(ref, head, repo), ref).toBe(
+        `the release must run on a pushed v* tag, not ${ref}`,
+      );
   });
 });
