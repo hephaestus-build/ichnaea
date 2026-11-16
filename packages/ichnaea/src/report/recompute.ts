@@ -11,7 +11,11 @@ import { decide } from "../decide/index.ts";
 
 /** The result of recomputing a stored decision. */
 export interface RecomputeResult {
+  /** Whether the recomputed decision equals the stored one. */
   readonly matches: boolean;
+  /**
+   * The top-level members of the decision whose recomputed value differs; empty when it matches.
+   */
   readonly differences: readonly string[];
 }
 

@@ -7,6 +7,7 @@ import { Configuration } from "./records/configuration.ts";
 
 /** Thrown when a record cannot have a well-defined identity. */
 export class IdentityError extends Error {
+  /** The error's name, for `instanceof`-free checks. */
   override readonly name = "IdentityError";
 }
 
@@ -202,9 +203,16 @@ export async function caseSetDigest(entries: readonly unknown[]): Promise<Digest
  * why).
  */
 export interface LinkError {
+  /**
+   * The JSON pointer of the value that does not match, or of the configuration that cannot be
+   * checked.
+   */
   readonly path: string;
+  /** The identity or digest that the record stores. */
   readonly stored: string;
+  /** The value computed from the record, or null when it cannot be computed. */
   readonly computed: string | null;
+  /** Why the value cannot be computed; present only when `computed` is null. */
   readonly problem?: string;
 }
 

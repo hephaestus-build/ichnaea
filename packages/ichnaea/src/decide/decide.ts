@@ -35,12 +35,19 @@ import { describeCounts, plannedTrialsPerCase, planningPower } from "./planning.
 
 /** Everything a decision is computed from. Reports never compute anything new. */
 export interface DecideInput {
+  /** The plan that the run carries out. */
   readonly plan: Plan;
+  /** The run record with its ledger. */
   readonly run: Run;
+  /** The run's trial records. */
   readonly trials: readonly Trial[];
+  /** The run's measure values. */
   readonly values: readonly MeasureValue[];
+  /** The hard gates' results. */
   readonly gates: readonly GateResult[];
+  /** The ISO 8601 timestamp recorded as the decision's `decidedAt`. */
   readonly decidedAt: string;
+  /** The Ichnaea version, a semantic version, recorded in the decision. */
   readonly ichnaea: string;
 }
 
@@ -462,16 +469,23 @@ async function recordChecks(input: DecideInput): Promise<string[]> {
 
 /** One primary measure's counts, as the decision rule reads them. */
 export interface PrimaryCounts {
+  /** The measure's ID. */
   readonly measure: string;
+  /** The non-inferiority margin, on the difference of pass rates; it must be below 1. */
   readonly margin: number;
+  /** The part of the margin held back; the comparison uses `margin` minus it. Absent means 0. */
   readonly safetyMargin?: number;
+  /** The measure's value type; only `binary` has a paired method. */
   readonly valueType: MeasuredValue["type"];
+  /** The counts of each case under both arms. */
   readonly cases: readonly CaseCounts[];
 }
 
 /** The verdict of one primary measure and how it was reached. */
 export interface PrimaryVerdict {
+  /** The measure's verdict. */
   readonly verdict: "NON-INFERIOR" | "REGRESSION" | "INCONCLUSIVE";
+  /** The paired comparison; absent when none could be run. */
   readonly comparison?: Comparison;
   /** The Holm-adjusted regression p-value, for a validated comparison. */
   readonly regressionPAdjusted?: number;
@@ -482,14 +496,21 @@ export interface PrimaryVerdict {
    * non-inferiority result is not validated, or there is no comparison.
    */
   readonly cause?: "cannot-tell" | "unvalidated" | "non-inferiority-unvalidated" | "no-comparison";
+  /** Notes on how the verdict was reached, such as why a result is not validated. */
   readonly notes: readonly string[];
 }
 
 /** What `decidePrimaries` decides from. */
 export interface PrimariesInput {
+  /** The question that the comparisons answer. */
   readonly estimand: Plan["estimand"];
+  /** The one-sided level of each test, in (0, 0.5). */
   readonly alpha: number;
+  /**
+   * The seed of the one generator that every measure is decided with, an integer in [1, 2^32 - 1].
+   */
   readonly seed: number;
+  /** The primary measures, in the order they are decided. */
   readonly measures: readonly PrimaryCounts[];
 }
 

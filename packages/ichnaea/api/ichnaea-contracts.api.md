@@ -788,9 +788,7 @@ export function contractFor(id: string): RecordContract | undefined;
 
 // @public
 export interface ContractViolation {
-    // (undocumented)
     readonly path: string;
-    // (undocumented)
     readonly rule: string;
 }
 
@@ -805,13 +803,9 @@ export type DataClass = (typeof DATA_CLASSES)[number];
 
 // @public
 export interface DataPolicy {
-    // (undocumented)
     readonly class: DataClass | "inherit";
-    // (undocumented)
     readonly egress: readonly string[];
-    // (undocumented)
     readonly identifier: IdentifierKind;
-    // (undocumented)
     readonly retention: RetentionRule;
 }
 
@@ -1192,22 +1186,17 @@ export interface DigestRule {
 
 // @public
 export interface EgressContext {
-    // (undocumented)
     readonly grants?: ReadonlyArray<{
         readonly path: string;
         readonly purposes: readonly string[];
     }>;
-    // (undocumented)
     readonly maxClass: DataClass;
-    // (undocumented)
     readonly purpose: string;
 }
 
 // @public
 export interface EgressProjection {
-    // (undocumented)
     readonly dropped: readonly string[];
-    // (undocumented)
     readonly value: unknown;
 }
 
@@ -1381,7 +1370,6 @@ export type IdentifierKind = (typeof IDENTIFIER_KINDS)[number];
 
 // @public
 export class IdentityError extends Error {
-    // (undocumented)
     readonly name = "IdentityError";
 }
 
@@ -1585,13 +1573,9 @@ export const LineageItem: z.ZodObject<{
 
 // @public
 export interface LinkError {
-    // (undocumented)
     readonly computed: string | null;
-    // (undocumented)
     readonly path: string;
-    // (undocumented)
     readonly problem?: string;
-    // (undocumented)
     readonly stored: string;
 }
 
@@ -2087,7 +2071,6 @@ export const NonFinite: z.ZodObject<{
 // @public
 export class NonJsonValueError extends Error {
     constructor(path: string, what: string);
-    // (undocumented)
     readonly name = "NonJsonValueError";
     readonly path: string;
 }
@@ -2521,15 +2504,10 @@ export const RECORD_CONTRACTS: readonly RecordContract[];
 
 // @public
 export interface RecordContract {
-    // (undocumented)
     readonly description: string;
-    // (undocumented)
     readonly id: string;
-    // (undocumented)
     readonly name: string;
-    // (undocumented)
     readonly schema: z.ZodType;
-    // (undocumented)
     readonly stability: Stability;
 }
 
@@ -2912,15 +2890,10 @@ export type SuiteId = z.infer<typeof SuiteId>;
 
 // @public
 export interface TargetCase {
-    // (undocumented)
     readonly fixtures?: Case["fixtures"];
-    // (undocumented)
     readonly id: Case["id"];
-    // (undocumented)
     readonly input: Case["input"];
-    // (undocumented)
     readonly turns?: Case["turns"];
-    // (undocumented)
     readonly unit: Case["unit"];
 }
 
@@ -3073,9 +3046,7 @@ export type UnknownKind<T> = {
 
 // @public
 export interface UnknownValue {
-    // (undocumented)
     readonly path: readonly PropertyKey[];
-    // (undocumented)
     readonly value: unknown;
 }
 

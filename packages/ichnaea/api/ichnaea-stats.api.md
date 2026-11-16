@@ -18,25 +18,17 @@ export function benjaminiYekutieli(pValues: readonly number[]): number[];
 
 // @public
 export interface CaseCounts {
-    // (undocumented)
     readonly base: ArmCounts;
-    // (undocumented)
     readonly candidate: ArmCounts;
-    // (undocumented)
     readonly family?: string;
-    // (undocumented)
     readonly id: string;
 }
 
 // @public
 export interface CaseScores {
-    // (undocumented)
     readonly base: readonly number[];
-    // (undocumented)
     readonly candidate: readonly number[];
-    // (undocumented)
     readonly family?: string;
-    // (undocumented)
     readonly id: string;
 }
 
@@ -46,7 +38,6 @@ export function compareCounts(input: ComparisonInput): Comparison;
 // @public
 export interface Comparison {
     readonly difference: Interval;
-    // (undocumented)
     readonly estimand: Estimand;
     readonly excludedCases: number;
     readonly nonInferiority: Validity;
@@ -60,21 +51,16 @@ export interface Comparison {
 // @public
 export interface ComparisonInput {
     readonly alpha: number;
-    // (undocumented)
     readonly cases: readonly CaseCounts[];
-    // (undocumented)
     readonly estimand: Estimand;
     readonly margin: number;
-    // (undocumented)
     readonly rng?: Rng;
     readonly valueType: ValueType;
 }
 
 // @public
 export interface Count {
-    // (undocumented)
     readonly successes: number;
-    // (undocumented)
     readonly trials: number;
 }
 
@@ -95,7 +81,6 @@ export type Estimand = "fixed-cases" | "sampled-cases";
 
 // @public
 export class EstimandError extends Error {
-    // (undocumented)
     readonly name = "EstimandError";
 }
 
@@ -121,17 +106,12 @@ export function fixedCasesMde(input: FixedCasesMdeInput): {
 
 // @public
 export interface FixedCasesMdeInput {
-    // (undocumented)
     readonly alpha?: number;
-    // (undocumented)
     readonly options?: ScoreOptions;
-    // (undocumented)
     readonly power?: number;
     readonly rates: readonly number[];
     readonly replicates: number | readonly number[];
-    // (undocumented)
     readonly rng: Rng;
-    // (undocumented)
     readonly simulations?: number;
 }
 
@@ -141,15 +121,11 @@ export function holm(pValues: readonly number[]): number[];
 // @public
 export interface Interval {
     readonly estimand?: "fixed-cases" | "sampled-cases";
-    // (undocumented)
     readonly estimate: number;
     readonly level: number;
-    // (undocumented)
     readonly lower: number;
     readonly method: string;
-    // (undocumented)
     readonly sided: Sided;
-    // (undocumented)
     readonly upper: number;
 }
 
@@ -158,13 +134,9 @@ export const MARGIN_FLOOR_NOT_SET = "the validated margin floor is not set yet";
 
 // @public
 export interface PairedTable {
-    // (undocumented)
     readonly baseOnly: number;
-    // (undocumented)
     readonly both: number;
-    // (undocumented)
     readonly candidateOnly: number;
-    // (undocumented)
     readonly neither: number;
 }
 
@@ -181,9 +153,7 @@ export function restrictedMle(x1: number, n1: number, x2: number, n2: number, de
 
 // @public
 export interface Rng {
-    // (undocumented)
     readonly algorithm: "mt19937";
-    // (undocumented)
     readonly seed: number;
     uniform(): number;
 }
@@ -227,7 +197,6 @@ export interface ScorePermutationOptions {
 
 // @public
 export interface ScorePermutationResult {
-    // (undocumented)
     readonly method: "within-case-permutation-exact" | "within-case-permutation-monte-carlo";
     readonly monteCarloSE?: number;
     readonly p: number;
@@ -248,9 +217,7 @@ export function skewCorrected(score: number, c: number): number;
 
 // @public
 export interface Stratum {
-    // (undocumented)
     readonly base: Count;
-    // (undocumented)
     readonly candidate: Count;
 }
 
@@ -262,10 +229,8 @@ export function tangoTest(table: PairedTable, delta0: number, alternative: "grea
 
 // @public
 export interface TestResult {
-    // (undocumented)
     readonly method: string;
     readonly p: number;
-    // (undocumented)
     readonly statistic: number;
 }
 
@@ -288,7 +253,6 @@ export const VALIDATED_MARGIN_FLOOR_SET = false;
 // @public
 export interface Validity {
     readonly limitations: readonly string[];
-    // (undocumented)
     readonly validated: boolean;
 }
 

@@ -4,7 +4,8 @@ name: Build branch
 # (README § Use Ichnaea from a TypeScript project, decision 0019).
 #
 # - The build job has read access only. It builds the commit, assembles the build tree
-#   (scripts/build-package.ts), runs the consumer test on exactly that tree and uploads it.
+#   (scripts/build-package.ts), runs the consumer test and the package checks (publint and attw,
+#   scripts/check-package.ts) on exactly that tree and uploads it.
 # - The publish job runs in the `build-branch` environment, which only main may deploy to and which
 #   alone holds the deploy key that the `build` ruleset lets write. It checks out no code and runs
 #   none from the repository. It makes one commit whose tree is exactly the uploaded tree, with the
@@ -69,6 +70,9 @@ jobs:
         run: node scripts/build-package.ts "$RUNNER_TEMP/tree" --source-commit "$GITHUB_SHA"
       - name: The consumer test passes on exactly this tree
         run: node scripts/build-consumer.ts --tree "$RUNNER_TEMP/tree"
+      # No build commit is written unless the npm-packed tree passes publint --strict and attw.
+      - name: The packed tree passes publint and attw
+        run: node scripts/check-package.ts "$RUNNER_TEMP/tree"
       # An artifact does not keep file modes, a tar file does: the bin stays executable.
       - name: Pack the tree with its modes
         id: pack

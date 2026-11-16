@@ -8,7 +8,6 @@ import * as z from 'zod';
 
 // @public
 export class AppendOnlyError extends Error {
-    // (undocumented)
     readonly name = "AppendOnlyError";
 }
 
@@ -19,23 +18,19 @@ export class CallLedger {
         used: number;
         remaining: number;
     }>;
-    // (undocumented)
     readonly root: string;
     used(endpoint: string, at: string): Promise<number>;
 }
 
 // @public
 export interface CommandDefinition {
-    // (undocumented)
     readonly description: string;
-    // (undocumented)
     readonly name: string;
     readonly options: Readonly<Record<string, {
         readonly type: "string" | "boolean";
         readonly multiple?: boolean;
         readonly description: string;
     }>>;
-    // (undocumented)
     readonly run: (args: {
         readonly values: Readonly<Record<string, unknown>>;
         readonly positionals: readonly string[];
@@ -44,15 +39,10 @@ export interface CommandDefinition {
 
 // @public
 export interface CommandHost {
-    // (undocumented)
     readonly gates: ReadonlyMap<string, GateDefinition>;
-    // (undocumented)
     readonly hooks: HookRunner;
-    // (undocumented)
     readonly importers: ReadonlyMap<string, Importer>;
-    // (undocumented)
     readonly measures: ReadonlyMap<string, MeasureDefinition>;
-    // (undocumented)
     readonly out: (text: string) => void;
 }
 
@@ -60,7 +50,6 @@ export interface CommandHost {
 export interface Config<Plugins extends readonly Plugin[] = readonly Plugin[]> {
     readonly allowStability?: readonly Exclude<Stability, "stable">[];
     readonly governance?: string;
-    // (undocumented)
     readonly plugins: Plugins;
     readonly store?: string;
 }
@@ -92,27 +81,16 @@ export function decideEgress(request: EgressRequest, hooks: ReadonlyArray<[Plugi
 
 // @public
 export interface DecideInput {
-    // (undocumented)
     readonly decidedAt: string;
     // Warning: (ae-forgotten-export) The symbol "GateResult" needs to be exported by the entry point index.d.ts
-    //
-    // (undocumented)
     readonly gates: readonly GateResult[];
-    // (undocumented)
     readonly ichnaea: string;
-    // (undocumented)
     readonly plan: Plan;
     // Warning: (ae-forgotten-export) The symbol "Run" needs to be exported by the entry point index.d.ts
-    //
-    // (undocumented)
     readonly run: Run;
     // Warning: (ae-forgotten-export) The symbol "Trial" needs to be exported by the entry point index.d.ts
-    //
-    // (undocumented)
     readonly trials: readonly Trial[];
     // Warning: (ae-forgotten-export) The symbol "MeasureValue" needs to be exported by the entry point index.d.ts
-    //
-    // (undocumented)
     readonly values: readonly MeasureValue[];
 }
 
@@ -125,9 +103,7 @@ export function decidePrimaries(input: PrimariesInput): Map<string, PrimaryVerdi
 // @public
 export interface DecisionView {
     readonly claim: string;
-    // (undocumented)
     readonly differingFactors: readonly string[];
-    // (undocumented)
     readonly flips: ReadonlyArray<{
         readonly measure: string;
         readonly case: string;
@@ -135,29 +111,19 @@ export interface DecisionView {
         readonly base: string;
         readonly candidate: string;
     }>;
-    // (undocumented)
     readonly gates: ReadonlyArray<{
         readonly gate: string;
         readonly result: string;
     }>;
-    // (undocumented)
     readonly limitations: readonly string[];
-    // (undocumented)
     readonly lineage: ReadonlyArray<readonly [string, string]>;
-    // (undocumented)
     readonly measures: readonly MeasureRow[];
     readonly method: string;
-    // (undocumented)
     readonly missingness: string;
-    // (undocumented)
     readonly power: readonly PowerRow[];
-    // (undocumented)
     readonly reason: string;
-    // (undocumented)
     readonly sensitivity: readonly SensitivityRow[];
-    // (undocumented)
     readonly title: string;
-    // (undocumented)
     readonly verdict: string;
 }
 
@@ -189,18 +155,11 @@ export type EgressAnswer = {
 // @public
 export interface EgressRequest {
     // Warning: (ae-forgotten-export) The symbol "DataClass" needs to be exported by the entry point index.d.ts
-    //
-    // (undocumented)
     readonly dataClass: DataClass;
-    // (undocumented)
     readonly destination: string;
-    // (undocumented)
     readonly operation: "sample" | "label-publish" | "promote" | "export" | "share" | "model-call";
-    // (undocumented)
     readonly pointers: readonly string[];
     // Warning: (ae-forgotten-export) The symbol "Purpose" needs to be exported by the entry point index.d.ts
-    //
-    // (undocumented)
     readonly purpose: Purpose;
 }
 
@@ -213,7 +172,6 @@ export class FileStore {
     createRun(records: RunRecords): Promise<void>;
     index(): Promise<RunIndexEntry[]>;
     read(run: string): Promise<StoredRun>;
-    // (undocumented)
     readonly root: string;
     runs(): Promise<string[]>;
     writeDecision(decision: Decision, suite: string): Promise<void>;
@@ -228,11 +186,8 @@ export interface GateDefinition<Id extends string = string> {
         readonly trials: readonly Trial[];
         readonly cases: readonly Case[];
     }) => Omit<GateResult, "gate">;
-    // (undocumented)
     readonly description: string;
-    // (undocumented)
     readonly id: Id;
-    // (undocumented)
     readonly version: string;
 }
 
@@ -248,28 +203,20 @@ export const HOOK_MODES: {
 
 // @public
 export interface HookContext {
-    // (undocumented)
     readonly log: (message: string) => void;
 }
 
 // @public
 export interface HookRunner {
-    // (undocumented)
     beforeEgress(request: EgressRequest): Promise<{
         allow: boolean;
         reasons: string[];
     }>;
-    // (undocumented)
     configResolved(): Promise<void>;
-    // (undocumented)
     decisionMade(decision: Decision): Promise<void>;
-    // (undocumented)
     planCreated(plan: Plan): Promise<Plan>;
-    // (undocumented)
     reportRendered(files: readonly string[]): Promise<void>;
-    // (undocumented)
     runCompleted(run: Run): Promise<void>;
-    // (undocumented)
     trialRecorded(trial: Trial): Promise<void>;
 }
 
@@ -286,67 +233,48 @@ export interface Hooks {
 
 // @public
 export interface Host extends HookRunner {
-    // (undocumented)
     readonly commands: ReadonlyMap<string, CommandDefinition>;
-    // (undocumented)
     readonly gates: ReadonlyMap<string, GateDefinition>;
-    // (undocumented)
     readonly importers: ReadonlyMap<string, Importer>;
-    // (undocumented)
     readonly measures: ReadonlyMap<string, MeasureDefinition>;
-    // (undocumented)
     readonly plugins: readonly Plugin[];
-    // (undocumented)
     readonly warnings: readonly string[];
 }
 
 // @public
 export class HostError extends Error {
-    // (undocumented)
     readonly name = "HostError";
 }
 
 // @public
 export interface HostVersions {
-    // (undocumented)
     readonly contracts: string;
-    // (undocumented)
     readonly core: string;
 }
 
 // @public
 export interface Importer<Id extends string = string> {
-    // (undocumented)
     readonly description: string;
-    // (undocumented)
     readonly id: Id;
-    // (undocumented)
     readonly run: (input: ImportInput) => Promise<ImportResult>;
-    // (undocumented)
     readonly version: string;
 }
 
 // @public
 export class ImportError extends Error {
-    // (undocumented)
     readonly name = "ImportError";
 }
 
 // @public
 export interface ImportInput {
-    // (undocumented)
     readonly files: readonly string[];
-    // (undocumented)
     readonly options: Readonly<Record<string, unknown>>;
 }
 
 // @public
 export interface ImportResult {
-    // (undocumented)
     readonly gates?: readonly GateResult[];
-    // (undocumented)
     readonly trials: readonly Trial[];
-    // (undocumented)
     readonly values: readonly MeasureValue[];
 }
 
@@ -359,52 +287,35 @@ export function importRun(input: ImportRunInput): Promise<{
 
 // @public
 export interface ImportRunInput {
-    // (undocumented)
     readonly arms: ReadonlyArray<{
         readonly name: string;
         readonly role: "base" | "candidate" | "reference";
         readonly configuration: string;
     }>;
-    // (undocumented)
     readonly cases: string;
-    // (undocumented)
     readonly caseSet: string;
-    // (undocumented)
     readonly files: readonly string[];
-    // (undocumented)
     readonly host: Host;
-    // (undocumented)
     readonly ichnaea: string;
-    // (undocumented)
     readonly importer: string;
-    // (undocumented)
     readonly now: string;
-    // (undocumented)
     readonly run: string;
-    // (undocumented)
     readonly seed: number;
-    // (undocumented)
     readonly store: string;
-    // (undocumented)
     readonly suite: string;
-    // (undocumented)
     readonly trigger: Plan["trigger"];
     readonly varies?: readonly string[];
 }
 
 // @public
 export interface LedgerBooking {
-    // (undocumented)
     readonly at: string;
-    // (undocumented)
     readonly calls: number;
-    // (undocumented)
     readonly run: string;
 }
 
 // @public
 export class LedgerError extends Error {
-    // (undocumented)
     readonly name = "LedgerError";
 }
 
@@ -421,8 +332,6 @@ export function main(argv: readonly string[], out?: (text: string) => void, load
 export interface MeasureDefinition<Id extends string = string> {
     readonly appliesTo?: (c: Case) => boolean;
     // Warning: (ae-forgotten-export) The symbol "MeasureCard" needs to be exported by the entry point index.d.ts
-    //
-    // (undocumented)
     readonly card: Omit<MeasureCard, "schema" | "id"> & {
         readonly id: Id;
     };
@@ -437,12 +346,9 @@ export interface MeasureDefinition<Id extends string = string> {
 
 // @public
 export interface MeasureExample {
-    // (undocumented)
     readonly case: Case;
     readonly expected: MeasuredValue | "not-applicable";
-    // (undocumented)
     readonly name: string;
-    // (undocumented)
     readonly trial: Trial;
 }
 
@@ -453,7 +359,6 @@ export type MeasureIdsOf<Plugins extends readonly Plugin[]> = Plugins[number] ex
 
 // @public
 export interface MeasureRow {
-    // (undocumented)
     readonly arms: ReadonlyArray<{
         readonly arm: string;
         readonly rate: string;
@@ -461,7 +366,6 @@ export interface MeasureRow {
         readonly n: string;
         readonly missing: number;
     }>;
-    // (undocumented)
     readonly difference?: {
         readonly estimate: string;
         readonly bound: string;
@@ -477,13 +381,9 @@ export interface MeasureRow {
             readonly validated: boolean;
         };
     };
-    // (undocumented)
     readonly measure: string;
-    // (undocumented)
     readonly notes: readonly string[];
-    // (undocumented)
     readonly tier: string;
-    // (undocumented)
     readonly verdict: string;
 }
 
@@ -495,7 +395,6 @@ export type ModuleLoader = (url: string) => Promise<unknown>;
 
 // @public
 export class MonthlyCapError extends Error {
-    // (undocumented)
     readonly name = "MonthlyCapError";
 }
 
@@ -524,41 +423,28 @@ export type PlanAdditions = Partial<Pick<Plan, "power" | "modeReasons">> & {
 
 // @public
 export class PlanError extends Error {
-    // (undocumented)
     readonly name = "PlanError";
 }
 
 // @public
 export interface PlanInput {
-    // (undocumented)
     readonly arms: ReadonlyArray<{
         readonly name: string;
         readonly role: "base" | "candidate" | "reference";
         readonly configuration: Configuration;
     }>;
     readonly armsToRun?: readonly string[];
-    // (undocumented)
     readonly cases: readonly Case[];
     // Warning: (ae-forgotten-export) The symbol "CaseSet" needs to be exported by the entry point index.d.ts
-    //
-    // (undocumented)
     readonly caseSet: CaseSet;
-    // (undocumented)
     readonly gates: ReadonlyMap<string, GateDefinition>;
-    // (undocumented)
     readonly ichnaea: string;
-    // (undocumented)
     readonly measures: ReadonlyMap<string, MeasureDefinition>;
     readonly monthlyRemaining?: number;
-    // (undocumented)
     readonly now: string;
-    // (undocumented)
     readonly seed: number;
     // Warning: (ae-forgotten-export) The symbol "Suite" needs to be exported by the entry point index.d.ts
-    //
-    // (undocumented)
     readonly suite: Suite;
-    // (undocumented)
     readonly trigger: Plan["trigger"];
     readonly varies?: readonly string[];
 }
@@ -571,33 +457,24 @@ export function planningPower(plan: Plan): PlanAdditions;
 
 // @public
 export interface Plugin<Id extends string = string> {
-    // (undocumented)
     readonly commands?: readonly CommandDefinition[];
-    // (undocumented)
     readonly deprecated?: {
         readonly since: string;
         readonly removeIn: string;
         readonly replacement: string;
         readonly url: string;
     };
-    // (undocumented)
     readonly gates?: readonly GateDefinition<`${Id}/${string}`>[];
-    // (undocumented)
     readonly hooks?: Partial<Hooks>;
-    // (undocumented)
     readonly id: Id;
-    // (undocumented)
     readonly importers?: readonly Importer<`${Id}/${string}`>[];
-    // (undocumented)
     readonly measures?: readonly MeasureDefinition<`${Id}/${string}`>[];
     readonly placement?: "pre" | "post";
     readonly requires?: {
         readonly contracts?: string;
         readonly core?: string;
     };
-    // (undocumented)
     readonly stability: Stability;
-    // (undocumented)
     readonly version: string;
 }
 
@@ -607,47 +484,31 @@ export function points(value: Real | number): string;
 // @public
 export interface PowerRow {
     readonly assumption: string;
-    // (undocumented)
     readonly cases: number;
-    // (undocumented)
     readonly floor: string;
-    // (undocumented)
     readonly margin: string;
-    // (undocumented)
     readonly mde: string;
-    // (undocumented)
     readonly measure: string;
     readonly reach: string;
-    // (undocumented)
     readonly replicates: number;
     readonly statement: "planning" | "this run";
 }
 
 // @public
 export interface PrimariesInput {
-    // (undocumented)
     readonly alpha: number;
-    // (undocumented)
     readonly estimand: Plan["estimand"];
-    // (undocumented)
     readonly measures: readonly PrimaryCounts[];
-    // (undocumented)
     readonly seed: number;
 }
 
 // @public
 export interface PrimaryCounts {
     // Warning: (ae-forgotten-export) The symbol "CaseCounts" needs to be exported by the entry point index.d.ts
-    //
-    // (undocumented)
     readonly cases: readonly CaseCounts[];
-    // (undocumented)
     readonly margin: number;
-    // (undocumented)
     readonly measure: string;
-    // (undocumented)
     readonly safetyMargin?: number;
-    // (undocumented)
     readonly valueType: MeasuredValue["type"];
 }
 
@@ -655,13 +516,9 @@ export interface PrimaryCounts {
 export interface PrimaryVerdict {
     readonly cause?: "cannot-tell" | "unvalidated" | "non-inferiority-unvalidated" | "no-comparison";
     // Warning: (ae-forgotten-export) The symbol "Comparison" needs to be exported by the entry point index.d.ts
-    //
-    // (undocumented)
     readonly comparison?: Comparison;
-    // (undocumented)
     readonly notes: readonly string[];
     readonly regressionPAdjusted?: number;
-    // (undocumented)
     readonly verdict: "NON-INFERIOR" | "REGRESSION" | "INCONCLUSIVE";
 }
 
@@ -677,9 +534,7 @@ export function recompute(records: {
 
 // @public
 export interface RecomputeResult {
-    // (undocumented)
     readonly differences: readonly string[];
-    // (undocumented)
     readonly matches: boolean;
 }
 
@@ -697,29 +552,19 @@ export function reportPlugin(): Plugin<"report">;
 
 // @public
 export interface RunIndexEntry {
-    // (undocumented)
     readonly decidedAt: string;
-    // (undocumented)
     readonly plan: string;
-    // (undocumented)
     readonly run: string;
-    // (undocumented)
     readonly suite: string;
-    // (undocumented)
     readonly verdict: "PASS" | "REGRESSION" | "INCONCLUSIVE" | "INVALID" | null;
 }
 
 // @public
 export interface RunRecords {
-    // (undocumented)
     readonly gates: readonly GateResult[];
-    // (undocumented)
     readonly plan: Plan;
-    // (undocumented)
     readonly run: Run;
-    // (undocumented)
     readonly trials: readonly Trial[];
-    // (undocumented)
     readonly values: readonly MeasureValue[];
 }
 
@@ -731,18 +576,12 @@ export function scoreTrials(measures: readonly MeasureDefinition[], trials: read
 
 // @public
 export interface SensitivityRow {
-    // (undocumented)
     readonly bound: string;
-    // (undocumented)
     readonly changes: string;
-    // (undocumented)
     readonly difference: string;
-    // (undocumented)
     readonly imputation: string;
-    // (undocumented)
     readonly measure: string;
     readonly validated: boolean;
-    // (undocumented)
     readonly verdict: string;
 }
 
@@ -754,23 +593,18 @@ export const STALE_LOCK_MS = 30000;
 
 // @public
 export interface StoredRun extends RunRecords {
-    // (undocumented)
     readonly decision?: Decision;
 }
 
 // @public
 export class StoreError extends Error {
-    // (undocumented)
     readonly name = "StoreError";
 }
 
 // @public
 export interface TesterResult {
-    // (undocumented)
     readonly digest: string;
-    // (undocumented)
     readonly failures: readonly string[];
-    // (undocumented)
     readonly status: "passed" | "failed";
 }
 
@@ -786,8 +620,8 @@ export const TRIGGER_VARIES: {
 
 // Warnings were encountered during analysis:
 //
-// src/core/planner.ts:30:5 - (ae-forgotten-export) The symbol "Configuration" needs to be exported by the entry point index.d.ts
-// src/core/plugin.ts:58:5 - (ae-forgotten-export) The symbol "Case" needs to be exported by the entry point index.d.ts
+// src/core/planner.ts:35:5 - (ae-forgotten-export) The symbol "Configuration" needs to be exported by the entry point index.d.ts
+// src/core/plugin.ts:65:5 - (ae-forgotten-export) The symbol "Case" needs to be exported by the entry point index.d.ts
 
 // (No @packageDocumentation comment for this package)
 
