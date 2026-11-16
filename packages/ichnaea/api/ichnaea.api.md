@@ -104,6 +104,12 @@ export interface CommandHost {
 }
 
 // @public
+export function compare(plan: SuitePlan, records: RunRecords, options: {
+    readonly decidedAt: string;
+    readonly aa?: readonly AaEvidence[];
+}): Decision;
+
+// @public
 export interface CompletedRow extends ResultRowBase {
     // Warning: (ae-forgotten-export) The symbol "Configuration" needs to be exported by the entry point index.d.ts
     readonly configuration: string | Configuration;
@@ -134,7 +140,7 @@ export function createHost(config: Config, versions: HostVersions, log?: (messag
 export function createPlan<const S extends SuiteDefinition>(suite: S, comparison: PlanComparison): SuitePlan<S>;
 
 // @public
-export function decide(input: DecideInput): Promise<Decision>;
+export function decide(input: DecideInput): Decision;
 
 // @public
 export function decideEgress(request: EgressRequest, hooks: ReadonlyArray<[Plugin, NonNullable<Hooks["beforeEgress"]>]>, ctx: HookContext, governance?: string): Promise<{
@@ -642,7 +648,7 @@ export function recompute(records: {
         plan: Plan;
         run: Run;
     }[];
-}): Promise<RecomputeResult>;
+}): RecomputeResult;
 
 // @public
 export interface RecomputeResult {

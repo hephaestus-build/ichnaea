@@ -11,3 +11,4 @@ export {
 export { describeCounts, plannedTrialsPerCase, planningPower } from "./planning.ts";
 export * from "./plugin.ts";
 export { createPlan, type PlanComparison } from "./plan.ts";
+export { compare } from "./compare.ts";

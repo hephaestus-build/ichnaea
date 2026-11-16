@@ -6,7 +6,7 @@ import { decide, exitCode, planningPower } from "../../src/decide/index.ts";
 import { decideFloorSet, FLOOR_REASON } from "./support/floor-set.ts";
 import { type Scenario, scenario } from "./support/scenario.ts";
 
-const run = (s: Scenario): Promise<Decision> =>
+const run = (s: Scenario): Decision =>
   decide({ ...s, decidedAt: "2026-11-15T12:00:00Z", ichnaea: "0.0.0" });
 const failedGate = {
   hardGates: ["app/schema"],

@@ -43,8 +43,8 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "verifyArms ignored",
     file: D,
-    from: "for (const error of await verifyArms(plan.arms))",
-    to: "for (const error of [] as Awaited<ReturnType<typeof verifyArms>>)",
+    from: "for (const error of verifyArms(plan.arms))",
+    to: "for (const error of [] as ReturnType<typeof verifyArms>)",
   },
   {
     id: "base without values allowed",
@@ -253,7 +253,7 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "a/a: the cited digest unchecked",
     file: D,
-    from: "    if ((await digest(e.decision)) !== cite)",
+    from: "    if (digest(e.decision) !== cite)",
     to: "    if (false)",
   },
   {
