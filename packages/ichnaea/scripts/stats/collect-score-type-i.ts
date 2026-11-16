@@ -17,6 +17,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { metaPath, repoRoot } from "./provenance.ts";
 import {
@@ -84,7 +85,7 @@ function readPhase(
   for (let i = 0; i < count; i++)
     if (!indices.has(i)) problems.push(`${phase}: shard ${i} of ${count} is missing`);
   // The scripts that ran are compared with this checkout, wherever the outputs are.
-  const root = repoRoot(new URL(import.meta.url).pathname);
+  const root = repoRoot(fileURLToPath(import.meta.url));
   const rows: Row[] = [];
   const commits = new Set<string>();
   let files0: string | undefined;
