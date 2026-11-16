@@ -18,10 +18,18 @@ export interface RuleSettings {
    * reach it (AC1 for yes/no labels, ordinal alpha for levels).
    */
   readonly raterFloor?: { readonly ac1: number; readonly alpha: number };
+  /**
+   * The equivalence margin of the bias between base and candidate: its 90 % interval must lie
+   * within ±margin (yes/no labels, and levels normalized to [0, 1]).
+   */
+  readonly armBiasMargin?: { readonly binary: number; readonly levels: number };
 }
 
 /** The registered rater floor: AC1 ≥ 0.60 (yes/no) or ordinal alpha ≥ 0.667 (levels). */
 export const RATER_FLOOR = { ac1: 0.6, alpha: 0.667 } as const;
+
+/** The registered equivalence margins of the bias between base and candidate. */
+export const ARM_BIAS_MARGIN = { binary: 0.2, levels: 0.15 } as const;
 
 export const DEFAULT_SETTINGS: RuleSettings = {
   agreementTolerance: 0.15,
@@ -33,7 +41,9 @@ export const DEFAULT_SETTINGS: RuleSettings = {
  * The conditions this rule reports, all status conditions:
  * - `ratersFloor`, the precondition: rater–rater agreement reaches RATER_FLOOR;
  * - yes/no judges: `ac1` (the agreement gap D with AC1), `sensitivity` and `specificity`;
- * - level judges: `alphaOrdinal` (the agreement gap D with ordinal alpha).
+ * - level judges: `alphaOrdinal` (the agreement gap D with ordinal alpha);
+ * - `armBias`: the 90 % interval of the bias between base and candidate lies within
+ *   ±ARM_BIAS_MARGIN. The known-worse configuration takes no part in it.
  * Alpha's absolute benchmark applies to the raters (the floor), never to the judge's own alpha.
  */
 export const CONDITIONS = [
@@ -42,6 +52,7 @@ export const CONDITIONS = [
   "sensitivity",
   "specificity",
   "alphaOrdinal",
+  "armBias",
 ] as const;
 
 /** R's type-7 quantile of a sorted array. */
@@ -183,7 +194,8 @@ function pairChange(study: RatedStudy, answers: Answers, labels: (i: number) => 
  *   −agreementTolerance, and the lower bounds of the sensitivity gap and of the specificity gap are
  *   each at least −rateTolerance;
  * - level judges pass when the lower bound of the ordinal alpha gap D is at least −agreementTolerance;
- * - the shown bias bound is max(|lower|, |upper|) of the two-sided 90 % interval of the bias.
+ * - every judge needs the rater floor, and the shown bias bound, max(|lower|, |upper|) of the
+ *   two-sided 90 % interval of the bias between base and candidate, at most its margin.
  * Every statistic is weighted by 1/π. The intervals come from one bootstrap that resamples whole
  * cases (items) within their strata. A resample in which a status statistic is undefined (no
  * positive or no negative to condition on, or an undefined alpha) is counted in `nanReplicates` and
@@ -267,6 +279,10 @@ export function calibrationRule(settings: RuleSettings = DEFAULT_SETTINGS): Cali
     const sortedBiases = biases.filter((x) => !Number.isNaN(x)).toSorted((x, y) => x - y);
     const lower = quantile(sortedBiases, 0.05);
     const upper = quantile(sortedBiases, 0.95);
+    const shownBound = Math.max(Math.abs(lower), Math.abs(upper));
+    conditions["armBias"] =
+      shownBound <=
+      (settings.armBiasMargin ?? ARM_BIAS_MARGIN)[study.scale === "levels" ? "levels" : "binary"];
     const all = study.caseOf.map((_, i) => i);
     const slope = hasPair
       ? (() => {
@@ -282,9 +298,9 @@ export function calibrationRule(settings: RuleSettings = DEFAULT_SETTINGS): Cali
         })()
       : undefined;
     return {
-      pass: conditions["ratersFloor"] === true && status.every((name) => conditions[name] === true),
+      pass: Object.values(conditions).every((held) => held),
       conditions,
-      shownBound: Math.max(Math.abs(lower), Math.abs(upper)),
+      shownBound,
       armBias,
       nanReplicates,
       replicates: settings.resamples,

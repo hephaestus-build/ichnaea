@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { CONDITIONS, calibrationRule, weightedAc1 } from "../../scripts/stats/calibration-rule.ts";
+import {
+  ARM_BIAS_MARGIN,
+  CONDITIONS,
+  calibrationRule,
+  weightedAc1,
+} from "../../scripts/stats/calibration-rule.ts";
 import {
   CELLS,
   CHATBOT,
@@ -84,6 +89,14 @@ describe("the judge calibration rule study, smoke run", () => {
     expect(smoke("levels-equal").pass).toBeLessThanOrEqual(holds("levels-equal", "alphaOrdinal"));
   });
 
+  it("holds a judge to the bias gate between base and candidate", () => {
+    expect(holds("binary-equal", "armBias")).toBeGreaterThan(holds("binary-bias-0.15", "armBias"));
+    expect(holds("levels-equal", "armBias")).toBeGreaterThan(holds("levels-shift-0.50", "armBias"));
+    expect(smoke("binary-bias-0.15").pass).toBeLessThanOrEqual(
+      holds("binary-bias-0.15", "armBias"),
+    );
+  });
+
   it("sees the bias between the two configurations in its direction and size", () => {
     expect(Math.abs(smoke("binary-equal").meanArmBias)).toBeLessThan(0.03);
     expect(smoke("binary-bias-0.15").meanArmBias).toBeLessThan(-0.12);
@@ -139,12 +152,39 @@ describe("the rule is a parameter of the study", () => {
     expect(result.withinMargin).toEqual(MARGINS.map((m) => (0.12 <= m ? 1 : 0)));
   });
 
+  it.each([
+    ["binary", 0, "binary"],
+    ["levels", CELLS.findIndex((c) => c.id === "levels-equal"), "levels"],
+  ] as const)("gates the %s bias at its margin, inclusive", (_scale, index, key) => {
+    const study = drawStudy(CELLS[index]!, createRng(9));
+    const at = (margin: number): boolean =>
+      calibrationRule({
+        agreementTolerance: 0.15,
+        rateTolerance: 0.1,
+        resamples: 200,
+        armBiasMargin: { binary: 1, levels: 1, [key]: margin },
+      }).evaluate(study, createRng(10)).conditions["armBias"]!;
+    const bound = rule.evaluate(study, createRng(10)).shownBound;
+    expect(bound).toBeGreaterThan(0);
+    expect(at(bound)).toBe(true);
+    expect(at(bound - 1e-9)).toBe(false);
+  });
+
+  it("uses the registered margins, 0.20 for yes/no and 0.15 for levels", () => {
+    expect(ARM_BIAS_MARGIN).toEqual({ binary: 0.2, levels: 0.15 });
+  });
+
   it("passes a judge that copies the raters, with no bias", () => {
     const study = drawStudy(CELLS[0]!, createRng(7));
     const copy = { ...study, second: study.first, judge: study.first };
     const outcome = rule.evaluate(copy, createRng(8));
     expect(outcome.pass).toBe(true);
-    expect(outcome.conditions).toMatchObject({ sensitivity: true, specificity: true, ac1: true });
+    expect(outcome.conditions).toMatchObject({
+      sensitivity: true,
+      specificity: true,
+      ac1: true,
+      armBias: true,
+    });
     expect(outcome.shownBound).toBe(0);
     expect(outcome.armBias).toBe(0);
   });
