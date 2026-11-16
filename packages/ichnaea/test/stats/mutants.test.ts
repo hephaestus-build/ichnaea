@@ -45,14 +45,15 @@ describe("the mutation harness", () => {
     ]);
   });
 
-  it("fails the run on a broken anchor before it changes any file or runs a test", () => {
-    const text = "const a = 1;\n";
+  it("fails the run on an anchor that matches no place or two, before it changes any file", () => {
+    const text = "const a = 1;\nconst b = 2;\nconst b = 2;\n";
     const dir = scratch(text);
     const lines: string[] = [];
     const code = runMutants(
       [
         { id: "applies", file: "source.ts", from: "const a = 1;", to: "const a = 0;" },
         { id: "broken", file: "source.ts", from: "const a = 2;", to: "const a = 0;" },
+        { id: "duplicate", file: "source.ts", from: "const b = 2;", to: "const b = 0;" },
       ],
       dir,
       [],
@@ -61,9 +62,18 @@ describe("the mutation harness", () => {
     expect(code).toBe(1);
     expect(lines).toEqual([
       "broken: its anchor occurs 0 times in source.ts, not once",
-      "1 mutant(s) cannot apply: update them before running any",
+      "duplicate: its anchor occurs 2 times in source.ts, not once",
+      "2 mutant(s) cannot apply: update them before running any",
     ]);
     // Nothing was mutated, so no test run could have been started against a changed source.
     expect(readFileSync(join(dir, "source.ts"), "utf8")).toBe(text);
+  });
+
+  it("fails the run on a duplicate anchor alone", () => {
+    const dir = scratch("const b = 2;\nconst b = 2;\n");
+    const lines: string[] = [];
+    const duplicate: Mutant = { id: "duplicate", file: "source.ts", from: "const b = 2;", to: "x" };
+    expect(runMutants([duplicate], dir, [], (line) => lines.push(line))).toBe(1);
+    expect(lines[0]).toBe("duplicate: its anchor occurs 2 times in source.ts, not once");
   });
 });
