@@ -1,6 +1,6 @@
 {
   "name": "@hephaestus-build/ichnaea-report",
-  "version": "0.1.0",
+  "version": "0.0.0",
   "description": "Ichnaea reports: one view model per decision, rendered as a Markdown CI summary and a static HTML report, with a recompute check.",
   "license": "MIT",
   "repository": {
