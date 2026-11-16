@@ -22,6 +22,15 @@ const fixture = (kind: string, name: string): Record<string, unknown> =>
     readFileSync(join(import.meta.dirname, "..", "..", "fixtures", kind, name), "utf8"),
   ) as Record<string, unknown>;
 
+/** The data policy of the member at a path in a record's published writer schema. */
+const policyAt = (name: string, path: readonly string[]): unknown =>
+  path.reduce<Record<string, unknown>>(
+    (node, key) => node[key] as Record<string, unknown>,
+    JSON.parse(
+      readFileSync(join(import.meta.dirname, "..", "..", "schemas", `${name}.schema.json`), "utf8"),
+    ) as Record<string, unknown>,
+  )["x-ichnaea-data"];
+
 describe("the worker protocol", () => {
   it("has four failure classes, and a malformed request is a protocol failure", () => {
     expect(TrialFailure.shape.class.options).toEqual([
@@ -214,13 +223,38 @@ describe("the worker protocol", () => {
     }
   });
 
-  it("names the traces that the trial produced, and whether the system ended them all", () => {
+  it("names the traces that the trial produced, with the spans ended in each", () => {
     const result = TrialResult.parse(fixture("valid-extra", "trialResult/traced.json"));
     expect(result.trace).toEqual({
-      ids: ["4bf92f3577b34da6a3ce929d0e0e4736"],
-      spans: 7,
+      ids: ["4bf92f3577b34da6a3ce929d0e0e4736", "0af7651916cd43dd8448eb211c80319c"],
+      spans: { "4bf92f3577b34da6a3ce929d0e0e4736": 7 },
       complete: true,
     });
+    const record = fixture("valid-extra", "trialResult/traced.json");
+    const trace = record["trace"] as Record<string, unknown>;
+    // One count per trace: a single total cannot say which trace is short of spans.
+    for (const spans of [7, { "not-a-trace-id": 7 }, { "4bf92f3577b34da6a3ce929d0e0e4736": -1 }])
+      expect(TrialResult.safeParse({ ...record, trace: { ...trace, spans } }).success).toBe(false);
+  });
+
+  it("gives the names and paths that a worker chooses the class of the record's content", () => {
+    // A worker may name a file after its input, so these strings take the record's class.
+    const at = policyAt;
+    const inherits = { class: "inherit", identifier: "quasi" };
+    const artifact = ["properties", "artifacts", "items", "properties"];
+    for (const path of [
+      [...artifact, "name"],
+      [...artifact, "path"],
+      ["properties", "events", "items", "properties", "artifact"],
+      ["properties", "observed", "properties", "environment"],
+      ["properties", "observed", "properties", "modules"],
+    ])
+      expect(at("trialResult", path), path.join(".")).toMatchObject(inherits);
+    const copy = ["properties", "units", "items", "properties", "artifacts", "items", "properties"];
+    for (const key of ["name", "path"])
+      expect(at("scoreRequest", [...copy, key]), key).toMatchObject(inherits);
+    // The directories that Ichnaea makes for a request stay class none.
+    expect(at("trialRequest", ["properties", "workdir"])).toMatchObject({ class: "none" });
   });
 
   it("takes no non-finite number anywhere, as strict JSON cannot hold one", () => {

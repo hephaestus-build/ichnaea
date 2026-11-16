@@ -19,10 +19,10 @@ export const ScoreUnit = z.strictObject({
   artifacts: z
     .array(
       z.strictObject({
-        /** The artifact's name in the trial result. */
-        name: none(Text),
-        /** Where the writable copy is. */
-        path: none(Text),
+        /** The artifact's name in the trial result. The worker chose it. */
+        name: attribute(Text),
+        /** Where the writable copy is. It can hold the artifact's name. */
+        path: attribute(Text),
       }),
     )
     .optional(),

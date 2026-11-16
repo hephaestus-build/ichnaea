@@ -3723,7 +3723,7 @@ export const TrialResult: z.ZodObject<{
     }, z.core.$strict>;
     trace: z.ZodOptional<z.ZodObject<{
         ids: z.ZodArray<z.ZodString>;
-        spans: z.ZodOptional<z.ZodInt>;
+        spans: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodInt>>;
         complete: z.ZodBoolean;
     }, z.core.$strict>>;
 }, z.core.$strict>;
@@ -3734,7 +3734,7 @@ export type TrialResult = z.infer<typeof TrialResult>;
 // @public
 export const TrialTrace: z.ZodObject<{
     ids: z.ZodArray<z.ZodString>;
-    spans: z.ZodOptional<z.ZodInt>;
+    spans: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodInt>>;
     complete: z.ZodBoolean;
 }, z.core.$strict>;
 

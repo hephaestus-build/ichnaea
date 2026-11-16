@@ -219,24 +219,24 @@
                   "type": "string",
                   "minLength": 1,
                   "x-ichnaea-data": {
-                    "class": "none",
-                    "identifier": "none",
+                    "class": "inherit",
+                    "identifier": "quasi",
                     "egress": [
                       "*"
                     ],
-                    "retention": "record"
+                    "retention": "subject"
                   }
                 },
                 "path": {
                   "type": "string",
                   "minLength": 1,
                   "x-ichnaea-data": {
-                    "class": "none",
-                    "identifier": "none",
+                    "class": "inherit",
+                    "identifier": "quasi",
                     "egress": [
                       "*"
                     ],
-                    "retention": "record"
+                    "retention": "subject"
                   }
                 }
               },
@@ -303,12 +303,12 @@
                   "type": "string",
                   "minLength": 1,
                   "x-ichnaea-data": {
-                    "class": "none",
-                    "identifier": "none",
+                    "class": "inherit",
+                    "identifier": "quasi",
                     "egress": [
                       "*"
                     ],
-                    "retention": "record"
+                    "retention": "subject"
                   }
                 },
                 "replayed": {

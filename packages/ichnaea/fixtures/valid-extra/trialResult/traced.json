@@ -85,9 +85,12 @@
   },
   "trace": {
     "ids": [
-      "4bf92f3577b34da6a3ce929d0e0e4736"
+      "4bf92f3577b34da6a3ce929d0e0e4736",
+      "0af7651916cd43dd8448eb211c80319c"
     ],
-    "spans": 7,
+    "spans": {
+      "4bf92f3577b34da6a3ce929d0e0e4736": 7
+    },
     "complete": true
   }
 }

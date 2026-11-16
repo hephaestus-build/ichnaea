@@ -757,6 +757,14 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
     "trace-without-ids": (r) => (r["trace"] = { ids: [], complete: true }),
     "trace-id-too-short": (r) => (r["trace"] = { ids: ["4bf92f35"], complete: true }),
     "trace-without-complete": (r) => (r["trace"] = { ids: ["4bf92f3577b34da6a3ce929d0e0e4736"] }),
+    "trace-spans-as-a-total": (r) =>
+      (r["trace"] = { ids: ["4bf92f3577b34da6a3ce929d0e0e4736"], spans: 7, complete: true }),
+    "trace-spans-keyed-by-a-name": (r) =>
+      (r["trace"] = {
+        ids: ["4bf92f3577b34da6a3ce929d0e0e4736"],
+        spans: { answer: 7 },
+        complete: true,
+      }),
     "route-as-url": (r) =>
       ((r["observed"] as Record<string, unknown>)["route"] = "https://api.example.com/v1"),
     "short-commit": (r) =>
@@ -1037,8 +1045,13 @@ export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
       ];
       (r["events"] as Array<Record<string, unknown>>)[1]!["artifact"] = "exercise";
     },
+    // Two traces, one of which the SDK gave no count for.
     traced: (r) =>
-      (r["trace"] = { ids: ["4bf92f3577b34da6a3ce929d0e0e4736"], spans: 7, complete: true }),
+      (r["trace"] = {
+        ids: ["4bf92f3577b34da6a3ce929d0e0e4736", "0af7651916cd43dd8448eb211c80319c"],
+        spans: { "4bf92f3577b34da6a3ce929d0e0e4736": 7 },
+        complete: true,
+      }),
     "replayed-stage": (r) => {
       const search = (r["events"] as Array<Record<string, unknown>>)[0]!;
       delete search["output"];

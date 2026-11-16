@@ -163,24 +163,24 @@
             "type": "string",
             "minLength": 1,
             "x-ichnaea-data": {
-              "class": "none",
-              "identifier": "none",
+              "class": "inherit",
+              "identifier": "quasi",
               "egress": [
                 "*"
               ],
-              "retention": "record"
+              "retention": "subject"
             }
           },
           "path": {
             "type": "string",
             "minLength": 1,
             "x-ichnaea-data": {
-              "class": "none",
-              "identifier": "none",
+              "class": "inherit",
+              "identifier": "quasi",
               "egress": [
                 "*"
               ],
-              "retention": "record"
+              "retention": "subject"
             }
           },
           "mediaType": {
@@ -276,12 +276,12 @@
             "type": "string",
             "minLength": 1,
             "x-ichnaea-data": {
-              "class": "none",
-              "identifier": "none",
+              "class": "inherit",
+              "identifier": "quasi",
               "egress": [
                 "*"
               ],
-              "retention": "record"
+              "retention": "subject"
             }
           },
           "replayed": {
@@ -779,12 +779,12 @@
             "minLength": 1
           },
           "x-ichnaea-data": {
-            "class": "none",
-            "identifier": "none",
+            "class": "inherit",
+            "identifier": "quasi",
             "egress": [
               "*"
             ],
-            "retention": "record"
+            "retention": "subject"
           }
         },
         "modules": {
@@ -794,12 +794,12 @@
             "minLength": 1
           },
           "x-ichnaea-data": {
-            "class": "none",
-            "identifier": "none",
+            "class": "inherit",
+            "identifier": "quasi",
             "egress": [
               "*"
             ],
-            "retention": "record"
+            "retention": "subject"
           }
         }
       },
@@ -833,9 +833,16 @@
           }
         },
         "spans": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 9007199254740991,
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{32}$"
+          },
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
           "x-ichnaea-data": {
             "class": "none",
             "identifier": "none",

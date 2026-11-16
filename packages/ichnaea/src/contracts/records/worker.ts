@@ -216,14 +216,16 @@ export const ObservedConfiguration = z.strictObject({
   configurationRead: none(z.array(Text)),
   /**
    * The identity of each service factor that the system read, by factor name, such as the
-   * snapshot ID of a search index. Ichnaea computes the digest of a path factor itself.
+   * snapshot ID of a search index. Ichnaea computes the digest of a path factor itself. The
+   * system reports the identities, so they have the class of the record's content.
    */
-  environment: none(z.record(Text, Text)),
+  environment: attribute(z.record(Text, Text)),
   /**
    * The code files that the process loaded from outside its arm's directory, or its entry path,
-   * so that Ichnaea can check that an arm ran only its own code.
+   * so that Ichnaea can check that an arm ran only its own code. The paths are the worker's, so
+   * they have the class of the record's content.
    */
-  modules: none(z.array(Text)).optional(),
+  modules: attribute(z.array(Text)).optional(),
 });
 /** An observed configuration. */
 export type ObservedConfiguration = z.infer<typeof ObservedConfiguration>;
@@ -252,8 +254,11 @@ export const StageEvent = z.strictObject({
   ran: none(z.boolean()),
   /** What the stage produced. */
   output: content(Json).optional(),
-  /** The name of the entry in `artifacts` that holds what the stage produced. */
-  artifact: none(Text).optional(),
+  /**
+   * The name of the entry in `artifacts` that holds what the stage produced. The worker chooses
+   * it, so it has the class of the record's content.
+   */
+  artifact: attribute(Text).optional(),
   /** The digest of the frozen input that the stage consumed, on a replayed stage. */
   replayed: none(Digest).optional(),
   /** When the stage started, as the system reports it. */
@@ -269,13 +274,15 @@ export type StageEvent = z.infer<typeof StageEvent>;
 /**
  * A file or a directory that a trial produced, inside the request's `workdir`. Ichnaea hashes and
  * stores it itself, so the worker sends no digest. An artifact over the size limit makes the trial
- * a failure of the system, not of the protocol.
+ * a failure of the system, not of the protocol. The worker chooses its name and path, which can
+ * hold text from the case, such as a file named after the input, so both have the class of the
+ * record's content.
  */
 export const Artifact = z.strictObject({
   /** The artifact's name, unique within the result. */
-  name: none(Text),
+  name: attribute(Text),
   /** Where the artifact is, inside `workdir`. */
-  path: none(Text),
+  path: attribute(Text),
   /** The media type, such as `application/json`, or `inode/directory` for a directory. */
   mediaType: none(
     z
@@ -369,8 +376,12 @@ export const TrialTrace = z.strictObject({
    * context, or the system's own, such as one per turn of a chat behind a socket.
    */
   ids: none(z.array(TraceId).min(1)),
-  /** The number of spans that the system's SDK ended in those traces, when it knows it. */
-  spans: none(z.int().min(0)).optional(),
+  /**
+   * The spans that the system's SDK ended in each trace, by a trace ID in `ids`, one count per
+   * trace. A trace without a count falls back to the stage map's rule for a complete trace. A
+   * schema cannot check that a key is in `ids`, so whoever reads the result checks it.
+   */
+  spans: none(z.record(TraceId, z.int().min(0))).optional(),
   /** Whether the system reports that it ended and exported every span of those traces. */
   complete: none(z.boolean()),
 });
