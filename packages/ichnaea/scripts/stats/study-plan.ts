@@ -21,13 +21,15 @@ export const PROCESSES = 4;
 export const MAX_MATRIX_JOBS = 256;
 
 /**
- * Jobs of one matrix that run at the same time. The organisation's repositories share 60
- * concurrent jobs, and the other repositories' merge queues must never wait for a study, so a
- * study takes at most 30 of them and 20 by default.
+ * Jobs of one matrix that run at the same time. The organisation's repositories share one pool of
+ * runners, and Ichnaea keeps within 20 of them, its pull request CI included, so that the other
+ * repositories' merge queues never wait for it. One heavy workflow runs at a time (the shared
+ * concurrency group `heavy-runners`) and one of its matrices at a time, so a matrix takes at most 14
+ * runners and 12 by default, which leaves room for the CI of the pull request at the front.
  */
-export const DEFAULT_MAX_PARALLEL = 20;
+export const DEFAULT_MAX_PARALLEL = 12;
 /** The most jobs of one matrix that a study may run at once. */
-export const MAX_PARALLEL_CAP = 30;
+export const MAX_PARALLEL_CAP = 14;
 
 /** Parses the jobs of one matrix that run at once: a whole number from 1 to MAX_PARALLEL_CAP. */
 export function maxParallelOf(text: string | undefined): number {
@@ -35,7 +37,7 @@ export function maxParallelOf(text: string | undefined): number {
   const n = Number(text);
   if (!Number.isInteger(n) || n < 1 || n > MAX_PARALLEL_CAP)
     throw new RangeError(
-      `max-parallel must be a whole number from 1 to ${MAX_PARALLEL_CAP}, so that other repositories keep runners; got '${text}'`,
+      `max-parallel must be a whole number from 1 to ${MAX_PARALLEL_CAP}, so that Ichnaea keeps within 20 runners of the shared pool; got '${text}'`,
     );
   return n;
 }

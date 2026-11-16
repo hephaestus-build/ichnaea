@@ -264,27 +264,23 @@ export function canonicalize(value: unknown): string;
 
 // @public
 export const CARD_LABELS: readonly [{
-    readonly label: "REGRESSION";
+    readonly label: "Regression";
     readonly symbol: "✗";
     readonly verdict: "REGRESSION";
 }, {
-    readonly label: "PASS";
+    readonly label: "Pass";
     readonly symbol: "✓";
     readonly verdict: "PASS";
 }, {
-    readonly label: "NO DECREASE DETECTED";
-    readonly symbol: "○";
-    readonly verdict: "INCONCLUSIVE";
-}, {
-    readonly label: "INCONCLUSIVE";
+    readonly label: "Inconclusive";
     readonly symbol: "?";
     readonly verdict: "INCONCLUSIVE";
 }, {
-    readonly label: "INVALID";
+    readonly label: "Invalid";
     readonly symbol: "!";
     readonly verdict: "INVALID";
 }, {
-    readonly label: "ESTIMATE ONLY";
+    readonly label: "Estimate only";
     readonly symbol: "·";
     readonly verdict: null;
 }];
@@ -826,7 +822,7 @@ export function configurationIdentity(input: unknown): Promise<ConfigurationIden
 export function content<T extends z.ZodType>(schema: T): T;
 
 // @public
-export const CONTEXT_SLOTS: readonly ["measure", "margin", "change", "bound", "cases", "caseNoun", "trials", "changed", "broke", "fixed", "test", "p", "rawP", "m"];
+export const CONTEXT_SLOTS: readonly ["measure", "margin", "change", "bound", "cases", "caseNoun", "trials", "changed", "broke", "fixed", "test", "p", "rawP", "m", "side"];
 
 // @public
 export type ContextSlot = (typeof CONTEXT_SLOTS)[number];
