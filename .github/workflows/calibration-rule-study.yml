@@ -1,0 +1,51 @@
+name: Calibration rule study
+
+# The operating characteristics of the judge calibration rule
+# (packages/ichnaea/scripts/stats/study-calibration-rule.ts): one job runs four shard processes,
+# then merges them into the output with its provenance sidecar, kept as an artifact. Started by
+# hand only; nothing here writes to the repository.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Ichnaea's heavy workflows share one concurrency group, so at most one of them runs at a time and
+# Ichnaea keeps within 20 runners of the organisation's shared pool. This study takes one runner.
+concurrency:
+  group: heavy-runners
+  cancel-in-progress: false
+
+# The runtime that every published run of a study uses (REQ-83); the sidecar records it.
+env:
+  NODE_VERSION: 24.22.2
+
+jobs:
+  study:
+    name: study
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Four shards, then the merge
+        working-directory: packages/ichnaea
+        run: |
+          pids=()
+          for i in 0 1 2 3; do
+            node scripts/stats/study-calibration-rule.ts shard --shard "$i/4" --out "$RUNNER_TEMP/shards" &
+            pids+=("$!")
+          done
+          # Every shard must succeed: a bare `wait` would hide a failed one.
+          for pid in "${pids[@]}"; do wait "$pid"; done
+          node scripts/stats/study-calibration-rule.ts merge --in "$RUNNER_TEMP/shards" validation/calibration-rule.tsv
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: calibration-rule
+          path: |
+            packages/ichnaea/validation/calibration-rule.tsv
+            packages/ichnaea/validation/calibration-rule.tsv.meta.json
