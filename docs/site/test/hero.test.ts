@@ -52,11 +52,11 @@ describe("hero figure", () => {
   });
 
   // Until lintCard lands (UX-CARDS L19), these check its two rules that the hero can break:
-  // L5, the REGRESSION card's margin sentence, and L2, the label of a bound that is not validated.
-  it("keeps the margin sentence and the bound's label in the figure and the text alternative", () => {
+  // L5, the Regression card's limit sentence, and L2, the label of a bound that is not validated.
+  it("keeps the limit sentence and the bound's label in the figure and the text alternative", () => {
     const svg = renderHero(regressed, "light");
     for (const text of [visibleText(svg), heroAlt(regressed)]) {
-      expect(text).toContain("This does not establish that the loss exceeds the 15-point margin.");
+      expect(text).toContain("This does not establish that the loss exceeds the 15-point limit.");
       expect(text).toMatch(/descriptive one-sided 95% bound[^.]*not validated/i);
     }
     expect(heroAlt(regressed)).toContain(
@@ -67,11 +67,11 @@ describe("hero figure", () => {
   it("is an accessible image whose description states the strip", () => {
     const svg = renderHero(regressed, "light");
     expect(svg).toContain('role="img"');
-    expect(svg).toContain('<title id="title">✗ Support answers · REGRESSION</title>');
+    expect(svg).toContain('<title id="title">✗ Support answers · Regression</title>');
     expect(heroAlt(regressed)).toContain(
       "support-03 (3 of 3 passed in the base, 0 of 3 in the candidate)",
     );
-    expect(heroAlt(regressed)).toContain("CI policy: block.");
+    expect(heroAlt(regressed)).toContain(regressed.policy.line);
   });
 
   it("reads the card's fields, and refuses a card that lacks one", () => {
@@ -88,7 +88,7 @@ describe("hero figure", () => {
     expect(wrap("aa bb cc dd", 5)).toEqual(["aa bb", "cc dd"]);
     const svg = renderHero(regressed, "light");
     expect(svg).toContain(
-      ">This does not establish that the loss exceeds the 15-point margin. Until the margin check is validated,",
+      ">This does not establish that the loss exceeds the 15-point limit. Until the limit check is validated,",
     );
   });
 

@@ -11,13 +11,13 @@
   },
   "_fixture": "Hand-written in the draft card shape, with the measured numbers of examples/support-assistant (candidate-regressed.json). report() replaces it once it writes card.json.",
   "verdict": "REGRESSION",
-  "label": "REGRESSION",
+  "label": "Regression",
   "symbol": "✗",
-  "title": "✗ Support answers · REGRESSION",
+  "title": "✗ Support answers · Regression",
   "reasons": ["REGRESSION_DETECTED"],
   "evidence": {
-    "sentence": "Facts stated decreased by 25 points (100% → 75%) on these 12 cases, 3 trials per arm.",
-    "scope": "on these 12 cases, 3 trials per arm",
+    "sentence": "Facts stated decreased by 25 points (100% → 75%) on these 12 cases, 3 trials each for base and candidate.",
+    "scope": "on these 12 cases, 3 trials each for base and candidate",
     "caseChanges": {
       "text": "Observed case changes: support-03, support-06, support-09 (each 3/3 → 0/3).",
       "shown": [
@@ -226,15 +226,15 @@
   ],
   "statistical": [
     "The paired decrease is beyond run-to-run noise (exact test, p < 0.001).",
-    "This does not establish that the loss exceeds the 15-point margin. Until the margin check is validated, any decrease beyond run-to-run noise counts as worse."
+    "This does not establish that the loss exceeds the 15-point limit. Until the limit check is validated, any decrease beyond run-to-run noise counts as worse."
   ],
   "policy": {
-    "outcome": "block",
-    "line": "CI policy: block.",
-    "action": "Inspect the 3 changed cases before merging."
+    "outcome": "fail",
+    "line": "Your policy: a Regression fails this run (exit 1).",
+    "action": "Inspect the 3 changed cases."
   },
   "details": [
-    "Descriptive one-sided 95% bound: −41 points (not validated). Margin: 15 points.",
+    "Descriptive one-sided 95% bound: −41 points (not validated). Limit: 15 points.",
     "Hard check \"answers present\": passed · Missing trials: 0 of 72 · Changed: model, prompt.answer"
   ],
   "lineage": {
