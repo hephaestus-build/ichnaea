@@ -7,19 +7,25 @@ import type { CalibrationRule, RatedStudy } from "./calibration-rule-study.ts";
 
 /** The rule's settings. */
 export interface RuleSettings {
-  /** The largest accepted shortfall of the judge against the raters, on each statistic. */
-  readonly tolerance: number;
+  /** The largest accepted shortfall in agreement (D): AC1 for yes/no labels, ordinal alpha for levels. */
+  readonly agreementTolerance: number;
+  /** The largest accepted shortfall in sensitivity and in specificity, for yes/no labels. */
+  readonly rateTolerance: number;
   /** Case resamples per study. */
   readonly resamples: number;
 }
 
-export const DEFAULT_SETTINGS: RuleSettings = { tolerance: 0.15, resamples: 2000 };
+export const DEFAULT_SETTINGS: RuleSettings = {
+  agreementTolerance: 0.15,
+  rateTolerance: 0.1,
+  resamples: 2000,
+};
 
 /**
- * The conditions this rule reports:
- * - `sensitivity`, `specificity`: the status rule for yes/no judges;
- * - `ac1`: AC1 agreement, shown as context for yes/no judges, never a status condition;
- * - `alphaOrdinal`: the status rule for level judges.
+ * The conditions this rule reports, all status conditions:
+ * - yes/no judges: `ac1` (the agreement gap D with AC1), `sensitivity` and `specificity`;
+ * - level judges: `alphaOrdinal` (the agreement gap D with ordinal alpha).
+ * Alpha's absolute benchmarks (0.667, 0.800) are context only and are never applied here.
  */
 export const CONDITIONS = ["sensitivity", "specificity", "ac1", "alphaOrdinal"] as const;
 
@@ -91,10 +97,10 @@ function holds(gaps: readonly number[], tolerance: number): boolean {
 
 /**
  * The rule:
- * - yes/no judges pass when the one-sided 95 % lower bounds of the sensitivity gap and of the
- *   specificity gap are both at least −tolerance. AC1's gap is computed the same way and reported
- *   as context only;
- * - level judges pass when the lower bound of the ordinal alpha gap is at least −tolerance;
+ * - yes/no judges pass when the one-sided 95 % lower bound of the AC1 gap D is at least
+ *   −agreementTolerance, and the lower bounds of the sensitivity gap and of the specificity gap are
+ *   each at least −rateTolerance;
+ * - level judges pass when the lower bound of the ordinal alpha gap D is at least −agreementTolerance;
  * - the arm bias is b_c = (J₂ − J₁) − (H̄₂ − H̄₁) per case, on [0, 1], and its shown bound is
  *   max(|lower|, |upper|) of the two-sided 90 % percentile interval of its mean.
  * All come from the same resamples of whole cases. A resample in which a status statistic is
@@ -119,7 +125,12 @@ export function calibrationRule(settings: RuleSettings = DEFAULT_SETTINGS): Cali
 
     const statistics: Record<string, Pairwise> =
       study.scale === "levels" ? { alphaOrdinal: alpha } : { sensitivity, specificity, ac1 };
-    const status = study.scale === "levels" ? ["alphaOrdinal"] : ["sensitivity", "specificity"];
+    const status =
+      study.scale === "levels" ? ["alphaOrdinal"] : ["ac1", "sensitivity", "specificity"];
+    const tolerance = (name: string): number =>
+      name === "sensitivity" || name === "specificity"
+        ? settings.rateTolerance
+        : settings.agreementTolerance;
     const gaps: Record<string, number[]> = Object.fromEntries(
       Object.keys(statistics).map((k) => [k, []]),
     );
@@ -145,7 +156,7 @@ export function calibrationRule(settings: RuleSettings = DEFAULT_SETTINGS): Cali
       if (undefinedStatus) nanReplicates += 1;
     }
     const conditions = Object.fromEntries(
-      Object.entries(gaps).map(([name, values]) => [name, holds(values, settings.tolerance)]),
+      Object.entries(gaps).map(([name, values]) => [name, holds(values, tolerance(name))]),
     );
     const sortedBiases = biases.toSorted((a, b) => a - b);
     const lower = quantile(sortedBiases, 0.05);

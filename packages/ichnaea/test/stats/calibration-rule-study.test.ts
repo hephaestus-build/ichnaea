@@ -14,7 +14,7 @@ import { createRng } from "../../src/stats/index.ts";
 // A smoke run: 50 studies per cell and 200 resamples per study. The published study runs 2,000 and
 // 2,000 (VALIDATION.md, "The judge calibration rule").
 const STUDIES = 50;
-const rule = calibrationRule({ tolerance: 0.15, resamples: 200 });
+const rule = calibrationRule({ agreementTolerance: 0.15, rateTolerance: 0.1, resamples: 200 });
 // A stub rule that always passes, with a fixed bound, to show that the study tabulates what it is given.
 const always: CalibrationRule = {
   conditions: ["only"],
@@ -53,11 +53,13 @@ describe("the judge calibration rule study, smoke run", () => {
   );
 
   it("passes a judge as good as a rater far more often than a clearly worse one", () => {
-    expect(smoke("binary-equal").pass).toBeGreaterThan(smoke("binary-worse").pass + 0.3);
+    expect(smoke("binary-equal-oversampled-n150").pass).toBeGreaterThan(
+      smoke("binary-worse-oversampled-n150").pass + 0.4,
+    );
     expect(smoke("levels-equal").pass).toBeGreaterThan(smoke("levels-much-noisier").pass + 0.5);
   });
 
-  it("refuses uninformative yes/no judges that AC1 admits at low prevalence", () => {
+  it("refuses uninformative yes/no judges whose AC1 gap alone would pass at low prevalence", () => {
     for (const id of [
       "binary-always-no-rare",
       "binary-always-no-very-rare",

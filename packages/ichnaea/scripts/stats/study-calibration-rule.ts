@@ -57,7 +57,7 @@ export function runShard(
   studies: number,
   resamples: number,
 ): string[] {
-  const rule = calibrationRule({ tolerance: 0.15, resamples });
+  const rule = calibrationRule({ agreementTolerance: 0.15, rateTolerance: 0.1, resamples });
   return CELLS.flatMap((cell, index) =>
     index % shards === shard
       ? [row(runCell(cell, rule, createRng(seedOf(index)), studies), resamples)]

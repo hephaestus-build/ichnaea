@@ -66,6 +66,8 @@ export type Cell =
       readonly judgeAccuracy: number;
       /** How much more often the judge misses a positive under the second configuration. */
       readonly armBias: number;
+      /** Cases per study; CASES when absent. */
+      readonly cases?: number;
     }
   | {
       readonly id: string;
@@ -77,12 +79,15 @@ export type Cell =
       readonly armShift: number;
     };
 
+/** Cases per study unless a cell names more, as in the chatbot's first calibration study. */
+export const CASES = 60;
+
 const binary = (
   id: string,
   prevalence: number,
   judge: BinaryJudge,
   judgeAccuracy: number,
-  { armBias = 0, oversampled = false } = {},
+  { armBias = 0, oversampled = false, cases = CASES } = {},
 ): Cell => ({
   id,
   scale: "binary",
@@ -92,7 +97,11 @@ const binary = (
   judge,
   judgeAccuracy,
   armBias,
+  cases,
 });
+
+/** The study sizes that the sizing cells try, with positives oversampled to 0.35 of the sample. */
+export const SIZES = [120, 135, 150, 180] as const;
 
 /** The cells of the published study (VALIDATION.md). */
 export const CELLS: readonly Cell[] = [
@@ -114,6 +123,11 @@ export const CELLS: readonly Cell[] = [
   binary("binary-worse-oversampled", 0.35, "reads", 0.8, { oversampled: true }),
   binary("binary-chance-oversampled", 0.35, "chance", 0, { oversampled: true }),
   binary("binary-always-no-oversampled", 0.35, "always-no", 0, { oversampled: true }),
+  // Sizing: the good and the clearly worse judge at larger studies, positives oversampled to 0.35.
+  ...SIZES.flatMap((cases) => [
+    binary(`binary-equal-oversampled-n${cases}`, 0.35, "reads", 0.9, { oversampled: true, cases }),
+    binary(`binary-worse-oversampled-n${cases}`, 0.35, "reads", 0.8, { oversampled: true, cases }),
+  ]),
   { id: "levels-equal", scale: "levels", raterNoise: 0.6, judgeNoise: 0.6, armShift: 0 },
   { id: "levels-noisier", scale: "levels", raterNoise: 0.6, judgeNoise: 0.9, armShift: 0 },
   { id: "levels-much-noisier", scale: "levels", raterNoise: 0.6, judgeNoise: 1.2, armShift: 0 },
@@ -123,8 +137,6 @@ export const CELLS: readonly Cell[] = [
 
 /** The bias tolerances and limits at which the study reports P(shown bound ≤ m). */
 export const MARGINS = [0.1, 0.15, 0.2, 0.25] as const;
-/** Cases per study, as in the chatbot's first calibration study. */
-export const CASES = 60;
 /** The five levels' cut points on the latent scale. */
 const CUTS = [-1.2, -0.4, 0.4, 1.2] as const;
 
@@ -139,8 +151,12 @@ function level(latent: number): number {
   return l;
 }
 
-/** Draws one synthetic calibration study for a cell: CASES cases, two items each. */
-export function drawStudy(cell: Cell, rng: Rng, cases = CASES): RatedStudy {
+/** Draws one synthetic calibration study for a cell: its cases (CASES unless it names more), two items each. */
+export function drawStudy(
+  cell: Cell,
+  rng: Rng,
+  cases = cell.scale === "binary" ? (cell.cases ?? CASES) : CASES,
+): RatedStudy {
   const first: number[] = [];
   const second: number[] = [];
   const judge: number[] = [];
