@@ -45,6 +45,13 @@ const observed = (commit: string, route: string) => ({
   observed: { code: { commit }, model: "example-model", route, parameters: {} },
 });
 
+/** Attempt `n` at the first trial, with `change` applied. */
+const attempt = (n: number, change: Record<string, unknown> = {}, output: unknown = OK) =>
+  answer(first, output, { ...change, trial: { ...answer(first, OK).trial, attempt: n } });
+
+/** Earlier attempts, then one completed result for every planned trial. */
+const withAttempts = (...earlier: TimedResult[]): TimedResult[] => [...earlier, ...results()];
+
 describe("importResults", () => {
   it("scores each completed result from its raw output, with every measure the plan uses", () => {
     const { records, summary } = importResults(plan, results());
@@ -76,6 +83,7 @@ describe("importResults", () => {
       notRun: 0,
       warnings: [],
       unused: [],
+      earlierAttempts: [],
     });
   });
 
@@ -301,6 +309,51 @@ describe("importResults", () => {
     expect(summary.unused).toEqual(["note", "result.score", "result.startedAt"]);
   });
 
+  describe("retries", () => {
+    const infra = { failure: { class: "infrastructure", kind: "timeout" } };
+
+    it("counts the highest attempt, in any order, and keeps the earlier ones in the summary", () => {
+      const { records, summary } = importResults(
+        plan,
+        withAttempts(
+          { result: attempt(1, infra, undefined) },
+          {
+            result: attempt(2, { failure: { class: "not_run", kind: "never-reached" } }, undefined),
+          },
+        ).map((r, i) => (i === 2 ? { result: attempt(3) } : r)),
+      );
+      expect(records.trials.find((t) => t.id === FIRST)?.outcome).toBe("completed");
+      expect(records.trials).toHaveLength(24);
+      expect(summary.earlierAttempts).toEqual([
+        { trial: FIRST, attempt: 1, failure: { class: "infrastructure", kind: "timeout" } },
+        { trial: FIRST, attempt: 2, failure: { class: "not_run", kind: "never-reached" } },
+      ]);
+    });
+
+    it("refuses a repeated attempt", () => {
+      expect(() => importResults(plan, withAttempts({ result: attempt(1) }))).toThrow(
+        `result 2: trial '${FIRST}' attempt 1 is repeated; give each attempt once`,
+      );
+    });
+
+    it.each([
+      ["a system failure", { failure: { class: "system", kind: "crash" } }, "a system failure"],
+      [
+        "a protocol failure",
+        { failure: { class: "protocol", kind: "bad-request" } },
+        "a protocol failure",
+      ],
+      ["a completed attempt", {}, "a completed attempt"],
+    ])("refuses a retry after %s", (_n, change, what) => {
+      const rows = withAttempts({ result: attempt(1, change, undefined) }).map((r, i) =>
+        i === 1 ? { result: attempt(2) } : r,
+      );
+      expect(() => importResults(plan, rows)).toThrow(
+        `trial '${FIRST}' attempt 2 follows ${what} at attempt 1; only an infrastructure failure or a trial not run is retried`,
+      );
+    });
+  });
+
   it("records a planned trial without a result as not run", () => {
     const { records, summary } = importResults(plan, results().slice(1));
     expect(records.run.ledger[0]).toEqual({
@@ -324,7 +377,7 @@ describe("importResults", () => {
       "belongs to suite 'other', not 'composer'",
     );
     expect(() => importResults(plan, [...results(), results()[0]!])).toThrow(
-      `duplicate trial ID(s): ${FIRST}`,
+      `result 25: trial '${FIRST}' attempt 1 is repeated; give each attempt once`,
     );
   });
 

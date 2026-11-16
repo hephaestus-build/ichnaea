@@ -212,6 +212,16 @@ export function defineSuite<const Measure extends string>(suite: SuiteDefinition
 // @public
 export function describeCounts(counts: readonly number[]): string;
 
+// @public
+export interface EarlierAttempt {
+    readonly attempt: number;
+    readonly failure: {
+        readonly class: "infrastructure" | "not_run";
+        readonly kind: string;
+    };
+    readonly trial: string;
+}
+
 // @public @deprecated
 export type EgressAnswer = {
     readonly allow: true;
@@ -399,6 +409,7 @@ export interface ImportRunInput {
 
 // @public
 export interface ImportSummary {
+    readonly earlierAttempts: readonly EarlierAttempt[];
     readonly notRun: number;
     // Warning: (ae-forgotten-export) The symbol "Outcome" needs to be exported by the entry point index.d.ts
     readonly outcomes: Readonly<Partial<Record<Outcome, number>>>;
@@ -823,7 +834,7 @@ export const TRIGGER_VARIES: {
 
 // Warnings were encountered during analysis:
 //
-// src/core/results.ts:166:5 - (ae-forgotten-export) The symbol "Runtime" needs to be exported by the entry point index.d.ts
+// src/core/results.ts:209:5 - (ae-forgotten-export) The symbol "Runtime" needs to be exported by the entry point index.d.ts
 
 // (No @packageDocumentation comment for this package)
 

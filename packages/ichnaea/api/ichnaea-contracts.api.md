@@ -1564,6 +1564,7 @@ export const LedgerEntry: z.ZodObject<{
         infrastructure_failure: "infrastructure_failure";
         invalid_configuration: "invalid_configuration";
         not_run: "not_run";
+        protocol_failure: "protocol_failure";
         system_failure: "system_failure";
     }>>;
 }, z.core.$strict>;
@@ -2144,6 +2145,7 @@ export const Outcome: z.ZodEnum<{
     infrastructure_failure: "infrastructure_failure";
     invalid_configuration: "invalid_configuration";
     not_run: "not_run";
+    protocol_failure: "protocol_failure";
     system_failure: "system_failure";
 }>;
 
@@ -2735,15 +2737,12 @@ export const Run: z.ZodObject<{
             infrastructure_failure: "infrastructure_failure";
             invalid_configuration: "invalid_configuration";
             not_run: "not_run";
+            protocol_failure: "protocol_failure";
             system_failure: "system_failure";
         }>>;
     }, z.core.$strict>>;
     startedAt: z.ZodISODateTime;
     completedAt: z.ZodOptional<z.ZodISODateTime>;
-    protocolFailures: z.ZodOptional<z.ZodArray<z.ZodObject<{
-        trial: z.core.$ZodBranded<z.ZodString, "TrialId", "out">;
-        kind: z.ZodString;
-    }, z.core.$strict>>>;
 }, z.core.$strict>;
 
 // @public
@@ -3029,6 +3028,7 @@ export const Trial: z.ZodObject<{
         infrastructure_failure: "infrastructure_failure";
         invalid_configuration: "invalid_configuration";
         not_run: "not_run";
+        protocol_failure: "protocol_failure";
         system_failure: "system_failure";
     }>;
     dataClass: z.ZodEnum<{

@@ -10,6 +10,7 @@ import {
   type MeasureValue,
   type ObservedConfiguration,
   type Outcome,
+  type Plan,
   readRecord,
   Run,
   type Runtime,
@@ -39,6 +40,28 @@ export interface TimedResult {
   readonly endedAt?: string;
 }
 
+/** A result read and checked against the plan, before its attempts are compared. */
+interface Accepted {
+  readonly where: string;
+  readonly timed: {
+    readonly startedAt?: string | undefined;
+    readonly endedAt?: string | undefined;
+  };
+  readonly result: TrialResult;
+  readonly c: Case;
+  readonly arm: Plan["arms"][number];
+}
+
+/** An attempt at a trial that a later attempt replaced, with why it was retried. */
+export interface EarlierAttempt {
+  /** The trial's ID. */
+  readonly trial: string;
+  /** The attempt, from 1. */
+  readonly attempt: number;
+  /** Its failure: an infrastructure failure or a trial not run. */
+  readonly failure: { readonly class: "infrastructure" | "not_run"; readonly kind: string };
+}
+
 /** What `importResults` found, beside the records. */
 export interface ImportSummary {
   /** The results read. */
@@ -60,6 +83,8 @@ export interface ImportSummary {
   readonly warnings: readonly string[];
   /** The members some result carried that no record defines, by path, sorted. They are ignored. */
   readonly unused: readonly string[];
+  /** The attempts that a later attempt at the same trial replaced, by trial and attempt. */
+  readonly earlierAttempts: readonly EarlierAttempt[];
 }
 
 const Timed = z.looseObject({
@@ -194,6 +219,7 @@ export function importResults(
   const unused = new Set<string>();
   const mismatched: string[] = [];
   const trials: Trial[] = [];
+  const accepted: Accepted[] = [];
   let index = 0;
   for (const input of results) {
     index++;
@@ -217,7 +243,7 @@ export function importResults(
       remove(raw, path);
     }
     const result = TrialResult.parse(raw);
-    const { trial: id, failure } = result;
+    const id = result.trial;
     const p = planned.get(id.id);
     const c = cases.get(id.case);
     const arm = arms.get(id.arm);
@@ -230,6 +256,44 @@ export function importResults(
       throw new ImportError(
         `${where}: trial '${id.id}' is planned as case '${p.case}', arm '${p.arm}', replicate ${p.replicate}`,
       );
+    accepted.push({ where, timed: timed.data, result, c, arm });
+  }
+
+  // Retries: the highest attempt of each trial counts. Only an infrastructure failure or a trial
+  // not run is retried, so every earlier attempt must be one of those.
+  const attempts = new Map<string, Accepted[]>();
+  for (const r of accepted) {
+    const list = attempts.get(r.result.trial.id) ?? [];
+    if (list.some((e) => e.result.trial.attempt === r.result.trial.attempt))
+      throw new ImportError(
+        `${r.where}: trial '${r.result.trial.id}' attempt ${r.result.trial.attempt} is repeated; give each attempt once`,
+      );
+    list.push(r);
+    attempts.set(r.result.trial.id, list);
+  }
+  const earlierAttempts: EarlierAttempt[] = [];
+  const finals: Accepted[] = [];
+  for (const [id, list] of attempts) {
+    const sorted = list.toSorted((x, y) => x.result.trial.attempt - y.result.trial.attempt);
+    for (const [i, e] of sorted.slice(0, -1).entries()) {
+      const failure = e.result.failure;
+      if (failure?.class !== "infrastructure" && failure?.class !== "not_run")
+        throw new ImportError(
+          `trial '${id}' attempt ${sorted[i + 1]?.result.trial.attempt} follows ${
+            failure === undefined ? "a completed attempt" : `a ${failure.class} failure`
+          } at attempt ${e.result.trial.attempt}; only an infrastructure failure or a trial not run is retried`,
+        );
+      earlierAttempts.push({
+        trial: id,
+        attempt: e.result.trial.attempt,
+        failure: { class: failure.class, kind: failure.kind },
+      });
+    }
+    finals.push(sorted.at(-1) as Accepted);
+  }
+
+  for (const { timed, result, c, arm } of finals) {
+    const { trial: id, failure } = result;
     // The harness failed, not the system: nothing else about the trial is judged.
     const protocol = failure?.class === "protocol";
     const problem = protocol ? undefined : observedProblem(result.observed, arm.configuration);
@@ -267,8 +331,8 @@ export function importResults(
       ...(result.pointer === undefined ? {} : { pointer: result.pointer }),
       ...(error === undefined ? {} : { error }),
       usage: { ...result.usage, calls: result.calls },
-      ...(timed.data.startedAt === undefined ? {} : { startedAt: timed.data.startedAt }),
-      ...(timed.data.endedAt === undefined ? {} : { endedAt: timed.data.endedAt }),
+      ...(timed.startedAt === undefined ? {} : { startedAt: timed.startedAt }),
+      ...(timed.endedAt === undefined ? {} : { endedAt: timed.endedAt }),
     });
     trials.push(checkCaptured(pointerOnly(trial)));
   }
@@ -350,6 +414,9 @@ export function importResults(
       notRun: record.trials.length - trials.length,
       warnings,
       unused: [...unused].toSorted(),
+      earlierAttempts: earlierAttempts.toSorted(
+        (x, y) => byCodeUnits(x.trial, y.trial) || x.attempt - y.attempt,
+      ),
     },
   };
 }
