@@ -8,8 +8,10 @@ Maintainers review and merge pull requests, cut releases and decide on the proje
 
 ## The build branch
 
-Consumers pin a commit of the `build` branch (README § Use Ichnaea from a TypeScript project).
-[Decision 0019](docs/decisions/0019-built-package-on-a-build-branch.md) gives the reasons.
+Until the first version is on npm, consumers pin a commit of the `build` branch (README § Before
+the first npm release). [Decision 0019](docs/decisions/0019-built-package-on-a-build-branch.md)
+describes it. It stays until those consumers move to npm, as
+[decision 0021](docs/decisions/0021-npm-staged-publishing.md) states; a later change removes it.
 
 `.github/workflows/build-branch.yml` writes it on every push to `main`. It builds the commit,
 assembles the tree with `scripts/build-package.ts`, runs the consumer test on that tree, and
@@ -34,40 +36,58 @@ comes from reproducibility. The verify job of the same workflow rebuilds the new
 
 ## Releases
 
-**Releases are paused until 1.0.** Consumers pin a commit of the `build` branch. At 1.0, the same
-build tree is packed and published to npm with provenance, as decision 0019 states. The release
-workflow fails in its first step. The procedure below is the paused design of
-[decision 0013](docs/decisions/0013-release-attested-tarballs.md): pre-releases `v0.<minor>.<patch>`
-as tarballs on a GitHub release, with build provenance and an SBOM attested by the release
-workflow. A new decision record replaces it before 1.0.
-
-The release deploy key and its secret are deleted. The release key returns at 1.0, and only
-together with a protection of `build` that does not rely on "deploy keys only": the `build`
-ruleset's bypass covers every write deploy key of the repository, so a second write key could
-write `build` too.
+A release is a version of `@tumaet/ichnaea` on npm, and a GitHub release with the same tarball.
+[Decision 0021](docs/decisions/0021-npm-staged-publishing.md) gives the chain. No workflow
+publishes: `.github/workflows/release.yml` stages each version, and a package owner approves it on
+npmjs.com with two-factor authentication. Versions are 0.x semver, and the release notes are the
+one change log.
 
 ### Set up once
 
-[Repository settings](#repository-settings) has the settings that the release workflow relies on:
-the `release` environment, the tag rulesets and immutable releases. At 1.0 it also needs a release
-key, as step 9 says.
+1. Apply the repository settings of [Repository settings](#repository-settings), steps 8 and 10.
+2. Bootstrap the package and its trusted publisher, as step 15 says. A trusted publisher needs a
+   package that exists, so a scope owner publishes `0.0.0-bootstrap` by hand once.
+3. The first real version, 0.1.0, waits until the record contracts are set, so that no record
+   shape is frozen by accident.
 
 ### Cut a release
 
-1. On a branch, set the new version in `packages/ichnaea/package.json`. Open a pull request and
-   merge it into `main`. The conventional commit titles on `main` since the last release are its
-   change log.
-2. Start the release on `main` with the new version:
+1. Choose the version. In 0.x, a breaking change since the last tag (`type!:` or a
+   `BREAKING CHANGE:` footer) needs a new minor version; anything else may be a patch. A
+   pre-release, `v0.<minor>.<patch>-rc.<n>`, goes to the dist-tag `next`, everything else to
+   `latest`. `main` keeps `0.0.0`: the workflow stamps the tag's version.
+2. Tag the commit on `main` and push the tag. Only the `maintainer` team may create a `v*` tag:
 
    ```sh
-   gh workflow run release.yml --ref main -f tag=v0.1.0
+   git fetch origin main
+   git tag -s v0.1.0 origin/main -m v0.1.0
+   git push origin refs/tags/v0.1.0
    ```
 
-3. The build job checks that the commit is on `main` and that the package has the tag's version.
-   It runs `pnpm check`, packs the tarball, and writes and checks the SBOM. When it passes, approve
-   the `release` environment in the run.
-4. The release job attests the tarball, creates the tag on the commit, and publishes the
-   pre-release.
+3. `release.yml` checks that the commit is on `main`, that the tag is greater than every other
+   `v*` tag and bumps the minor version on a breaking change, and runs `pnpm run check`. It packs
+   the tarball once, runs the consumer test on it on Node 24.3.0 and 26, and stages it. A failed
+   run stages nothing. Fix the cause on `main` and push the next version's tag: a `v*` tag never
+   moves.
+4. Approve the staged version on npmjs.com with two-factor authentication, or with
+   `npm stage list @tumaet/ichnaea` and `npm stage approve <stage-id>`.
+   Before you approve, check three facts: the version is the tag's version, the integrity is the
+   `sha512-…` that the stage job prints, and the provenance links to the run of
+   `release.yml` for the tag. Approve within 90 days, while the run's artifact exists. If any fact
+   is wrong, reject the version with `npm stage reject <stage-id>`: nothing is published.
+5. `.github/workflows/release-finish.yml` runs every day and finishes each approved version. To
+   finish one at once, run it by hand:
+
+   ```sh
+   gh workflow run release-finish.yml --ref main -f tag=v0.1.0
+   ```
+
+   It checks that npm serves the staged tarball, with valid signatures and a provenance by
+   `release.yml` at the tag. It checks that the bin prints the version and the README's example
+   runs, then creates the GitHub release with the notes, the tarball, the SBOM and `SHA256SUMS`.
+   If a check fails, read its cause. A network failure needs only another run. Otherwise the
+   version is on npm but wrong, and it gets no GitHub release: deprecate it with
+   `npm deprecate @tumaet/ichnaea@<version> "<reason>"` and release the next version.
 
 ## Repository settings
 
@@ -111,7 +131,7 @@ commands from a checkout of `main`.
    organisation, so it cannot be lowered for this repository alone. The maintainers keep that role.
    The protection is a rule, not a removal: the code owner ruleset of step 6 requires a code owner's
    approval for every change to `main`, and only the `maintainer` team may bypass it. The `v*` tag
-   rules below let nobody create a release tag while releases are paused, and the `build` rulesets
+   rules of step 10 let only the `maintainer` team create a release tag, and the `build` rulesets
    of step 13 let only the build workflow's deploy key write `build`.
 
    Remove a direct collaborator without a row with
@@ -125,8 +145,8 @@ commands from a checkout of `main`.
    own pull request cannot get a code owner's review, so it merges by the bypass of step 6. Before
    step 6 applies the variant for two or more maintainers, every path has two owners.
 
-3. **Public visibility, squash merges only, and no wiki or projects.** Attestations, the required
-   reviewer of the `release` environment and the free security features need a public repository.
+3. **Public visibility, squash merges only, and no wiki or projects.** npm provenance and the free
+   security features need a public repository.
    A squash merge makes the pull request title and body the commit on `main`. CI lints the title
    and checks both for private records.
    The ruleset requires an up-to-date branch, so the button that updates a branch is on:
@@ -215,8 +235,8 @@ commands from a checkout of `main`.
    [CONTRIBUTING.md](CONTRIBUTING.md#signed-commits) shows, and checks that GitHub shows their
    last commit as verified: the ruleset refuses a push of an unsigned commit to any other branch. GitHub
    signs the commits that it creates itself: the squash commit of a merged pull request, and the
-   commits of Renovate. Tags are not branches, so the release workflow's tag push is not affected.
-   The tag names a squash commit on `main`, which GitHub signed.
+   commits of Renovate. Tags are not branches, so a release tag is not affected. The tag names a
+   squash commit on `main`, which GitHub signed.
 
    ```sh
    gh api --method POST repos/hephaestus-build/ichnaea/rulesets \
@@ -232,58 +252,53 @@ commands from a checkout of `main`.
      --input .github/rulesets/signed-commits.json
    ```
 
-8. **The `release` environment.** Only `main` may deploy to it, and a maintainer approves each run:
+8. **The `npm` environment.** Only `v*` tags may deploy to it. It has no reviewer and no secret:
+   the package owner's approval on npm is the gate, and the trusted publisher of step 15 names this
+   environment. Only the stage job of `.github/workflows/release.yml` names it, and a test fails if
+   another workflow does. Delete the old `release` environment of the paused design:
 
    ```sh
-   gh api --method PUT repos/hephaestus-build/ichnaea/environments/release \
-     --input .github/environments/release.json
-   gh api --method POST repos/hephaestus-build/ichnaea/environments/release/deployment-branch-policies \
-     -f name=main -f type=branch
+   gh api --method PUT repos/hephaestus-build/ichnaea/environments/npm \
+     --input .github/environments/npm.json
+   gh api --method POST repos/hephaestus-build/ichnaea/environments/npm/deployment-branch-policies \
+     -f name='v*' -f type=tag
+   gh api --method DELETE repos/hephaestus-build/ichnaea/environments/release
    ```
 
-9. **The release deploy key, at 1.0 only.** The repository has no release key now: the old key and
-   its secret, `RELEASE_DEPLOY_KEY`, are deleted, and the release workflow is paused. The key
-   returns at 1.0 together with a protection of `build` that does not rely on "deploy keys only",
-   because the `build` ruleset's bypass covers every write deploy key. Then the private key exists
-   only as a secret of the `release` environment.
+9. **No release deploy key.** No workflow pushes a tag or holds a key for a release. The
+   repository's only deploy key is the build branch's (step 13).
 
-10. **The `v*` tags and the releases.** While releases are paused, nobody may create a release tag.
-    Nobody may move or delete one, and a published release cannot change. Apply the tag rules in two
-    parts, with a probe between them, so that a probe that creates a tag by mistake cannot leave a
-    tag that nobody can delete:
-    1. Apply the rule that nobody creates a release tag. Then list the tag rulesets: the list must
-       have only this ruleset.
+10. **The `v*` tags and the releases.** Only the `maintainer` team (team 19248737), the release
+    team, may create a release tag. Nobody may move or delete one, and a published GitHub release
+    cannot change. Both tag rulesets exist already. List them, update the creation
+    ruleset in place by its id, and apply immutable releases:
 
     ```sh
-    gh api --method POST repos/hephaestus-build/ichnaea/rulesets \
+    gh api repos/hephaestus-build/ichnaea/rulesets \
+      --jq '.[] | select(.target == "tag") | {id, name}'
+    gh api --method PUT "repos/hephaestus-build/ichnaea/rulesets/<id of the creation ruleset>" \
       --input .github/rulesets/release-tags-create.json
-    gh api repos/hephaestus-build/ichnaea/rulesets --jq '.[] | select(.target == "tag") | .name'
-    ```
-
-    2. Probe the rule. A person cannot create a release tag, so both commands must fail with a rule
-       violation:
-
-    ```sh
-    git push origin "$(git rev-parse origin/main):refs/tags/v0.0.0-probe"
-    gh api --method POST repos/hephaestus-build/ichnaea/git/refs \
-      -f ref=refs/tags/v0.0.0-probe -f sha="$(git rev-parse origin/main)"
-    ```
-
-    If a command creates the tag, the rule is wrong. No rule forbids the deletion of a tag yet,
-    so delete it with `git push origin :refs/tags/v0.0.0-probe`, correct the ruleset and probe
-    again. Go on only when `git ls-remote origin refs/tags/v0.0.0-probe` prints nothing.
-
-    3. Apply the rule that nobody moves or deletes a release tag, and immutable releases. Both tag
-       rulesets exist already; to apply a change of a file, `PUT` it to the ruleset's id, as step 7
-       shows for the signed commits ruleset.
-
-    ```sh
-    gh api --method POST repos/hephaestus-build/ichnaea/rulesets \
-      --input .github/rulesets/release-tags-fixed.json
     gh api --method PUT repos/hephaestus-build/ichnaea/immutable-releases
     ```
 
-11. **Read back.** Read the settings of steps 3 to 10, 13 and 14 back. Step 1 has its own read-back:
+    Each tag ruleset must equal its file. Each command prints nothing when it does:
+
+    ```sh
+    for file in release-tags-create release-tags-fixed; do
+      name="$(jq -r .name ".github/rulesets/$file.json")"
+      id="$(gh api repos/hephaestus-build/ichnaea/rulesets \
+        --jq ".[] | select(.name == \"$name\") | .id")"
+      diff <(jq -S . ".github/rulesets/$file.json") \
+        <(gh api "repos/hephaestus-build/ichnaea/rulesets/$id" \
+          | jq -S '{name, target, enforcement, conditions, rules, bypass_actors}')
+    done
+    ```
+
+    A person outside the team cannot create a `v*` tag: ask one to push
+    `refs/tags/v0.0.0-probe`, which must fail with a rule violation.
+
+11. **Read back.** Read the settings of steps 3 to 10, 13, 14 and 15 back. Step 1 has its own
+    read-back:
 
     ```sh
     gh api repos/hephaestus-build/ichnaea --jq '{visibility, has_wiki, has_projects,
@@ -294,14 +309,14 @@ commands from a checkout of `main`.
     gh api repos/hephaestus-build/ichnaea/actions/permissions/workflow
     gh api repos/hephaestus-build/ichnaea/actions/permissions/fork-pr-contributor-approval
     gh api repos/hephaestus-build/ichnaea/rulesets --jq '.[] | .name'
-    gh api repos/hephaestus-build/ichnaea/environments/release
-    gh api repos/hephaestus-build/ichnaea/environments/release/deployment-branch-policies \
-      --jq '.branch_policies[] | {name, type}' # only main, as a branch
+    gh api repos/hephaestus-build/ichnaea/environments/npm
+    gh api repos/hephaestus-build/ichnaea/environments/npm/deployment-branch-policies \
+      --jq '.branch_policies[] | {name, type}' # only v*, as a tag
     gh api repos/hephaestus-build/ichnaea/environments/build-branch
     gh api repos/hephaestus-build/ichnaea/environments/build-branch/deployment-branch-policies \
       --jq '.branch_policies[] | {name, type}' # only main, as a branch
     gh api repos/hephaestus-build/ichnaea/environments/build-branch/secrets --jq '.secrets[].name'
-    gh api repos/hephaestus-build/ichnaea/environments/release/secrets --jq '.secrets[].name' # none
+    gh api repos/hephaestus-build/ichnaea/environments/npm/secrets --jq '.secrets[].name' # none
     gh api repos/hephaestus-build/ichnaea/immutable-releases
     ```
 
@@ -384,7 +399,8 @@ commands from a checkout of `main`.
     ```sh
     for file in build build-no-force-push; do
       name="$(jq -r .name ".github/rulesets/$file.json")"
-      id="$(gh api repos/hephaestus-build/ichnaea/rulesets --jq ".[] | select(.name == \"$name\") | .id")"
+      id="$(gh api repos/hephaestus-build/ichnaea/rulesets \
+        --jq ".[] | select(.name == \"$name\") | .id")"
       diff <(jq -S . ".github/rulesets/$file.json") \
         <(gh api "repos/hephaestus-build/ichnaea/rulesets/$id" \
           | jq -S '{name, target, enforcement, conditions, rules, bypass_actors}')
@@ -413,3 +429,29 @@ commands from a checkout of `main`.
     gh api repos/hephaestus-build/ichnaea/environments/github-pages/deployment-branch-policies \
       --jq '.branch_policies[] | {name, type}' # only main, as a branch
     ```
+
+15. **npm.** These settings live on npmjs.com, and only a scope owner of `@tumaet` can apply them.
+    Run the commands with npm 11.15.0 or later, logged in as that owner, with two-factor
+    authentication on the account. Bootstrap the package once, because a trusted publisher needs a
+    package that exists. In a checkout of `main`, after `pnpm install --frozen-lockfile`:
+
+    ```sh
+    node scripts/build-package.ts "$PWD/bootstrap" --version 0.0.0-bootstrap
+    (cd bootstrap && npm publish --access public --tag bootstrap)
+    npm trust github @tumaet/ichnaea --repository hephaestus-build/ichnaea \
+      --file release.yml --environment npm --allow-stage-publish
+    npm deprecate @tumaet/ichnaea@0.0.0-bootstrap "Bootstrap version, not for use."
+    rm -r bootstrap
+    ```
+
+    Never pass `--allow-publish`: the trusted publisher may stage, and only an owner publishes. Then
+    open the package's settings on npmjs.com, and under "Publishing access" choose "Require
+    two-factor authentication and disallow tokens". Read it back:
+
+    ```sh
+    npm trust list @tumaet/ichnaea # one GitHub publisher: release.yml, environment npm, stage only
+    npm access get status @tumaet/ichnaea # public
+    npm owner ls @tumaet/ichnaea # the package owners who approve versions
+    ```
+
+    Delete every granular access token of an owner that can bypass two-factor authentication.

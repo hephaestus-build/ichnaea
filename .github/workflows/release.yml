@@ -192,6 +192,7 @@ jobs:
             echo "::error::$TARBALL has $actual, not $INTEGRITY, the SHA-512 of the pack job."
             exit 1
           fi
+          echo "::notice::$TARBALL has the integrity $INTEGRITY. Compare it before you approve."
       - name: npm can stage, so it is 11.15.0 or later
         run: |
           version="$(npm --version)"
