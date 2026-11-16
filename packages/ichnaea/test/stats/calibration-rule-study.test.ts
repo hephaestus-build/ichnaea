@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import { CONDITIONS, calibrationRule, weightedAc1 } from "../../scripts/stats/calibration-rule.ts";
 import {
   CELLS,
+  CHATBOT,
   MARGINS,
+  designOf,
   drawStudy,
   runCell,
   type CalibrationRule,
@@ -88,16 +90,24 @@ describe("the judge calibration rule study, smoke run", () => {
 
 describe("the calibration draw cells", () => {
   it("weights every drawn answer by 1/π ≥ 1, clusters by item and names the item strata", () => {
-    const cell = CELLS.find((c) => c.id === "draw-with-c3-140-cap2-rho0.3-equal")!;
+    const cell = CELLS.find((c) => c.id === "draw-n140-good")!;
     const study = drawStudy(cell, createRng(11));
     expect(study.caseOf).toHaveLength(140);
     expect(study.weight.every((w) => w >= 1)).toBe(true);
     expect(new Set(study.stratumOf)).toEqual(new Set([0, 1]));
   });
 
+  it("splits a draw by the registered allocation, as the 140-answer pilot does", () => {
+    expect(designOf(140, CHATBOT).groups).toEqual([
+      { configuration: 0, units: 41, positiveShare: 0.2 },
+      { configuration: 1, units: 41, positiveShare: 0.2 },
+      { configuration: 2, units: 58, positiveShare: 0.4 },
+    ]);
+  });
+
   it("passes the good judge more often than the clearly worse one on the chatbot's draw", () => {
-    expect(smoke("draw-with-c3-260-cap2-rho0-equal").pass).toBeGreaterThan(
-      smoke("draw-with-c3-260-cap2-rho0-worse").pass + 0.2,
+    expect(smoke("draw-n360-rho0-good").pass).toBeGreaterThan(
+      smoke("draw-n360-rho0-worse").pass + 0.2,
     );
   });
 });

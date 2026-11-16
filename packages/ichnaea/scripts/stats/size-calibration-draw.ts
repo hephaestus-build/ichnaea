@@ -10,25 +10,11 @@ import { parseArgs } from "node:util";
 
 import { createRng } from "../../src/stats/index.ts";
 import { CONDITIONS, calibrationRule } from "./calibration-rule.ts";
-import { runCell, type Cell, type DrawDesign } from "./calibration-rule-study.ts";
+import { WORSE_BY, designOf, runCell, type Cell, type Nuisance } from "./calibration-rule-study.ts";
 
 /** The registered targets: the good judge passes at least this often, the worse one at most this. */
 export const TARGET_GOOD = 0.8;
 export const TARGET_WORSE = 0.05;
-/** How much less accurate the clearly worse judge is than a rater. */
-export const WORSE_BY = 0.1;
-/** The allocation of a draw of n answers: shares of n per configuration, and positive shares. */
-export const ALLOCATION = { base: 0.29, positiveShare: [0.2, 0.2, 0.4], cap: 2 } as const;
-
-/** The nuisance parameters that size a draw. */
-export interface Nuisance {
-  readonly items: number;
-  readonly runs: readonly [number, number, number];
-  readonly defectRate: readonly [number, number, number];
-  readonly proxyRecall: number;
-  readonly rho: number;
-  readonly raterAccuracy: number;
-}
 
 /**
  * The raters' accuracy from their raw agreement p, for two raters who err independently and
@@ -37,25 +23,6 @@ export interface Nuisance {
 export function accuracyFromAgreement(p: number): number {
   if (!(p > 0.5 && p <= 1)) throw new RangeError(`raw agreement must be in (0.5, 1], got ${p}`);
   return (1 + Math.sqrt(2 * p - 1)) / 2;
-}
-
-/** The draw design of n answers under the registered allocation. */
-export function designOf(n: number, nuisance: Nuisance): DrawDesign {
-  const base = Math.round(ALLOCATION.base * n);
-  const [s1, s2, s3] = ALLOCATION.positiveShare;
-  return {
-    items: nuisance.items,
-    runs: nuisance.runs,
-    defectRate: nuisance.defectRate,
-    positiveCap: ALLOCATION.cap,
-    raterAccuracy: nuisance.raterAccuracy,
-    proxyRecall: nuisance.proxyRecall,
-    groups: [
-      { configuration: 0, units: base, positiveShare: s1 },
-      { configuration: 1, units: base, positiveShare: s2 },
-      { configuration: 2, units: n - 2 * base, positiveShare: s3 },
-    ],
-  };
 }
 
 /** One size's result. */

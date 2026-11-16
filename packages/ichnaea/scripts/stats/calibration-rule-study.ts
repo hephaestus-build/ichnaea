@@ -170,42 +170,105 @@ const binary = (
 /** The study sizes that the generic sizing cells try, with positives oversampled to 0.35. */
 export const SIZES = [120, 135, 150, 180] as const;
 
-/** A draw with the known-worse configuration C3: groups of n1, n1 and n3 answers, positives capped. */
-const withC3 = (n1: number, n3: number, positiveCap?: number): DrawDesign => ({
+/** The nuisance parameters that, with a size, set a draw under the registered allocation. */
+export interface Nuisance {
+  readonly items: number;
+  readonly runs: readonly [number, number, number];
+  readonly defectRate: readonly [number, number, number];
+  readonly proxyRecall: number;
+  readonly rho: number;
+  readonly raterAccuracy: number;
+}
+
+/**
+ * The registered allocation of a draw of n answers: the share of n from each of the two
+ * configurations the plan names (the known-worse one takes the rest), the proxy-positive share per
+ * configuration, and the most proxy-positive answers per item over all configurations.
+ */
+export const ALLOCATION = { base: 0.29, positiveShare: [0.2, 0.2, 0.4], cap: 2 } as const;
+
+/** The draw of n answers under the registered allocation. */
+export function designOf(n: number, nuisance: Nuisance): DrawDesign {
+  const base = Math.round(ALLOCATION.base * n);
+  const [s1, s2, s3] = ALLOCATION.positiveShare;
+  return {
+    items: nuisance.items,
+    runs: nuisance.runs,
+    defectRate: nuisance.defectRate,
+    positiveCap: ALLOCATION.cap,
+    raterAccuracy: nuisance.raterAccuracy,
+    proxyRecall: nuisance.proxyRecall,
+    groups: [
+      { configuration: 0, units: base, positiveShare: s1 },
+      { configuration: 1, units: base, positiveShare: s2 },
+      { configuration: 2, units: n - 2 * base, positiveShare: s3 },
+    ],
+  };
+}
+
+/**
+ * The chatbot's first calibration study as registered: 127 eligible items, two screening runs per
+ * configuration, defect rates 0.15 in C1 and C2 and 0.35 in the known-worse C3 (the designed drop of
+ * 0.20 on quality), a proxy that catches 0.65 of defects, ρ = 0.3, and raters at accuracy 0.90 (raw
+ * agreement 0.82).
+ */
+export const CHATBOT: Nuisance = {
   items: 127,
   runs: [2, 2, 2],
   defectRate: [0.15, 0.15, 0.35],
-  ...(positiveCap === undefined ? {} : { positiveCap }),
-  groups: [
-    { configuration: 0, units: n1, positiveShare: 0.35 },
-    { configuration: 1, units: n1, positiveShare: 0.35 },
-    { configuration: 2, units: n3, positiveShare: 0.6 },
-  ],
-});
+  proxyRecall: 0.65,
+  rho: 0.3,
+  raterAccuracy: 0.9,
+};
+
+/** How much less accurate the clearly worse judge is than a rater. */
+export const WORSE_BY = 0.1;
+
+/** The draw sizes the registered allocation is studied at. */
+export const DRAW_SIZES = [140, 200, 260, 300, 360, 460] as const;
 
 /**
- * The draws studied for the chatbot's first calibration study (VALIDATION.md): 127 eligible items,
- * two screening runs per configuration, defect rates from its November runs, and the known-worse
- * configuration C3 (configuration 2) as a source of positives.
+ * The draws studied (VALIDATION.md): the registered allocation at each size, then the 360-answer
+ * draw with one nuisance parameter changed, and the 140-answer draw of the two configurations
+ * alone, without the known-worse one, for comparison.
  */
-export const DRAWS: Readonly<Record<string, DrawDesign>> = {
-  "two-arms-140": {
-    items: 127,
-    runs: [2, 2, 0],
-    defectRate: [0.15, 0.15, 0.35],
-    groups: [
-      { configuration: 0, units: 70, positiveShare: 0.35 },
-      { configuration: 1, units: 70, positiveShare: 0.35 },
-    ],
+export const DRAWS: readonly {
+  readonly name: string;
+  readonly nuisance: Nuisance;
+  readonly design: DrawDesign;
+}[] = [
+  ...DRAW_SIZES.map((n) => ({ name: `n${n}`, nuisance: CHATBOT, design: designOf(n, CHATBOT) })),
+  ...(
+    [
+      ["rho0", { rho: 0 }],
+      ["rho0.6", { rho: 0.6 }],
+      ["raters0.87", { raterAccuracy: 0.93 }],
+      ["drop0.10", { defectRate: [0.15, 0.15, 0.25] }],
+      ["drop0.30", { defectRate: [0.15, 0.15, 0.45] }],
+    ] as const
+  ).map(([change, values]) => {
+    const nuisance: Nuisance = { ...CHATBOT, ...values };
+    return { name: `n360-${change}`, nuisance, design: designOf(360, nuisance) };
+  }),
+  {
+    name: "n140-raters0.87",
+    nuisance: { ...CHATBOT, raterAccuracy: 0.93 },
+    design: designOf(140, { ...CHATBOT, raterAccuracy: 0.93 }),
   },
-  "with-c3-140": withC3(45, 50),
-  "with-c3-140-cap2": withC3(45, 50, 2),
-  "with-c3-200-cap2": withC3(60, 80, 2),
-  "with-c3-260-cap2": withC3(75, 110, 2),
-};
-/** The within-item correlations that the draw cells try. */
-export const RHOS = [0, 0.3, 0.6] as const;
-
+  {
+    name: "n140-without-c3",
+    nuisance: CHATBOT,
+    design: {
+      items: 127,
+      runs: [2, 2, 0],
+      defectRate: CHATBOT.defectRate,
+      groups: [
+        { configuration: 0, units: 70, positiveShare: 0.35 },
+        { configuration: 1, units: 70, positiveShare: 0.35 },
+      ],
+    },
+  },
+];
 /** The cells of the published study (VALIDATION.md). */
 export const CELLS: readonly Cell[] = [
   binary("binary-equal", 0.2, "reads", 0.9),
@@ -236,22 +299,20 @@ export const CELLS: readonly Cell[] = [
   { id: "levels-much-noisier", scale: "levels", raterNoise: 0.6, judgeNoise: 1.2, armShift: 0 },
   { id: "levels-shift-0.25", scale: "levels", raterNoise: 0.6, judgeNoise: 0.6, armShift: 0.25 },
   { id: "levels-shift-0.50", scale: "levels", raterNoise: 0.6, judgeNoise: 0.6, armShift: 0.5 },
-  // The chatbot's draw, for the good (0.90) and the clearly worse (0.80) judge, at each ρ.
-  ...Object.entries(DRAWS).flatMap(([name, design]) =>
-    RHOS.flatMap((rho) =>
-      (
-        [
-          ["equal", 0.9],
-          ["worse", 0.8],
-        ] as const
-      ).map(([who, judgeAccuracy]): Cell => ({
-        id: `draw-${name}-rho${rho}-${who}`,
-        scale: "draw",
-        design,
-        judgeAccuracy,
-        rho,
-      })),
-    ),
+  // Each draw for the good judge (as accurate as a rater) and the clearly worse one (WORSE_BY less).
+  ...DRAWS.flatMap(({ name, nuisance, design }) =>
+    (
+      [
+        ["good", nuisance.raterAccuracy],
+        ["worse", nuisance.raterAccuracy - WORSE_BY],
+      ] as const
+    ).map(([who, judgeAccuracy]): Cell => ({
+      id: `draw-${name}-${who}`,
+      scale: "draw",
+      design,
+      judgeAccuracy,
+      rho: nuisance.rho,
+    })),
   ),
 ];
 
