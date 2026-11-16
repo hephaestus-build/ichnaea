@@ -91,10 +91,12 @@ async function json(path: string): Promise<unknown> {
 /**
  * Marks a trial whose configuration differs from its arm, or whose observations differ from what
  * the configuration expects (REQ-15), as an invalid configuration. Its outputs stay recorded; it
- * gives no value, so it counts as missing.
+ * gives no value, so it counts as missing. A protocol failure stays one: it is the harness's fault
+ * and makes the run INVALID, which an invalid configuration, counted only as missing, would not.
  */
 function checkConfiguration(trial: Trial, identity: string | undefined): Trial {
-  if (trial.outcome === "invalid_configuration") return trial;
+  if (trial.outcome === "invalid_configuration" || trial.outcome === "protocol_failure")
+    return trial;
   const mismatch =
     identity !== trial.configuration
       ? `the trial ran configuration ${trial.configuration}, not its arm's ${identity ?? "(no arm)"}`
