@@ -51,6 +51,39 @@ describe("page scripts", () => {
     expect(checkPage("p/index.html", html, read, base).bytes).toBe(25 + 100);
   });
 
+  it("follows static re-exports, which the browser loads too", () => {
+    const html = page(`<script type="module" src="/ichnaea/_astro/a.js"></script>`);
+    const read = files({
+      "_astro/a.js": 'export{t}from"./b.js";export*from"./c.js"',
+      "_astro/b.js": 'const algorithm="mt19937"',
+      "_astro/c.js": "x".repeat(BUDGET_BYTES),
+    });
+    const report = checkPage("p/index.html", html, read, base);
+    expect(report.problems).toContain("loads Ichnaea code");
+    expect(report.bytes).toBeGreaterThan(BUDGET_BYTES);
+  });
+
+  it("fails a page that loads a script the check cannot read", () => {
+    const html = page(
+      [
+        `<script src="https://cdn.example/runtime.js"></script>`,
+        `<script type="module" src="/ichnaea/_astro/a.js"></script>`,
+      ].join(""),
+    );
+    const read = files({ "_astro/a.js": 'import"./gone.js"' });
+    expect(checkPage("p/index.html", html, read, base).problems).toEqual([
+      "loads /_astro/gone.js, which the check cannot read",
+      "loads https://cdn.example/runtime.js, which the check cannot read",
+    ]);
+  });
+
+  it("fails a page with a script that does not parse, since its imports are unknown", () => {
+    const html = page("<script>if (broken) {</script>");
+    expect(checkPage("p/index.html", html, files({}), base).problems).toEqual([
+      "loads inline script 1, which the check cannot read",
+    ]);
+  });
+
   it("does not count a dynamic import, which loads only when used", () => {
     const html = page(`<script type="module" src="/ichnaea/_astro/a.js"></script>`);
     const read = files({
