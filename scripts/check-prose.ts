@@ -48,6 +48,7 @@ export function proseBlocks(source: string): ProseBlock[] {
   const blocks: ProseBlock[] = [];
   let paragraph: { line: number; parts: string[]; listItem: boolean } | undefined;
   let fence: string | undefined;
+  let comment = false;
   let frontMatter = lines[0]?.trim() === "---";
   const flush = (): void => {
     if (paragraph)
@@ -72,12 +73,18 @@ export function proseBlocks(source: string): ProseBlock[] {
         fence = undefined;
       return;
     }
+    // An HTML comment can span lines. It ends on the line that holds `-->`.
+    if (comment || trimmed.startsWith("<!--")) {
+      flush();
+      comment = !trimmed.includes("-->");
+      return;
+    }
     if (fenceMark !== undefined) {
       flush();
       fence = fenceMark;
       return;
     }
-    if (trimmed === "" || /^(import|export)\s/.test(trimmed) || /^<!--.*-->$/.test(trimmed)) {
+    if (trimmed === "" || /^(import|export)\s/.test(trimmed)) {
       flush();
       return;
     }

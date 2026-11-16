@@ -39,12 +39,22 @@ describe("prose check", () => {
       "---",
       'import { Card } from "x";',
       "```sh",
+      "<!-- not a comment inside code",
       "echo just do it; really!",
       "```",
+      "<!-- A comment; with a semicolon",
+      "and a second line! -->",
       '<Card title="REGRESSION">',
       "</Card>",
     ].join("\n");
     expect(problems(source)).toEqual([]);
+  });
+
+  it("reads prose again after a code block that holds a comment marker", () => {
+    expect(problems("```html\n<!-- markup\n```\n\nSimply run it.")).toEqual([
+      "a word that tells the reader it is easy",
+    ]);
+    expect(problems("<!-- a comment\nthat spans lines -->\n\nSimply run it.")).toHaveLength(1);
   });
 
   it("counts a code span as one word and keeps the text of a link", () => {
