@@ -464,12 +464,9 @@ node scripts/stats/agreement-fixtures.ts
 docker run --rm -v "$PWD":/w -w /w \
   rocker/r-ver:4.5.2@sha256:fd4ccdd3a4a6f7ef805e2daeee2a0fe3bf126bc231f36351223baecf5a595a4c \
   Rscript scripts/stats/reference-agreement.R
-docker run --rm -v "$PWD":/w -w /w \
-  python:3.13.18-slim@sha256:e48f59cdba69a3cbd9ed2cf0f348d90d45a8d350d98134cf1070bc106ee9ed90 sh -c \
-  "pip install --require-hashes -r scripts/stats/oracle-requirements.txt && python scripts/stats/reference-krippendorff.py"
 ```
 
-The R script installs irr, irrCAC and jsonlite from a dated CRAN snapshot, so it needs the network.
+The R script installs irr, irrCAC and jsonlite from a dated CRAN snapshot, so it needs the network. The Python package `krippendorff` agrees with these values too. It is GPL-licensed, which is outside the repository's licence allowlist, so it is not a committed oracle. The published example is the second, independent check.
 
 ## Floors and the minimum detectable effect
 

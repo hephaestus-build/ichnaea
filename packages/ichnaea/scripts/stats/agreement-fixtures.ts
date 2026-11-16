@@ -1,6 +1,5 @@
 // Writes test/stats/reference-agreement-inputs.json: the synthetic tables, label pairs and
-// reliability matrices that the agreement oracles (reference-agreement.R, reference-krippendorff.py)
-// and the tests read. Deterministic: run it again and the file does not change.
+// reliability matrices that the agreement oracle (reference-agreement.R) and the tests read. Deterministic: run it again and the file does not change.
 //   node scripts/stats/agreement-fixtures.ts
 import { writeFileSync } from "node:fs";
 

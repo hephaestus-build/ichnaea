@@ -28,22 +28,17 @@ interface RReference {
   pairs: { id: string; table: number[][]; kappa: number }[];
   reliability: { id: string; nominal: number; ordinal: number; interval: number }[];
 }
-interface PythonReference {
-  reliability: { id: string; nominal: number; ordinal: number; interval: number }[];
-}
 
 const inputs = read<Inputs>("reference-agreement-inputs.json");
 const r = read<RReference>("reference-r-agreement.json");
-const python = read<PythonReference>("reference-python-krippendorff.json");
 const TOLERANCE = 1e-12;
 const metrics = ["nominal", "ordinal", "interval"] as const;
 
-describe("agreement against R (irr, irrCAC) and Python (krippendorff)", () => {
+describe("agreement against R (irr, irrCAC)", () => {
   it("covers every input with each oracle", () => {
     expect(r.tables.map((t) => t.id)).toEqual(inputs.tables.map((t) => t.id));
     expect(r.pairs.map((p) => p.id)).toEqual(inputs.pairs.map((p) => p.id));
     expect(r.reliability.map((u) => u.id)).toEqual(inputs.reliability.map((u) => u.id));
-    expect(python.reliability.map((u) => u.id)).toEqual(inputs.reliability.map((u) => u.id));
   });
 
   it.each(inputs.tables.map((t, i) => [t.id, t.table, r.tables[i]!] as const))(
@@ -66,17 +61,15 @@ describe("agreement against R (irr, irrCAC) and Python (krippendorff)", () => {
     },
   );
 
-  it.each(
-    inputs.reliability.map(
-      (u, i) => [u.id, u.units, r.reliability[i]!, python.reliability[i]!] as const,
-    ),
-  )("reliability %s: alpha with each metric", (_id, units, fromR, fromPython) => {
-    for (const metric of metrics) {
-      const alpha = krippendorffAlpha(units, metric);
-      expect(Math.abs(alpha - fromR[metric])).toBeLessThan(TOLERANCE);
-      expect(Math.abs(alpha - fromPython[metric])).toBeLessThan(TOLERANCE);
-    }
-  });
+  it.each(inputs.reliability.map((u, i) => [u.id, u.units, r.reliability[i]!] as const))(
+    "reliability %s: alpha with each metric",
+    (_id, units, fromR) => {
+      for (const metric of metrics) {
+        const alpha = krippendorffAlpha(units, metric);
+        expect(Math.abs(alpha - fromR[metric])).toBeLessThan(TOLERANCE);
+      }
+    },
+  );
 
   it("reproduces Krippendorff's published example (2011): 0.743, 0.815, 0.849", () => {
     const units = inputs.reliability.find((u) => u.id === "krippendorff-2011")!.units;
