@@ -14,12 +14,13 @@ import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 
 import type { SnapshotRow } from "../../scripts/stats/solver-snapshot.ts";
+import type { Runtime } from "../../scripts/stats/study-score-type-i.ts";
 import { createRng } from "../../src/stats/index.ts";
 import { lowerRoot, lowerRootAtMost } from "../../src/stats/solve.ts";
 
 const pinned = JSON.parse(
   readFileSync(join(import.meta.dirname, "reference-solver-snapshot.json"), "utf8"),
-) as { platform: string; arch: string; node: string; rows: SnapshotRow[] };
+) as { runtime: Runtime; rows: SnapshotRow[] };
 
 const differing = (a: readonly SnapshotRow[], b: readonly SnapshotRow[]): number => {
   expect(a.length).toBe(b.length);
@@ -53,9 +54,9 @@ describe("the root-finder", () => {
   it("gives the stored bounds bit for bit on the runtime that wrote them, within 1e-9 on another", async () => {
     const now = (await import("../../scripts/stats/solver-snapshot.ts")).snapshotRows();
     const sameRuntime =
-      process.version === pinned.node &&
-      process.platform === pinned.platform &&
-      process.arch === pinned.arch;
+      process.version === pinned.runtime.version &&
+      process.platform === pinned.runtime.platform &&
+      process.arch === pinned.runtime.arch;
     if (sameRuntime) expect(differing(now, pinned.rows)).toBe(0);
     else
       now.forEach((r, i) => {

@@ -15,6 +15,7 @@ import {
   type Stratum,
   tangoInterval,
 } from "../../src/stats/index.ts";
+import { runtime } from "./study-score-type-i.ts";
 
 interface Strata {
   x1: number[];
@@ -118,7 +119,7 @@ if (import.meta.main) {
   const rows = snapshotRows();
   writeFileSync(
     new URL("../../test/stats/reference-solver-snapshot.json", import.meta.url),
-    `${JSON.stringify({ platform: process.platform, arch: process.arch, node: process.version, rows })}\n`,
+    `${JSON.stringify({ runtime: runtime(), rows })}\n`,
   );
   console.log(`${rows.length} bounds`);
 }
