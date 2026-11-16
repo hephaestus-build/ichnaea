@@ -403,7 +403,7 @@ in the resampling frame. A planned-attempt estimand supplies its defined binary 
 planned attempt instead of dropping unavailable quality evidence.
 
 The method is **estimate-only**, not a validated decision method. It never establishes
-non-inferiority or a population claim. Small-cluster coverage is not established. A constant
+non-inferiority or a population claim. Nominal coverage is not established at any cluster count. A constant
 resampling distribution is marked degenerate, with no coverage claim. Draws containing only missing
 values are omitted and counted explicitly.
 

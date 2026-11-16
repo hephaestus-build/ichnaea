@@ -162,8 +162,9 @@ export function clusterBootstrap(
       : { mode: "native", algorithm: options.rng!.algorithm, seed: options.rng!.seed },
     limitations: [
       "descriptive percentile interval; not a validated decision method",
+      "nominal coverage is not established at any cluster count",
       "cluster resampling does not establish random sampling or a population claim",
-      ...(clusters.length < 40 ? ["few clusters: nominal coverage is not established"] : []),
+      ...(clusters.length < 40 ? ["fewer than 40 clusters: additional caution is needed"] : []),
       ...(degenerate
         ? ["degenerate resampling distribution; the point interval has no coverage claim"]
         : []),

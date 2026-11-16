@@ -28,6 +28,17 @@ const schedule: ClusterSchedule = {
 };
 
 describe("descriptive cluster percentile bootstrap", () => {
+  it("states that coverage is unestablished even with at least 40 clusters", () => {
+    const result = clusterBootstrap(
+      Array.from({ length: 40 }, (_, i) => ({ cluster: `case-${i}`, value: i % 2 })),
+      { rng: createRng(42), resamples: 2000 },
+    );
+    expect(result.validated).toBe(false);
+    expect(result.limitations).toContain(
+      "nominal coverage is not established at any cluster count",
+    );
+    expect(result.limitations.join(" ")).not.toContain("fewer than 40");
+  });
   it("resamples whole unequal clusters and retains row weights", () => {
     const result = clusterBootstrap(observations, { schedule, level: 0.5 });
     // The four means are 0, 1/4, 1/4, 1. Type-7 quartiles are 3/16 and 7/16.
