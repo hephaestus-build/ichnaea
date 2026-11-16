@@ -626,30 +626,39 @@ function triggerCheck(
 }
 
 /**
- * The checks of each trial's attempts (invariant 12). They are numbered 1 to k with no gap, and the
- * calls of every attempt count against the plan's bound per trial and against the run's budget,
- * so a retry cannot hide an overrun. A trial without a count of calls counts none.
+ * The checks of each trial's attempts (invariant 12). They are numbered 1 to k with no gap. In a
+ * plan that runs its arms, the calls of every attempt count against the plan's bound per trial and
+ * against the run's budget, so a retry cannot hide an overrun. A trial without a count of calls
+ * counts none.
+ *
+ * The bounds guard what Ichnaea spends. An import plan runs no arm, so it books a worst case of 0
+ * calls: another runner made its calls, which stay on the trial records and never make the run
+ * INVALID. A plan without `callsPerTrial` was written before the plan recorded the bound, and its
+ * calls are not checked, so it keeps the decision it was given.
  */
 function attemptChecks(input: DecideInput): string[] {
   const { budget } = input.plan;
   const invalid: string[] = [];
-  const over: { readonly trial: string; readonly calls: number }[] = [];
-  let total = 0;
   for (const t of input.trials) {
     const attempts = t.attempts ?? [];
     if (attempts.some((a, i) => a.attempt !== i + 1))
       invalid.push(
         `trial '${t.id}' lists attempts ${attempts.map((a) => a.attempt).join(", ")}; they must be numbered 1 to k with no gap`,
       );
-    const calls = attempts.reduce((n, a) => n + a.calls, t.usage?.calls ?? 0);
+  }
+  const bound = budget.callsPerTrial;
+  if (bound === undefined || budget.worstCaseCalls === 0) return invalid;
+  const over: { readonly trial: string; readonly calls: number }[] = [];
+  let total = 0;
+  for (const t of input.trials) {
+    const calls = (t.attempts ?? []).reduce((n, a) => n + a.calls, t.usage?.calls ?? 0);
     total += calls;
-    if (budget.callsPerTrial !== undefined && calls > budget.callsPerTrial)
-      over.push({ trial: t.id, calls });
+    if (calls > bound) over.push({ trial: t.id, calls });
   }
   const example = over[0];
   if (example)
     invalid.push(
-      `${over.length} trial(s) made more calls over their attempts than the bound of ${budget.callsPerTrial} per trial, for example '${example.trial}' (${example.calls} calls)`,
+      `${over.length} trial(s) made more calls over their attempts than the bound of ${bound} per trial, for example '${example.trial}' (${example.calls} calls)`,
     );
   if (total > budget.maxCalls)
     invalid.push(

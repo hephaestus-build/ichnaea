@@ -1,9 +1,10 @@
 // Invariant 12: a trial's attempts are numbered 1 to k with no gap, and every attempt's calls count
 // against the bound of calls per trial and the run's budget, so a retry cannot hide an overrun.
-import type { Decision } from "../../src/contracts/index.ts";
+import { type Decision, digest } from "../../src/contracts/index.ts";
 import { describe, expect, it } from "vitest";
 
 import { decide } from "../../src/decide/index.ts";
+import { recompute } from "../../src/report/index.ts";
 import { type Scenario, scenario } from "./support/scenario.ts";
 
 const run = (s: Scenario): Decision =>
@@ -44,20 +45,57 @@ describe("a trial's attempts", () => {
     expect(retried.invalidReasons).toEqual([]);
   });
 
-  it("count against the run's budget, which an import's plan does not book", async () => {
-    // An import books no worst case, so only the calls on record can show an overrun.
+  it("count against the run's budget in a plan that runs its arms", async () => {
+    // 20 cases x 2 trials x 2 arms at 2 calls each book exactly the budget of 80.
     const d = await run(
       await scenario({
         ...options,
         maxCalls: 80,
-        armsToRun: [],
+        usage: () => ({ calls: 2 }),
         attempts: (t) => (first(t) ? [timeout(1, 1)] : undefined),
       }),
     );
     expect(d.verdict).toBe("INVALID");
-    expect(d.invalidReasons).toEqual([
-      "the run made 81 calls, over the budget of 80, counting every attempt",
-    ]);
+    expect(d.invalidReasons).toContain(
+      "the run made 161 calls, over the budget of 80, counting every attempt",
+    );
+  });
+
+  it("never make an import INVALID: another runner spent them, not Ichnaea", async () => {
+    // An import plan runs no arm and books no worst case. Its trials keep their calls on record.
+    const s = await scenario({
+      ...options,
+      maxCalls: 80,
+      armsToRun: [],
+      usage: () => ({ calls: 5 }),
+      attempts: (t) => (first(t) ? [timeout(1, 3)] : undefined),
+    });
+    expect(s.plan.budget.worstCaseCalls).toBe(0);
+    const d = await run(s);
+    expect(d.verdict).not.toBe("INVALID");
+    expect(d.invalidReasons).toEqual([]);
+    expect(s.trials.find((t) => t.id === "case-000/candidate/r0")?.usage?.calls).toBe(5);
+  });
+
+  it("leave a stored plan without a bound per trial decided as before", async () => {
+    // A plan written before the bound per trial was recorded: its run's calls are over the
+    // budget, and decide must give the decision that was stored for it.
+    const s = await scenario({ ...options, maxCalls: 160, usage: () => ({ calls: 1 }) });
+    const { callsPerTrial: _, ...budget } = s.plan.budget;
+    const plan = { ...s.plan, budget };
+    const stored: Scenario = {
+      ...s,
+      plan,
+      run: { ...s.run, plan: digest(plan) as Scenario["run"]["plan"] },
+    };
+    const over: Scenario = {
+      ...stored,
+      trials: stored.trials.map((t) => ({ ...t, usage: { calls: 3 } })),
+    };
+    const decision = await run(over);
+    expect(decision.invalidReasons).toEqual([]);
+    expect(recompute({ ...over, decision }).matches).toBe(true);
+    expect(decision).toEqual(await run(stored));
   });
 
   it("are numbered 1 to k with no gap", async () => {

@@ -104,8 +104,8 @@ export const Trial = z.strictObject({
   /**
    * The earlier attempts at this trial that a later one replaced, in order and numbered from 1 with
    * no gap: each an infrastructure failure or a trial not run, with the calls it made. The record is
-   * the last attempt. The calls of every attempt count against the per-trial bound and the run's
-   * budget, so a retry cannot hide an overrun.
+   * the last attempt. In a plan that runs its arms, the calls of every attempt count against the
+   * per-trial bound and the run's budget, so a retry cannot hide an overrun.
    */
   attempts: z
     .array(
