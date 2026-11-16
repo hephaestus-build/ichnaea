@@ -1,4 +1,4 @@
-import { type DecisionView, NOT_VALIDATED } from "./view.ts";
+import { type DecisionView, NO_BOUND, NOT_VALIDATED } from "./view.ts";
 
 /**
  * Escapes text for Markdown: every string in a summary may come from a configuration or a case,
@@ -269,6 +269,7 @@ const RATE = /^\d+\.\d%$/;
 const DIFFERENCE = /^[+−]?\d+\.\d pts$/;
 const INTERVAL = /^\d+\.\d% to \d+\.\d%$/;
 const BOUND = /^≥ [+−]?\d+\.\d pts( \(not validated\))?$/;
+const NO_BOUND_CELL = new RegExp(`^${NO_BOUND} \\(.+\\)$`);
 
 /** The problem of one table row whose estimates lack their intervals, if any. */
 function rowProblem(cells: ReadonlyMap<string, string>): string | undefined {
@@ -277,9 +278,11 @@ function rowProblem(cells: ReadonlyMap<string, string>): string | undefined {
   if (rate !== undefined && RATE.test(rate) && !INTERVAL.test(cells.get("interval") ?? ""))
     return `a rate (${rate}) without its interval`;
   const bound = cells.get("bound") ?? "";
-  if (difference !== undefined && DIFFERENCE.test(difference) && !BOUND.test(bound))
+  // A cell with no bound states why, and has nothing to label as validated or not.
+  const unavailable = NO_BOUND_CELL.test(bound);
+  if (difference !== undefined && DIFFERENCE.test(difference) && !BOUND.test(bound) && !unavailable)
     return `a difference (${difference}) without its bound`;
-  if (cells.get("validated") === "false" && !bound.endsWith(NOT_VALIDATED))
+  if (cells.get("validated") === "false" && !unavailable && !bound.endsWith(NOT_VALIDATED))
     return `a bound (${bound}) that is not validated, without its label`;
   return undefined;
 }
