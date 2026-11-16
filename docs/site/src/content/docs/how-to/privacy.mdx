@@ -1,0 +1,73 @@
+---
+title: Keep your data private
+description: What Ichnaea sends (nothing), where it writes your data, what a data class does, and how to export only the fields a destination may receive.
+sidebar:
+  order: 2
+---
+
+import { Code } from "@astrojs/starlight/components";
+import exportCase from "../../../../examples/privacy/export-case.ts?raw";
+
+Ichnaea runs in your CI or on your machine. It listens on no port and sends nothing itself.
+It labels every field of every record with a data class.
+Your runner calls your system and your model judge. Ichnaea only reads and writes files.
+
+## Where your data is written
+
+| What                        | Where                                             | Holds content?                                    |
+| --------------------------- | ------------------------------------------------- | ------------------------------------------------- |
+| Your cases                  | Where you keep them, for example `cases.jsonl`    | Yes: inputs and references                        |
+| Each run                    | `.ichnaea/runs/<run>/`                            | Yes: `trials.jsonl` holds the outputs             |
+| The decision and the report | `.ichnaea/runs/<run>/decision.json` and `report/` | No outputs today: counts, case IDs and statistics |
+| The monthly call ledger     | `.ichnaea/ledger/<endpoint>/<month>.jsonl`        | No: run names and call counts                     |
+
+Pass `--store <directory>` to each command to write somewhere else.
+
+## Keep private data out of your repository
+
+1. Add the store to your `.gitignore`:
+
+   ```text
+   .ichnaea/
+   ```
+
+2. Commit a `cases.jsonl` only if every case is synthetic or public.
+3. Keep private cases in your own private store. Give CI access to them as you would to a secret file.
+4. Upload `trials.jsonl` as a CI artifact only if your CI artifacts may hold the outputs.
+
+## What a data class does
+
+Every field of every record carries a data policy:
+
+- **Class:** `none`, `pseudonymous`, `personal` or `special`. A content field, such as a case's `input`, takes the class that the record declares in its own `dataClass` field.
+- **Identifier:** whether the field can identify a person, or holds content.
+- **Purposes:** what the field may leave for. `*` means any purpose.
+- **Retention:** whether it is kept as long as the record or as long as the data subject allows.
+
+The [record schemas](/ichnaea/reference/schemas/) list the policy of every field.
+
+## Export only what a destination may receive
+
+Before your own code sends a record anywhere, project it with `projectForEgress`.
+It keeps a value only where the schema defines it, the purpose is allowed and the class is within the destination's limit.
+Anything else is dropped, and the result names each dropped path.
+
+<Code code={exportCase} lang="ts" title="export-case.ts" />
+
+Run it from the support example's directory with Node 24.3 or later. It prints:
+
+```text
+[ '/input', '/references' ]
+dataClass, family, id, pool, provenance, schema, unit
+```
+
+## What a data class does not do
+
+- **It is not a sandbox.** Ichnaea does not stop your code, or a person, from copying a file. Only your code that calls `projectForEgress` applies the policy.
+- **It is only as right as the record.** If a record declares `dataClass: "none"` for content that is personal, the projection lets it through.
+- **It does not delete data.** Retention describes how long a field may be kept. Deleting it is your job.
+
+## Check that it worked
+
+- `git status` does not show `.ichnaea/`.
+- A record that leaves your systems went through `projectForEgress` with the destination's purpose and class.

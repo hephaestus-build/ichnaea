@@ -1,0 +1,103 @@
+---
+title: Install Ichnaea and check the build
+description: Pin a commit of the build branch, check that it rebuilds byte for byte from a signed commit, and update the pin later.
+sidebar:
+  order: 1
+---
+
+Ichnaea is not on npm before 1.0.
+You install a commit of the `build` branch. Each build commit holds the built package of one signed commit on `main`.
+
+## You need
+
+- Node 24.3 or later
+- pnpm, which the install test uses
+- a project with a `package.json`
+- the GitHub CLI, `gh`, for the first step (optional)
+
+## Install
+
+1. Find the newest build commit:
+
+   ```sh
+   gh api repos/hephaestus-build/ichnaea/commits/build --jq .sha
+   ```
+
+2. Make your project an ES module project. The command line tool loads your configuration as an ES module:
+
+   ```sh
+   pnpm pkg set type=module
+   ```
+
+3. Add zod and the build commit. Replace `<build-commit>` with the commit from step 1:
+
+   ```sh
+   pnpm add zod@4.6.7 'github:hephaestus-build/ichnaea#<build-commit>'
+   ```
+
+4. Check that the command line tool runs:
+
+   ```sh
+   pnpm exec ichnaea --version
+   ```
+
+Your lockfile now pins the build commit.
+zod 4.6 or later is a peer dependency. The copy at the root of your project is the one that Ichnaea uses.
+Installing the package runs no script, because its `package.json` has none.
+
+## Check a build commit
+
+A build commit is not signed. Its trust comes from a rebuild.
+Before you pin or update, rebuild the commit in a checkout of Ichnaea:
+
+```sh
+git clone https://github.com/hephaestus-build/ichnaea && cd ichnaea
+pnpm install --frozen-lockfile
+node scripts/verify-build.ts <build-commit>
+```
+
+The script reads the `Source-Commit:` trailer of the build commit.
+It checks that this commit is on `main` and that GitHub shows its signature as verified.
+Then it builds that commit again and compares every path, byte and file mode.
+It stops at the first difference and names the file.
+
+Run it with the Node version that the build commit's `build.json` names. The script refuses another version.
+
+## Update the pin
+
+1. Find the newer build commit, as in step 1 above.
+2. Check it, as in the section above.
+3. Add it:
+
+   ```sh
+   pnpm add 'github:hephaestus-build/ichnaea#<newer-build-commit>'
+   ```
+
+## Work on Ichnaea and your project together
+
+1. In the Ichnaea checkout, build on every change:
+
+   ```sh
+   pnpm --filter @hephaestus-build/ichnaea build --watch
+   ```
+
+2. In your project, link the package of that checkout:
+
+   ```sh
+   pnpm link <path-to-ichnaea>/packages/ichnaea
+   ```
+
+3. When you are done, remove the link and install the pinned commit again:
+
+   ```sh
+   pnpm unlink @hephaestus-build/ichnaea
+   pnpm install
+   ```
+
+Do not commit the link. It changes your `package.json` and lockfile to a path on your machine.
+
+## Why there is no npm package yet
+
+The build branch lets anyone rebuild what they install, with no release step for each change.
+At 1.0, the same tree goes to npm with provenance.
+[Decision 0019](https://github.com/hephaestus-build/ichnaea/blob/main/docs/decisions/0019-built-package-on-a-build-branch.md) gives the reasons.
