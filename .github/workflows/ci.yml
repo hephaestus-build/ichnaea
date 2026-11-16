@@ -158,6 +158,19 @@ jobs:
                test/stats/reference-python-score-permutation.json"
           git diff --exit-code -- test/stats/reference-score-permutation-tables.json \
             test/stats/reference-coin-score-permutation.json test/stats/reference-python-score-permutation.json
+      # The score non-inferiority bounds on the same tables: an R implementation (with ratesci for
+      # S-A) and a Python implementation of S-B, both written from the formulas alone.
+      - name: The score bound reference values are what their oracles write
+        working-directory: packages/ichnaea
+        run: |
+          docker run --rm -v "$PWD":/w -w /w "$R_IMAGE" Rscript scripts/stats/reference-score-intervals.R \
+            test/stats/reference-score-permutation-tables.json test/stats/reference-r-score-intervals.json
+          docker run --rm -v "$PWD":/w -w /w "$PYTHON_IMAGE" sh -c \
+            "pip install --quiet --root-user-action=ignore --require-hashes -r scripts/stats/oracle-requirements.txt \
+            && python scripts/stats/score_intervals_oracle.py test/stats/reference-score-permutation-tables.json \
+               test/stats/reference-python-score-intervals.json"
+          git diff --exit-code -- test/stats/reference-r-score-intervals.json \
+            test/stats/reference-python-score-intervals.json
 
   workflows:
     name: workflows
