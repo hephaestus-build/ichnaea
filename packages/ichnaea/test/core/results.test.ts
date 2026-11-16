@@ -154,9 +154,12 @@ describe("importResults", () => {
 
   it("records the runtime it is given, and says so when it is not", () => {
     const runtime = { name: "node", version: "24.3.0", platform: "darwin", arch: "arm64" };
-    expect(importResults(plan, rows(), { runtime }).records.run.environment).toMatchObject({
+    expect(importResults(plan, rows(), { runtime }).records.run.environment).toEqual({
       node: "24.3.0",
       platform: "darwin-arm64",
+      ichnaea: plan.record.ichnaea,
+      arch: "arm64",
+      runtime,
     });
     expect(importResults(plan, rows()).records.run.environment).toMatchObject({
       node: "unknown",

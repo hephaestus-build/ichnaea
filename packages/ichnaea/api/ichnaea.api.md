@@ -716,14 +716,6 @@ export interface RunRecords {
 }
 
 // @public
-export interface Runtime {
-    readonly arch: string;
-    readonly name: string;
-    readonly platform: string;
-    readonly version: string;
-}
-
-// @public
 export function satisfies(version: string, range: string): boolean;
 
 // @public
@@ -832,6 +824,10 @@ export function testMeasure(measure: MeasureDefinition): TesterResult;
 export const TRIGGER_VARIES: {
     readonly [K in Plan["trigger"]]: readonly FactorPart[] | null;
 };
+
+// Warnings were encountered during analysis:
+//
+// src/core/results.ts:168:5 - (ae-forgotten-export) The symbol "Runtime" needs to be exported by the entry point index.d.ts
 
 // (No @packageDocumentation comment for this package)
 

@@ -275,6 +275,13 @@ export async function importRun(
       node: process.versions.node,
       platform: `${process.platform}-${process.arch}`,
       ichnaea: input.ichnaea,
+      arch: process.arch,
+      runtime: {
+        name: "node",
+        version: process.versions.node,
+        platform: process.platform,
+        arch: process.arch,
+      },
     },
     arms: plan.arms,
     lineage,

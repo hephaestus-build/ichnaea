@@ -2596,6 +2596,13 @@ export const Run: z.ZodObject<{
         platform: z.ZodString;
         ichnaea: z.ZodString;
         ci: z.ZodOptional<z.ZodString>;
+        arch: z.ZodOptional<z.ZodString>;
+        runtime: z.ZodOptional<z.ZodObject<{
+            name: z.ZodString;
+            version: z.ZodString;
+            platform: z.ZodString;
+            arch: z.ZodString;
+        }, z.core.$strict>>;
     }, z.core.$strict>;
     arms: z.ZodArray<z.ZodObject<{
         name: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
@@ -2731,6 +2738,17 @@ export const RunId: z.core.$ZodBranded<z.ZodString, "RunId", "out">;
 
 // @public
 export type RunId = z.infer<typeof RunId>;
+
+// @public
+export const Runtime: z.ZodObject<{
+    name: z.ZodString;
+    version: z.ZodString;
+    platform: z.ZodString;
+    arch: z.ZodString;
+}, z.core.$strict>;
+
+// @public
+export type Runtime = z.infer<typeof Runtime>;
 
 // @public
 export const Schedule: z.ZodObject<{

@@ -10,6 +10,7 @@ import {
   type MeasureValue,
   type Outcome,
   Run,
+  type Runtime,
   Text,
   Timestamp,
   Trial,
@@ -80,18 +81,6 @@ export interface FailedRow extends ResultRowBase {
  * another runner's files is a plain function that returns these rows.
  */
 export type ResultRow = CompletedRow | FailedRow;
-
-/** The runtime that imported the results, recorded in the run (REQ-83). */
-export interface Runtime {
-  /** The runtime's name, for example `node`. */
-  readonly name: string;
-  /** The runtime's version. */
-  readonly version: string;
-  /** The operating system, for example `linux`. */
-  readonly platform: string;
-  /** The processor architecture, for example `x64`. */
-  readonly arch: string;
-}
 
 /** What `importResults` found, beside the records. */
 export interface ImportSummary {
@@ -174,7 +163,10 @@ const UNKNOWN_RUNTIME: Runtime = {
 export function importResults(
   plan: SuitePlan,
   rows: Iterable<ResultRow>,
-  options: { readonly runtime?: Runtime } = {},
+  options: {
+    /** The runtime that imports the results, recorded in the run. Absent: recorded as unknown. */
+    readonly runtime?: Runtime;
+  } = {},
 ): { readonly records: RunRecords; readonly summary: ImportSummary } {
   const { record } = plan;
   const planned = new Map(record.trials.map((t) => [t.id as string, t]));
@@ -253,6 +245,7 @@ export function importResults(
       node: runtime.name === "node" ? runtime.version : runtime.name,
       platform: `${runtime.platform}-${runtime.arch}`,
       ichnaea: record.ichnaea,
+      ...(runtime === UNKNOWN_RUNTIME ? {} : { arch: runtime.arch, runtime }),
     },
     arms: record.arms,
     lineage: [

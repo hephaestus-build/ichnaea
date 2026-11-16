@@ -772,6 +772,17 @@ export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
     },
   },
   label: { "rater-cannot-tell": (r) => (r["value"] = { type: "unknown" }) },
+  run: {
+    "runtime-and-arch": (r) => {
+      r["environment"] = {
+        node: "24.22.2",
+        platform: "linux-x64",
+        ichnaea: "0.1.0",
+        arch: "x64",
+        runtime: { name: "node", version: "24.22.2", platform: "linux", arch: "x64" },
+      };
+    },
+  },
   configuration: {
     "model-version-route-and-informational": (r) => {
       const model = (r["models"] as Array<Record<string, unknown>>)[0]!;

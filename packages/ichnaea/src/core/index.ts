@@ -16,7 +16,6 @@ export {
   importResults,
   type ResultRow,
   type ResultRowBase,
-  type Runtime,
 } from "./results.ts";
 export * from "./semver.ts";
 export * from "./store.ts";
