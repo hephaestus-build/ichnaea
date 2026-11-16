@@ -83,8 +83,10 @@ one change log.
      git merge-base --is-ancestor <commit in the provenance> origin/main && echo on main
      ```
 
-   Approve within 90 days, while the run's artifact exists. If any fact is wrong, reject the
-   version with `npm stage reject <stage-id>`: nothing is published.
+   Approve within 90 days, while the run's artifact exists. Approve before `main`'s README example
+   changes: the finish workflow runs `main`'s README install and example against the version (see
+   [A version that cannot be finished](#a-version-that-cannot-be-finished)). If any fact is
+   wrong, reject the version with `npm stage reject <stage-id>`: nothing is published.
 
 5. `.github/workflows/release-finish.yml` runs every day and finishes each approved version, each
    on its own: a version that fails its checks gets no GitHub release, and the others still do. To
@@ -102,6 +104,20 @@ one change log.
    If a check fails, read its cause. A network failure needs only another run. Otherwise the
    version is on npm but wrong, and it gets no GitHub release: deprecate it with
    `npm deprecate @tumaet/ichnaea@<version> "<reason>"` and release the next version.
+
+### A version that cannot be finished
+
+A `v*` tag cannot be deleted, so the way out of each case below is the next patch version.
+
+- **The stage job failed after npm accepted the version.** A re-run of `release.yml` fails, because
+  the version is staged already, and the finish workflow never finds a successful release run for
+  the tag. Check the staged version with `npm stage list @tumaet/ichnaea`. Reject it with
+  `npm stage reject <stage-id>`, so that nothing is published, and release the next patch version.
+- **`main`'s README example changed after the tag.** The finish workflow runs `main`'s README
+  install and example against the published version, never the tag's code. If the example
+  changed between the tag and the approval, a correct version fails that check on every run.
+  Deprecate it with `npm deprecate @tumaet/ichnaea@<version> "<reason>"` and release the next
+  patch version.
 
 ### A wrong tag
 

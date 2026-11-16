@@ -111,6 +111,10 @@ version is staged and approved by an owner.
   npmjs.com. The GitHub release follows within a day, or at once by dispatch.
 - The staged files live in the release run's artifact for 90 days. A version approved later cannot
   be finished: release the next version instead.
+- The finish workflow runs `main`'s README example, so a version approved after that example
+  changed fails it: a maintainer deprecates that version and releases the next patch version.
+- A stage job that fails after npm accepted the version leaves no successful release run, and a
+  re-run cannot stage it again: reject the staged version on npm and release the next patch.
 - `release.yml` runs as the tagged commit defines it. A member of the release team could tag a
   commit off `main` with a changed workflow, and its own main check would not stop it. Two checks
   remain: the owner checks before approving that the provenance's commit is on `main`, and the

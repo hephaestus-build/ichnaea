@@ -74,7 +74,7 @@ owner approves each staged version on npm with two-factor authentication. After 
 Ichnaea's finish workflow checks more before it creates the version's GitHub release: the
 provenance names `.github/workflows/release.yml` at the version's `v*` tag, and the tag's
 commit, which is reachable from `main`. A version that fails that check stays on npm, with no
-GitHub release, and is deprecated. So install a version that has a
+GitHub release, and a maintainer deprecates it. So install a version that has a
 [GitHub release](https://github.com/hephaestus-build/ichnaea/releases), with the same tarball,
 its SBOM, `sbom.cdx.json`, and `SHA256SUMS`. To check the commit yourself, read it in the
 provenance, which the version's page on npmjs.com links, and run
