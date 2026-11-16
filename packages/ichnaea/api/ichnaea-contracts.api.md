@@ -1229,6 +1229,9 @@ export interface DigestRule {
 }
 
 // @public
+export const Duration: z.ZodString;
+
+// @public
 export interface EgressContext {
     readonly grants?: ReadonlyArray<{
         readonly path: string;
@@ -2776,6 +2779,17 @@ export const RecordDataClass: z.ZodEnum<{
 export const REFUSED_MARGIN = "the plan carries no planning statement, and its margin is refused";
 
 // @public
+export const Replay: z.ZodObject<{
+    stage: z.ZodString;
+    path: z.ZodString;
+    digest: z.ZodString;
+    state: z.ZodOptional<z.ZodJSONSchema>;
+}, z.core.$strict>;
+
+// @public
+export type Replay = z.infer<typeof Replay>;
+
+// @public
 export const ReplicatesFor: z.ZodObject<{
     slice: z.ZodString;
     value: z.ZodString;
@@ -3169,6 +3183,14 @@ export function toJsonSchema(contract: RecordContract): Record<string, unknown>;
 export function toReaderJsonSchema(contract: RecordContract): Record<string, unknown>;
 
 // @public
+export const TraceContext: z.ZodObject<{
+    traceparent: z.ZodString;
+}, z.core.$strict>;
+
+// @public
+export type TraceContext = z.infer<typeof TraceContext>;
+
+// @public
 export const Trial: z.ZodObject<{
     schema: z.ZodLiteral<"ichnaea.trial/1">;
     id: z.core.$ZodBranded<z.ZodString, "TrialId", "out">;
@@ -3343,6 +3365,24 @@ export const TrialRequest: z.ZodObject<{
     limits: z.ZodObject<{
         calls: z.ZodOptional<z.ZodInt>;
     }, z.core.$strict>;
+    deadline: z.ZodString;
+    workdir: z.ZodString;
+    configuration: z.ZodObject<{
+        path: z.ZodString;
+    }, z.core.$strict>;
+    seed: z.ZodOptional<z.ZodObject<{
+        algorithm: z.ZodString;
+        value: z.ZodString;
+    }, z.core.$strict>>;
+    replay: z.ZodOptional<z.ZodObject<{
+        stage: z.ZodString;
+        path: z.ZodString;
+        digest: z.ZodString;
+        state: z.ZodOptional<z.ZodJSONSchema>;
+    }, z.core.$strict>>;
+    trace: z.ZodOptional<z.ZodObject<{
+        traceparent: z.ZodString;
+    }, z.core.$strict>>;
 }, z.core.$strict>;
 
 // @public

@@ -99,4 +99,38 @@ describe("the worker protocol", () => {
     expect(TrialResult.safeParse(full).success).toBe(true);
     expect(readRecord(contract, full).ok).toBe(true);
   });
+
+  it("gives every request its deadline, its working directory and its configuration file", () => {
+    const request = fixture("valid", "trialRequest.json");
+    expect(TrialRequest.safeParse(request).success).toBe(true);
+    for (const member of ["deadline", "workdir", "configuration"]) {
+      const without = structuredClone(request);
+      delete without[member];
+      expect(TrialRequest.safeParse(without).success, member).toBe(false);
+    }
+  });
+
+  it("states a deadline as a positive number of seconds, so every language reads it alike", () => {
+    const request = fixture("valid", "trialRequest.json");
+    const withDeadline = (deadline: string): boolean =>
+      TrialRequest.safeParse({ ...request, deadline }).success;
+    expect(withDeadline("PT120S")).toBe(true);
+    expect(withDeadline("PT0.5S")).toBe(true);
+    // A zero limit cancels every trial at once, and minutes or days need a calendar to read.
+    for (const refused of ["PT0S", "PT0.0S", "PT2M", "P1D", "120", "PT-1S", "PT01S"])
+      expect(withDeadline(refused), refused).toBe(false);
+  });
+
+  it("passes a trace context, and a seed and a replayed input only when the suite needs them", () => {
+    const traced = TrialRequest.parse(fixture("valid-extra", "trialRequest/traced-replay.json"));
+    expect(traced.trace?.traceparent).toMatch(/^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$/);
+    expect(traced.replay?.stage).toBe("search");
+    expect(traced.seed?.algorithm).toBe("mt19937");
+    const request = fixture("valid", "trialRequest.json");
+    for (const traceparent of [
+      "00-abc-def-01",
+      "00-" + "A".repeat(32) + "-" + "1".repeat(16) + "-01",
+    ])
+      expect(TrialRequest.safeParse({ ...request, trace: { traceparent } }).success).toBe(false);
+  });
 });

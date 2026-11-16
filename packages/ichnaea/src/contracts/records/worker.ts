@@ -6,9 +6,11 @@ import {
   CaseId,
   Digest,
   DigestRef,
+  Duration,
   Json,
   PlanDigest,
   RecordDataClass,
+  Seed,
   SuiteId,
   Text,
   TrialId,
@@ -40,6 +42,35 @@ export const TrialIdentity = z.strictObject({
 });
 /** The identity of one trial and one attempt at it. */
 export type TrialIdentity = z.infer<typeof TrialIdentity>;
+
+/**
+ * The W3C trace context of one trial. A system that emits OpenTelemetry spans continues the trace
+ * in `traceparent`, so its spans link to the trial.
+ */
+export const TraceContext = z.strictObject({
+  /** The W3C `traceparent` header value of the trial, version `00`. */
+  traceparent: none(z.string().regex(/^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$/)),
+});
+/** A trace context. */
+export type TraceContext = z.infer<typeof TraceContext>;
+
+/**
+ * A frozen input for a stage that the trial starts after: the trial replays it instead of running
+ * the stages before it. The worker reports the digest back on the stage's event, so Ichnaea can
+ * check that the system consumed the input.
+ */
+export const Replay = z.strictObject({
+  /** The stage whose frozen output the trial starts from. */
+  stage: none(Text),
+  /** A read-only copy of the frozen input. */
+  path: none(Text),
+  /** The digest of the frozen input. */
+  digest: none(Digest),
+  /** What the next stage needs beside the input, such as a remaining budget. */
+  state: content(Json).optional(),
+});
+/** A replayed input. */
+export type Replay = z.infer<typeof Replay>;
 
 /**
  * What Ichnaea sends a worker for one trial: one JSON line on its standard input (REQ-22). The case
@@ -78,6 +109,30 @@ export const TrialRequest = z.strictObject({
      */
     calls: none(z.int().min(0)).optional(),
   }),
+  /**
+   * The plan's time limit for the trial, net of throttle waits. At the limit, Ichnaea sends a
+   * `cancel`, and the trial is a system timeout.
+   */
+  deadline: none(Duration),
+  /** A writable directory for this trial. Every artifact that the result names lies inside it. */
+  workdir: none(Text),
+  /**
+   * The arm's configuration file. Its path never says whether the arm is the base or the
+   * candidate.
+   */
+  configuration: z.strictObject({
+    /** The path of the configuration file, which the worker reads. */
+    path: none(Text),
+  }),
+  /**
+   * The seed for an instrument that simulates the user, the same for the case and replicate in
+   * both arms. The worker passes it only to that instrument: the system never receives it.
+   */
+  seed: Seed.optional(),
+  /** The frozen input of a stage suite, when the trial starts after a stage. */
+  replay: Replay.optional(),
+  /** The trial's trace context. The worker process also gets it as `TRACEPARENT`. */
+  trace: TraceContext.optional(),
 });
 /** A trial request. */
 export type TrialRequest = z.infer<typeof TrialRequest>;

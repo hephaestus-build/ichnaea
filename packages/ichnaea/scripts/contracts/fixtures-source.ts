@@ -231,6 +231,9 @@ export const VALID: Record<string, Record<string, unknown>> = {
       input: { question: "Kann ich nach 40 Tagen noch zurückgeben?" },
     },
     limits: { calls: 12 },
+    deadline: "PT120S",
+    workdir: "/tmp/ichnaea/run-2026-11-15-a/trial-0001",
+    configuration: { path: "/work/support-assistant/configs/answer-short.json" },
   },
   trialResult: {
     schema: "ichnaea.trialResult/1",
@@ -601,6 +604,17 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
   trialRequest: {
     "attempt-zero": (r) => ((r["trial"] as Record<string, unknown>)["attempt"] = 0),
     "missing-case-digest": (r) => delete (r["case"] as Record<string, unknown>)["digest"],
+    "missing-deadline": (r) => delete r["deadline"],
+    "deadline-zero": (r) => (r["deadline"] = "PT0S"),
+    "deadline-in-minutes": (r) => (r["deadline"] = "PT2M"),
+    "deadline-as-number": (r) => (r["deadline"] = 120),
+    "missing-workdir": (r) => delete r["workdir"],
+    "missing-configuration-path": (r) => (r["configuration"] = {}),
+    "traceparent-uppercase": (r) =>
+      (r["trace"] = { traceparent: `00-${"4BF92F3577B34DA6".repeat(2)}-00f067aa0ba902b7-01` }),
+    "replay-without-digest": (r) => (r["replay"] = { stage: "search", path: "/tmp/frozen" }),
+    "seed-out-of-range": (r) =>
+      (r["seed"] = { algorithm: "mt19937", value: "18446744073709551616" }),
   },
   trialResult: {
     "missing-calls": (r) => delete r["calls"],
@@ -750,6 +764,19 @@ export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
   },
   measureValue: {
     "non-finite-score": (r) => (r["value"] = { type: "score", value: { nonFinite: "-inf" } }),
+  },
+  trialRequest: {
+    // A stage suite that starts after `search`, with a simulated user and a trace context.
+    "traced-replay": (r) => {
+      r["trace"] = { traceparent: "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01" };
+      r["seed"] = { algorithm: "mt19937", value: "20261115" };
+      r["replay"] = {
+        stage: "search",
+        path: "/tmp/ichnaea/run-2026-11-15-a/frozen/search",
+        digest: d("a9"),
+        state: { callsLeft: 4 },
+      };
+    },
   },
   trialResult: {
     "infrastructure-failure": (r) => {
