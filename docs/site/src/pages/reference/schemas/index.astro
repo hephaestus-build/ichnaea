@@ -44,7 +44,7 @@ const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
     <li><strong>Field</strong>: a nested field is written <code>parent.child</code>, and a field of each array item <code>parent[].child</code>.</li>
     <li><strong>Data class</strong>: what the field may contain. <code>none</code> holds no personal data. <code>inherit</code> takes the class that the record declares in its own <code>dataClass</code> field.</li>
     <li><strong>Identifier</strong>: whether the field can identify a person or carries content.</li>
-    <li><strong>Leaves for</strong>: the purposes for which the contract lets the field leave your systems. <code>*</code> means any purpose. Ichnaea itself sends nothing. Your own export code reads this.</li>
+    <li><strong>Leaves for</strong>: the purposes for which the contract lets the field leave your systems. <code>*</code> means any purpose. Ichnaea makes no network call of its own and does not enforce where data goes. Your own export code reads this policy.</li>
     <li><strong>Kept for</strong>: how long the field is kept: as long as the record, or as long as the data subject allows.</li>
   </ul>
 </StarlightPage>
