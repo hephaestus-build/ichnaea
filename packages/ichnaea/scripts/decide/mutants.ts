@@ -530,7 +530,7 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "validity: lint misses an unlabelled bound",
     file: "src/report/render.ts",
-    from: '  if (cells.get("validated") === "false" && !bound.endsWith(NOT_VALIDATED))',
+    from: '  if (cells.get("validated") === "false" && !unavailable && !bound.endsWith(NOT_VALIDATED))',
     to: "  if (false)",
     projects: CORE,
   },
