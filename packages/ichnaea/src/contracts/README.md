@@ -28,21 +28,23 @@ A worker runs the system and a scorer measures it. Each is a process in any lang
 one JSON line per request on its standard input and writes one JSON line per answer on its
 standard output.
 
-| Schema ID                | File                       | Holds                                                                                        |
-| ------------------------ | -------------------------- | -------------------------------------------------------------------------------------------- |
-| `ichnaea.workerReady/1`  | `workerReady.schema.json`  | The first protocol line of a worker or scorer: its capacity and the requests it reads        |
-| `ichnaea.trialRequest/1` | `trialRequest.schema.json` | One trial for a worker: the case input, the deadline, the workdir and the configuration file |
-| `ichnaea.workerEvent/1`  | `workerEvent.schema.json`  | A heartbeat for a trial in flight, with the calls so far                                     |
-| `ichnaea.cancel/1`       | `cancel.schema.json`       | Ichnaea stops one trial in flight                                                            |
-| `ichnaea.trialResult/1`  | `trialResult.schema.json`  | The raw output, artifacts, stage events, usage, timing and what the worker read              |
-| `ichnaea.workerError/1`  | `workerError.schema.json`  | The answer to a line without a readable request: no trial, class `none`                      |
-| `ichnaea.scoreRequest/1` | `scoreRequest.schema.json` | The case with its references, and the trials to score                                        |
-| `ichnaea.scoreResult/1`  | `scoreResult.schema.json`  | A status, and a value when it is `ok`, for each trial and measure                            |
+| Schema ID                | File                       | Holds                                                                                                   |
+| ------------------------ | -------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `ichnaea.workerReady/1`  | `workerReady.schema.json`  | The first protocol line of a worker or scorer: its capacity and the requests it reads                   |
+| `ichnaea.trialRequest/1` | `trialRequest.schema.json` | One trial for a worker: the case input, the deadline, the workdir and the configuration file            |
+| `ichnaea.workerEvent/1`  | `workerEvent.schema.json`  | A heartbeat with the calls so far, or a tool call, for a trial in flight                                |
+| `ichnaea.cancel/1`       | `cancel.schema.json`       | Ichnaea stops one trial or one score request in flight                                                  |
+| `ichnaea.trialResult/1`  | `trialResult.schema.json`  | The raw output, artifacts, stage events, usage with the one call count, timing and what the worker read |
+| `ichnaea.workerError/1`  | `workerError.schema.json`  | The answer to a line without a readable request: no trial, class `none`                                 |
+| `ichnaea.scoreRequest/1` | `scoreRequest.schema.json` | A named request: the case with its references, and the trials to score                                  |
+| `ichnaea.scoreResult/1`  | `scoreResult.schema.json`  | The request's name, and a status (with a value when it is `ok`) for each trial and measure              |
 
 A process answers a request whose `trial` (for a scorer, each unit's trial and measure) parses
 with a `protocol` failure of kind `bad-request` that echoes that identity. It answers any other
 unreadable line with a `workerError`, which never quotes the line. Ichnaea matches each answer to
-its request by identity, never by position, and either answer makes the run INVALID.
+its request by identity, never by position, and either answer makes the run INVALID. A scorer's
+`error` takes only class `infrastructure` (retried, then missing) or `protocol`: the system's own
+failure is an `ok` value of `false`, and a value that must not be retried is `missing`.
 
 ## Writer and reader schemas
 
