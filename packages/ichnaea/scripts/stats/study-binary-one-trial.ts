@@ -3,10 +3,10 @@
 // computes the exact rejection probability of every structure at a true mean difference of 0, and
 // keeps the worst, at the level alpha = 0.05 and at the Holm levels alpha / m for m = 2, 3 and 4. An
 // exactly computed point fails above its level (decision 0006).
-//   node scripts/study-binary-one-trial.ts validation/binary-one-trial.tsv
+//   node scripts/stats/study-binary-one-trial.ts validation/binary-one-trial.tsv
 import { writeFileSync } from "node:fs";
 
-import { createRng } from "../src/index.ts";
+import { createRng } from "../../src/stats/index.ts";
 import {
   LEVELS,
   exactTypeI,
@@ -73,8 +73,8 @@ function main(output: string): void {
     local("./study-binary-one-trial.ts"),
     [
       local("./binary-one-trial.ts"),
-      local("../src/compare.ts"),
-      local("../src/exact-conditional.ts"),
+      local("../../src/stats/compare.ts"),
+      local("../../src/stats/exact-conditional.ts"),
     ],
     SEED_BASE,
     process.argv.slice(2),

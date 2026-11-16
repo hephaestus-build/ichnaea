@@ -2,7 +2,7 @@
 // stratified conditional test that `compareCounts` runs, which at one trial per arm is the exact
 // conditional McNemar test. Only discordant cases carry information: b cases where only the base
 // passes, c where only the candidate passes. Given n = b + c, the test rejects at c ≤ c*(n).
-import { type CaseCounts, compareCounts, type Rng } from "../src/index.ts";
+import { type CaseCounts, compareCounts, type Rng } from "../../src/stats/index.ts";
 
 export const ALPHA = 0.05;
 /**

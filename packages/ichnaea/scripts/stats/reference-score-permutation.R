@@ -1,5 +1,5 @@
-# Writes test/reference-coin-score-permutation.json: the within-case permutation test on scores, from
-# coin's stratified independence test, for every table of test/reference-score-permutation-tables.json.
+# Writes test/stats/reference-coin-score-permutation.json: the within-case permutation test on scores, from
+# coin's stratified independence test, for every table of test/stats/reference-score-permutation-tables.json.
 # Test-only oracle, on R 4.5.2 with coin and jsonlite from a dated CRAN snapshot. Run in a container:
 #   docker run --rm --platform linux/amd64 -v "$PWD":/w -w /w rocker/r-ver:4.5.2 Rscript scripts/reference-score-permutation.R
 #
@@ -22,7 +22,7 @@ lcm <- function(a, b) a / gcd(a, b) * b
 EXACT_DENOMINATOR <- 1000
 RESAMPLES <- 1e6
 
-input <- fromJSON("test/reference-score-permutation-tables.json", simplifyVector = FALSE)
+input <- fromJSON("test/stats/reference-score-permutation-tables.json", simplifyVector = FALSE)
 results <- lapply(input$tables, function(t) {
   cases <- Filter(function(c) length(c$candidate) > 0 && length(c$base) > 0, t$cases)
   nc <- sapply(cases, function(c) length(c$candidate))
@@ -48,5 +48,5 @@ results <- lapply(input$tables, function(t) {
 })
 out <- list(oracle = paste("R", paste(R.version$major, R.version$minor, sep = "."), "coin", as.character(packageVersion("coin"))),
             results = results)
-writeLines(toJSON(out, auto_unbox = TRUE, digits = NA), "test/reference-coin-score-permutation.json")
+writeLines(toJSON(out, auto_unbox = TRUE, digits = NA), "test/stats/reference-coin-score-permutation.json")
 cat("ok\n")

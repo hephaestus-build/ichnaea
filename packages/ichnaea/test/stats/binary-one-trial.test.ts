@@ -7,7 +7,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { createRng } from "../src/index.ts";
+import { createRng } from "../../src/stats/index.ts";
 import {
   LEVELS,
   bruteForceTypeI,
@@ -17,7 +17,7 @@ import {
   randomStructure,
   rejectionThresholds,
   type Structure,
-} from "../scripts/binary-one-trial.ts";
+} from "../../scripts/stats/binary-one-trial.ts";
 
 const thresholds = rejectionThresholds(300);
 /** Each level as 1 / denominator: 0.05, 0.025, 0.05 / 3 and 0.0125. */
@@ -115,7 +115,7 @@ describe("binary regression test at one trial per case", () => {
 
   it("the committed results recompute from their stored worst structures", () => {
     const rows = readFileSync(
-      join(import.meta.dirname, "..", "validation", "binary-one-trial.tsv"),
+      join(import.meta.dirname, "..", "..", "validation", "binary-one-trial.tsv"),
       "utf8",
     )
       .trim()

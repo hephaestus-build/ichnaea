@@ -13,16 +13,16 @@ import {
   SCORE_PERMUTATION_RESAMPLES,
   SCORE_PERMUTATION_RESAMPLES_NEAR_LEVEL,
   scorePermutationTest,
-} from "../src/index.ts";
-import * as stats from "../src/index.ts";
-import * as core from "../src/score-permutation-core.ts";
+} from "../../src/stats/index.ts";
+import * as stats from "../../src/stats/index.ts";
+import * as core from "../../src/stats/score-permutation-core.ts";
 import {
   exactPathIgnoringWork,
   exactWork,
   rerunSeed,
   SCORE_PERMUTATION_WORK_LIMIT,
   scorePermutationCore,
-} from "../src/score-permutation-core.ts";
+} from "../../src/stats/score-permutation-core.ts";
 
 interface Table {
   id: string;

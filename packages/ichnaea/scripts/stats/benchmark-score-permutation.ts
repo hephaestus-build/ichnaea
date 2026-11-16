@@ -2,12 +2,12 @@
 // test"): the exact path's time against its work estimate W, on tables shaped like real suites and
 // on the worst shapes a review found. Prints one row per table and the time per unit of W.
 //   node scripts/benchmark-score-permutation.ts
-import { createRng, type Rng } from "../src/index.ts";
+import { createRng, type Rng } from "../../src/stats/index.ts";
 import {
   type CaseScores,
   exactPathIgnoringWork,
   exactWork,
-} from "../src/score-permutation-core.ts";
+} from "../../src/stats/score-permutation-core.ts";
 
 /** Values on a lattice of step 1/d, near `centre` (0 to 1), `spread` wide. */
 const value = (rng: Rng, d: number, centre: number, spread: number): number =>

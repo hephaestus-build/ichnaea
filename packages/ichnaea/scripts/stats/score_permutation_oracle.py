@@ -41,13 +41,13 @@ results.json:
      "results": [{"id": ..., "p": float | null, "pExact": "num/den" | null,
                   "method": "exact-bruteforce" | "exact-dp" | "skipped"}]}
 
-Writes test/reference-python-score-permutation.json in CI. Run from packages/stats in the pinned
+Writes test/stats/reference-python-score-permutation.json in CI. Run from packages/ichnaea in the pinned
 container (the image is the PYTHON_IMAGE of .github/workflows/ci.yml):
     docker run --rm --platform linux/amd64 -v "$PWD":/w -w /w python:3.13-slim sh -c \\
-      "pip install -q --require-hashes -r scripts/oracle-requirements.txt \\
-      && python scripts/score_permutation_oracle_test.py \\
-      && python scripts/score_permutation_oracle.py test/reference-score-permutation-tables.json \\
-         test/reference-python-score-permutation.json"
+      "pip install -q --require-hashes -r scripts/stats/oracle-requirements.txt \\
+      && python scripts/stats/score_permutation_oracle_test.py \\
+      && python scripts/stats/score_permutation_oracle.py test/stats/reference-score-permutation-tables.json \\
+         test/stats/reference-python-score-permutation.json"
 """
 
 import itertools

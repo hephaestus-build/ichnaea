@@ -1,10 +1,10 @@
-// Writes test/reference-score-permutation-tables.json: the tables on which the score permutation test is
+// Writes test/stats/reference-score-permutation-tables.json: the tables on which the score permutation test is
 // checked against its oracles (scripts/reference-score-permutation.R and .py). Every value is an
 // integer number of units over the table's denominator, so each oracle reads exact rationals.
 //   node scripts/score-permutation-tables.ts
 import { writeFileSync } from "node:fs";
 
-import { createRng, type Rng } from "../src/index.ts";
+import { createRng, type Rng } from "../../src/stats/index.ts";
 
 interface Table {
   readonly id: string;
@@ -228,7 +228,7 @@ function gcdOf(a: number, b: number): number {
 }
 
 writeFileSync(
-  new URL("../test/reference-score-permutation-tables.json", import.meta.url),
+  new URL("../../test/stats/reference-score-permutation-tables.json", import.meta.url),
   `${JSON.stringify({ seed: 20261116, tables })}\n`,
 );
 console.log(`${tables.length} tables`);

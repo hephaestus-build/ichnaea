@@ -4,9 +4,9 @@
 // prints its time, and fails if any takes more than 3 seconds. The limit aims at about 1 second.
 import { describe, expect, it } from "vitest";
 
-import { createRng, type Rng, scorePermutationTest } from "../src/index.ts";
-import { type CaseScores, exactWork } from "../src/score-permutation-core.ts";
-import { SCORE_PERMUTATION_WORK_LIMIT } from "../src/score-permutation.ts";
+import { createRng, type Rng, scorePermutationTest } from "../../src/stats/index.ts";
+import { type CaseScores, exactWork } from "../../src/stats/score-permutation-core.ts";
+import { SCORE_PERMUTATION_WORK_LIMIT } from "../../src/stats/score-permutation.ts";
 
 const value = (rng: Rng, d: number): number => Math.round(rng.uniform() * d) / d;
 
