@@ -15,6 +15,21 @@ describe("the pending releases", () => {
     ).toEqual(["v0.2.0-rc.1", "v0.2.0", "v0.3.0"]);
   });
 
+  it("leave out a rejected version, which npm never lists, so it gets no release", () => {
+    // v0.3.0 was staged and rejected: npm lists only the versions that an owner approved.
+    expect(
+      pendingTags({ tags, published: new Set(["0.2.0"]), released: new Set(["v0.2.0"]) }),
+    ).toEqual([]);
+    expect(() =>
+      pendingTags({
+        tags,
+        published: new Set(["0.2.0"]),
+        released: new Set(),
+        requested: "v0.3.0",
+      }),
+    ).toThrow("0.3.0 is not published on npm");
+  });
+
   it("leave out a version that is only staged, which npm does not list", () => {
     expect(
       pendingTags({ tags, published: new Set(["0.1.0"]), released: new Set(["v0.1.0"]) }),

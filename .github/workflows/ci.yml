@@ -68,9 +68,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # The floor that the package, the repository and the example name in `engines`, and the
-        # current Node 24.
-        node: ["24.3.0", "24"]
+        # The floor that the package, the repository and the example name in `engines`, the
+        # current Node 24, and Node 26, which the release's consumer test also runs (REQ-110).
+        node: ["24.3.0", "24", "26"]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

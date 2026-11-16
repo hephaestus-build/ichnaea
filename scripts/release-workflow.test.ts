@@ -298,6 +298,27 @@ describe("release-finish.yml", () => {
   });
 });
 
+describe("ci.yml, on every main commit (REQ-110)", () => {
+  const ci = read("ci.yml");
+
+  it("runs on every push to main and every pull request", () => {
+    expect(ci.triggers).toContain("  push:\n    branches: [main]\n");
+    expect(ci.triggers).toContain("  pull_request:\n");
+  });
+
+  it("packs the build tree and runs publint --strict and attw on it", () => {
+    expect(ci.job("check")).toContain('node scripts/build-package.ts "$RUNNER_TEMP/tree"');
+    expect(ci.job("check")).toContain('node scripts/check-package.ts "$RUNNER_TEMP/tree"');
+  });
+
+  it("installs the packed tarball and runs the consumer test on Node 24.3 and 26", () => {
+    const matrix = /\n {8}node: (\[.*\])\n/.exec(ci.job("test"))?.[1] ?? "[]";
+    expect(JSON.parse(matrix)).toEqual(expect.arrayContaining(["24.3.0", "26"]));
+    expect(ci.job("test")).toContain("node-version: ${{ matrix.node }}");
+    expect(ci.job("test")).toContain("run: node scripts/build-consumer.ts\n");
+  });
+});
+
 const json = (...path: string[]): unknown =>
   JSON.parse(readFileSync(join(github, ...path), "utf8")) as unknown;
 const tags = { ref_name: { include: ["refs/tags/v*"], exclude: [] } };
