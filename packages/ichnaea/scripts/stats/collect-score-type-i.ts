@@ -33,7 +33,7 @@ import { RECHECK_COLUMNS, SCREEN_COLUMNS } from "./study-score-type-i.ts";
 /** Worst points of each generator that the shipped test re-checks, candidates or not. */
 export const WORST_PER_GENERATOR = 10;
 
-type Row = Record<string, string>;
+export type Row = Record<string, string>;
 interface Meta {
   readonly commit: string;
   readonly files: Record<string, string>;
@@ -43,12 +43,17 @@ interface Meta {
   readonly reps: number;
   readonly confirmSe?: number;
   readonly shard: { index: number; count: number };
+  readonly runtime?: { node: string; platform: string; arch: string };
 }
+
+/** A runtime as one comparable string: Node version, platform and CPU architecture. */
+const runtimeKey = (r: Meta["runtime"]): string =>
+  r === undefined ? "unrecorded" : `${r.node} ${r.platform} ${r.arch}`;
 
 const sha256 = (file: string): string =>
   createHash("sha256").update(readFileSync(file)).digest("hex");
 
-function readTsv(file: string, columns: readonly string[]): Row[] {
+export function readTsv(file: string, columns: readonly string[]): Row[] {
   // Rows end in a newline. Never trim: a row whose last column is empty ends in a tab.
   const [header, ...lines] = readFileSync(file, "utf8").split("\n").slice(0, -1);
   if (header !== columns.join("\t")) throw new Error(`${file}: unexpected header`);
@@ -61,21 +66,21 @@ function readTsv(file: string, columns: readonly string[]): Row[] {
 }
 
 /** Reads every shard of a phase and checks it. Returns the rows and the commit they ran. */
-function readPhase(
+export function readPhase(
   dir: string,
   phase: "screen" | "recheck",
   columns: readonly string[],
   reps: number,
   smoke: boolean,
   problems: string[],
-): { rows: Row[]; commit: string | undefined } {
+): { rows: Row[]; commit: string | undefined; runtime: string | undefined } {
   const pattern = new RegExp(`^${phase}-(\\d+)-of-(\\d+)\\.tsv$`);
   const files = readdirSync(dir)
     .map((f) => ({ f, m: pattern.exec(f) }))
     .filter((x) => x.m !== null);
   if (files.length === 0) {
     problems.push(`no ${phase} output in ${dir}`);
-    return { rows: [], commit: undefined };
+    return { rows: [], commit: undefined, runtime: undefined };
   }
   const counts = new Set(files.map((x) => Number(x.m?.[2])));
   if (counts.size !== 1)
@@ -88,6 +93,7 @@ function readPhase(
   const root = repoRoot(fileURLToPath(import.meta.url));
   const rows: Row[] = [];
   const commits = new Set<string>();
+  const runtimes = new Set<string>();
   let files0: string | undefined;
   for (const { f } of files) {
     const file = path.join(dir, f);
@@ -103,6 +109,8 @@ function readPhase(
     if (phase === "screen" && meta.confirmSe !== 0.0005 && !smoke)
       problems.push(`${f}: confirmations to SE ${meta.confirmSe}, not 0.0005`);
     commits.add(meta.commit);
+    if (meta.runtime === undefined) problems.push(`${f}: the sidecar records no runtime`);
+    runtimes.add(runtimeKey(meta.runtime));
     const hashes = JSON.stringify(meta.files);
     if (files0 === undefined) files0 = hashes;
     else if (hashes !== files0) problems.push(`${f}: ran different scripts from the other shards`);
@@ -113,7 +121,9 @@ function readPhase(
   }
   if (commits.size > 1)
     problems.push(`${phase}: shards ran different commits ${[...commits].join(", ")}`);
-  return { rows, commit: [...commits][0] };
+  if (runtimes.size > 1)
+    problems.push(`${phase}: shards ran on different runtimes: ${[...runtimes].join("; ")}`);
+  return { rows, commit: [...commits][0], runtime: [...runtimes][0] };
 }
 
 /** Every point appears once: the grid's points, and each G2 cell's refinement steps after it. */
@@ -182,7 +192,10 @@ function verdict(dir: string, smoke: boolean): void {
   checkPoints(screen.rows, problems);
   const recheck = readPhase(dir, "recheck", RECHECK_COLUMNS, 20_000, smoke, problems);
   // Both phases ran scripts identical to this checkout (readPhase checks every hash), so their
-  // commits may differ only in files that compute nothing, such as this collector.
+  // commits may differ only in files that compute nothing, such as this collector. They must share
+  // one runtime: outputs compare byte for byte only within one.
+  if (screen.runtime !== recheck.runtime)
+    problems.push(`the screen ran on ${screen.runtime} and the re-check on ${recheck.runtime}`);
   const selected = (
     JSON.parse(readFileSync(path.join(dir, "recheck.json"), "utf8")) as { points: { id: string }[] }
   ).points.map((p) => p.id);
@@ -273,9 +286,34 @@ function verdict(dir: string, smoke: boolean): void {
       ];
     }),
   );
+  // How close the deciding points come to their bars: the screen's pass line 0.05 − 2·SE, and the
+  // fail line estimate − 3·SE = 0.05 of a confirmed or re-checked point. A point within 1e-6 of its
+  // bar is recomputed on a second runtime before it counts.
+  const distances = screen.rows
+    .filter((r) => r["role"] === "type-I")
+    .flatMap((r) => {
+      const id = r["id"] as string;
+      const out = [
+        r["stage"] === "confirmed"
+          ? { id, stage: "confirmed", distance: ALPHA - (num(r, "value") - 3 * num(r, "se")) }
+          : { id, stage: "screen", distance: ALPHA - 2 * num(r, "se") - num(r, "value") },
+      ];
+      const c = rechecked.get(id);
+      if (c !== undefined)
+        out.push({ id, stage: "re-check", distance: ALPHA - (num(c, "value") - 3 * num(c, "se")) });
+      return out;
+    });
+  const nearest = distances.reduce<(typeof distances)[number] | undefined>(
+    (a, d) => (a === undefined || Math.abs(d.distance) < Math.abs(a.distance) ? d : a),
+    undefined,
+  );
+  const atTheBar = distances.filter((d) => Math.abs(d.distance) < 1e-6);
   const summary = {
     commit: screen.commit,
     recheckCommit: recheck.commit,
+    runtime: screen.runtime,
+    nearestToBar: nearest ?? null,
+    recomputeOnSecondRuntime: atTheBar,
     alpha: ALPHA,
     points: screen.rows.length,
     rechecked: recheck.rows.length,
@@ -313,6 +351,7 @@ function verdict(dir: string, smoke: boolean): void {
     `- Largest shock SD that passes: shared ${summary.largestShockSd.sharedTwoOrThreeTrials}, separate ${summary.largestShockSd.separateTwoOrThreeTrials}, shared at one trial ${summary.largestShockSd.sharedOneTrial}`,
     `- Failures: ${failures.length === 0 ? "none" : failures.join("; ")}`,
     `- Harness: ${harness.length === 0 ? "every check passes" : harness.join("; ")}`,
+    `- Runtime: ${screen.runtime}. Nearest deciding point to its bar: ${nearest === undefined ? "none" : `${nearest.id} (${nearest.stage}), ${nearest.distance.toExponential(2)}`}${atTheBar.length > 0 ? `; ${atTheBar.length} point(s) within 1e-6 of the bar must be recomputed on a second runtime before they count` : ""}`,
     "",
   ].join("\n");
   writeFileSync(path.join(dir, "summary.md"), md);

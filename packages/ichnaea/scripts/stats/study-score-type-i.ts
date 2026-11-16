@@ -115,6 +115,17 @@ function argument(args: readonly string[], name: string): string | undefined {
   return i < 0 ? undefined : args[i + 1];
 }
 
+/**
+ * The runtime that computes a shard. V8's Math is not bit-identical across platforms, so a study's
+ * shards and their later phases must all run on one runtime, and its outputs compare byte for byte
+ * only within it.
+ */
+export const runtime = (): { node: string; platform: string; arch: string } => ({
+  node: process.version,
+  platform: process.platform,
+  arch: process.arch,
+});
+
 /** What GitHub's runner says about itself; empty outside Actions. */
 const runner = (): Record<string, string> =>
   Object.fromEntries(
@@ -155,6 +166,7 @@ function screen(args: readonly string[]): void {
     reps: SCREEN_REPS,
     confirmSe: CONFIRM_SE,
     seedRange: seeds.length === 0 ? null : [Math.min(...seeds), Math.max(...seeds)],
+    runtime: runtime(),
     runner: runner(),
   });
   writeFileSync(output, `${SCREEN_COLUMNS.join("\t")}\n`);
@@ -233,6 +245,7 @@ function recheck(args: readonly string[]): void {
     points: selected.length,
     reps: RECHECK_REPS,
     seedRange: seeds.length === 0 ? null : [Math.min(...seeds), Math.max(...seeds)],
+    runtime: runtime(),
     runner: runner(),
   });
   writeFileSync(output, `${RECHECK_COLUMNS.join("\t")}\n`);
