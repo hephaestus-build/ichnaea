@@ -1,4 +1,4 @@
-import type { Rng } from "./rng.ts";
+import { createRng } from "./rng.ts";
 import {
   type CaseScores,
   scorePermutationCore,
@@ -9,17 +9,23 @@ export {
   type CaseScores,
   SCORE_PERMUTATION_RESAMPLES,
   SCORE_PERMUTATION_RESAMPLES_NEAR_LEVEL,
+  SCORE_PERMUTATION_WORK_LIMIT,
   type ScorePermutationResult,
 } from "./score-permutation-core.ts";
 
 /** Options of the score permutation test. The resample counts are fixed; no option changes them. */
 export interface ScorePermutationOptions {
-  /** Seeded generator for the Monte Carlo path. Required when the exact path is not cheap. */
-  readonly rng?: Rng;
+  /**
+   * Seed of the generator for the Monte Carlo path, an integer from 1 to 2^32 − 1, required when
+   * the exact path does not run. The test creates its own generator, so the recorded seed always
+   * reproduces the p-value.
+   */
+  readonly seed?: number;
   /**
    * The levels the p-value will be compared with: alpha, or each level Holm may compare it with.
    * A Monte Carlo p within 3 standard errors of one of them is computed again with
-   * SCORE_PERMUTATION_RESAMPLES_NEAR_LEVEL resamples and a new seed, and that result is reported.
+   * SCORE_PERMUTATION_RESAMPLES_NEAR_LEVEL resamples and the seed (seed + 1,000,003) mod (2^32 − 1),
+   * or 1 if that is 0, and that result is reported.
    */
   readonly levels?: readonly number[];
 }
@@ -31,19 +37,19 @@ export interface ScorePermutationOptions {
  * permuted independently. One-sided toward a drop; ties count as at most T observed.
  *
  * Exact by convolution when every value lies on a lattice of step 1/D with D at most 1,000, every
- * case has at most 100,000 labellings, and the support times the number of cases is at most 5·10^7.
- * Otherwise seeded Monte Carlo with SCORE_PERMUTATION_RESAMPLES resamples,
- * p = (1 + count) / (1 + resamples), reported with its standard error and seed; a p within 3
- * standard errors of one of `levels` is computed again with SCORE_PERMUTATION_RESAMPLES_NEAR_LEVEL
- * resamples and a new seed. A case without a completed trial in an arm does not enter.
+ * case has at most 100,000 labellings, and the work estimate W (recorded in the result) is at most
+ * SCORE_PERMUTATION_WORK_LIMIT. Otherwise seeded Monte Carlo with SCORE_PERMUTATION_RESAMPLES
+ * resamples, p = (1 + count) / (1 + resamples), reported with its standard error and seed, and
+ * computed again near a level as `levels` says. A case without a completed trial in an arm does
+ * not enter.
  */
 export function scorePermutationTest(
   cases: readonly CaseScores[],
   options: ScorePermutationOptions = {},
 ): ScorePermutationResult {
-  const { rng, levels } = options;
+  const { seed, levels } = options;
   return scorePermutationCore(cases, {
-    ...(rng === undefined ? {} : { rng }),
+    ...(seed === undefined ? {} : { rng: createRng(seed) }),
     ...(levels === undefined ? {} : { levels }),
   });
 }

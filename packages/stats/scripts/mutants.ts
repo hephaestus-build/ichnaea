@@ -600,14 +600,14 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "S7 score permutation statistic over all cases",
     file: "src/score-permutation-core.ts",
-    from: "    used.length;\n  const exact = options.exact",
-    to: "    cases.length;\n  const exact = options.exact",
+    from: "    used.length;\n  const plan = options.exact",
+    to: "    cases.length;\n  const plan = options.exact",
   },
   {
     id: "S8 score permutation never recomputes near a level",
     file: "src/score-permutation-core.ts",
-    from: "Math.abs(first.p - level) <= 3 * se",
-    to: "Math.abs(first.p - level) <= 0 * se",
+    from: "Math.abs(first.p - level) <= 3 * first.monteCarloSE",
+    to: "Math.abs(first.p - level) <= 0 * first.monteCarloSE",
   },
   {
     id: "S9 score permutation enumerates past the cap",
@@ -620,6 +620,60 @@ export const MUTANTS: readonly Mutant[] = [
     file: "src/score-permutation-core.ts",
     from: "const LATTICE_TOLERANCE = 1e-9;",
     to: "const LATTICE_TOLERANCE = 0.5;",
+  },
+  {
+    id: "S11 score permutation lattice only up to 999",
+    file: "src/score-permutation-core.ts",
+    from: "const MAX_DENOMINATOR = 1000;",
+    to: "const MAX_DENOMINATOR = 999;",
+  },
+  {
+    id: "S12 score permutation lattice tolerance 1e-6",
+    file: "src/score-permutation-core.ts",
+    from: "const LATTICE_TOLERANCE = 1e-9;",
+    to: "const LATTICE_TOLERANCE = 1e-6;",
+  },
+  {
+    id: "S13 score permutation units by floor",
+    file: "src/score-permutation-core.ts",
+    from: "const candidate = c.candidate.map((v) => Math.round(v * d));",
+    to: "const candidate = c.candidate.map((v) => Math.floor(v * d));",
+  },
+  {
+    id: "S14 score permutation labelling cap inclusive",
+    file: "src/score-permutation-core.ts",
+    from: "labellings.some((n) => n > MAX_ASSIGNMENTS)",
+    to: "labellings.some((n) => n >= MAX_ASSIGNMENTS)",
+  },
+  {
+    id: "S15 score permutation work limit a tenth",
+    file: "src/score-permutation-core.ts",
+    from: "plan.work <= SCORE_PERMUTATION_WORK_LIMIT",
+    to: "plan.work <= SCORE_PERMUTATION_WORK_LIMIT / 10",
+  },
+  {
+    id: "S16 score permutation no work limit",
+    file: "src/score-permutation-core.ts",
+    from: "plan.work <= SCORE_PERMUTATION_WORK_LIMIT",
+    to: "plan.work <= Infinity",
+  },
+  {
+    id: "S17 score permutation rerun seed offset off by one",
+    file: "src/score-permutation-core.ts",
+    from: "const NEAR_LEVEL_SEED_OFFSET = 1_000_003;",
+    to: "const NEAR_LEVEL_SEED_OFFSET = 1_000_004;",
+  },
+  {
+    id: "S18 score permutation reports the first run's p under the rerun's settings",
+    file: "src/score-permutation-core.ts",
+    from: "  return { statistic, ...result, method:",
+    to: "  return { statistic, ...result, p: first.p, method:",
+  },
+  {
+    id: "S19 score permutation rerun seed wraps mod 2^32",
+    file: "src/score-permutation-core.ts",
+    from: "const SEED_MODULUS = 4_294_967_295;",
+    to: "const SEED_MODULUS = 4_294_967_296;",
   },
 ];
 

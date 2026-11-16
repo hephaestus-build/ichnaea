@@ -1,6 +1,7 @@
 // REQ-50, REQ-111: the within-case permutation test on scores (R-P) matches two independent
 // implementations on every committed table: R's coin (scripts/reference-score-permutation.R) and an
-// exact enumeration in Python (scripts/reference-score-permutation.py), both test-only oracles.
+// exact enumeration in Python (scripts/score_permutation_oracle.py), both test-only oracles. The
+// limits of the exact path and the rerun near a level are pinned at their edges.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -14,7 +15,14 @@ import {
   scorePermutationTest,
 } from "../src/index.ts";
 import * as stats from "../src/index.ts";
-import { scorePermutationCore } from "../src/score-permutation-core.ts";
+import * as core from "../src/score-permutation-core.ts";
+import {
+  exactPathIgnoringWork,
+  exactWork,
+  rerunSeed,
+  SCORE_PERMUTATION_WORK_LIMIT,
+  scorePermutationCore,
+} from "../src/score-permutation-core.ts";
 
 interface Table {
   id: string;
@@ -53,7 +61,7 @@ describe("score permutation test: reference values", () => {
       const table = tables[i] as Table;
       const fromCoin = coin.results[i] as (typeof coin.results)[number];
       const fromPython = python.results[i] as (typeof python.results)[number];
-      const result = scorePermutationTest(scores(table), { rng: createRng(1 + i) });
+      const result = scorePermutationTest(scores(table), { seed: 1 + i });
       if (result.method === "within-case-permutation-exact") {
         // Both enumerate: agreement to rounding.
         expect(Math.abs(result.p - fromPython.p)).toBeLessThanOrEqual(1e-12);
@@ -177,11 +185,11 @@ describe("score permutation test: the exact and the Monte Carlo path", () => {
 
   it("runs Monte Carlo off the lattice, needs a seeded generator there, and is reproducible", () => {
     expect(() => scorePermutationTest(offLattice)).toThrow(RangeError);
-    const first = scorePermutationTest(offLattice, { rng: createRng(5) });
+    const first = scorePermutationTest(offLattice, { seed: 5 });
     expect(first.method).toBe("within-case-permutation-monte-carlo");
     expect(first.resamples).toBe(SCORE_PERMUTATION_RESAMPLES);
     expect(first.seed).toBe(5);
-    expect(scorePermutationTest(offLattice, { rng: createRng(5) })).toEqual(first);
+    expect(scorePermutationTest(offLattice, { seed: 5 })).toEqual(first);
     // p = (1 + count) / (1 + B): a multiple of 1/(1 + B), never 0.
     const count = first.p * (1 + SCORE_PERMUTATION_RESAMPLES);
     expect(Math.abs(count - Math.round(count))).toBeLessThan(1e-6);
@@ -202,7 +210,7 @@ describe("score permutation test: the exact and the Monte Carlo path", () => {
     const wide = units(4, [
       { candidate: [4, 4, 3, 3, 2, 4, 4, 3, 4, 4], base: [4, 3, 4, 4, 4, 4, 3, 4, 4, 4] },
     ]);
-    expect(scorePermutationTest(wide, { rng: createRng(3) }).method).toBe(
+    expect(scorePermutationTest(wide, { seed: 3 }).method).toBe(
       "within-case-permutation-monte-carlo",
     );
     const narrow = units(4, [
@@ -217,17 +225,16 @@ describe("score permutation test: the exact and the Monte Carlo path", () => {
   });
 
   it("computes a p-value near a level again with 100,000 resamples and a new seed", () => {
-    const far = scorePermutationTest(offLattice, { rng: createRng(5), levels: [0.0001] });
+    const far = scorePermutationTest(offLattice, { seed: 5, levels: [0.0001] });
     expect(far.resamples).toBe(SCORE_PERMUTATION_RESAMPLES);
-    const plain = scorePermutationTest(offLattice, { rng: createRng(5) });
+    const plain = scorePermutationTest(offLattice, { seed: 5 });
     const se = plain.monteCarloSE as number;
     // 2.9 standard errors away is near; 3.1 is not.
     expect(
-      scorePermutationTest(offLattice, { rng: createRng(5), levels: [plain.p + 3.1 * se] })
-        .resamples,
+      scorePermutationTest(offLattice, { seed: 5, levels: [plain.p + 3.1 * se] }).resamples,
     ).toBe(SCORE_PERMUTATION_RESAMPLES);
     const near = scorePermutationTest(offLattice, {
-      rng: createRng(5),
+      seed: 5,
       levels: [0.0001, plain.p - 2.9 * se],
     });
     expect(near.resamples).toBe(SCORE_PERMUTATION_RESAMPLES_NEAR_LEVEL);
@@ -239,9 +246,14 @@ describe("score permutation test: the exact and the Monte Carlo path", () => {
 
 describe("score permutation test: the public entry point", () => {
   it("exports the test and its fixed resample counts, never the internal entry point", () => {
+    const exported = new Set<unknown>(Object.values(stats));
+    for (const [name, value] of Object.entries(core))
+      if (typeof value === "function")
+        expect(exported.has(value), `${name} is internal`).toBe(name === "scorePermutationTest");
     expect(Object.keys(stats).filter((n) => /^score_?permutation/i.test(n))).toEqual([
       "SCORE_PERMUTATION_RESAMPLES",
       "SCORE_PERMUTATION_RESAMPLES_NEAR_LEVEL",
+      "SCORE_PERMUTATION_WORK_LIMIT",
       "scorePermutationTest",
     ]);
   });
@@ -260,8 +272,169 @@ describe("score permutation test: the public entry point", () => {
       { candidate: [123_457, 654_321], base: [500_001, 700_003] },
       { candidate: [222_223, 311_111], base: [400_007, 300_001] },
     ]);
-    expect(scorePermutationTest(off, { rng: createRng(5), resamples: 9 } as never).resamples).toBe(
+    expect(scorePermutationTest(off, { seed: 5, resamples: 9 } as never).resamples).toBe(
       SCORE_PERMUTATION_RESAMPLES,
     );
   });
 });
+
+/** Two cases whose first value is `v`; the others lie on the lattice of step 1/10. */
+const off = (v: number): CaseScores[] => [
+  { id: "a", candidate: [v, 0.2], base: [0.7, 0.9] },
+  { id: "b", candidate: [0.1, 0.4], base: [0.6, 0.8] },
+];
+/** n values on the 1–5 rating lattice. */
+const levels = (n: number): number[] => Array.from({ length: n }, (_, i) => (i % 5) / 4);
+/** k identical cases of 3-decimal scores, so the work estimate grows with every case. */
+const identical = (k: number): CaseScores[] =>
+  Array.from({ length: k }, (_, i) => ({
+    id: `c${i}`,
+    candidate: [0.101, 0.517, 0.733],
+    base: [0.211, 0.389, 0.947],
+  }));
+const meanOf = (xs: readonly number[]): number => xs.reduce((a, b) => a + b, 0) / xs.length;
+
+describe("score permutation test: the limits of the exact path, at their edges", () => {
+  it("finds the lattice up to D = 1,000, and not beyond", () => {
+    const at1000 = scorePermutationTest(off(0.123), { seed: 3 });
+    expect(at1000.method).toBe("within-case-permutation-exact");
+    expect(at1000.p).toBeCloseTo(exactByEnumeration(off(0.123)), 14);
+    expect(scorePermutationTest(off(1 / 1001), { seed: 3 }).method).toBe(
+      "within-case-permutation-monte-carlo",
+    );
+  });
+
+  it("snaps a value onto the lattice only within 1e-9 of a lattice point", () => {
+    // 5e-10 off a multiple of 1/1000 is 5e-7 off in lattice units: not on any lattice.
+    expect(scorePermutationTest(off(0.123 + 5e-10), { seed: 3 }).method).toBe(
+      "within-case-permutation-monte-carlo",
+    );
+  });
+
+  it("rounds values to the nearest lattice point, where floating products fall just below", () => {
+    // 0.57 · 100, 0.58 · 100 and 0.29 · 100 are each a little below the integer.
+    const table: CaseScores[] = [
+      { id: "a", candidate: [0.57, 0.29], base: [0.58, 0.9] },
+      { id: "b", candidate: [0.29, 0.57], base: [0.58, 0.58] },
+      { id: "c", candidate: [0.58, 0.01], base: [0.57, 0.29] },
+    ];
+    expect(scorePermutationTest(table).p).toBeCloseTo(exactByEnumeration(table), 14);
+  });
+
+  it("enumerates a case with 100,000 labellings and not one with 100,001", () => {
+    const at = [{ id: "a", candidate: [0.25], base: levels(99_999) }];
+    expect(scorePermutationTest(at).method).toBe("within-case-permutation-exact");
+    const past = [{ id: "a", candidate: [0.25], base: levels(100_000) }];
+    expect(scorePermutationTest(past, { seed: 3 }).method).toBe(
+      "within-case-permutation-monte-carlo",
+    );
+  });
+
+  it("enumerates up to the work limit, records W, and runs Monte Carlo past it", () => {
+    // Identical cases of 3-decimal scores: W grows with every case, so k* is the last k under it.
+    let k = 1;
+    while ((exactWork(identical(k + 1)) as number) <= SCORE_PERMUTATION_WORK_LIMIT) k++;
+    const under = scorePermutationTest(identical(k));
+    expect(under.method).toBe("within-case-permutation-exact");
+    expect(under.work).toBe(exactWork(identical(k)));
+    const over = scorePermutationTest(identical(k + 1), { seed: 3 });
+    expect(over.method).toBe("within-case-permutation-monte-carlo");
+    expect(over.work).toBeGreaterThan(SCORE_PERMUTATION_WORK_LIMIT);
+    // The last case adds less than a tenth of the limit, so a limit 10% off moves the edge.
+    expect((over.work as number) / SCORE_PERMUTATION_WORK_LIMIT).toBeLessThan(1.1);
+    expect((under.work as number) / SCORE_PERMUTATION_WORK_LIMIT).toBeGreaterThan(0.9);
+  }, 60_000);
+
+  it("estimates the same work whatever the order of cases or trials", () => {
+    const t = tables.find((x) => x.id === "rating-mixed-k12-shift-1") as Table;
+    const forward = exactWork(scores(t));
+    const reversed = scores(t)
+      .toReversed()
+      .map((c) => ({ ...c, candidate: c.candidate.toReversed(), base: c.base.toReversed() }));
+    expect(exactWork(reversed)).toBe(forward);
+  });
+
+  it("costs little when one arm is large: the dynamic programme picks the smaller arm", () => {
+    const big: CaseScores[] = [
+      { id: "a", candidate: Array.from({ length: 400 }, (_, i) => i / 1000), base: [0.2] },
+    ];
+    const start = performance.now();
+    expect(exactPathIgnoringWork(big)?.p).toBeCloseTo(
+      // T is at most observed when the base draws a value at least 0.2: 200 of them, and 0.2 itself.
+      (1 + big[0]!.candidate.filter((v) => v >= 0.2).length) / 401,
+      12,
+    );
+    expect(performance.now() - start).toBeLessThan(5_000);
+  });
+});
+
+describe("score permutation test: the rerun near a level", () => {
+  const offLattice = units(1_000_000, [
+    { candidate: [123_457, 654_321], base: [500_001, 700_003] },
+    { candidate: [222_223, 311_111], base: [400_007, 300_001] },
+    { candidate: [900_001, 100_003], base: [800_011, 700_001] },
+  ]);
+
+  it("reruns with the seed (seed + 1,000,003) mod (2^32 − 1), and 1 for 0", () => {
+    expect(rerunSeed(5)).toBe(1_000_008);
+    expect(rerunSeed(4_294_967_295)).toBe(1_000_003);
+    expect(rerunSeed(4_293_967_293)).toBe(1);
+    expect(rerunSeed(4_293_967_292)).toBe(1);
+    expect(rerunSeed(4_293_967_291)).toBe(4_294_967_294);
+  });
+
+  it("reports the rerun's p-value, which a fresh run at the rerun's seed reproduces", () => {
+    const plain = scorePermutationTest(offLattice, { seed: 5 });
+    const near = scorePermutationTest(offLattice, {
+      seed: 5,
+      levels: [plain.p - 2 * (plain.monteCarloSE as number)],
+    });
+    expect(near.seed).toBe(1_000_008);
+    expect(near.resamples).toBe(100_000);
+    const fresh = scorePermutationCore(offLattice, {
+      rng: createRng(1_000_008),
+      resamples: 100_000,
+      exact: false,
+    });
+    expect(near.p).toBe(fresh.p);
+    expect(near.p).not.toBe(plain.p);
+  });
+
+  it("records a seed that reproduces the p-value", () => {
+    const once = scorePermutationTest(offLattice, { seed: 9 });
+    expect(scorePermutationTest(offLattice, { seed: once.seed as number })).toEqual(once);
+  });
+});
+
+/** The exact p by enumerating every labelling, in floating point: for small tables only. */
+function exactByEnumeration(table: readonly CaseScores[]): number {
+  const options = table.map((c) => {
+    const pooled = [...c.candidate, ...c.base];
+    const n = c.candidate.length;
+    const out: number[] = [];
+    const pick = (start: number, chosen: number[]): void => {
+      if (chosen.length === n) {
+        const cand = chosen.reduce((a, i) => a + (pooled[i] as number), 0);
+        const all = pooled.reduce((a, b) => a + b, 0);
+        out.push(cand / n - (all - cand) / c.base.length);
+        return;
+      }
+      for (let i = start; i < pooled.length; i++) pick(i + 1, [...chosen, i]);
+    };
+    pick(0, []);
+    return out;
+  });
+  const observed = table.reduce((a, c) => a + meanOf(c.candidate) - meanOf(c.base), 0);
+  let hits = 0;
+  let total = 0;
+  const walk = (i: number, acc: number): void => {
+    if (i === options.length) {
+      total++;
+      if (acc <= observed + 1e-9) hits++;
+      return;
+    }
+    for (const d of options[i] as number[]) walk(i + 1, acc + d);
+  };
+  walk(0, 0);
+  return hits / total;
+}

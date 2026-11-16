@@ -1,7 +1,7 @@
 // The score permutation test with every setting. Internal: the package index does not export it.
-// The public `scorePermutationTest` (score-permutation.ts) takes no resample count and no switch
-// to Monte Carlo, so a decision always runs the shipped settings; the type-I study uses this entry
-// point to run Monte Carlo with 99 resamples.
+// The public `scorePermutationTest` (score-permutation.ts) takes a seed and no resample count or
+// switch to Monte Carlo, so a decision always runs the shipped settings; the type-I study uses this
+// entry point to run Monte Carlo with 99 resamples on its own generator.
 import { createRng, type Rng } from "./rng.ts";
 
 /**
@@ -25,6 +25,12 @@ export interface ScorePermutationResult {
    */
   readonly p: number;
   readonly method: "within-case-permutation-exact" | "within-case-permutation-monte-carlo";
+  /**
+   * The exact path's work estimate W (SCORE_PERMUTATION_WORK_LIMIT), when the values lie on a
+   * lattice and every case is within the per-case limits; the exact path ran if W was at most the
+   * limit. Absent when the values or a case rule the exact path out before W can be computed.
+   */
+  readonly work?: number;
   /** Monte Carlo only: the resamples behind `p`. */
   readonly resamples?: number;
   /** Monte Carlo only: the standard error of `p`. */
@@ -35,14 +41,18 @@ export interface ScorePermutationResult {
 
 /** Every setting of the score permutation test. */
 export interface ScorePermutationSettings {
-  /** Seeded generator for the Monte Carlo path. Required when the exact path is not cheap. */
+  /**
+   * Generator for the Monte Carlo path, required when the exact path does not run. The result
+   * records its seed, which reproduces `p` only when the generator was fresh.
+   */
   readonly rng?: Rng;
   /** Monte Carlo resamples. */
   readonly resamples?: number;
   /**
    * The levels the p-value will be compared with: alpha, or each level Holm may compare it with.
    * A Monte Carlo p within 3 standard errors of one of them is computed again with
-   * SCORE_PERMUTATION_RESAMPLES_NEAR_LEVEL resamples and a new seed, and that result is reported.
+   * SCORE_PERMUTATION_RESAMPLES_NEAR_LEVEL resamples and the seed `rerunSeed(seed)`, and that
+   * result is reported.
    */
   readonly levels?: readonly number[];
   /** Whether to enumerate when that is cheap (default true). `false` always runs Monte Carlo. */
@@ -53,18 +63,31 @@ export interface ScorePermutationSettings {
 export const SCORE_PERMUTATION_RESAMPLES = 10_000;
 /** Monte Carlo resamples when the p-value lies within 3 standard errors of a level. */
 export const SCORE_PERMUTATION_RESAMPLES_NEAR_LEVEL = 100_000;
+/**
+ * Largest work estimate W of the exact path. W is the sum over cases, in the order the convolution
+ * takes them, of (the support of the partial distribution before the case) × (the number of
+ * distinct contributions of the case): the multiply-adds the convolution performs. Set from the
+ * benchmark in VALIDATION.md so that the slowest exact case stays near 1 second on a CI runner.
+ */
+export const SCORE_PERMUTATION_WORK_LIMIT = 50_000_000;
 
 /** Largest lattice denominator the exact path looks for: every value must be a multiple of 1/D. */
 const MAX_DENOMINATOR = 1000;
 /** Largest number of label assignments of one case on the exact path. */
 const MAX_ASSIGNMENTS = 100_000;
-/** Largest support of the null distribution times the number of cases on the exact path. */
-const MAX_SUPPORT_TIMES_CASES = 50_000_000;
 const LATTICE_TOLERANCE = 1e-9;
 /** Floating tolerance of the Monte Carlo comparison: ties count as at most T observed. */
 const MONTE_CARLO_TOLERANCE = 1e-9;
 /** Added to the seed of a Monte Carlo test that is computed again near a level. */
 const NEAR_LEVEL_SEED_OFFSET = 1_000_003;
+/** The generator's seeds are 1 to 2^32 − 1. */
+const SEED_MODULUS = 4_294_967_295;
+
+/** The seed of the rerun near a level: (seed + 1,000,003) mod (2^32 − 1), and 1 if that is 0. */
+export function rerunSeed(seed: number): number {
+  const next = (seed + NEAR_LEVEL_SEED_OFFSET) % SEED_MODULUS;
+  return next === 0 ? 1 : next;
+}
 
 const gcd = (a: number, b: number): number => {
   let x = Math.abs(a);
@@ -92,7 +115,8 @@ function latticeDenominator(values: readonly number[]): number | undefined {
 
 /**
  * The number of ways to pick `picks` of the non-negative integers `values`, for each sum from the
- * smallest possible sum to the largest: a dynamic programme over the values.
+ * smallest possible sum to the largest: a dynamic programme over the values. Its cost grows with
+ * `picks`, so callers pick the smaller arm.
  */
 function subsetSums(values: readonly number[], picks: number): Float64Array {
   const sorted = values.toSorted((a, b) => a - b);
@@ -123,52 +147,99 @@ interface UsedCase {
 const weightOf = (c: UsedCase): number =>
   (c.candidate.length + c.base.length) / (c.candidate.length * c.base.length);
 
+/** One case on the exact path: its weight, its ways per candidate sum, and its observed offset. */
+interface LatticeCase {
+  readonly weight: number;
+  /** Ways per candidate sum, from the smallest possible candidate sum. */
+  readonly ways: Float64Array;
+  readonly labellings: number;
+  /** The observed candidate sum minus the smallest possible one, in lattice units. */
+  readonly observed: number;
+  readonly distinct: number;
+}
+
 /**
- * The exact p-value by convolution on the values' lattice, or undefined when that is not cheap.
+ * The exact path's plan: every case on the values' lattice, in the order the convolution takes
+ * them, and the work estimate W. Undefined when the values are off every small lattice or a case
+ * has too many labellings.
+ *
  * Up to a constant and the factor 1/k, T is the sum over cases of w·(candidate sum), and the
  * candidate sums of different cases are independent under the permutation. With every value a
  * multiple of 1/D and M the least common multiple of the products nC·nB, each M·w·D·(candidate sum)
  * is an integer, so the null distribution of T is a convolution of integer distributions.
  */
-function exactP(cases: readonly UsedCase[]): number | undefined {
+function latticePlan(
+  cases: readonly UsedCase[],
+): { readonly cases: readonly LatticeCase[]; readonly work: number } | undefined {
   const d = latticeDenominator(cases.flatMap((c) => [...c.base, ...c.candidate]));
   if (d === undefined) return undefined;
-  const sizes = cases.map((c) => choose(c.base.length + c.candidate.length, c.candidate.length));
-  if (sizes.some((n) => n > MAX_ASSIGNMENTS)) return undefined;
+  const labellings = cases.map((c) =>
+    choose(c.base.length + c.candidate.length, c.candidate.length),
+  );
+  if (labellings.some((n) => n > MAX_ASSIGNMENTS)) return undefined;
   const m = cases.reduce((acc, c) => lcm(acc, c.candidate.length * c.base.length), 1);
   const raw = cases.map((c) => Math.round(m * weightOf(c)));
   const common = raw.reduce((acc, w) => gcd(acc, w), 0);
-  const weights = raw.map((w) => w / common);
-  const units = cases.map((c) => ({
-    candidate: c.candidate.map((v) => Math.round(v * d)),
-    pooled: [...c.candidate, ...c.base].map((v) => Math.round(v * d)),
-  }));
-  const spans = units.map((u, i) => {
-    const sorted = u.pooled.toSorted((a, b) => a - b);
-    const n = u.candidate.length;
-    return (
-      (weights[i] as number) * (sum(sorted.slice(sorted.length - n)) - sum(sorted.slice(0, n)))
-    );
+  const planned: LatticeCase[] = cases.map((c, i) => {
+    const candidate = c.candidate.map((v) => Math.round(v * d));
+    const base = c.base.map((v) => Math.round(v * d));
+    const pooled = [...candidate, ...base];
+    const total = sum(pooled);
+    // Picking the smaller arm costs less; the candidate's sum is then the total minus the base's.
+    const ways =
+      candidate.length <= base.length
+        ? subsetSums(pooled, candidate.length)
+        : subsetSums(pooled, base.length).toReversed();
+    const lowest = total - sum(pooled.toSorted((a, b) => b - a).slice(0, base.length));
+    return {
+      weight: (raw[i] as number) / common,
+      ways,
+      labellings: labellings[i] as number,
+      observed: sum(candidate) - lowest,
+      distinct: ways.reduce((a, n) => a + (n === 0 ? 0 : 1), 0),
+    };
   });
-  if ((sum(spans) + 1) * cases.length > MAX_SUPPORT_TIMES_CASES) return undefined;
+  // A canonical order, from the table alone: the case order never changes the path or the work.
+  const ordered = planned.toSorted(
+    (a, b) =>
+      a.weight * (a.ways.length - 1) - b.weight * (b.ways.length - 1) ||
+      a.distinct - b.distinct ||
+      a.weight - b.weight,
+  );
+  let support = 1;
+  let work = 0;
+  for (const c of ordered) {
+    work += support * c.distinct;
+    support += c.weight * (c.ways.length - 1);
+  }
+  return { cases: ordered, work };
+}
 
+/** The exact p-value of a plan, by convolution. */
+function exactP(plan: { readonly cases: readonly LatticeCase[] }): number {
   // The observed statistic and the distribution, both shifted so that the smallest sum is 0.
   let observed = 0;
   let distribution = Float64Array.of(1);
-  for (const [i, u] of units.entries()) {
-    const w = weights[i] as number;
-    const ways = subsetSums(u.pooled, u.candidate.length);
-    const lowest = sum(u.pooled.toSorted((a, b) => a - b).slice(0, u.candidate.length));
-    observed += w * (sum(u.candidate) - lowest);
-    if (ways.length === 1) continue; // Every labelling gives this case the same contribution.
-    const total = sizes[i] as number;
-    const next = new Float64Array(distribution.length + (ways.length - 1) * w);
+  for (const c of plan.cases) {
+    observed += c.weight * c.observed;
+    if (c.ways.length === 1) continue; // Every labelling gives this case the same contribution.
+    const w = c.weight;
+    // Only the case's distinct contributions: the work is the support times their number, W.
+    const offsets: number[] = [];
+    const masses: number[] = [];
+    for (let s = 0; s < c.ways.length; s++) {
+      const n = c.ways[s] as number;
+      if (n === 0) continue;
+      offsets.push(s * w);
+      masses.push(n / c.labellings);
+    }
+    const next = new Float64Array(distribution.length + (c.ways.length - 1) * w);
     for (let x = 0; x < distribution.length; x++) {
       const px = distribution[x] as number;
       if (px === 0) continue;
-      for (let s = 0; s < ways.length; s++) {
-        const n = ways[s] as number;
-        if (n !== 0) next[x + s * w] = (next[x + s * w] as number) + (px * n) / total;
+      for (let j = 0; j < offsets.length; j++) {
+        const at = x + (offsets[j] as number);
+        next[at] = (next[at] as number) + px * (masses[j] as number);
       }
     }
     distribution = next;
@@ -178,12 +249,32 @@ function exactP(cases: readonly UsedCase[]): number | undefined {
   return Math.min(1, p);
 }
 
+/**
+ * The exact path's work estimate W for a table, or undefined when the values are off every small
+ * lattice or a case has too many labellings. Internal, for the tests and the benchmark.
+ */
+export function exactWork(cases: readonly CaseScores[]): number | undefined {
+  return latticePlan(cases.filter((c) => c.base.length > 0 && c.candidate.length > 0))?.work;
+}
+
+/**
+ * The exact p-value whatever its work, or undefined when the values are off every small lattice or
+ * a case has too many labellings. Internal, for the benchmark that sets the work limit and for the
+ * tests; the test itself never runs the exact path above the limit.
+ */
+export function exactPathIgnoringWork(
+  cases: readonly CaseScores[],
+): { readonly p: number; readonly work: number } | undefined {
+  const plan = latticePlan(cases.filter((c) => c.base.length > 0 && c.candidate.length > 0));
+  return plan === undefined ? undefined : { p: exactP(plan), work: plan.work };
+}
+
 /** The Monte Carlo p-value from `resamples` within-case relabellings drawn with `rng`. */
 function monteCarloP(
   cases: readonly UsedCase[],
   rng: Rng,
   resamples: number,
-): ScorePermutationResult {
+): { p: number; resamples: number; monteCarloSE: number; seed: number } {
   const observed = sum(cases.map((c) => weightOf(c) * sum(c.candidate)));
   const pools = cases.map((c) => [...c.candidate, ...c.base]);
   let extreme = 0;
@@ -205,14 +296,7 @@ function monteCarloP(
     if (t <= observed + MONTE_CARLO_TOLERANCE) extreme++;
   }
   const p = (1 + extreme) / (1 + resamples);
-  return {
-    statistic: 0,
-    p,
-    method: "within-case-permutation-monte-carlo",
-    resamples,
-    monteCarloSE: Math.sqrt((p * (1 - p)) / resamples),
-    seed: rng.seed,
-  };
+  return { p, resamples, monteCarloSE: Math.sqrt((p * (1 - p)) / resamples), seed: rng.seed };
 }
 
 /**
@@ -222,10 +306,11 @@ function monteCarloP(
  * permuted independently. One-sided toward a drop; ties count as at most T observed.
  *
  * Exact by convolution when every value lies on a lattice of step 1/D with D at most 1,000, every
- * case has at most 100,000 labellings, and the support times the number of cases is at most 5·10^7.
- * Otherwise seeded Monte Carlo, p = (1 + count) / (1 + resamples), reported with its standard
- * error; a p within 3 standard errors of one of `levels` is computed again with 100,000 resamples
- * and a new seed. A case without a completed trial in an arm does not enter.
+ * case has at most 100,000 labellings, and the work estimate W is at most
+ * SCORE_PERMUTATION_WORK_LIMIT. Otherwise seeded Monte Carlo, p = (1 + count) / (1 + resamples),
+ * reported with its standard error and seed; a p within 3 standard errors of one of `levels` is
+ * computed again with 100,000 resamples and the seed `rerunSeed(seed)`, and that result is
+ * reported. A case without a completed trial in an arm does not enter.
  */
 export function scorePermutationCore(
   cases: readonly CaseScores[],
@@ -242,20 +327,17 @@ export function scorePermutationCore(
   const statistic =
     sum(used.map((c) => sum(c.candidate) / c.candidate.length - sum(c.base) / c.base.length)) /
     used.length;
-  const exact = options.exact === false ? undefined : exactP(used);
-  if (exact !== undefined) return { statistic, p: exact, method: "within-case-permutation-exact" };
+  const plan = options.exact === false ? undefined : latticePlan(used);
+  const work = plan === undefined ? {} : { work: plan.work };
+  if (plan !== undefined && plan.work <= SCORE_PERMUTATION_WORK_LIMIT)
+    return { statistic, p: exactP(plan), method: "within-case-permutation-exact", ...work };
 
   const { rng, levels = [] } = options;
   if (!rng) throw new RangeError("this table needs a seeded generator for the Monte Carlo path");
   const first = monteCarloP(used, rng, options.resamples ?? SCORE_PERMUTATION_RESAMPLES);
-  const se = first.monteCarloSE as number;
-  const near = levels.some((level) => Math.abs(first.p - level) <= 3 * se);
+  const near = levels.some((level) => Math.abs(first.p - level) <= 3 * first.monteCarloSE);
   const result = near
-    ? monteCarloP(
-        used,
-        createRng(((rng.seed + NEAR_LEVEL_SEED_OFFSET - 1) % 4294967295) + 1),
-        SCORE_PERMUTATION_RESAMPLES_NEAR_LEVEL,
-      )
+    ? monteCarloP(used, createRng(rerunSeed(rng.seed)), SCORE_PERMUTATION_RESAMPLES_NEAR_LEVEL)
     : first;
-  return { ...result, statistic };
+  return { statistic, ...result, method: "within-case-permutation-monte-carlo", ...work };
 }
