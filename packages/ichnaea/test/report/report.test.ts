@@ -90,7 +90,7 @@ describe("reports", () => {
   });
 
   it("an estimate-only decision says so, and shows every difference with its interval (REQ-27)", async () => {
-    const { decision } = await decided({ replicates: 1 });
+    const { decision } = await decided({ replicates: 1, marginStatus: "placeholder" });
     const view = decisionView(decision, "synthetic");
     const md = renderMarkdown(view);
     expect(md).toContain("**ESTIMATE-ONLY** estimates on these 40 cases, without a verdict: ");

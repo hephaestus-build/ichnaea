@@ -20,6 +20,7 @@ describe("verdict order: INVALID, a failed hard gate, estimate-only, statistics"
       replicates: 1,
       base: () => 1,
       candidate: () => 1,
+      marginStatus: "placeholder",
       ...failedGate,
     });
     expect(s.plan.mode).toBe("estimate-only");
@@ -104,7 +105,13 @@ describe("scope sentences come from the records", () => {
 
   it("estimate-only and INVALID decisions make no claim beyond run-to-run noise", async () => {
     const estimate = await run(
-      await scenario({ cases: 12, replicates: 1, base: () => 1, candidate: () => 1 }),
+      await scenario({
+        cases: 12,
+        replicates: 1,
+        base: () => 1,
+        candidate: () => 1,
+        marginStatus: "placeholder",
+      }),
     );
     expect(estimate.scope).toBe("estimates on these 12 cases, without a verdict");
     const invalid = await run(
