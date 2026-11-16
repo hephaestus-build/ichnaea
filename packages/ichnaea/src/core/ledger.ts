@@ -2,7 +2,7 @@ import { appendFile, mkdir, open, readFile, rm, stat } from "node:fs/promises";
 import { setTimeout as delay } from "node:timers/promises";
 import { join } from "node:path";
 
-import { canonicalize } from "../contracts/index.ts";
+import { canonicalize, Timestamp } from "../contracts/index.ts";
 import * as z from "zod";
 
 /** One booking in the monthly call ledger. */
@@ -11,7 +11,10 @@ export interface LedgerBooking {
   readonly run: string;
   /** The number of calls booked, a non-negative integer. */
   readonly calls: number;
-  /** The ISO 8601 timestamp of the booking; its `YYYY-MM` prefix selects the month's file. */
+  /**
+   * The ISO 8601 timestamp of the booking, with an offset or `Z`. Its month in UTC selects the
+   * month's file.
+   */
   readonly at: string;
 }
 
@@ -35,6 +38,16 @@ function bookingProblem(value: unknown): string | undefined {
   const issue = LedgerLine.safeParse(value).error?.issues[0];
   if (!issue) return undefined;
   return issue.path.length > 0 ? `${issue.path.join(".")}: ${issue.message}` : issue.message;
+}
+
+/**
+ * The UTC month, `YYYY-MM`, of a booking time. A time that is not an ISO 8601 timestamp is
+ * refused: its file name would fall outside the month scheme, and its calls outside the cap.
+ */
+function monthOf(at: string): string {
+  if (!Timestamp.safeParse(at).success)
+    throw new LedgerError(`'${at}' is not an ISO 8601 timestamp, so it names no month`);
+  return new Date(at).toISOString().slice(0, 7);
 }
 
 /** Age after which a ledger lock is taken to belong to a crashed run. */
@@ -64,7 +77,7 @@ export class CallLedger {
   private file(endpoint: string, at: string): string {
     if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(endpoint))
       throw new Error(`endpoint name '${endpoint}' cannot name a directory`);
-    return join(this.root, "ledger", endpoint, `${at.slice(0, 7)}.jsonl`);
+    return join(this.root, "ledger", endpoint, `${monthOf(at)}.jsonl`);
   }
 
   /**

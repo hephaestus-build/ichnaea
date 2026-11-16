@@ -77,3 +77,30 @@ describe("call ledger lines (REQ-86)", () => {
     expect(await readFile(file, "utf8")).toBe(`${good}\n`);
   });
 });
+
+describe("the booking time selects the month (REQ-86)", () => {
+  for (const at of ["2026", "2026-11", "2026-11-15", "15 November 2026", "2026-11-15T00:00:00"])
+    it(`refuses '${at}', which names no month, and writes nothing`, async () => {
+      const root = await mkdtemp(join(tmpdir(), "ichnaea-ledger-"));
+      const ledger = new CallLedger(root);
+      await expect(ledger.reserve("endpoint", 100, { run: "a", calls: 1, at })).rejects.toThrow(
+        LedgerError,
+      );
+      await expect(ledger.used("endpoint", at)).rejects.toThrow(/not an ISO 8601 timestamp/);
+      await expect(
+        readFile(join(root, "ledger", "endpoint", "2026.jsonl"), "utf8"),
+      ).rejects.toThrow();
+    });
+
+  it("books a time with an offset into its month in UTC, under the same cap", async () => {
+    const { ledger, file } = await ledgerWith([JSON.stringify({ run: "a", calls: 90, at: AT })]);
+    // 00:30 on 1 December at +02:00 is 22:30 on 30 November in UTC.
+    const late = "2026-12-01T00:30:00+02:00";
+    await expect(
+      ledger.reserve("endpoint", 100, { run: "b", calls: 20, at: late }),
+    ).rejects.toThrow(MonthlyCapError);
+    await ledger.reserve("endpoint", 100, { run: "b", calls: 10, at: late });
+    expect(await ledger.used("endpoint", AT)).toBe(100);
+    expect((await readFile(file, "utf8")).trim().split("\n")).toHaveLength(2);
+  });
+});
