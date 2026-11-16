@@ -361,72 +361,146 @@
           }
         },
         "call": {
-          "type": "object",
-          "properties": {
-            "id": {
-              "type": "string",
-              "minLength": 1,
-              "x-ichnaea-data": {
-                "class": "none",
-                "identifier": "none",
-                "egress": [
-                  "*"
-                ],
-                "retention": "record"
-              }
-            },
-            "name": {
-              "type": "string",
-              "minLength": 1,
-              "x-ichnaea-data": {
-                "class": "none",
-                "identifier": "none",
-                "egress": [
-                  "*"
-                ],
-                "retention": "record"
-              }
-            },
-            "args": {
-              "x-ichnaea-data": {
-                "class": "inherit",
-                "identifier": "content",
-                "egress": [
-                  "*"
-                ],
-                "retention": "subject"
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "x-ichnaea-data": {
+                    "class": "none",
+                    "identifier": "none",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "record"
+                  }
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "x-ichnaea-data": {
+                    "class": "none",
+                    "identifier": "none",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "record"
+                  }
+                },
+                "args": {
+                  "x-ichnaea-data": {
+                    "class": "inherit",
+                    "identifier": "content",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "subject"
+                  },
+                  "$ref": "#/$defs/JsonValue"
+                },
+                "error": {
+                  "type": "string",
+                  "x-ichnaea-data": {
+                    "class": "inherit",
+                    "identifier": "content",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "subject"
+                  }
+                },
+                "result": {
+                  "x-ichnaea-data": {
+                    "class": "inherit",
+                    "identifier": "content",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "subject"
+                  },
+                  "$ref": "#/$defs/JsonValue"
+                }
               },
-              "$ref": "#/$defs/JsonValue"
+              "required": [
+                "id",
+                "name",
+                "args"
+              ],
+              "additionalProperties": false
             },
-            "result": {
-              "x-ichnaea-data": {
-                "class": "inherit",
-                "identifier": "content",
-                "egress": [
-                  "*"
-                ],
-                "retention": "subject"
+            {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1,
+                  "x-ichnaea-data": {
+                    "class": "none",
+                    "identifier": "none",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "record"
+                  }
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "x-ichnaea-data": {
+                    "class": "none",
+                    "identifier": "none",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "record"
+                  }
+                },
+                "args": {
+                  "x-ichnaea-data": {
+                    "class": "inherit",
+                    "identifier": "content",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "subject"
+                  },
+                  "$ref": "#/$defs/JsonValue"
+                },
+                "error": {
+                  "type": "string",
+                  "x-ichnaea-data": {
+                    "class": "inherit",
+                    "identifier": "content",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "subject"
+                  }
+                },
+                "resultArtifact": {
+                  "type": "string",
+                  "minLength": 1,
+                  "x-ichnaea-data": {
+                    "class": "inherit",
+                    "identifier": "quasi",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "subject"
+                  }
+                }
               },
-              "$ref": "#/$defs/JsonValue"
-            },
-            "error": {
-              "type": "string",
-              "x-ichnaea-data": {
-                "class": "inherit",
-                "identifier": "content",
-                "egress": [
-                  "*"
-                ],
-                "retention": "subject"
-              }
+              "required": [
+                "id",
+                "name",
+                "args",
+                "resultArtifact"
+              ],
+              "additionalProperties": false
             }
-          },
-          "required": [
-            "id",
-            "name",
-            "args"
-          ],
-          "additionalProperties": false
+          ]
         }
       },
       "required": [

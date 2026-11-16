@@ -3964,13 +3964,19 @@ export const WorkerEvent: z.ZodDiscriminatedUnion<[z.ZodObject<{
     stage: z.ZodString;
     iteration: z.ZodInt;
     turn: z.ZodOptional<z.ZodInt>;
-    call: z.ZodObject<{
+    call: z.ZodXor<readonly [z.ZodObject<{
         id: z.ZodString;
         name: z.ZodString;
         args: z.ZodJSONSchema;
-        result: z.ZodOptional<z.ZodJSONSchema>;
         error: z.ZodOptional<z.ZodString>;
-    }, z.core.$strict>;
+        result: z.ZodOptional<z.ZodJSONSchema>;
+    }, z.core.$strict>, z.ZodObject<{
+        id: z.ZodString;
+        name: z.ZodString;
+        args: z.ZodJSONSchema;
+        error: z.ZodOptional<z.ZodString>;
+        resultArtifact: z.ZodString;
+    }, z.core.$strict>]>;
 }, z.core.$strict>], "kind">;
 
 // @public

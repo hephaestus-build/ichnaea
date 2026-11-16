@@ -316,11 +316,40 @@ describe("the worker protocol", () => {
     delete withoutClass["dataClass"];
     expect(WorkerEvent.safeParse(withoutClass).success).toBe(false);
     expect(WorkerEvent.safeParse({ ...record, calls: 2 }).success).toBe(false);
+    const call = ["oneOf", "1", "properties", "call", "oneOf"];
     for (const key of ["args", "result", "error"])
-      expect(
-        policyAt("workerEvent", ["oneOf", "1", "properties", "call", "properties", key]),
-        key,
-      ).toMatchObject({ class: "inherit", identifier: "content" });
+      expect(policyAt("workerEvent", [...call, "0", "properties", key]), key).toMatchObject({
+        class: "inherit",
+        identifier: "content",
+      });
+  });
+
+  it("names a tool result too large to inline by its artifact, and never sends both", () => {
+    const event = WorkerEvent.parse(
+      fixture("valid-extra", "workerEvent/tool-call-large-result.json"),
+    );
+    expect(event.kind === "tool_call" && event.call).toMatchObject({
+      resultArtifact: "search-results",
+    });
+    expect(event.kind === "tool_call" && "result" in event.call).toBe(false);
+    // The worker chooses the name, so it has the class of the record's content.
+    expect(
+      policyAt("workerEvent", [
+        "oneOf",
+        "1",
+        "properties",
+        "call",
+        "oneOf",
+        "1",
+        "properties",
+        "resultArtifact",
+      ]),
+    ).toMatchObject({ class: "inherit", identifier: "quasi" });
+    const record = fixture("valid-extra", "workerEvent/tool-call-large-result.json");
+    const both = structuredClone(record);
+    (both["call"] as Record<string, unknown>)["result"] = { pages: ["policy.md"] };
+    expect(WorkerEvent.safeParse(both).success).toBe(false);
+    expect(readRecord(contractFor("ichnaea.workerEvent/1")!, both).ok).toBe(false);
   });
 
   it("reports an unknown member of an untagged union, such as a cancel, as unknown", () => {

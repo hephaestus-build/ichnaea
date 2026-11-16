@@ -797,6 +797,32 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
         call: { id: "call_01", args: {} },
       });
     },
+    "tool-call-result-and-result-artifact": (r) => {
+      delete r["calls"];
+      Object.assign(r, {
+        dataClass: "pseudonymous",
+        kind: "tool_call",
+        stage: "search",
+        iteration: 0,
+        call: {
+          id: "call_03",
+          name: "search_help_centre",
+          args: {},
+          result: { pages: [] },
+          resultArtifact: "search-results",
+        },
+      });
+    },
+    "tool-call-result-artifact-empty": (r) => {
+      delete r["calls"];
+      Object.assign(r, {
+        dataClass: "pseudonymous",
+        kind: "tool_call",
+        stage: "search",
+        iteration: 0,
+        call: { id: "call_03", name: "search_help_centre", args: {}, resultArtifact: "" },
+      });
+    },
     "tool-call-without-data-class": (r) => {
       delete r["calls"];
       Object.assign(r, {
@@ -1114,7 +1140,8 @@ export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
     "tool-call": (r) => {
       delete r["calls"];
       Object.assign(r, {
-        dataClass: "none",
+        // A tool call's content is at least pseudonymous unless its tool maps to a factor.
+        dataClass: "pseudonymous",
         kind: "tool_call",
         stage: "search",
         iteration: 0,
@@ -1126,6 +1153,23 @@ export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
         },
       });
     },
+    // A result too large to inline is an artifact of the trial, named here.
+    "tool-call-large-result": (r) => {
+      delete r["calls"];
+      Object.assign(r, {
+        dataClass: "pseudonymous",
+        kind: "tool_call",
+        stage: "search",
+        iteration: 0,
+        call: {
+          id: "call_03",
+          name: "search_help_centre",
+          args: { query: "Rückgabe", top: 200 },
+          resultArtifact: "search-results",
+        },
+      });
+    },
+    // Class none: the suite maps this tool to a declared environment factor of class none.
     "tool-call-error-in-a-turn": (r) => {
       delete r["calls"];
       Object.assign(r, {

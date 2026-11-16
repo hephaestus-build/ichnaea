@@ -489,6 +489,18 @@ export const WorkerReady = z.strictObject({
 /** A ready line. */
 export type WorkerReady = z.infer<typeof WorkerReady>;
 
+/** The members that every tool call has, wherever its result is. */
+const toolCall = {
+  /** The call's ID, as the model gave it. */
+  id: none(Text),
+  /** The tool's name. */
+  name: none(Text),
+  /** The arguments, as canonical JSON. */
+  args: content(Json),
+  /** The tool's error, in its own words. */
+  error: content(z.string()).optional(),
+};
+
 /**
  * What a worker writes about a trial in flight, before its result, by kind:
  * - `heartbeat` keeps the trial alive and reports the calls that the attempt has made so far. If
@@ -512,7 +524,11 @@ export const WorkerEvent = z.discriminatedUnion("kind", [
   }),
   z.strictObject({
     schema: none(z.literal("ichnaea.workerEvent/1")),
-    /** The data class of the call's content: at least the case's. */
+    /**
+     * The data class of the call's content: the arguments, the result and the error. It is at
+     * least the case's and at least `pseudonymous`, unless the suite maps the tool's name to a
+     * declared environment factor of class `none`.
+     */
     dataClass: none(RecordDataClass),
     /** The trial that the event is about. */
     trial: TrialIdentity,
@@ -523,19 +539,26 @@ export const WorkerEvent = z.discriminatedUnion("kind", [
     iteration: none(z.int().min(0)),
     /** The turn of a session case that made the call, from 0. */
     turn: none(z.int().min(0)).optional(),
-    /** The tool call. */
-    call: z.strictObject({
-      /** The call's ID, as the model gave it. */
-      id: none(Text),
-      /** The tool's name. */
-      name: none(Text),
-      /** The arguments, as canonical JSON. */
-      args: content(Json),
-      /** What the tool returned. A large result is sent as an artifact, by its digest. */
-      result: content(Json).optional(),
-      /** The tool's error, in its own words. */
-      error: content(z.string()).optional(),
-    }),
+    /**
+     * The tool call. Its result is either inline in `result` or, when it is too large to inline,
+     * in the artifact that `resultArtifact` names, never both.
+     */
+    call: z.xor([
+      z.strictObject({
+        ...toolCall,
+        /** What the tool returned, as it returned it. */
+        result: content(Json).optional(),
+      }),
+      z.strictObject({
+        ...toolCall,
+        /**
+         * The name of the entry in the trial result's `artifacts` that holds the tool's result,
+         * for a result too large to inline. Ichnaea hashes the artifact: the worker sends no
+         * digest. The worker chooses the name, so it has the class of the record's content.
+         */
+        resultArtifact: attribute(Text),
+      }),
+    ]),
   }),
 ]);
 /** A worker event. */
