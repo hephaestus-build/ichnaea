@@ -19,7 +19,6 @@
   },
   "files": [
     "README.md",
-    "dist",
     "fixtures",
     "majors.json",
     "schemas",
@@ -29,8 +28,8 @@
   "sideEffects": false,
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
     },
     "./schemas/*.json": "./schemas/*.json",
     "./package.json": "./package.json",
@@ -41,10 +40,9 @@
     "provenance": true
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
     "generate": "node scripts/generate-schemas.ts && node scripts/write-fixtures.ts",
-    "api": "api-extractor run --local",
-    "check:api": "api-extractor run"
+    "api": "node scripts/api-report.ts --local",
+    "check:api": "node scripts/api-report.ts"
   },
   "devDependencies": {
     "ajv": "8.20.0",
@@ -56,6 +54,6 @@
     "zod": "^4.6.0"
   },
   "engines": {
-    "node": ">=22.18.0"
+    "node": ">=24.3"
   }
 }

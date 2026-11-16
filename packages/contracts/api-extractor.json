@@ -1,10 +1,11 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/api-extractor/v7/api-extractor.schema.json",
-  "mainEntryPointFilePath": "<projectFolder>/dist/index.d.ts",
+  // scripts/api-report.ts emits the declarations to a temporary folder and sets the entry point
+  // and the report's temporary folder there.
+  "mainEntryPointFilePath": "<projectFolder>/index.d.ts",
   "apiReport": {
     "enabled": true,
-    "reportFolder": "<projectFolder>/api/",
-    "reportTempFolder": "<projectFolder>/dist/api/"
+    "reportFolder": "<projectFolder>/api/"
   },
   "docModel": { "enabled": false },
   "dtsRollup": { "enabled": false },

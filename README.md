@@ -8,9 +8,8 @@ Ichnaea evaluates GenAI features whenever their configuration changes: code, pro
 its parameters or the application's settings. It gives each change a clear verdict from paired
 statistics, and says plainly when the cases cannot decide.
 
-> **Status: early development.** Before 1.0, releases are pre-releases: tarballs on
-> [GitHub releases](https://github.com/hephaestus-build/ichnaea/releases), not npm packages.
-> Interfaces can change in any pre-release.
+> **Status: early development.** Releases are paused: you pin a commit of this repository as a git
+> submodule. Interfaces can change in any commit.
 
 ## What it is built to do
 
@@ -34,101 +33,95 @@ Inspect's log format) instead of building its own store, dashboard or labelling 
 
 ## Packages
 
-| Package                               | Content                                                                                                                                 | State           |
-| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
-| `@hephaestus-build/ichnaea-contracts` | zod schemas, the normative JSON Schema 2020-12 files, shared fixtures, RFC 8785 canonical hashing, configuration identity, data classes | in pre-releases |
-| `@hephaestus-build/ichnaea-stats`     | Intervals, paired and stratified tests, power. The regression test is validated; non-inferiority is not, until the margin floor is set  | in pre-releases |
-| `@hephaestus-build/ichnaea-core`      | Plugin host, lifecycle, planner, import mode, file store, call ledger, CLI                                                              | in pre-releases |
-| `@hephaestus-build/ichnaea-decide`    | Decision rule with its power statement, and the `decide` command                                                                        | in pre-releases |
-| `@hephaestus-build/ichnaea-report`    | Markdown and HTML reports with an interval lint, and the `report` command                                                               | in pre-releases |
-| `@hephaestus-build/ichnaea-runner`    | Runner                                                                                                                                  | planned         |
-| `@hephaestus-build/ichnaea-testkit`   | Conformance kits                                                                                                                        | planned         |
+| Package                               | Content                                                                                                                                 | State     |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| `@hephaestus-build/ichnaea-contracts` | zod schemas, the normative JSON Schema 2020-12 files, shared fixtures, RFC 8785 canonical hashing, configuration identity, data classes | available |
+| `@hephaestus-build/ichnaea-stats`     | Intervals, paired and stratified tests, power. The regression test is validated; non-inferiority is not, until the margin floor is set  | available |
+| `@hephaestus-build/ichnaea-core`      | Plugin host, lifecycle, planner, import mode, file store, call ledger, CLI                                                              | available |
+| `@hephaestus-build/ichnaea-decide`    | Decision rule with its power statement, and the `decide` command                                                                        | available |
+| `@hephaestus-build/ichnaea-report`    | Markdown and HTML reports with an interval lint, and the `report` command                                                               | available |
+| `@hephaestus-build/ichnaea-runner`    | Runner                                                                                                                                  | planned   |
+| `@hephaestus-build/ichnaea-testkit`   | Conformance kits                                                                                                                        | planned   |
 
-All packages have the same version. They need Node 22.18.0 or later: the CLI loads
-`ichnaea.config.ts` with the type stripping of Node, which needs no flag from 22.18.0. zod 4 (4.6
-or later) is a peer dependency.
+All packages have the same version. They ship their TypeScript sources, with no build step, and need
+Node 24.3 or later, which runs TypeScript with its type stripping. zod 4 (4.6 or later) is a peer
+dependency.
 
-## Install
+## Use Ichnaea from a TypeScript project
 
-Before 1.0, each release `v0.<minor>.<patch>` is a
-[GitHub pre-release](https://github.com/hephaestus-build/ichnaea/releases) with:
+Add this repository to your project as a git submodule, pinned to a commit, and link its packages
+into your pnpm workspace. Node runs the sources from the submodule. Node does not strip types from
+files under `node_modules`, so a package copied there, for example from a packed tarball, does not
+run. A workspace link resolves to the submodule, so the sources run there.
 
-- one tarball per package, `hephaestus-build-ichnaea-<package>-<version>.tgz`;
-- `SHA256SUMS`, the SHA-256 checksums of the tarballs;
-- `sbom.cdx.json`, a CycloneDX SBOM that lists the packages of the release, their dependencies,
-  and zod at the version the release was tested with.
+Add the submodule and pin it to a commit:
 
-The release workflow builds every pre-release from a commit on `main`, and creates its tag. Each
-tarball has a build provenance attestation and an SBOM attestation, signed with the identity of that
-workflow. Nothing is published to npm yet.
-
-The commands here install v0.1.0. For another release, replace the version. The notes of each
-release give its snippet. With pnpm, first map every Ichnaea package to its tarball in
-`pnpm-workspace.yaml`, so that the dependencies between them resolve without a registry:
-
-<!-- The tarball smoke test writes this file, with each release URL changed to its tarball. -->
-
-```yaml
-overrides:
-  "@hephaestus-build/ichnaea-contracts": "https://github.com/hephaestus-build/ichnaea/releases/download/v0.1.0/hephaestus-build-ichnaea-contracts-0.1.0.tgz"
-  "@hephaestus-build/ichnaea-core": "https://github.com/hephaestus-build/ichnaea/releases/download/v0.1.0/hephaestus-build-ichnaea-core-0.1.0.tgz"
-  "@hephaestus-build/ichnaea-decide": "https://github.com/hephaestus-build/ichnaea/releases/download/v0.1.0/hephaestus-build-ichnaea-decide-0.1.0.tgz"
-  "@hephaestus-build/ichnaea-report": "https://github.com/hephaestus-build/ichnaea/releases/download/v0.1.0/hephaestus-build-ichnaea-report-0.1.0.tgz"
-  "@hephaestus-build/ichnaea-stats": "https://github.com/hephaestus-build/ichnaea/releases/download/v0.1.0/hephaestus-build-ichnaea-stats-0.1.0.tgz"
+```sh
+git submodule add https://github.com/hephaestus-build/ichnaea vendor/ichnaea
+git -C vendor/ichnaea checkout <commit>
+git add .gitmodules vendor/ichnaea
+git commit -m "build: pin ichnaea to <commit>"
 ```
 
-Then add the packages that you import, by the same URLs, and zod. The five-minute example below
-imports contracts, core, decide and report. The CLI loads `ichnaea.config.ts` as an ES module:
+List its packages in `pnpm-workspace.yaml`, beside your own entries:
 
-<!-- The tarball smoke test runs this block, with each release URL changed to its tarball. -->
+<!-- The submodule consumer test writes this file. -->
+
+```yaml
+packages:
+  - vendor/ichnaea/packages/*
+```
+
+Then, at the root of your workspace, add zod and the packages that you import. The five-minute
+example below imports contracts, core, decide and report. The CLI loads `ichnaea.config.ts` as an
+ES module:
+
+<!-- The submodule consumer test runs this install. -->
 
 ```sh
 pnpm pkg set type=module
-pnpm add zod@4.6.7 \
-  https://github.com/hephaestus-build/ichnaea/releases/download/v0.1.0/hephaestus-build-ichnaea-contracts-0.1.0.tgz \
-  https://github.com/hephaestus-build/ichnaea/releases/download/v0.1.0/hephaestus-build-ichnaea-core-0.1.0.tgz \
-  https://github.com/hephaestus-build/ichnaea/releases/download/v0.1.0/hephaestus-build-ichnaea-decide-0.1.0.tgz \
-  https://github.com/hephaestus-build/ichnaea/releases/download/v0.1.0/hephaestus-build-ichnaea-report-0.1.0.tgz
+pnpm add -w zod@4.6.7 \
+  '@hephaestus-build/ichnaea-contracts@workspace:*' \
+  '@hephaestus-build/ichnaea-core@workspace:*' \
+  '@hephaestus-build/ichnaea-decide@workspace:*' \
+  '@hephaestus-build/ichnaea-report@workspace:*'
 ```
 
-The lockfile then pins the integrity hash of each tarball.
+zod at the root is the one copy that every Ichnaea package uses. Run the CLI with Node 24.3 or later:
+`pnpm exec ichnaea <command>` runs `node vendor/ichnaea/packages/core/src/bin.ts <command>`.
 
-### Verify
-
-Verify each tarball before you use it. You need the [GitHub CLI](https://cli.github.com/).
-Download the release with `gh release download v0.1.0 --repo hephaestus-build/ichnaea`, then:
+### Update the pin
 
 ```sh
-# Build provenance: built by the release workflow from a commit on main, on a GitHub-hosted runner
-gh attestation verify <tarball> --repo hephaestus-build/ichnaea \
-  --signer-workflow hephaestus-build/ichnaea/.github/workflows/release.yml \
-  --source-ref refs/heads/main --deny-self-hosted-runners
-# The SBOM (CycloneDX) attested for the same tarball
-gh attestation verify <tarball> --repo hephaestus-build/ichnaea \
-  --signer-workflow hephaestus-build/ichnaea/.github/workflows/release.yml \
-  --source-ref refs/heads/main --deny-self-hosted-runners \
-  --predicate-type https://cyclonedx.org/bom
-# Checksums of the tarballs you downloaded
-sha256sum --check --ignore-missing SHA256SUMS
+git -C vendor/ichnaea fetch
+git -C vendor/ichnaea checkout <commit>
+git add vendor/ichnaea
+git commit -m "build: update ichnaea to <commit>"
 ```
 
-`--repo` alone is not enough: it accepts an attestation from any workflow on any branch of the
-repository. `--signer-workflow` and `--source-ref` accept only the release workflow on `main`.
+Then run `pnpm install`, so that the workspace links the packages of the new commit.
+
+### Why the pin is the integrity
+
+Your repository records the commit hash of the submodule, and the hash fixes every file of that
+commit. Every commit on every branch of this repository is signed: the repository refuses a push
+with an unsigned commit. Before you pin or update, check the commit's signature. Use
+`git -C vendor/ichnaea verify-commit HEAD`, which needs the signer's public key, or look for the
+**Verified** badge on the commit on GitHub.
 
 ## Five-minute example
 
 [`examples/support-assistant`](examples/support-assistant/README.md) is a synthetic support
 assistant. Another runner wrote its results. Ichnaea imports them, decides and reports, with no
-model call. In the project where you installed the packages, copy the example from the tag of your
-release. Then import, decide and report two candidates against the same base. Each candidate is a
+model call. In the project where you linked the packages, copy the example from the submodule.
+Then import, decide and report two candidates against the same base. Each candidate is a
 new model with a new prompt: the trigger is `new-model`, and `--vary prompt.answer` declares the
 prompt change.
 
-<!-- The tarball smoke test runs this block on the packed tarballs. -->
+<!-- The submodule consumer test runs this example. -->
 
 ```sh
-git clone --depth 1 --branch v0.1.0 https://github.com/hephaestus-build/ichnaea.git
-example=ichnaea/examples/support-assistant
+example=vendor/ichnaea/examples/support-assistant
 cp -R "$example/ichnaea.config.ts" "$example/plugin.ts" "$example/data" "$example/configurations" "$example/results" .
 # An unchanged candidate
 pnpm exec ichnaea import --importer support/results \
@@ -150,7 +143,7 @@ pnpm exec ichnaea report --run regressed
 
 `decide` prints the verdict line and exits by the CI policy of the plan: 1 blocks the change.
 
-<!-- The tarball smoke test checks these verdict lines and exit codes. -->
+<!-- The submodule consumer test checks these verdict lines and exit codes. -->
 
 | Scenario               | Results file                       | `decide` prints                                                                                                                         | `decide` exits |
 | ---------------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
@@ -176,12 +169,13 @@ language. An application in any language can write records that validate against
 
 ## Develop
 
-The packages and the CLI need Node 22.18 or later: the CLI loads `ichnaea.config.ts`, and Node runs
-TypeScript files without a flag from 22.18. Developing Ichnaea needs the same version and pnpm.
+Developing Ichnaea needs Node 24.3 or later and pnpm. There is no build: tests, the CLI and the
+scripts run the TypeScript sources.
 
 ```sh
 pnpm install
-pnpm check      # format, lint, type check, tests, generated files current
+pnpm check                            # format, lint, type check, tests, generated files current
+node scripts/submodule-consumer.ts    # the README's install, type check and example in a consumer
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).

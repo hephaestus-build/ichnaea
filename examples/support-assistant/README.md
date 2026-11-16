@@ -33,11 +33,10 @@ points.
 
 ## Run it
 
-Install and build once at the repository root. The commands need Node 22.18 or later.
+Install once at the repository root. There is no build. The commands need Node 24.3 or later.
 
 ```sh
 pnpm install
-pnpm run build
 ```
 
 Then run the example from this directory. `pnpm exec ichnaea` runs the CLI of the workspace.

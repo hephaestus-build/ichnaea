@@ -1,6 +1,6 @@
 # 0013. Pre-releases are attested tarballs on GitHub releases
 
-Status: Accepted
+Status: Superseded by 0018
 Date: 2026-11-15
 
 ## Context
