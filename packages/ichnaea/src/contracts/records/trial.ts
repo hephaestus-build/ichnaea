@@ -54,9 +54,19 @@ export const Step = z.strictObject({
   detail: content(Json).optional(),
 });
 
-/** Resource usage of a trial as reported. Absent means unknown, never zero. */
+/**
+ * Resource usage of a trial as reported. Absent means unknown, never zero. `calls` counts the
+ * model calls the provider accepted. A call the provider rejected, for example with HTTP 429, is not a call.
+ */
 export const Usage = z.strictObject({
-  calls: none(z.int().min(0)).optional(),
+  calls: none(
+    z
+      .int()
+      .min(0)
+      .describe(
+        "The model calls the provider accepted. A call the provider rejected, for example with HTTP 429, is not a call.",
+      ),
+  ).optional(),
   inputTokens: none(z.int().min(0)).optional(),
   outputTokens: none(z.int().min(0)).optional(),
   cost: none(z.number().min(0)).optional(),
@@ -104,7 +114,8 @@ export const Trial = z.strictObject({
   inputDigest: none(Digest).optional(),
   /**
    * The earlier attempts at this trial that a later one replaced, in order and numbered from 1 with
-   * no gap: each an infrastructure failure or a trial not run, with the calls it made. The record is
+   * no gap: each an infrastructure failure or a trial not run, with the calls the provider accepted
+   * in it (a call the provider rejected, for example with HTTP 429, is not a call). The record is
    * the last attempt. In a plan that runs its arms, the calls of every attempt count against the
    * per-trial bound and the run's budget, so a retry cannot hide an overrun.
    */
@@ -116,7 +127,14 @@ export const Trial = z.strictObject({
           class: none(z.enum(["infrastructure", "not_run"])),
           kind: none(Text),
         }),
-        calls: none(z.int().min(0)),
+        calls: none(
+          z
+            .int()
+            .min(0)
+            .describe(
+              "The model calls the provider accepted in this attempt. A call the provider rejected, for example with HTTP 429, is not a call.",
+            ),
+        ),
       }),
     )
     .optional(),

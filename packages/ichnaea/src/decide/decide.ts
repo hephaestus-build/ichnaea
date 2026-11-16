@@ -628,8 +628,9 @@ function triggerCheck(
 /**
  * The checks of each trial's attempts (invariant 12). They are numbered 1 to k with no gap. In a
  * plan that runs its arms, the calls of every attempt count against the plan's bound per trial and
- * against the run's budget, so a retry cannot hide an overrun. A trial without a count of calls
- * counts none.
+ * against the run's budget, so a retry cannot hide an overrun. Every count is of the calls the
+ * provider accepted: a call it rejected, for example with HTTP 429, is not a call, so throttling
+ * alone never makes a run INVALID. A trial without a count of calls counts none.
  *
  * The bounds guard what Ichnaea spends. An import plan runs no arm, so it books a worst case of 0
  * calls: another runner made its calls, which stay on the trial records and never make the run
