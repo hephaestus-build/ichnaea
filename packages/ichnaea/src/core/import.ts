@@ -19,7 +19,8 @@ import {
 import type { Host } from "./host.ts";
 import { scoreTrials } from "./measures.ts";
 import { createPlan } from "./planner.ts";
-import { FileStore, recordProblems, StoreError } from "./store.ts";
+import { recordProblems } from "./records.ts";
+import { FileStore, StoreError } from "./store.ts";
 
 /** What `ichnaea import` needs. */
 export interface ImportRunInput {
