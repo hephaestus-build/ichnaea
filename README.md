@@ -8,8 +8,8 @@ Ichnaea evaluates GenAI features whenever their configuration changes: code, pro
 its parameters or the application's settings. It gives each change a clear verdict from paired
 statistics, and says plainly when the cases cannot decide.
 
-> **Status: early development.** There are no releases yet: you pin a commit of the `build` branch.
-> Interfaces can change in any commit.
+> **Status: early development.** Ichnaea is 0.x: install a release from GitHub. Interfaces can
+> change between releases. npm comes at 1.0.
 
 ## What it is built to do
 
@@ -46,59 +46,44 @@ other dependency.
 
 ## Use Ichnaea from a TypeScript project
 
-Install a commit of the `build` branch. Each commit there holds the built package of one commit
-on `main`, and nothing else. Its message names that commit in a `Source-Commit:` trailer. Releases
-to npm come at 1.0.
-
-Pick the newest build commit:
+Ichnaea is released as a package tarball on GitHub, with a provenance attestation. npm comes at
+1.0. Ichnaea needs Node 24.3 or later, and your project must be an ES module project:
 
 ```sh
-gh api repos/hephaestus-build/ichnaea/commits/build --jq .sha
+pnpm pkg set type=module
 ```
 
-Then, at the root of your project, add zod and Ichnaea at that commit. The CLI loads
-`ichnaea.config.ts` as an ES module:
+Then, at the root of your project, find the newest release, verify it, and add it with zod. The
+check shows that the release workflow of this repository built the tarball, and it catches a
+tarball that someone uploaded by hand, so do not skip it:
 
 <!-- The build consumer test runs this install. -->
 
 ```sh
-pnpm pkg set type=module
-pnpm add zod@4.6.7 'github:hephaestus-build/ichnaea#<build-commit>'
+TAG=$(gh release view -R hephaestus-build/ichnaea --json tagName -q .tagName)
+gh release download "$TAG" -R hephaestus-build/ichnaea -p 'hephaestus-build-ichnaea-*.tgz'
+gh attestation verify "hephaestus-build-ichnaea-${TAG#v}.tgz" -R hephaestus-build/ichnaea \
+  --signer-workflow hephaestus-build/ichnaea/.github/workflows/release.yml \
+  --source-ref refs/heads/main --deny-self-hosted-runners
+pnpm add zod@4.6.7 "https://github.com/hephaestus-build/ichnaea/releases/download/$TAG/hephaestus-build-ichnaea-${TAG#v}.tgz"
 ```
 
-Your `package.json` then has
-`"@hephaestus-build/ichnaea": "github:hephaestus-build/ichnaea#<build-commit>"`, and your lockfile
-pins it. zod at the root is the one copy that Ichnaea uses. Run the CLI with Node 24.3 or later:
-`pnpm exec ichnaea <command>`. Installing the package runs no script: its `package.json` has none.
+<!-- TODO-FROM-RELEASE: the output of a successful check, copied from the v0.1.0 run. -->
 
-### Check a build commit
+The check passes only for a tarball built by the release workflow on main.
 
-Integrity comes from reproducibility. A build commit names a signed, reviewed commit on `main`,
-and anyone can build that commit again and get the same bytes. Before you pin or update, rebuild
-the build commit in an Ichnaea checkout:
+pnpm records the concrete URL and its integrity hash in your lockfile. Releases are immutable, so
+the URL always serves the bytes you verified. To pin an older release, set `TAG` by hand, for
+example `TAG=v0.1.0`. zod is a peer dependency: 4.6 or later works, and 4.6.7 is the version
+Ichnaea is tested with. Run the CLI with `pnpm exec ichnaea <command>`. Installing the package runs
+no script: its `package.json` has none.
 
-```sh
-git clone https://github.com/hephaestus-build/ichnaea && cd ichnaea
-pnpm install --frozen-lockfile
-node scripts/verify-build.ts <build-commit>
-```
+Each release also ships its SBOM, `sbom.cdx.json`, and `SHA256SUMS`, both attested.
 
-`verify-build.ts` reads the `Source-Commit` trailer and checks that the commit is on `main` and
-that GitHub shows its signature as verified. It
-builds that commit in a temporary worktree, with the Node and pnpm versions that the build
-commit's `build.json` records, and compares the result with the build commit byte for byte: the
-same paths, bytes and modes. It refuses on the first difference and names the file. It also checks
-the build commit's SBOM, `sbom.cdx.json`, which lists what the package ships and its peer
-dependency. Run it with the Node version that `build.json` names (24.22.2 today); it refuses
-another.
+### Update
 
-Only the build workflow writes `build`, with a deploy key that only a main-only environment
-holds. [Decision 0019](docs/decisions/0019-built-package-on-a-build-branch.md) gives the chain.
-
-### Update the pin
-
-Run `pnpm add 'github:hephaestus-build/ichnaea#<newer build commit>'` after you checked the newer
-commit.
+Run the same block again: it finds, verifies and adds the newest release. If you need a fix before
+the next release, ask for a patch release.
 
 ### Develop Ichnaea and your project together
 
@@ -108,14 +93,14 @@ In the Ichnaea checkout, build on every change:
 pnpm --filter @hephaestus-build/ichnaea build --watch
 ```
 
-In your project, link the package of that checkout instead of the build commit:
+In your project, link the package of that checkout instead of the release tarball:
 
 ```sh
 pnpm link <path to the Ichnaea checkout>/packages/ichnaea
 ```
 
 To undo it, run `pnpm unlink @hephaestus-build/ichnaea` and then `pnpm install`, so that your
-lockfile's build commit is installed again. Stop the watch with Ctrl-C. Never commit the link: it
+lockfile's release is installed again. Stop the watch with Ctrl-C. Never commit the link: it
 changes your `package.json` and lockfile to a path on your machine.
 
 ## Five-minute example
@@ -188,8 +173,7 @@ sources. The CLI and the example run the build.
 pnpm install
 pnpm check                                    # format, lint, type check, tests, generated files current
 pnpm --filter @hephaestus-build/ichnaea build # dist/, for the CLI and the example
-node scripts/build-package.ts <directory>     # the tree that the build branch holds for this commit
-node scripts/build-consumer.ts                # that tree, built twice, installed and run as the README says
+node scripts/build-consumer.ts                # the package, built twice, installed and run as the README says
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
