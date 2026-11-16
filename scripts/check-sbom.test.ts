@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { checkSbom, type Shipped } from "./check-sbom.ts";
-import { PROJECT } from "./consumer-project.ts";
+import { PROJECT } from "./tarball-project.ts";
 import { tagArgument, UNTAGGED, withDownloadUrls } from "./release-sbom.ts";
 
 const tag = "v0.1.0";

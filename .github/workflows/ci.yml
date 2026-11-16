@@ -38,29 +38,22 @@ jobs:
       - run: pnpm run lint
       - run: pnpm run typecheck
       - run: pnpm run check:generated
-      - name: Package correctness (publint, are the types wrong, API report)
-        run: pnpm run check:package
-      - name: The packed tarballs install, load and run the README's example without a registry
-        run: |
-          pnpm -r --filter './packages/*' exec pnpm pack --pack-destination "$RUNNER_TEMP/tarballs"
-          node scripts/smoke-tarballs.ts "$RUNNER_TEMP/tarballs"
-      # With no tag, the SBOM's download URLs name the placeholder tag `untagged`, and the check
-      # expects that placeholder.
+      - name: The contracts' API report is current
+        run: pnpm run check:api
+      # Releases are paused (release.yml); the SBOM of the packed tarballs stays checked. With no
+      # tag, the SBOM's download URLs name the placeholder tag `untagged`, and the check expects it.
       - name: The release SBOM of the packed tarballs lists what they ship
         run: |
+          pnpm -r --filter './packages/*' exec pnpm pack --pack-destination "$RUNNER_TEMP/tarballs"
           node scripts/release-sbom.ts "$RUNNER_TEMP/tarballs" "$RUNNER_TEMP/sbom.cdx.json"
           node scripts/check-sbom.ts "$RUNNER_TEMP/sbom.cdx.json" "$RUNNER_TEMP/tarballs"
 
+  # The packages ship TypeScript sources, which Node 24 runs with its type stripping: no build, no
+  # loader.
   test:
-    name: test (node ${{ matrix.node }})
+    name: test (node 24)
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        # 22.18.0 is the floor: the first Node that loads ichnaea.config.ts without a flag. `22`
-        # resolves to the newest 22.x, so it never tests the floor.
-        node: [22.18.0, 22, 24, 26]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -68,16 +61,14 @@ jobs:
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: ${{ matrix.node }}
+          node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
-      - name: At the floor, the packed tarballs run the README's example with the CLI
-        if: matrix.node == '22.18.0'
-        run: |
-          pnpm run build
-          pnpm -r --filter './packages/*' exec pnpm pack --pack-destination "$RUNNER_TEMP/tarballs"
-          node scripts/smoke-tarballs.ts "$RUNNER_TEMP/tarballs"
+      - name: The CLI runs from the sources
+        run: node packages/core/src/bin.ts --version
+      - name: A workspace with Ichnaea as a submodule runs the README's install and example with Node
+        run: node scripts/submodule-consumer.ts
 
   simulation:
     name: simulation

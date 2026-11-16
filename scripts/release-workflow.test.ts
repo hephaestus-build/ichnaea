@@ -1,5 +1,6 @@
-// The order of the release job: it checks the deploy key before it attests, tags or publishes
-// anything. The workflow is read as text, by its indentation: a job is a key at two spaces under
+// Releases are paused: the build job fails before it checks anything out, so no run reaches the
+// release job. The order of the release job: it checks the deploy key before it attests, tags or
+// publishes anything. The workflow is read as text, by its indentation: a job is a key at two spaces under
 // `jobs:`, a step an item at six.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -18,6 +19,17 @@ const jobs = new Map(
 const steps = (job: string): string[] => (jobs.get(job) ?? "").split(/\n {6}- /).slice(1);
 
 describe("release workflow", () => {
+  it("fails in the build job's first step while releases are paused, and says why", () => {
+    const [first] = steps("build");
+    expect(first).toContain("name: Releases are paused");
+    expect(first).toContain("Releases are paused: consumers pin a commit.");
+    expect(first).toMatch(/\n {10}exit 1$/m);
+    expect(first).not.toMatch(/\bif:/);
+    // Every other job runs only after the build job.
+    for (const [name, text] of jobs)
+      if (name !== "build") expect(text, name).toMatch(/\n {4}needs: build\n/);
+  });
+
   it("has the release environment only in the job that attests, tags and publishes", () => {
     const withEnvironment = [...jobs].filter(([, text]) =>
       /\n {4}environment: release\n/.test(text),

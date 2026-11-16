@@ -9,17 +9,13 @@
     "directory": "packages/decide"
   },
   "files": [
-    "dist",
     "src",
     "README.md"
   ],
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    },
+    ".": "./src/index.ts",
     "./package.json": "./package.json"
   },
   "publishConfig": {
@@ -27,7 +23,6 @@
     "provenance": true
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
     "test:sim": "vitest run --config vitest.sim.config.ts --silent=false"
   },
   "dependencies": {
@@ -43,6 +38,6 @@
     "zod": "^4.6.0"
   },
   "engines": {
-    "node": ">=22.18.0"
+    "node": ">=24"
   }
 }

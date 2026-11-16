@@ -8,6 +8,11 @@ Maintainers review and merge pull requests, cut releases and decide on the proje
 
 ## Releases
 
+**Releases are paused.** Consumers pin a commit as a git submodule (README § Use Ichnaea from a
+TypeScript project). The packages ship TypeScript sources, and Node does not run them from
+`node_modules`, so the tarballs below no longer work. The release workflow fails in its first step.
+The procedure below is the paused design.
+
 Before 1.0, a release is a pre-release `v0.<minor>.<patch>`: tarballs on a GitHub release, with
 build provenance and an SBOM attested by the release workflow. Nothing is published to npm.
 [Decision 0013](docs/decisions/0013-release-attested-tarballs.md) gives the reasons.

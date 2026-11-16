@@ -9,28 +9,21 @@
     "directory": "packages/core"
   },
   "bin": {
-    "ichnaea": "./dist/bin.js"
+    "ichnaea": "./src/bin.ts"
   },
   "files": [
-    "dist",
     "src",
     "README.md"
   ],
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    },
+    ".": "./src/index.ts",
     "./package.json": "./package.json"
   },
   "publishConfig": {
     "access": "public",
     "provenance": true
-  },
-  "scripts": {
-    "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
     "@hephaestus-build/ichnaea-contracts": "workspace:*"
@@ -42,6 +35,6 @@
     "zod": "^4.6.0"
   },
   "engines": {
-    "node": ">=22.18.0"
+    "node": ">=24"
   }
 }
