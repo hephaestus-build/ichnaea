@@ -88,6 +88,11 @@ code. The report names the broken cases, for example `support-03`.
   `decide` returns INVALID.
 - `--now` fixes the time of the record, so a run repeats byte for byte. Leave it out for a real run.
 
+A suite at one trial per case and arm also needs the time of each trial. Each run in a result file
+may carry `startedAt` and `endedAt`, and the importer passes them on. Then `--concurrency` and
+`--endpoint` state the schedule, and `--aa <run>` cites a decided A/A run, a run whose arms are both
+`configurations/base.json`. `test/one-trial.test.ts` shows the whole flow.
+
 ## Where the output is written
 
 The commands write to `.ichnaea/` in this directory. Pass `--store <directory>` to each command to

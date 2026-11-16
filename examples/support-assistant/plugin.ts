@@ -93,6 +93,9 @@ interface ResultFile {
     replicate: number;
     outcome: Trial["outcome"];
     answer?: string;
+    /** When the runner started and ended the call, if it records it. */
+    startedAt?: string;
+    endedAt?: string;
   }>;
 }
 
@@ -126,6 +129,8 @@ const results: Importer<"support/results"> = {
             outcome: lost ? "infrastructure_failure" : r.outcome,
             dataClass: "none",
             ...(r.answer === undefined ? {} : { output: { text: r.answer } }),
+            ...(r.startedAt === undefined ? {} : { startedAt: r.startedAt }),
+            ...(r.endedAt === undefined ? {} : { endedAt: r.endedAt }),
             ...(lost
               ? { error: { kind: NOT_CAPTURED, message: "the result file has no answer" } }
               : {}),

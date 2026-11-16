@@ -360,9 +360,16 @@ describe("INVALID (REQ-53): every check, and INVALID always blocks", () => {
 });
 
 describe("estimate-only (REQ-27, REQ-49, decision 0008)", () => {
-  it("one trial per case and arm gives no verdict, only descriptive estimates, and says why", async () => {
+  it("one trial in some cases and two in others gives no verdict, only descriptive estimates, and says why", async () => {
     const d = await run(
-      await scenario({ cases: 20, replicates: 1, base: () => 0.9, candidate: () => 0.7 }),
+      await scenario({
+        cases: 20,
+        replicates: 1,
+        base: () => 0.9,
+        candidate: () => 0.7,
+        slices: (i) => (i < 4 ? { group: "small" } : undefined),
+        replicatesFor: [{ slice: "group", value: "small", replicates: 2, reason: "few cases" }],
+      }),
     );
     expect(d.mode).toBe("estimate-only");
     expect(d.verdict).toBeNull();

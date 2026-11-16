@@ -117,7 +117,8 @@ describe("the power statement (REQ-54)", () => {
 
   it("every plan carries a planning statement: one trial per case, and sampled-cases", async () => {
     const one = await planned({ cases: 20, replicates: 1, base: () => 1, candidate: () => 1 });
-    expect(one.plan.mode).toBe("estimate-only");
+    // A binary plan at one trial per case decides; the statement is not computed and says why.
+    expect(one.plan.mode).toBe("decision");
     expect(one.plan.power).toEqual([
       {
         computed: false,
