@@ -12,6 +12,8 @@ import {
   type Design,
 } from "../src/planner/model.ts";
 
+/** A share of 10,000 runs, as the landing page writes it. */
+const percent = (count: number): string => `${((count / 10_000) * 100).toFixed(1)}%`;
 const support: Design = { cases: 12, trials: 3, margin: 0.15, alwaysPass: 0.8, otherRate: 0.7 };
 
 describe("planning explorer model", () => {
@@ -35,15 +37,22 @@ describe("planning explorer model", () => {
     expect(runs.thresholdAlarms).toBeGreaterThan(runs.regressionAlarms);
   });
 
-  // The landing page quotes the explorer's default design. This keeps the quote true.
+  // The landing page quotes the explorer's default design over 50 seeds of 200 runs. This keeps
+  // the quote true.
   it("gives the landing page's numbers for the explorer's default design", () => {
-    const runs = simulateNoChange(support, 200, 1);
+    let regressions = 0;
+    let thresholds = 0;
+    for (let seed = 1; seed <= 50; seed++) {
+      const runs = simulateNoChange(support, 200, seed);
+      regressions += runs.regressionAlarms;
+      thresholds += runs.thresholdAlarms;
+    }
     const landing = readFileSync(
       join(import.meta.dirname, "..", "src", "content", "docs", "index.mdx"),
       "utf8",
     );
-    expect(landing).toContain(`blocks ${runs.thresholdAlarms} of the 200 runs`);
-    expect(landing).toContain(`REGRESSION in ${runs.regressionAlarms} of the 200 runs`);
+    expect(landing).toContain(`blocks ${percent(thresholds)} of the runs`);
+    expect(landing).toContain(`REGRESSION in ${percent(regressions)} of the runs`);
   });
 
   it("repeats its numbers for the same seed", () => {
