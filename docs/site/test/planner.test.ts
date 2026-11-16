@@ -9,8 +9,10 @@ import {
   detectableDecrease,
   regressionLimitations,
   simulateNoChange,
+  plan,
   type Design,
 } from "../src/planner/model.ts";
+import { detectableSentence, MAX_SEED, plannerSeed } from "../src/planner/page.ts";
 
 /** A share of 10,000 runs, as the landing page writes it. */
 const percent = (count: number): string => `${((count / 10_000) * 100).toFixed(1)}%`;
@@ -75,5 +77,35 @@ describe("planning explorer model", () => {
 
   it("validates the regression test at one trial per case, assuming the record checks pass", () => {
     expect(regressionLimitations({ ...support, trials: 1 })).toEqual([]);
+  });
+
+  it("takes a seed from the address only when the generator accepts it and its successor", () => {
+    expect(plannerSeed(null)).toBe(1);
+    expect(plannerSeed("42")).toBe(42);
+    expect(plannerSeed(String(MAX_SEED))).toBe(MAX_SEED);
+    for (const raw of ["-1", "0", "1.5", "abc", String(MAX_SEED + 1)])
+      expect(plannerSeed(raw)).toBeUndefined();
+    expect(plan({ id: 1, design: support, seed: MAX_SEED }).ok).toBe(true);
+  });
+
+  it("answers a failed calculation with an error, so the page does not wait forever", () => {
+    expect(plan({ id: 3, design: support, seed: -1 })).toEqual({
+      id: 3,
+      ok: false,
+      error: "seed must be an integer in [1, 2^32 - 1], got -1",
+    });
+  });
+
+  it("states the search resolution and the zero cap, and claims no precision", () => {
+    const sentence = detectableSentence(0.2, 100, true);
+    expect(sentence).toContain("or to zero if it is lower");
+    expect(sentence).toContain("The search stops within 1 point.");
+    expect(sentence).not.toContain("±");
+    const page = readFileSync(
+      join(import.meta.dirname, "..", "src", "content", "docs", "planner.mdx"),
+      "utf8",
+    );
+    expect(page).toContain("capped at zero");
+    expect(page).not.toContain("every case loses the same");
   });
 });

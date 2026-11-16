@@ -80,8 +80,8 @@
 </section>
 
 <script>
-  import type { Design } from "../planner/model.ts";
-  import type { PlannerRequest, PlannerResult } from "../planner/worker.ts";
+  import type { Design, PlannerRequest, PlannerResult } from "../planner/model.ts";
+  import { detectableSentence, MAX_SEED, plannerSeed } from "../planner/page.ts";
 
   const form = document.querySelector<HTMLFormElement>("#planner");
   const button = document.querySelector<HTMLButtonElement>("#run");
@@ -100,7 +100,7 @@
   const clamp = (value: number, low: number, high: number): number =>
     Math.min(high, Math.max(low, value));
 
-  function read(): { design: Design; calls: number; seed: number } {
+  function read(): { design: Design; calls: number; seed: number | undefined } {
     const data = new FormData(form ?? undefined);
     const number = (name: string, fallback: number): number => {
       const value = Number(data.get(name));
@@ -115,7 +115,7 @@
         otherRate: clamp(number("otherRate", 70), 5, 95) / 100,
       },
       calls: Math.round(clamp(number("calls", 1), 1, 100)),
-      seed: Number(new URLSearchParams(location.search).get("seed") ?? 1) || 1,
+      seed: plannerSeed(new URLSearchParams(location.search).get("seed")),
     };
   }
 
@@ -141,9 +141,23 @@
   let calls = 1;
   let design: Design | undefined;
 
+  function fail(message: string): void {
+    field("details").hidden = true;
+    field("summary").textContent = message;
+    if (button) button.disabled = false;
+  }
+
+  // A worker that fails to load or throws sends no result, so the page says so instead of waiting.
+  worker.addEventListener("error", () => fail("The calculation failed to run. Reload the page to try again."));
+  worker.addEventListener("messageerror", () => fail("The calculation failed to run. Reload the page to try again."));
+
   worker.addEventListener("message", (event: MessageEvent<PlannerResult>) => {
     const result = event.data;
     if (result.id !== latest || !design) return;
+    if (!result.ok) {
+      fail(`The calculation failed: ${result.error}. Change the inputs and select Calculate again.`);
+      return;
+    }
     const { noChange } = result;
     const trials = design.cases * design.trials * 2;
     field("cost").textContent = `${design.cases} cases × ${design.trials} trials × 2 versions = ${trials} trials, ${trials * calls} model calls.`;
@@ -155,12 +169,11 @@
       result.limitations.length === 0
         ? "Validated for this design."
         : `Not validated for this design: ${result.limitations.join("; ")}. A real comparison gives no Regression here.`;
-    field("detectable").textContent =
-      result.limitations.length > 0
-        ? "None: without a validated test, no decrease gives a Regression."
-        : result.detectable === undefined
-        ? `Not reached: even the largest decrease is detected in fewer than 80% of runs (${result.detectableRuns} simulated runs per step).`
-        : `About ${points(result.detectable)}, when every case loses that much pass rate (${result.detectableRuns} simulated runs per step, so about ±1 point).`;
+    field("detectable").textContent = detectableSentence(
+      result.detectable,
+      result.detectableRuns,
+      result.limitations.length === 0,
+    );
     field("nochange-intro").textContent = `${noChange.runs} simulated runs in which the candidate is the base. Every alarm is false.`;
     const width = (count: number): string => `${(count / noChange.runs) * 100}%`;
     field("bar-ichnaea").style.width = width(noChange.regressionAlarms);
@@ -177,6 +190,11 @@
     event.preventDefault();
     writeUrl();
     const input = read();
+    if (input.seed === undefined) {
+      design = undefined;
+      fail(`The seed in the address must be a whole number from 1 to ${MAX_SEED}. Change it and select Calculate again.`);
+      return;
+    }
     design = input.design;
     calls = input.calls;
     latest += 1;

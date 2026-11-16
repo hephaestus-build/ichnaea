@@ -135,3 +135,45 @@ export function detectableDecrease(
 export function bestCaseFloor(design: Design): number {
   return fixedCasesFloor(design.cases, design.trials, ALPHA);
 }
+
+/** Runs per simulated setting. The page states both numbers next to the results. */
+export const NO_CHANGE_RUNS = 200;
+export const DETECTION_RUNS = 100;
+
+export interface PlannerRequest {
+  readonly id: number;
+  readonly design: Design;
+  readonly seed: number;
+}
+
+export type PlannerResult =
+  | {
+      readonly id: number;
+      readonly ok: true;
+      readonly floor: number;
+      readonly limitations: readonly string[];
+      readonly noChange: NoChangeRuns;
+      readonly detectable: number | undefined;
+      readonly detectableRuns: number;
+    }
+  | { readonly id: number; readonly ok: false; readonly error: string };
+
+/**
+ * The worker's answer to one request. A failure is an answer too, so the page can say that the
+ * calculation failed instead of waiting for a result that never comes.
+ */
+export function plan({ id, design, seed }: PlannerRequest): PlannerResult {
+  try {
+    return {
+      id,
+      ok: true,
+      floor: bestCaseFloor(design),
+      limitations: regressionLimitations(design),
+      noChange: simulateNoChange(design, NO_CHANGE_RUNS, seed),
+      detectable: detectableDecrease(design, { power: 0.8, runs: DETECTION_RUNS, seed: seed + 1 }),
+      detectableRuns: DETECTION_RUNS,
+    };
+  } catch (error) {
+    return { id, ok: false, error: error instanceof Error ? error.message : String(error) };
+  }
+}

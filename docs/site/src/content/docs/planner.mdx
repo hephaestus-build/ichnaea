@@ -13,7 +13,7 @@ Enter the size of your suite. The explorer simulates comparisons with Ichnaea's 
 ## How to read the results
 
 - **Best-case floor.** The smallest limit that any run of this suite can clear, even when every trial passes. It is exact, not simulated.
-- **Smallest decrease detected in 80% of runs.** In these simulated runs, every case loses the same pass rate. A decrease this large then gives a Regression in 4 of 5 runs. Smaller decreases are often missed.
+- **Smallest decrease detected in 80% of runs.** In these simulated runs, each case's pass rate falls by the same amount, or to zero if it is lower. A decrease this large then gives a Regression in 4 of 5 runs. Smaller decreases are often missed. The search finds this number to within 1 point. That is its resolution, not its precision: another seed can give a different number.
 - **No change between the base and the candidate.** This is a noise check: every alarm here is false. Compare Ichnaea with a rule that blocks whenever the mean falls by 3 points.
 - **Bound clears the limit when nothing changes.** The share of runs whose bound clears your limit. Pass would also need both statistical results validated for this design. Today no run can pass.
 
@@ -26,7 +26,7 @@ The command line tool's planner prints each primary measure's best-case floor, l
 
 - Cases are independent. Each trial passes with its case's pass rate.
 - The cases have the two pass rates you enter: some always pass, and the rest pass at one rate. With the defaults, 10 of the 12 cases always pass, so only 2 cases can vary.
-- For the detected decrease, every case loses the same amount of pass rate.
+- For the detected decrease, each case's pass rate falls by the same amount, capped at zero. A case that passes 5% of the time loses at most 5 points.
 - At one trial per case, your records pass the order, timing and noise checks. [Noise checks](/ichnaea/explanation/noise-checks/) explains them.
 
 Real suites have more varied cases. Use the explorer to compare designs, not to predict one run.
