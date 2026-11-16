@@ -20,8 +20,8 @@ The threshold looks objective, but it measures nothing about your cases.
 
 ## What Ichnaea does instead
 
-Ichnaea runs both configurations on the same cases, usually 2 or 3 times each.
-Then it compares them inside each case.
+You run both configurations on the same cases, usually 2 or 3 times each.
+Ichnaea then compares them inside each case.
 
 - A case that both configurations always pass, or always fail, says nothing about the change. It drops out of the test.
 - A case that passes in the base and fails in the candidate is evidence of a decrease.
@@ -42,7 +42,7 @@ To make a claim about new inputs, you need a sample of cases drawn from them, an
 ## Limits
 
 - Only pass/fail measures have a validated test today. Measures with scores show an estimate and no verdict.
-- With one trial per case, a decrease can be significant on these cases. It is not shown to be beyond run-to-run noise.
+- With one trial per arm in some cases, a REGRESSION means "significant on these cases". It does not mean "beyond run-to-run noise".
 
 ## Evidence
 
