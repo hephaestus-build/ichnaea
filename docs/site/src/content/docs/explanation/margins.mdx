@@ -53,6 +53,22 @@ The studies found case structures in which the lower bound is too optimistic.
 So until that smallest margin is set, Ichnaea gives no PASS. An unchanged candidate gets INCONCLUSIVE.
 A real decrease beyond run-to-run noise still gives REGRESSION.
 
+## What the bound tells you, once PASS is validated
+
+Ichnaea computes a one-sided 95% lower bound for the change.
+Read it against the margin and against 0:
+
+| The bound              | The regression test | Verdict                                                  |
+| ---------------------- | ------------------- | -------------------------------------------------------- |
+| Above minus the margin | Any result          | PASS: the candidate is not worse by more than the margin |
+| Below minus the margin | Rejects             | REGRESSION: the decrease is beyond run-to-run noise      |
+| Below minus the margin | Does not reject     | INCONCLUSIVE: no decrease detected, and none ruled out   |
+
+The last row is the one that surprises people.
+The bound crosses the margin, so a decrease larger than the margin is still possible.
+The test found no decrease, so nothing is proven bad either. The verdict says so, and says that this is not a PASS.
+More cases or more trials move the bound closer to the estimate.
+
 ## Limits
 
 - A margin of 0 is not a non-inferiority test.

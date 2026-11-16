@@ -27,6 +27,20 @@ A method is validated when all of these hold:
 | PASS (non-inferiority)                                                     | Not validated. The smallest validated margin is not set.                                              |
 | Measures with scores                                                       | A test exists and matches its reference values. Its type-I study has not run, so it gives no verdict. |
 
+## False alarms, measured
+
+A false alarm is a REGRESSION when nothing changed.
+The studies run comparisons with no change and count how often the test rejects. The bar is 5%.
+
+| Test                                             | Grid                           | Worst false-alarm rate | Mean  |
+| ------------------------------------------------ | ------------------------------ | ---------------------- | ----- |
+| Exact stratified test, equal trial counts        | 45 points, 28 computed exactly | 3.95%                  | 2.22% |
+| Permutation test, 17 cases, unequal trial counts | 6 points                       | 4.14%                  | 2.87% |
+| Permutation test, 60 cases, unequal trial counts | 6 points                       | 4.54%                  | 3.92% |
+| Exact test at one trial per case, 5 to 300 cases | 431,983 structures, all exact  | 3.92%                  | —     |
+
+A fixed rule such as "block when the score falls by 3 points" has no such bar.
+
 ## What validated does not mean
 
 - **A search, not a proof.** A study covers the structures it tried. A structure outside them may still fail.
