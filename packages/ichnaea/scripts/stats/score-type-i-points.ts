@@ -1,6 +1,6 @@
 // The points of the type-I study of the score permutation test (VALIDATION.md, "Score measures: the
 // regression test"): every generator, grid shape, seed and test, fixed before any run. A point
-// draws one data set per repetition; its test rejects at p ≤ 0.05.
+// draws one data set per repetition; its test rejects at each level of score-type-i-rule.ts.
 import {
   type CaseScores,
   createRng,
@@ -9,12 +9,10 @@ import {
   qnorm,
   type Rng,
   scorePermutationTest,
+  type ScorePermutationResult,
 } from "../../src/stats/index.ts";
 import { scorePermutationCore } from "../../src/stats/score-permutation-core.ts";
-
-export const ALPHA = 0.05;
-/** Resamples of the permutation test inside the study: (1 + 99) · 0.05 is a whole number. */
-export const STUDY_RESAMPLES = 99;
+import { ALPHA, LEVELS, STUDY_RESAMPLES, studyRejects } from "./score-type-i-rule.ts";
 
 // --- Sampling -------------------------------------------------------------------------------------
 
@@ -96,7 +94,7 @@ export const DOMAIN_SHAPES: readonly Shape[] = CASE_COUNTS.flatMap((k) => [
   ...(k >= 10 ? [{ k, pattern: "one-trial" as const }] : []),
 ]);
 /** One trial per case and arm: R-P is then a within-case sign flip. */
-export const R1_CASE_COUNTS = [12, 17, 30, 60, 100, 146, 300] as const;
+export const R1_CASE_COUNTS = [12, 17, 20, 30, 60, 100, 146, 200, 300] as const;
 export const R1_SHAPES: readonly Shape[] = R1_CASE_COUNTS.map((k) => ({
   k,
   pattern: "r1" as const,
@@ -191,9 +189,10 @@ export type TestName =
   | "wald"
   | "paired-t"
   | "binary-items"
-  | "cross-case";
+  | "cross-case"
+  | "holm";
 
-/** The study's version of the shipped test: always Monte Carlo, 99 resamples. */
+/** The study's version of the shipped test: always Monte Carlo, STUDY_RESAMPLES resamples. */
 const permutation = (data: CaseScores[], rng: Rng): number =>
   scorePermutationCore(data, { rng, resamples: STUDY_RESAMPLES, exact: false }).p;
 
@@ -284,7 +283,10 @@ export type Role = "type-I" | "reported" | "must-fail";
 
 export interface Point {
   readonly id: string;
-  /** Generator number g of the seed rule: 1–7 the generators, 8 the must-fails, 9 the imputation, 10 the reported cross-case test. */
+  /**
+   * Generator number g of the seed rule: 1–7 the generators, 8 the must-fails, 9 the imputation,
+   * 10 the reported cross-case test, 11 the reported Holm simulation.
+   */
   readonly generator: number;
   readonly family: string;
   readonly role: Role;
@@ -298,14 +300,24 @@ export interface Point {
   readonly draw: (rng: Rng) => CaseScores[];
   /** Whether the shipped test re-checks a point that is confirmed or fails. */
   readonly recheck: boolean;
+  /**
+   * Screening repetitions at the study's 6,000, when the point needs another number; they scale
+   * with the screen's repetitions, so a smoke run stays small. Such a point is never confirmed.
+   */
+  readonly reps?: number;
 }
 
 /** A unit of work: one cell. A G2 cell holds its random structures and their refinement. */
 export interface Cell {
   readonly id: string;
   readonly points: readonly Point[];
-  /** G2 only: the structure stream and the refinement, which needs the screened cell. */
-  readonly refine?: (worst: readonly Point[], count: number) => Point[];
+  /** G2 random structures only: the seed of the stream that draws the structures and perturbs them. */
+  readonly structureSeed?: number;
+  /**
+   * G2 random structures only: one refinement step, a perturbation of `from` from the cell's
+   * structure stream, as point s; undefined when the perturbation leaves [0.01, 0.99].
+   */
+  readonly refine?: (from: Point, s: number) => Point | undefined;
 }
 
 export function runTest(point: Point, data: CaseScores[], rng: Rng): number {
@@ -322,20 +334,93 @@ export function runTest(point: Point, data: CaseScores[], rng: Rng): number {
       return binaryItems(data, point.params["items"] as number);
     case "cross-case":
       return crossCase(data, rng);
+    case "holm":
+      throw new Error("the Holm simulation has no single p-value");
   }
 }
 
 /**
  * The shipped test, as a decision runs it: exact when its work allows, else 10,000 resamples with
- * the rerun near 0.05. Its seed comes from the study's stream, so every repetition has its own.
+ * the rerun near each level. Its seed comes from the study's stream, so every repetition has its own.
  */
-export const shippedTest = (data: CaseScores[], rng: Rng): number =>
+export const shippedTest = (data: CaseScores[], rng: Rng): ScorePermutationResult =>
   scorePermutationTest(data, {
     seed: 1 + Math.floor(rng.uniform() * 4_294_967_295),
-    levels: [ALPHA],
-  }).p;
+    levels: LEVELS,
+  });
+
+/** The Holm simulation's primary measures: case IDs of measure j start with `m<j>/`. */
+export const HOLM_MEASURES = 4;
+/** Screening repetitions of a Holm point at the study's 6,000. */
+export const HOLM_REPS = 20_000;
+
+/**
+ * Holm across the primary measures, with the shipped test on each. At family level α Holm rejects
+ * any measure exactly when the smallest p-value is at most α/m, so the familywise rejection at each
+ * level of LEVELS is min p ≤ level/m. `measures` holds each measure's own rejection at 0.05.
+ */
+export function holm(data: CaseScores[], rng: Rng): { levels: boolean[]; measures: boolean[] } {
+  const ps = Array.from(
+    { length: HOLM_MEASURES },
+    (_, j) =>
+      shippedTest(
+        data.filter((c) => c.id.startsWith(`m${j}/`)),
+        rng,
+      ).p,
+  );
+  const smallest = Math.min(...ps);
+  return {
+    levels: LEVELS.map((level) => smallest <= level / HOLM_MEASURES),
+    measures: ps.map((p) => p <= ALPHA),
+  };
+}
+
+/** One repetition's rejections at each level, and, for the Holm simulation, per measure. */
+export function rejections(
+  point: Point,
+  data: CaseScores[],
+  rng: Rng,
+): { levels: boolean[]; measures?: boolean[] } {
+  if (point.test === "holm") return holm(data, rng);
+  const p = runTest(point, data, rng);
+  return { levels: LEVELS.map((level) => studyRejects(p, level)) };
+}
 
 export const shapeId = (s: Shape): string => `k${s.k}-${s.pattern}`;
+
+/** The seeds of cell c of generator g (not G2): screen, confirmation and re-check. */
+export function nonG2Seeds(
+  g: number,
+  c: number,
+): { seed: number; confirmSeed: number; recheckSeed: number } {
+  if (!(Number.isInteger(c) && c >= 0 && c < 1_000))
+    throw new RangeError(`generator ${g} has more than 1,000 cells`);
+  return {
+    seed: 2_000_000 + 1_000 * g + c,
+    confirmSeed: 3_000_000 + 1_000 * g + c,
+    recheckSeed: 4_000_000 + 1_000 * g + c,
+  };
+}
+
+/**
+ * The seeds of structure s of G2 cell c′. c′ < 1,000 keeps the structure stream 2,002,000 + c′
+ * below generator 3's seeds and every range below the next base; s < 1,000 keeps one cell's range
+ * from reaching the next.
+ */
+export function g2Seeds(
+  cPrime: number,
+  s: number,
+): { seed: number; confirmSeed: number; recheckSeed: number } {
+  if (!(Number.isInteger(cPrime) && cPrime >= 0 && cPrime < 1_000))
+    throw new RangeError("G2 has more than 1,000 cells");
+  if (!(Number.isInteger(s) && s >= 0 && s < 1_000))
+    throw new RangeError("a G2 cell has more than 1,000 structures");
+  return {
+    seed: 10_000_000 + 1_000 * cPrime + s,
+    confirmSeed: 20_000_000 + 1_000 * cPrime + s,
+    recheckSeed: 25_000_000 + 1_000 * cPrime + s,
+  };
+}
 
 function simple(
   g: number,
@@ -346,8 +431,8 @@ function simple(
   params: Record<string, number | string>,
   test: TestName,
   draw: (rng: Rng) => CaseScores[],
+  reps?: number,
 ): Cell {
-  if (c >= 1000) throw new RangeError(`generator ${g} has more than 1,000 cells`);
   const point: Point = {
     id: `G${g}/${family}/${shapeId(shape)}`,
     generator: g,
@@ -355,20 +440,23 @@ function simple(
     role,
     shape,
     params,
-    seed: 2_000_000 + 1_000 * g + c,
-    confirmSeed: 3_000_000 + 1_000 * g + c,
-    recheckSeed: 4_000_000 + 1_000 * g + c,
+    ...nonG2Seeds(g, c),
     test,
     draw,
     recheck: test === "permutation",
+    ...(reps === undefined ? {} : { reps }),
   };
   return { id: point.id, points: [point] };
 }
 
-/** Random structures per G2 cell, and refinement steps around the worst 5. */
+/** Random structures per G2 cell. Refinement steps follow them, from s = G2_STRUCTURES. */
 export const G2_STRUCTURES = 500;
+/** Hill-climbing chains, one from each of the worst structures. */
 export const G2_REFINE_WORST = 5;
-export const G2_REFINE_STEPS = 4;
+export const G2_REFINE_ROUNDS = 4;
+export const G2_REFINE_STEPS_PER_ROUND = 5;
+/** Perturbations per chain: 4 rounds of 5 steps. Step t of chain h is s = 500 + 20·h + t. */
+export const G2_REFINE_STEPS = G2_REFINE_ROUNDS * G2_REFINE_STEPS_PER_ROUND;
 
 /**
  * G2, heterogeneous per-case effects with mean 0. Family "top": most cases at base 0.95 drop by
@@ -423,7 +511,6 @@ export function structurePoint(
   structure: Structure,
   role: Role = "type-I",
 ): Point {
-  if (s >= 1000) throw new RangeError("a G2 cell has more than 1,000 structures");
   return {
     id: `G2/${family}-nu${nu}/${shapeId(shape)}/s${s}`,
     generator: 2,
@@ -436,9 +523,7 @@ export function structurePoint(
       // original does.
       structure: JSON.stringify(structure),
     },
-    seed: 10_000_000 + 1_000 * cPrime + s,
-    confirmSeed: 20_000_000 + 1_000 * cPrime + s,
-    recheckSeed: 25_000_000 + 1_000 * cPrime + s,
+    ...g2Seeds(cPrime, s),
     test: "permutation",
     draw: (rng) =>
       dataset(rng, shape, (r, i, arm) => {
@@ -457,24 +542,23 @@ function g2Cell(
   shape: Shape,
   role: Role,
 ): Cell {
-  const structures = createRng(2_000_000 + 1_000 * 2 + index);
+  const structureSeed = 2_000_000 + 1_000 * 2 + index;
+  const structures = createRng(structureSeed);
   const points = Array.from({ length: G2_STRUCTURES }, (_, s) =>
     structurePoint(index, s, family, shape, nu, g2Structure(structures, shape.k, family), role),
   );
   return {
     id: `G2/${family}-nu${nu}/${shapeId(shape)}`,
     points,
-    refine: (worst, count) => {
-      const steps: Point[] = [];
-      for (const w of worst.slice(0, G2_REFINE_WORST)) {
-        const parsed = JSON.parse(w.params["structure"] as string) as [number, number][];
-        for (let step = 0; step < G2_REFINE_STEPS; step++) {
-          const next = perturb(structures, parsed, family);
-          if (next !== undefined)
-            steps.push(structurePoint(index, count + steps.length, family, shape, nu, next, role));
-        }
-      }
-      return steps;
+    structureSeed,
+    refine: (from, s) => {
+      if (s < G2_STRUCTURES || s >= G2_STRUCTURES + G2_REFINE_WORST * G2_REFINE_STEPS)
+        throw new RangeError(`refinement step ${s} is outside the cell's refinement seeds`);
+      const parsed = JSON.parse(from.params["structure"] as string) as [number, number][];
+      const next = perturb(structures, parsed, family);
+      return next === undefined
+        ? undefined
+        : structurePoint(index, s, family, shape, nu, next, role);
     },
   };
 }
@@ -570,7 +654,8 @@ export function cells(): Cell[] {
 
   // G4: run-level shocks, shared across arms (interleaved) or separate. The domain requires
   // interleaving, so separate shocks are reported, and so is the replicate as a stratum. At one
-  // trial per case only shared shocks run: separate ones cannot be told apart from an effect.
+  // trial per case shared shocks count, and separate ones, which cannot be told apart from an
+  // effect, are reported.
   c = 0;
   const shocks = [
     [0, true],
@@ -606,6 +691,20 @@ export function cells(): Cell[] {
           { sigma, shared: "true" },
           "permutation",
           (rng) => shocked(rng, shape, sigma, true, 10),
+        ),
+      );
+  for (const [sigma] of shocks.filter(([, shared]) => !shared))
+    for (const shape of R1_SHAPES)
+      out.push(
+        simple(
+          4,
+          c++,
+          `sigma${sigma}-separate`,
+          "reported",
+          shape,
+          { sigma, shared: "false" },
+          "permutation",
+          (rng) => shocked(rng, shape, sigma, false, 10),
         ),
       );
 
@@ -776,19 +875,110 @@ export function cells(): Cell[] {
       ),
     );
   }
+
+  // 11: reported, Holm across four correlated primary measures with no change, the shipped test on
+  // each. G2 structures: per trial a shared x ~ Beta(mean, ν), and each measure a Beta of mean x and
+  // its own precision. G5: per trial a shared rate from the beta of ICC ρ, and each measure its own
+  // binomial items at that rate.
+  c = 0;
+  for (const [family, nu, shape] of [
+    ["top", 2, { k: 12, pattern: "r2" }],
+    ["floor", 2, { k: 30, pattern: "r2" }],
+    ["top", 10, { k: 17, pattern: "mixed" }],
+  ] as const) {
+    const structure = oneNoisy(family, shape.k, 2, 0.05);
+    out.push(
+      simple(
+        11,
+        c++,
+        `holm-${family}-nu${nu}`,
+        "reported",
+        shape,
+        { nu, measures: HOLM_MEASURES },
+        "holm",
+        (rng) =>
+          correlated(rng, shape, (r, i, arm) => {
+            const [b, cand] = structure[i] as readonly [number, number];
+            const x = beta(r, arm === "base" ? b : cand, nu);
+            return (j) => beta(r, x, HOLM_PRECISIONS[j] as number);
+          }),
+        HOLM_REPS,
+      ),
+    );
+  }
+  for (const [items, rho, shape] of [
+    [3, 0.5, { k: 12, pattern: "r2" }],
+    [5, 0.2, { k: 30, pattern: "mixed" }],
+    [10, 0.5, { k: 60, pattern: "r3" }],
+  ] as const)
+    out.push(
+      simple(
+        11,
+        c++,
+        `holm-m${items}-rho${rho}`,
+        "reported",
+        shape,
+        { items, rho, measures: HOLM_MEASURES },
+        "holm",
+        (rng) =>
+          correlated(rng, shape, (r, i) => {
+            const p = beta(r, meanOf(i), (1 - rho) / rho);
+            return () => {
+              let passed = 0;
+              for (let n = 0; n < items; n++) if (r.uniform() < p) passed++;
+              return passed / items;
+            };
+          }),
+        HOLM_REPS,
+      ),
+    );
   return out;
+}
+
+/** The Holm simulation's precision of each measure around the shared G2 draw. */
+const HOLM_PRECISIONS = [2, 5, 10, 50] as const;
+
+/**
+ * HOLM_MEASURES measures of one data set: `trial` draws a trial's shared part and returns each
+ * measure's value given it. Measure j's cases have IDs `m<j>/c<i>`.
+ */
+function correlated(
+  rng: Rng,
+  shape: Shape,
+  trial: (rng: Rng, i: number, arm: "candidate" | "base") => (j: number) => number,
+): CaseScores[] {
+  const cases = Array.from({ length: shape.k }, (_, i) => {
+    const [nc, nb] = trialsOf(shape, i);
+    const arm = (a: "candidate" | "base", n: number): number[][] =>
+      Array.from({ length: n }, () => {
+        const value = trial(rng, i, a);
+        return Array.from({ length: HOLM_MEASURES }, (_unused, j) => value(j));
+      });
+    return { candidate: arm("candidate", nc), base: arm("base", nb) };
+  });
+  return Array.from({ length: HOLM_MEASURES }, (_, j) =>
+    cases.map((c, i) => ({
+      id: `m${j}/c${i}`,
+      candidate: c.candidate.map((v) => v[j] as number),
+      base: c.base.map((v) => v[j] as number),
+    })),
+  ).flat();
 }
 
 /** Relative cost of a cell: repetitions scale with points, trials and resamples. */
 export function costOf(cell: Cell): number {
-  const shape = (cell.points[0] as Point).shape;
+  const first = cell.points[0] as Point;
+  const shape = first.shape;
   const trials = Array.from({ length: shape.k }, (_, i) => trialsOf(shape, i)).reduce(
     (a, [x, y]) => a + x + y,
     0,
   );
-  return (
-    (cell.points.length + (cell.refine ? G2_REFINE_WORST * G2_REFINE_STEPS : 0)) * (trials + 10)
-  );
+  const points = cell.points.length + (cell.refine ? G2_REFINE_WORST * G2_REFINE_STEPS : 0);
+  // A Holm point runs the shipped test (10,000 resamples against the study's 239) on each
+  // measure, at more repetitions.
+  const perPoint =
+    first.test === "holm" ? (HOLM_MEASURES * trials * 10_000) / STUDY_RESAMPLES : trials + 10;
+  return points * perPoint * ((first.reps ?? 6_000) / 6_000);
 }
 
 /** Cells of shard `index` of `count`: longest processing time first, ties by cell order. */
@@ -822,6 +1012,7 @@ export function pointById(
   const known = cell.points.find((x) => x.id === id);
   if (known !== undefined) return known;
   if (!s || structure === undefined) throw new Error(`no point ${id}`);
+  const means = storedStructure(id, structure);
   const first = cell.points[0] as Point;
   const cPrime = (first.seed - 10_000_000) / 1_000;
   const family = first.family.replace(/-nu[\d.]+$/, "");
@@ -831,7 +1022,33 @@ export function pointById(
     family,
     first.shape,
     first.params["nu"] as number,
-    JSON.parse(structure) as [number, number][],
+    means,
     first.role,
   );
+}
+
+/**
+ * The means of a refinement step from the structure the screen stored, checked before a rebuild:
+ * pairs of finite means, a true mean difference Σ(cᵢ − bᵢ) of 0 to 1e-12, and the very doubles the
+ * screen wrote (serialising them again gives the stored text). Throws otherwise.
+ */
+export function storedStructure(id: string, structure: string): Structure {
+  const means = JSON.parse(structure) as unknown;
+  if (
+    !Array.isArray(means) ||
+    !means.every(
+      (m) =>
+        Array.isArray(m) &&
+        m.length === 2 &&
+        m.every((x) => typeof x === "number" && Number.isFinite(x)),
+    )
+  )
+    throw new Error(`${id}: the stored structure is not a list of [base, candidate] means`);
+  const pairs = means as [number, number][];
+  if (JSON.stringify(pairs) !== structure)
+    throw new Error(`${id}: the stored structure is not the screen's exact means`);
+  const difference = pairs.reduce((a, [b, c]) => a + (c - b), 0);
+  if (!(Math.abs(difference) <= 1e-12))
+    throw new Error(`${id}: the stored structure's mean difference is ${difference}, not 0`);
+  return pairs;
 }

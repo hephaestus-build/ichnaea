@@ -1,7 +1,7 @@
 // The re-check is bound to the screen (scripts/stats/collect-score-type-i.ts,
 // `recheckBindingProblems`): the collector rebuilds the re-check list from the screen rows, and
-// refuses a list that differs, a shard that ran another list, a missing or extra re-checked point,
-// and a re-check row whose study estimate is not the screen's.
+// refuses a list that differs, a shard that ran another list, and a missing or extra re-checked
+// point. The re-check computes its own estimates, so the list carries none.
 import { createHash } from "node:crypto";
 
 import { describe, expect, it } from "vitest";
@@ -12,92 +12,75 @@ import {
   type Row,
 } from "../../scripts/stats/collect-score-type-i.ts";
 
+/** A screen row: its per-level counts at `reps`, and what the runner made of them. */
+const row = (
+  id: string,
+  generator: string,
+  stage: string,
+  fails: boolean,
+  hits: string,
+  reps: number,
+  extra: Partial<Row> = {},
+): Row => ({
+  id,
+  generator,
+  role: "type-I",
+  test: "permutation",
+  stage,
+  fails: String(fails),
+  hits,
+  reps: String(reps),
+  structure: "",
+  ...extra,
+});
+
 /** Screen rows of two generators: a confirmed point, a failing one and a few that cleared. */
 const screen: Row[] = [
-  {
-    id: "G1/a",
-    generator: "1",
-    test: "permutation",
-    stage: "confirmed",
-    fails: "false",
-    value: "0.0501",
-    se: "0.0005",
-    structure: "",
-  },
-  {
-    id: "G1/b",
-    generator: "1",
-    test: "permutation",
-    stage: "screen",
-    fails: "false",
-    value: "0.03",
-    se: "0.002",
-    structure: "",
-  },
-  {
-    id: "G2/c/s0",
-    generator: "2",
-    test: "permutation",
-    stage: "confirmed",
-    fails: "true",
-    value: "0.06",
-    se: "0.0005",
+  row("G1/a", "1", "confirmed", false, "9600,4800,3200,2400", 192_000),
+  row("G1/b", "1", "screen", false, "180,90,60,45", 6_000),
+  row("G2/c/s0", "2", "confirmed", true, "12000,6000,4000,3000", 200_000, {
     structure: "[[0.5,0.4]]",
-  },
-  {
-    id: "G8/w",
-    generator: "8",
+  }),
+  row("G8/w", "8", "confirmed", true, "18000,9000,6000,4500", 200_000, {
+    role: "must-fail",
     test: "wald",
-    stage: "confirmed",
-    fails: "true",
-    value: "0.09",
-    se: "0.0005",
-    structure: "",
-  },
+  }),
 ];
 const listOf = (points: unknown): string => `${JSON.stringify({ points }, null, 1)}\n`;
 const sha = (text: string): string => createHash("sha256").update(text).digest("hex");
-const rowsFor = (list: ReturnType<typeof recheckSelection>): Row[] =>
-  list.map((p) => ({
-    id: p.id,
-    study_value: String(p.value),
-    study_se: String(p.se),
-    value: "0.05",
-    se: "0.0015",
-  }));
+const rowsFor = (ids: readonly string[]): Row[] => ids.map((id) => ({ id, reps: "20000" }));
 
 describe("the re-check is bound to the screen", () => {
   const expected = recheckSelection(screen);
   const text = listOf(expected);
+  const ids = expected.map((p) => p.id);
 
   it("selects every confirmed or failing permutation point and each generator's worst, never another test", () => {
-    expect(expected.map((p) => p.id)).toEqual(["G1/a", "G1/b", "G2/c/s0"]);
-    expect(expected[2]?.structure).toBe("[[0.5,0.4]]");
+    expect(ids).toEqual(["G1/a", "G1/b", "G2/c/s0"]);
+    expect(expected[2]).toEqual({ id: "G2/c/s0", structure: "[[0.5,0.4]]" });
   });
 
   it("accepts the list the screen determines, run by every shard", () => {
-    expect(recheckBindingProblems(screen, text, rowsFor(expected), [sha(text), sha(text)])).toEqual(
-      [],
-    );
+    expect(recheckBindingProblems(screen, text, rowsFor(ids), [sha(text), sha(text)])).toEqual([]);
   });
 
   it("refuses a stale list, even when its IDs are still valid", () => {
     const stale = listOf(expected.slice(1));
-    const problems = recheckBindingProblems(screen, stale, rowsFor(expected.slice(1)), [
-      sha(stale),
-    ]);
+    const problems = recheckBindingProblems(screen, stale, rowsFor(ids.slice(1)), [sha(stale)]);
     expect(problems.some((p) => p.includes("differs from the list"))).toBe(true);
-    expect(problems.some((p) => p.includes("G1/a: selected but not re-checked"))).toBe(true);
+    expect(problems).toContain("G1/a: selected but not re-checked");
   });
 
-  it("refuses a list whose estimates are not the screen's", () => {
-    const changed = listOf(expected.map((p, i) => (i === 0 ? { ...p, value: 0.04 } : p)));
-    const problems = recheckBindingProblems(screen, changed, rowsFor(expected), [sha(changed)]);
+  it("refuses a list with another structure", () => {
+    const changed = listOf(
+      expected.map((p, i) => (i === 2 ? { ...p, structure: "[[0.5,0.41]]" } : p)),
+    );
+    const problems = recheckBindingProblems(screen, changed, rowsFor(ids), [sha(changed)]);
     expect(problems.some((p) => p.includes("differs from the list"))).toBe(true);
   });
 
   it("refuses a shard that ran another list, or recorded none", () => {
-    const problems = recheckBindingProblems(screen, text, rowsFor(expected), [
+    const problems = recheckBindingProblems(screen, text, rowsFor(ids), [
       sha(text),
       "0".repeat(64),
       undefined,
@@ -105,17 +88,15 @@ describe("the re-check is bound to the screen", () => {
     expect(problems.filter((p) => p.includes("ran a different list"))).toHaveLength(2);
   });
 
-  it("refuses a re-check row that carries another estimate, a repeated point and an extra one", () => {
-    const rows = rowsFor(expected);
-    (rows[0] as Row)["study_value"] = "0.049";
-    rows.push(
-      { ...(rows[1] as Row) },
-      { id: "G1/z", study_value: "0", study_se: "0", value: "0", se: "0" },
+  it("refuses a repeated point and an extra one", () => {
+    const problems = recheckBindingProblems(
+      screen,
+      text,
+      [...rowsFor(ids), ...rowsFor(["G1/b", "G1/z"])],
+      [sha(text)],
     );
-    const problems = recheckBindingProblems(screen, text, rows, [sha(text)]);
     expect(problems).toEqual(
       expect.arrayContaining([
-        "G1/a: the re-check carries an estimate that is not the screen's",
         "G1/b: re-checked more than once",
         "G1/z: re-checked but not selected",
       ]),
