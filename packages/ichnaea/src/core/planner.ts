@@ -356,7 +356,8 @@ export async function createPlan(input: PlanInput): Promise<Plan> {
     estimand: suite.estimand,
     alpha: suite.alpha ?? 0.05,
     replicates: suite.replicates,
-    arms,
+    // Ichnaea's budget counts only the calls of the arms it runs.
+    arms: arms.map((a) => (running.has(a.name) ? { ...a, runs: true as const } : a)),
     measures,
     primary: suite.primary,
     secondary: suite.secondary ?? [],

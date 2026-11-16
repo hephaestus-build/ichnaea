@@ -625,33 +625,40 @@ function triggerCheck(
   return problems;
 }
 
-/**
- * The checks of each trial's attempts (invariant 12). They are numbered 1 to k with no gap. In a
- * plan that runs its arms, the calls of every attempt count against the plan's bound per trial and
- * against the run's budget, so a retry cannot hide an overrun. Every count is of the calls the
- * provider accepted: a call it rejected, for example with HTTP 429, is not a call, so throttling
- * alone never makes a run INVALID. A trial without a count of calls counts none.
- *
- * The bounds guard what Ichnaea spends. An import plan runs no arm, so it books a worst case of 0
- * calls: another runner made its calls, which stay on the trial records and never make the run
- * INVALID. A plan without `callsPerTrial` was written before the plan recorded the bound, and its
- * calls are not checked, so it keeps the decision it was given.
- */
 /** A trial's calls over every attempt, in calls the provider accepted. */
 function callsOf(t: Trial): number {
   return (t.attempts ?? []).reduce((n, a) => n + a.calls, t.usage?.calls ?? 0);
 }
 
 /**
+ * The trials whose calls Ichnaea's bounds count, and the imported ones, by the plan's arms: an arm
+ * with `runs` is Ichnaea's, any other arm's trials are imported. A plan without `callsPerTrial`
+ * was written before the plan recorded its bounds, so none of its calls are sorted: it keeps the
+ * decision it was given.
+ */
+function callsByRunner(
+  input: DecideInput,
+): { readonly bound: number; readonly ran: Trial[]; readonly imported: Trial[] } | undefined {
+  const { plan } = input;
+  const bound = plan.budget.callsPerTrial;
+  if (bound === undefined) return undefined;
+  const runs = new Set(plan.arms.filter((a) => a.runs === true).map((a) => a.name as string));
+  const armOf = new Map(plan.trials.map((t) => [t.id as string, t.arm as string]));
+  const ran: Trial[] = [];
+  const imported: Trial[] = [];
+  for (const t of input.trials) (runs.has(armOf.get(t.id) ?? t.arm ?? "") ? ran : imported).push(t);
+  return { bound, ran, imported };
+}
+
+/**
  * The limitation that reports an import's calls: another runner made them, so the bounds do not
- * apply, but the card still says how many there were. Only a new import plan, one that carries
- * `callsPerTrial`, gets it, so a stored decision recomputes unchanged; and only when the trials
- * recorded a call.
+ * apply, but the card still says how many there were. It counts the trials of the arms Ichnaea
+ * does not run. Only a plan that carries `callsPerTrial` gets it, so a stored decision recomputes
+ * unchanged; and only when those trials recorded a call.
  */
 function importedCallsLimitation(input: DecideInput): string[] {
-  const { budget } = input.plan;
-  if (budget.callsPerTrial === undefined || budget.worstCaseCalls > 0) return [];
-  const calls = input.trials.reduce((n, t) => n + callsOf(t), 0);
+  const sorted = callsByRunner(input);
+  const calls = (sorted?.imported ?? []).reduce((n, t) => n + callsOf(t), 0);
   return calls > 0
     ? [
         `The imported trials recorded ${calls} calls. Ichnaea's budget applies only to the trials it runs.`,
@@ -659,8 +666,19 @@ function importedCallsLimitation(input: DecideInput): string[] {
     : [];
 }
 
+/**
+ * The checks of each trial's attempts (invariant 12). They are numbered 1 to k with no gap. For
+ * the trials of the arms Ichnaea runs, the calls of every attempt count against the plan's bound
+ * per trial and against the run's budget, so a retry cannot hide an overrun. Every count is of the
+ * calls the provider accepted: a call it rejected, for example with HTTP 429, is not a call, so
+ * throttling alone never makes a run INVALID. A trial without a count of calls counts none.
+ *
+ * The bounds guard what Ichnaea spends. An imported trial's calls were made by another runner: they
+ * stay on the trial records, the limitation reports them, and they never make the run INVALID. A
+ * plan without `callsPerTrial` was written before the plan recorded its bounds, and its calls are
+ * not checked, so it keeps the decision it was given.
+ */
 function attemptChecks(input: DecideInput): string[] {
-  const { budget } = input.plan;
   const invalid: string[] = [];
   for (const t of input.trials) {
     const attempts = t.attempts ?? [];
@@ -669,11 +687,12 @@ function attemptChecks(input: DecideInput): string[] {
         `trial '${t.id}' lists attempts ${attempts.map((a) => a.attempt).join(", ")}; they must be numbered 1 to k with no gap`,
       );
   }
-  const bound = budget.callsPerTrial;
-  if (bound === undefined || budget.worstCaseCalls === 0) return invalid;
+  const sorted = callsByRunner(input);
+  if (sorted === undefined) return invalid;
+  const { bound, ran } = sorted;
   const over: { readonly trial: string; readonly calls: number }[] = [];
   let total = 0;
-  for (const t of input.trials) {
+  for (const t of ran) {
     const calls = callsOf(t);
     total += calls;
     if (calls > bound) over.push({ trial: t.id, calls });
@@ -683,9 +702,10 @@ function attemptChecks(input: DecideInput): string[] {
     invalid.push(
       `${over.length} trial(s) made more calls over their attempts than the bound of ${bound} per trial, for example '${example.trial}' (${example.calls} calls)`,
     );
-  if (total > budget.maxCalls)
+  const { maxCalls } = input.plan.budget;
+  if (total > maxCalls)
     invalid.push(
-      `the run made ${total} calls, over the budget of ${budget.maxCalls}, counting every attempt`,
+      `the run made ${total} calls, over the budget of ${maxCalls}, counting every attempt`,
     );
   return invalid;
 }

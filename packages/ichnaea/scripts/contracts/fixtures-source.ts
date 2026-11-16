@@ -712,6 +712,11 @@ export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
     "calls-per-trial": (r) => {
       (r["budget"] as Record<string, unknown>)["callsPerTrial"] = 2;
     },
+    "one-arm-imported": (r) => {
+      (r["budget"] as Record<string, unknown>)["callsPerTrial"] = 2;
+      const arms = r["arms"] as Array<Record<string, unknown>>;
+      arms[arms.length - 1]!["runs"] = true;
+    },
     "one-trial-schedule-and-aa": (r) => {
       r["schedule"] = { concurrency: 4, endpoint: "example-endpoint" };
       r["aa"] = {

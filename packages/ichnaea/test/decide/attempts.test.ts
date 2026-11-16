@@ -25,6 +25,20 @@ const options = {
   usage: () => ({ calls: 1 }),
 };
 
+/** The plan as a version before the bounds stored it: no callsPerTrial, no runs. */
+const beforeBounds = (plan: Scenario["plan"]): Scenario["plan"] => {
+  const { callsPerTrial: _, ...budget } = plan.budget;
+  return { ...plan, budget, arms: plan.arms.map(({ runs: _r, ...arm }) => arm) };
+};
+
+/** A plan where Ichnaea runs the candidate and imports the base, whose trials record 5 calls. */
+const mixed = (candidateCalls: number): Promise<Scenario> =>
+  scenario({
+    ...options,
+    armsToRun: ["candidate"],
+    usage: (t) => ({ calls: t.arm === "base" ? 5 : candidateCalls }),
+  });
+
 describe("a trial's attempts", () => {
   it("count against the bound of calls per trial, though the last attempt alone is within it", async () => {
     const d = await run(
@@ -95,10 +109,28 @@ describe("a trial's attempts", () => {
     expect(ran.limitations.some((l) => l.startsWith("The imported trials"))).toBe(false);
   });
 
+  it("in a mixed plan count only for the arm Ichnaea runs", async () => {
+    // Ichnaea runs the candidate and imports the base: 40 trials each, the bound 2 per trial.
+    const within = await mixed(1);
+    expect(within.plan.arms.map((a) => [a.name, a.runs])).toEqual([
+      ["base", undefined],
+      ["candidate", true],
+    ]);
+    const decided = await run(within);
+    expect(decided.invalidReasons).toEqual([]);
+    expect(decided.limitations).toContain(
+      "The imported trials recorded 200 calls. Ichnaea's budget applies only to the trials it runs.",
+    );
+    const over = await run(await mixed(3));
+    expect(over.verdict).toBe("INVALID");
+    expect(over.invalidReasons[0]).toMatch(
+      /^40 trial\(s\) made more calls over their attempts than the bound of 2 per trial, for example '[^']*\/candidate\/r\d' \(3 calls\)$/,
+    );
+  });
+
   it("of a stored import plan without a bound per trial add no line on recompute", async () => {
     const s = await scenario({ ...options, armsToRun: [], usage: () => ({ calls: 2 }) });
-    const { callsPerTrial: _, ...budget } = s.plan.budget;
-    const plan = { ...s.plan, budget };
+    const plan = beforeBounds(s.plan);
     const stored: Scenario = {
       ...s,
       plan,
@@ -113,8 +145,7 @@ describe("a trial's attempts", () => {
     // A plan written before the bound per trial was recorded: its run's calls are over the
     // budget, and decide must give the decision that was stored for it.
     const s = await scenario({ ...options, maxCalls: 160, usage: () => ({ calls: 1 }) });
-    const { callsPerTrial: _, ...budget } = s.plan.budget;
-    const plan = { ...s.plan, budget };
+    const plan = beforeBounds(s.plan);
     const stored: Scenario = {
       ...s,
       plan,

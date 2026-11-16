@@ -120,6 +120,7 @@ export const Arm: z.ZodObject<{
         label: z.ZodOptional<z.ZodString>;
         informational: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodJSONSchema>>;
     }, z.core.$strict>;
+    runs: z.ZodOptional<z.ZodLiteral<true>>;
 }, z.core.$strict>;
 
 // @public
@@ -2339,6 +2340,7 @@ export const Plan: z.ZodObject<{
             label: z.ZodOptional<z.ZodString>;
             informational: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodJSONSchema>>;
         }, z.core.$strict>;
+        runs: z.ZodOptional<z.ZodLiteral<true>>;
     }, z.core.$strict>>;
     measures: z.ZodArray<z.ZodObject<{
         kind: z.ZodEnum<{
@@ -2919,6 +2921,7 @@ export const Run: z.ZodObject<{
             label: z.ZodOptional<z.ZodString>;
             informational: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodJSONSchema>>;
         }, z.core.$strict>;
+        runs: z.ZodOptional<z.ZodLiteral<true>>;
     }, z.core.$strict>>;
     lineage: z.ZodArray<z.ZodObject<{
         kind: z.ZodEnum<{

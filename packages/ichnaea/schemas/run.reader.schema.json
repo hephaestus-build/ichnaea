@@ -707,6 +707,18 @@
               "prompts",
               "factors"
             ]
+          },
+          "runs": {
+            "type": "boolean",
+            "const": true,
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
+            }
           }
         },
         "required": [

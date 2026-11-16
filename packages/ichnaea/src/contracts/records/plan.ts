@@ -100,6 +100,12 @@ export const Arm = z.strictObject({
   role: none(z.enum(["base", "candidate", "reference"])),
   identity: none(ConfigurationIdentity),
   configuration: Configuration,
+  /**
+   * True when Ichnaea runs this arm's trials; absent when another runner ran them and they are
+   * imported. The bound per trial and the run's budget count only the calls of the arms Ichnaea
+   * runs. A plan written before this member has none, and its calls are not checked.
+   */
+  runs: none(z.literal(true)).optional(),
 });
 
 /** One planned trial. `family` groups related cases (from the case set) for sampled-cases. */
@@ -185,10 +191,10 @@ export const Plan = z.strictObject({
     maxCalls: none(z.int().min(0)),
     /**
      * The suite's bound of calls per trial, in calls the provider accepted (a call it rejected,
-     * for example with HTTP 429, is not a call). In a plan that runs its arms, the calls of every
-     * attempt at a trial count against it and against `maxCalls`. An import plan books no worst
-     * case, and its calls are another runner's, so neither bound applies to them. A plan without
-     * it states no bound per trial, and its calls are not checked.
+     * for example with HTTP 429, is not a call). For the trials of an arm with `runs`, the calls of
+     * every attempt at a trial count against it and against `maxCalls`. An imported arm's calls
+     * are another runner's, so neither bound applies to them. A plan without it states no bound
+     * per trial, and its calls are not checked.
      */
     callsPerTrial: none(z.int().min(1)).optional(),
     monthlyRemaining: none(z.int().min(0)).optional(),
