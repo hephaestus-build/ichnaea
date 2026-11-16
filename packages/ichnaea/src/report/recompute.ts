@@ -30,6 +30,8 @@ export async function recompute(records: {
   readonly values: readonly MeasureValue[];
   readonly gates: readonly GateResult[];
   readonly decision: Decision;
+  /** The A/A evidence the plan cites, as `decide` took it. */
+  readonly aa?: readonly { decision: Decision; plan: Plan; run: Run }[];
 }): Promise<RecomputeResult> {
   const again = await decide({
     ...records,

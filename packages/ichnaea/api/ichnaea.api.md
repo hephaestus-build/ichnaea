@@ -175,6 +175,11 @@ export function exitCode(decision: Decision, policy: Plan["policy"]): number;
 // @public
 export class FileStore {
     constructor(root: string);
+    aaEvidence(plan: Plan): Promise<{
+        decision: Decision;
+        plan: Plan;
+        run: Run;
+    }[]>;
     createRun(records: RunRecords): Promise<void>;
     index(): Promise<RunIndexEntry[]>;
     read(run: string): Promise<StoredRun>;
@@ -293,6 +298,7 @@ export function importRun(input: ImportRunInput): Promise<{
 
 // @public
 export interface ImportRunInput {
+    readonly aa?: readonly string[];
     readonly arms: ReadonlyArray<{
         readonly name: string;
         readonly role: "base" | "candidate" | "reference";
@@ -306,6 +312,7 @@ export interface ImportRunInput {
     readonly importer: string;
     readonly now: string;
     readonly run: string;
+    readonly schedule?: Plan["schedule"];
     readonly seed: number;
     readonly store: string;
     readonly suite: string;
@@ -540,6 +547,11 @@ export function recompute(records: {
     readonly values: readonly MeasureValue[];
     readonly gates: readonly GateResult[];
     readonly decision: Decision;
+    readonly aa?: readonly {
+        decision: Decision;
+        plan: Plan;
+        run: Run;
+    }[];
 }): Promise<RecomputeResult>;
 
 // @public

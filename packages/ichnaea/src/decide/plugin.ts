@@ -58,6 +58,7 @@ const command: CommandDefinition = {
       trials: stored.trials,
       values: stored.values,
       gates: stored.gates,
+      aa: await store.aaEvidence(stored.plan),
       decidedAt: (values["now"] as string | undefined) ?? new Date().toISOString(),
       ichnaea: stored.plan.ichnaea,
     });

@@ -247,6 +247,29 @@ export class FileStore {
     return stored;
   }
 
+  /**
+   * The A/A evidence a plan cites (`plan.aa`): each cited run's decision with its plan and run, in
+   * the order cited. A cited run that is not stored, or has no decision, is left out, and `decide`
+   * names it.
+   */
+  async aaEvidence(
+    plan: PlanRecord,
+  ): Promise<{ decision: DecisionRecord; plan: PlanRecord; run: RunRecord }[]> {
+    const found = [];
+    for (const { run } of plan.aa?.decisions ?? []) {
+      let stored: StoredRun;
+      try {
+        stored = await this.read(run);
+      } catch (error) {
+        if (error instanceof StoreError) continue;
+        throw error;
+      }
+      if (stored.decision)
+        found.push({ decision: stored.decision, plan: stored.plan, run: stored.run });
+    }
+    return found;
+  }
+
   /** The run index, oldest first. */
   async index(): Promise<RunIndexEntry[]> {
     return parseLines(
