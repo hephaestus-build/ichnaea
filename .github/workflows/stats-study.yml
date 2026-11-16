@@ -1,0 +1,263 @@
+name: Statistics study
+
+# A sharded statistics study on standard runners (packages/ichnaea/scripts/stats/study-plan.ts):
+# prepare once, screen in J jobs of 4 shard processes, select the points to rerun, rerun them in R
+# jobs, then judge. A pilot runs only the listed screen shards, at the full screen's shard count,
+# and stops there, so its per-shard time is the full run's. Started by hand only; nothing here
+# writes to the repository.
+on:
+  workflow_dispatch:
+    inputs:
+      study:
+        description: "The study"
+        type: choice
+        options: [score-type-i, score-ni]
+      jobs:
+        description: "J: screen jobs, 4 shards each"
+        type: string
+        default: "40"
+      second_jobs:
+        description: "R: jobs of the second phase (recheck or confirm), 4 shards each"
+        type: string
+        default: "40"
+      pilot:
+        description: "Screen shard indices for a pilot, comma-separated (stops before select); empty runs the study"
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+# A second dispatch of one study waits for the running one and never cancels it.
+concurrency:
+  group: stats-study-${{ inputs.study }}
+  cancel-in-progress: false
+
+# The study scripts record this version in every sidecar.
+env:
+  NODE_VERSION: 24.22.2
+
+jobs:
+  plan:
+    name: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      script: ${{ steps.plan.outputs.script }}
+      collector: ${{ steps.plan.outputs.collector }}
+      second: ${{ steps.plan.outputs.second }}
+      points: ${{ steps.plan.outputs.points }}
+      prepared: ${{ steps.plan.outputs.prepared }}
+      pilot: ${{ steps.plan.outputs.pilot }}
+      screen: ${{ steps.plan.outputs.screen }}
+      secondCount: ${{ steps.plan.outputs.secondCount }}
+      secondJobs: ${{ steps.plan.outputs.secondJobs }}
+      second_count: ${{ steps.plan.outputs.second_count }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - id: plan
+        name: The job matrices of the study
+        working-directory: packages/ichnaea
+        env:
+          STUDY: ${{ inputs.study }}
+          JOBS: ${{ inputs.jobs }}
+          SECOND_JOBS: ${{ inputs.second_jobs }}
+          PILOT: ${{ inputs.pilot }}
+        run: >-
+          node scripts/stats/study-plan.ts --study "$STUDY" --jobs "$JOBS"
+          --second-jobs "$SECOND_JOBS" --pilot "$PILOT"
+      - name: The study's scripts exist on this commit
+        working-directory: packages/ichnaea
+        env:
+          SCRIPT: ${{ steps.plan.outputs.script }}
+          COLLECTOR: ${{ steps.plan.outputs.collector }}
+        run: test -f "$SCRIPT" && test -f "$COLLECTOR"
+
+  prepare:
+    name: prepare
+    needs: plan
+    if: needs.plan.outputs.prepared == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: pnpm install --frozen-lockfile
+      - name: The study's checks before any shard, and the files they write
+        id: files
+        working-directory: packages/ichnaea
+        env:
+          STUDY: ${{ inputs.study }}
+        run: node scripts/stats/study-plan.ts prepare --study "$STUDY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ inputs.study }}-prepare
+          path: ${{ steps.files.outputs.paths }}
+          if-no-files-found: error
+
+  screen:
+    name: ${{ matrix.artifact }}
+    needs: [plan, prepare]
+    if: ${{ !cancelled() && needs.plan.result == 'success' && needs.prepare.result != 'failure' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.screen) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: pnpm install --frozen-lockfile
+      - name: The job's screen shards, one process each
+        working-directory: packages/ichnaea
+        env:
+          SCRIPT: ${{ needs.plan.outputs.script }}
+          SHARDS: ${{ matrix.shards }}
+          COUNT: ${{ matrix.count }}
+        run: |
+          set -uo pipefail
+          pids=()
+          for i in ${SHARDS//,/ }; do
+            nice node "$SCRIPT" screen --shard "$i/$COUNT" --out "$RUNNER_TEMP/out" &
+            pids+=("$!")
+          done
+          status=0
+          for pid in "${pids[@]}"; do wait "$pid" || status=1; done
+          exit "$status"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ runner.temp }}/out/
+          if-no-files-found: error
+
+  select:
+    name: select
+    needs: [plan, screen]
+    if: needs.plan.outputs.pilot == 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: ${{ inputs.study }}-screen-*
+          path: ${{ runner.temp }}/in
+          merge-multiple: true
+      - name: The points to rerun; fails on any completeness or digest problem
+        working-directory: packages/ichnaea
+        env:
+          COLLECTOR: ${{ needs.plan.outputs.collector }}
+        run: node "$COLLECTOR" select --in "$RUNNER_TEMP/in"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ inputs.study }}-points
+          path: ${{ runner.temp }}/in/${{ needs.plan.outputs.points }}
+          if-no-files-found: error
+
+  second:
+    name: ${{ matrix.artifact }}
+    needs: [plan, select]
+    if: needs.plan.outputs.second_count != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.secondJobs) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ${{ inputs.study }}-points
+          path: ${{ runner.temp }}/points
+      - name: The job's shards of the second phase, one process each
+        working-directory: packages/ichnaea
+        env:
+          SCRIPT: ${{ needs.plan.outputs.script }}
+          SECOND: ${{ needs.plan.outputs.second }}
+          POINTS: ${{ runner.temp }}/points/${{ needs.plan.outputs.points }}
+          SHARDS: ${{ matrix.shards }}
+          COUNT: ${{ matrix.count }}
+        run: |
+          set -uo pipefail
+          pids=()
+          for i in ${SHARDS//,/ }; do
+            nice node "$SCRIPT" "$SECOND" --points "$POINTS" --shard "$i/$COUNT" --out "$RUNNER_TEMP/out" &
+            pids+=("$!")
+          done
+          status=0
+          for pid in "${pids[@]}"; do wait "$pid" || status=1; done
+          exit "$status"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ runner.temp }}/out/
+          if-no-files-found: error
+
+  # Runs when a job before it failed too, so that the summary names what is missing; it then fails.
+  verdict:
+    name: verdict
+    needs: [plan, screen, select, second]
+    if: ${{ !cancelled() && needs.plan.result == 'success' && needs.plan.outputs.pilot == 'false' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: ${{ inputs.study }}-*
+          path: ${{ runner.temp }}/in
+          merge-multiple: true
+      - name: The verdict; fails when the study fails
+        working-directory: packages/ichnaea
+        env:
+          COLLECTOR: ${{ needs.plan.outputs.collector }}
+        run: |
+          set -o pipefail
+          status=0
+          node "$COLLECTOR" verdict --in "$RUNNER_TEMP/in" || status=$?
+          if [ -f "$RUNNER_TEMP/in/summary.md" ]; then cat "$RUNNER_TEMP/in/summary.md" >> "$GITHUB_STEP_SUMMARY"; fi
+          exit "$status"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ !cancelled() }}
+        with:
+          name: ${{ inputs.study }}-summary
+          path: |
+            ${{ runner.temp }}/in/summary.json
+            ${{ runner.temp }}/in/summary.md
+          if-no-files-found: error
