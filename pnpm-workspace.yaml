@@ -8,6 +8,9 @@ packages:
 minimumReleaseAge: 10080
 trustPolicy: no-downgrade
 strictDepBuilds: true
+# No package may run an install script. The docs site's build (Astro, Vite and its native parts)
+# needs none: its native parts ship as prebuilt optional packages. If it ever needs one, it is listed
+# here with that reason, and only the docs site may depend on it.
 allowBuilds: {}
 linkWorkspacePackages: true
 saveExact: true
