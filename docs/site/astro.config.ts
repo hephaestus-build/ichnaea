@@ -15,6 +15,11 @@ export default defineConfig({
   // The site has no raster images to optimize. The pass-through service keeps sharp, which needs
   // an install script, out of the dependency tree.
   image: { service: passthroughImageService() },
+  // The interactive pages import the library from its TypeScript sources in this repository, so the
+  // site needs no package build and always shows the statistics of its own commit.
+  vite: {
+    resolve: { conditions: ["ichnaea-source", "module", "browser", "development|production"] },
+  },
   integrations: [
     starlight({
       title: "Ichnaea",
@@ -25,6 +30,7 @@ export default defineConfig({
       lastUpdated: true,
       components: { Banner: "./src/components/StatusBanner.astro" },
       sidebar: [
+        { label: "Planning explorer", link: "/planner/" },
         { label: "Explanation", items: [{ autogenerate: { directory: "explanation" } }] },
         { label: "Glossary", link: "/glossary/" },
       ],

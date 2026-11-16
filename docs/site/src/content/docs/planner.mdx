@@ -1,0 +1,33 @@
+---
+title: Planning explorer
+description: See what a suite of a given size can detect, what it costs, and how often a fixed threshold raises a false alarm, before you run anything.
+---
+
+import PlanningExplorer from "../../components/PlanningExplorer.astro";
+
+Before you run a suite, find out what it can tell you.
+Enter the size of your suite. The explorer simulates comparisons with Ichnaea's own statistics.
+
+<PlanningExplorer />
+
+## How to read the results
+
+- **Best-case floor.** The smallest margin that any run of this suite can clear, even when every trial passes. It is exact, not simulated.
+- **Smallest decrease detected in 80% of runs.** A decrease this large gives REGRESSION in 4 of 5 runs. Smaller decreases are often missed.
+- **No change between the arms.** Every alarm here is false. Compare Ichnaea with a rule that blocks whenever the mean falls by 3 points.
+- **Chance of PASS when nothing changes.** How often the bound would clear your margin. PASS is not validated yet, so today no run can pass.
+
+## What the simulation assumes
+
+- Cases are independent. Each trial passes with its case's pass rate.
+- The cases have the two pass rates you enter: some always pass, and the rest pass at one rate.
+- For the detected decrease, every case loses the same amount of pass rate.
+
+Real suites have more varied cases. Use the explorer to compare designs, not to predict one run.
+Each result names its number of simulated runs. With 100 runs, a simulated share is uncertain by several points.
+The same inputs give the same numbers, because the simulation uses a fixed seed. Add `seed=` to the address to draw again.
+
+## Evidence
+
+- [Margins](/ichnaea/explanation/margins/): the floor, and why you set the margin first.
+- [What "validated" means](/ichnaea/explanation/validated/): which designs have a validated test.
