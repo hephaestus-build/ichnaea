@@ -21,6 +21,14 @@ describe("Markdown twin", () => {
     expect(markdownTwin(body)).toBe(body);
   });
 
+  it("keeps a card's title when the card holds fenced code, and the code unchanged", () => {
+    const body =
+      '<Card title="Export">\n  Run this:\n\n  ```sh\n  pnpm export\n  ```\n</Card>\n\nAfter.';
+    expect(markdownTwin(body)).toBe(
+      "**Export.**\n  Run this:\n\n  ```sh\n  pnpm export\n  ```\n\nAfter.",
+    );
+  });
+
   it("replaces an interactive component with a sentence that sends the reader to the page", () => {
     expect(markdownTwin("Before.\n\n<PlanningExplorer />\n\nAfter.")).toBe(
       "Before.\n\nThis part of the page is interactive. Open the page to use it.\n\nAfter.",

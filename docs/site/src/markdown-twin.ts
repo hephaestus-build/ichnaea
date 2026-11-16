@@ -11,24 +11,32 @@ export function markdownTwin(body: string): string {
 }
 
 function convert(text: string): string {
-  return text
-    .replace(/^import\s[\s\S]*?(?:;|from\s*["'][^"']*["'])[ \t]*$\n?/gm, "")
-    .replace(/^[ \t]*\{\/\*[\s\S]*?\*\/\}[ \t]*\n?/gm, "")
-    .replace(
-      /^[ \t]*<([A-Z][\w.]*)\s[^>]*\btitle="([^"]+)"[^>]*>\n([\s\S]*?)\n[ \t]*<\/\1>[ \t]*$/gm,
-      (_, _tag: string, title: string, content: string) =>
-        `\n**${title}.** ${content
-          .split("\n")
-          .map((line) => line.trim())
-          .filter(Boolean)
-          .join(" ")}\n`,
-    )
-    .replace(
-      /^[ \t]*<[A-Z][\w.]*[^>]*\/>[ \t]*$/gm,
-      "This part of the page is interactive. Open the page to use it.",
-    )
-    .replace(/^[ \t]*<\/?[A-Z][\w.]*[^>]*>[ \t]*\n?/gm, "")
-    .replace(/\n{3,}/g, "\n\n");
+  return (
+    text
+      .replace(/^import\s[\s\S]*?(?:;|from\s*["'][^"']*["'])[ \t]*$\n?/gm, "")
+      .replace(/^[ \t]*\{\/\*[\s\S]*?\*\/\}[ \t]*\n?/gm, "")
+      .replace(
+        /^[ \t]*<([A-Z][\w.]*)\s[^>]*\btitle="([^"]+)"[^>]*>\n([\s\S]*?)\n[ \t]*<\/\1>[ \t]*$/gm,
+        (_, _tag: string, title: string, content: string) =>
+          `\n**${title}.** ${content
+            .split("\n")
+            .map((line) => line.trim())
+            .filter(Boolean)
+            .join(" ")}\n`,
+      )
+      // A card that holds fenced code has its tags in two parts, around the code, so the paired rule
+      // above cannot see both. Its opening tag still gives the title.
+      .replace(
+        /^[ \t]*<[A-Z][\w.]*\s[^>]*\btitle="([^"]+)"[^>]*(?<!\/)>[ \t]*$/gm,
+        (_, title: string) => `**${title}.**`,
+      )
+      .replace(
+        /^[ \t]*<[A-Z][\w.]*[^>]*\/>[ \t]*$/gm,
+        "This part of the page is interactive. Open the page to use it.",
+      )
+      .replace(/^[ \t]*<\/?[A-Z][\w.]*[^>]*>[ \t]*\n?/gm, "")
+      .replace(/\n{3,}/g, "\n\n")
+  );
 }
 
 /**
