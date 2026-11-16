@@ -1,6 +1,6 @@
 {
   "name": "@hephaestus-build/ichnaea-decide",
-  "version": "0.1.0",
+  "version": "0.0.0",
   "description": "Ichnaea decision rule: paired non-inferiority per primary measure, Holm on regressions, hard gates, flips, power statement, estimate-only mode.",
   "license": "MIT",
   "repository": {
