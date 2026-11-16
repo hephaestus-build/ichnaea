@@ -295,43 +295,6 @@
       ],
       "additionalProperties": false
     },
-    "arm": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
-          "x-ichnaea-data": {
-            "class": "none",
-            "identifier": "none",
-            "egress": [
-              "*"
-            ],
-            "retention": "record"
-          }
-        },
-        "role": {
-          "type": "string",
-          "enum": [
-            "base",
-            "candidate"
-          ],
-          "x-ichnaea-data": {
-            "class": "none",
-            "identifier": "none",
-            "egress": [
-              "*"
-            ],
-            "retention": "record"
-          }
-        }
-      },
-      "required": [
-        "name",
-        "role"
-      ],
-      "additionalProperties": false
-    },
     "limits": {
       "type": "object",
       "properties": {
@@ -358,7 +321,6 @@
     "plan",
     "trial",
     "case",
-    "arm",
     "limits"
   ],
   "additionalProperties": false,

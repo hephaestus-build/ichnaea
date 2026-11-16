@@ -152,7 +152,8 @@
           "enum": [
             "infrastructure",
             "system",
-            "not_run"
+            "not_run",
+            "protocol"
           ],
           "x-ichnaea-data": {
             "class": "none",

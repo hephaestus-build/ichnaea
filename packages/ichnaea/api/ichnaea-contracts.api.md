@@ -3048,6 +3048,7 @@ export const TrialFailure: z.ZodObject<{
     class: z.ZodEnum<{
         infrastructure: "infrastructure";
         not_run: "not_run";
+        protocol: "protocol";
         system: "system";
     }>;
     kind: z.ZodString;
@@ -3119,13 +3120,6 @@ export const TrialRequest: z.ZodObject<{
             uri: z.ZodOptional<z.ZodString>;
         }, z.core.$strict>>>;
     }, z.core.$strict>;
-    arm: z.ZodObject<{
-        name: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
-        role: z.ZodEnum<{
-            base: "base";
-            candidate: "candidate";
-        }>;
-    }, z.core.$strict>;
     limits: z.ZodObject<{
         calls: z.ZodOptional<z.ZodInt>;
     }, z.core.$strict>;
@@ -3157,6 +3151,7 @@ export const TrialResult: z.ZodObject<{
         class: z.ZodEnum<{
             infrastructure: "infrastructure";
             not_run: "not_run";
+            protocol: "protocol";
             system: "system";
         }>;
         kind: z.ZodString;

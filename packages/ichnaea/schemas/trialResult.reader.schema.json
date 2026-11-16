@@ -159,7 +159,8 @@
           "x-ichnaea-known": [
             "infrastructure",
             "system",
-            "not_run"
+            "not_run",
+            "protocol"
           ]
         },
         "kind": {

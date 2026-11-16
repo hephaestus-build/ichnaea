@@ -21,10 +21,6 @@
       "answer": "30 Tage"
     }
   },
-  "arm": {
-    "name": "candidate",
-    "role": "candidate"
-  },
   "limits": {
     "calls": 12
   }
