@@ -8,7 +8,8 @@ import {
   ScoreError,
   type TimedResult,
 } from "../../src/core/index.ts";
-import { Outcome, Trial } from "../../src/contracts/index.ts";
+import { digest, Outcome, Trial } from "../../src/contracts/index.ts";
+import { suiteRecords } from "../../src/core/suite.ts";
 import { createPlan } from "../../src/decide/index.ts";
 import { answer, COMMIT, configuration, SUITE } from "./support/library.ts";
 
@@ -44,6 +45,12 @@ const SECOND = plan.record.trials[1]!.id;
 const observed = (commit: string, route: string) => ({
   observed: { code: { commit }, model: "example-model", route, parameters: {} },
 });
+
+/** The suite and case set digests that a suite definition resolves to. */
+const digestOf = (suite: typeof SUITE) => {
+  const records = suiteRecords(suite);
+  return { suite: digest(records.suite), caseSet: records.caseSet.digest };
+};
 
 /** Attempt `n` at the first trial, with `change` applied. */
 const attempt = (n: number, change: Record<string, unknown> = {}, output: unknown = OK) =>
@@ -397,6 +404,29 @@ describe("importResults", () => {
     );
     expect(() => importResults(plan, [...results(), results()[0]!])).toThrow(
       `result 25: trial '${FIRST}' attempt 1 is repeated; give each attempt once`,
+    );
+  });
+
+  it("refuses a suite that is not the plan's: another limit, or another case", () => {
+    const looser = {
+      ...SUITE,
+      policy: {
+        ...SUITE.policy,
+        primary: {
+          ...SUITE.policy.primary,
+          answered: { margin: 0.29, owner: "composer maintainer", reason: "Looser." },
+        },
+      },
+    };
+    expect(() => importResults({ ...plan, suite: looser }, results())).toThrow(
+      `the suite's digest is ${digestOf(looser).suite}, but the plan was made from ${plan.record.suiteDigest}; import with the suite the plan was made from`,
+    );
+    const edited = {
+      ...SUITE,
+      cases: SUITE.cases.map((c, i) => (i === 0 ? { ...c, input: { question: "edited" } } : c)),
+    };
+    expect(() => importResults({ ...plan, suite: edited }, results())).toThrow(
+      `the suite's case set digest is ${digestOf(edited).caseSet}, but the plan was made from ${plan.record.caseSetDigest}`,
     );
   });
 

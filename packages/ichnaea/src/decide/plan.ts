@@ -3,21 +3,21 @@ import * as z from "zod";
 import {
   AaCitation,
   armNames,
-  Case,
-  caseDigest,
-  CaseSet,
-  caseSetDigest,
   Configuration,
   Plan,
   RunId,
   Schedule,
-  Suite,
   Timestamp,
 } from "../contracts/index.ts";
 import { CORE_VERSION } from "../core/version.ts";
 import { MAX_SEED, PlanError, resolvePlan, seedRecord } from "../core/planner.ts";
 import { IntendedChange, intendedFactors } from "../core/pointers.ts";
-import { measureId, type SuiteDefinition, suiteMeasures, type SuitePlan } from "../core/suite.ts";
+import {
+  type SuiteDefinition,
+  suiteMeasures,
+  type SuitePlan,
+  suiteRecords,
+} from "../core/suite.ts";
 
 import { planningPower } from "./planning.ts";
 
@@ -50,9 +50,6 @@ export interface PlanComparison {
   /** The noise checks (A/A decisions) this plan cites, by run and decision digest. */
   readonly aa?: Plan["aa"];
 }
-
-/** A suite record as a definition gives it: the measure review date is optional there. */
-const SuiteRecord = Suite.partial({ measureReviewDate: true });
 
 const ComparisonSchema = z.strictObject({
   run: RunId,
@@ -94,72 +91,12 @@ export function createPlan<const S extends SuiteDefinition>(
   if (!checked.success)
     throw new PlanError(`the comparison is not valid:\n${z.prettifyError(checked.error)}`);
   const { base, candidate } = checked.data;
-  const cases = suite.cases.map((c) => Case.parse(c));
-  const entries = cases.map((c) => ({
-    id: c.id,
-    digest: caseDigest(c),
-    pool: c.pool,
-    ...(c.family === undefined ? {} : { family: c.family }),
-  }));
-  const digest = caseSetDigest(entries);
-  const keys = Object.keys(suite.measures);
-  const primary = Object.entries(suite.policy.primary).flatMap(([key, limit]) =>
-    limit === undefined
-      ? []
-      : [
-          {
-            measure: measureId(suite, key),
-            margin: limit.margin,
-            marginStatus: limit.status ?? "registered",
-            marginReason: limit.reason,
-            marginOwner: limit.owner,
-          },
-        ],
-  );
-  const secondary = (
-    suite.policy.secondary ?? keys.filter((k) => !Object.hasOwn(suite.policy.primary, k))
-  ).map((k) => measureId(suite, k));
-  const replicatesFor = Object.entries(suite.trials.bySlice ?? {}).map(([key, replicates]) => {
-    const at = key.indexOf("=");
-    const [slice, value] = [key.slice(0, at), key.slice(at + 1)];
-    return {
-      slice,
-      value,
-      replicates,
-      reason: `the suite asks for ${replicates} trials per arm where ${slice} is ${value}`,
-    };
-  });
-  const { card } = suite;
+  const records = suiteRecords(suite);
   const names = armNames(seedRecord(checked.data.seed));
   const plan = resolvePlan({
-    suite: SuiteRecord.parse({
-      schema: "ichnaea.suite/1",
-      id: suite.id,
-      version: suite.version,
-      objective: card.objective,
-      construct: card.construct,
-      decision: card.decision,
-      scope: card.scope,
-      nonCoverage: card.nonCoverage,
-      estimand: "fixed-cases",
-      caseSet: { id: suite.id, path: "suite.cases", digest },
-      replicates: suite.trials.default,
-      ...(replicatesFor.length > 0 ? { replicatesFor } : {}),
-      primary,
-      secondary,
-      budget: { maxCalls: suite.budget.calls, callsPerTrial: suite.budget.callsPerTrial },
-      policy: {
-        onRegression: suite.policy.onRegression,
-        onInconclusive: suite.policy.onInconclusive,
-        onEstimateOnly: suite.policy.onEstimateOnly,
-      },
-      threats: [...card.threats],
-      ...(card.measureReviewDate === undefined
-        ? {}
-        : { measureReviewDate: card.measureReviewDate }),
-    }),
-    caseSet: CaseSet.parse({ schema: "ichnaea.caseSet/1", id: suite.id, digest, cases: entries }),
-    cases,
+    suite: records.suite,
+    caseSet: records.caseSet,
+    cases: records.cases,
     // Opaque names, so no trial ID or request tells a system which side it is on.
     arms: [
       { name: names.base, role: "base", configuration: base },

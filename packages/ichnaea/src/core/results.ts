@@ -23,7 +23,7 @@ import {
 import { checkCaptured, ImportError, NOT_CAPTURED } from "./import-rules.ts";
 import { scoreTrials } from "./measures.ts";
 import { recordProblems, type RunRecords } from "./records.ts";
-import { type SuitePlan, suiteMeasures } from "./suite.ts";
+import { type SuitePlan, suiteMeasures, suiteRecords } from "./suite.ts";
 
 /**
  * A worker's answer for one trial, `ichnaea.trialResult/1`, with the times of the trial when the
@@ -199,6 +199,9 @@ function remove(root: unknown, path: readonly PropertyKey[]): void {
  * calls than the suite's `budget.callsPerTrial` is over budget (`budget_exceeded`): a failed trial,
  * and the run is INVALID.
  *
+ * The plan's suite must be the one the plan was made from: a suite whose digest or case set digest
+ * differs from the plan's throws, so a result is never scored by another suite's cases or limits.
+ *
  * Results are read tolerantly: members no record defines are ignored and reported as unused. A
  * value this version does not know (a later failure class), a result of a trial the plan does not
  * list, or a repeated trial throws an ImportError that names the result.
@@ -212,6 +215,17 @@ export function importResults(
   } = {},
 ): { readonly records: RunRecords; readonly summary: ImportSummary } {
   const { record } = plan;
+  // The scorers and limits must be the ones the plan was made from.
+  const resolved = suiteRecords(plan.suite);
+  if (resolved.caseSet.digest !== record.caseSetDigest)
+    throw new ImportError(
+      `the suite's case set digest is ${resolved.caseSet.digest}, but the plan was made from ${record.caseSetDigest}; import with the suite the plan was made from`,
+    );
+  const suiteDigest = digest(resolved.suite);
+  if (suiteDigest !== record.suiteDigest)
+    throw new ImportError(
+      `the suite's digest is ${suiteDigest}, but the plan was made from ${record.suiteDigest}; import with the suite the plan was made from`,
+    );
   const registered = contractFor("ichnaea.trialResult/1");
   if (!registered) throw new Error("ichnaea.trialResult/1 is not a registered contract");
   const contract = { ...registered, schema: TrialResult };

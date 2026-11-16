@@ -3,10 +3,14 @@ import * as z from "zod";
 import {
   CalendarDate,
   Case,
+  caseDigest,
+  CaseSet,
+  caseSetDigest,
   type Configuration,
   Json,
   PolicyAction,
   SemVer,
+  Suite,
   Text,
   Trial,
   type Plan,
@@ -481,4 +485,87 @@ export function suiteMeasures(suite: SuiteDefinition): Map<string, MeasureDefini
     });
   }
   return out;
+}
+
+/** A suite record as a definition gives it: the measure review date is optional there. */
+const SuiteRecord = Suite.partial({ measureReviewDate: true });
+
+/**
+ * The records a suite definition resolves to: the suite record, the case set and the cases. The
+ * plan cites the digests of the first two, so `importResults` can refuse a suite the plan was not
+ * made from. The scorers are code: the plan cites each measure's card, not its function.
+ */
+export function suiteRecords(suite: SuiteDefinition): {
+  readonly suite: Omit<Suite, "measureReviewDate"> & {
+    readonly measureReviewDate?: string | undefined;
+  };
+  readonly caseSet: CaseSet;
+  readonly cases: Case[];
+} {
+  const cases = suite.cases.map((c) => Case.parse(c));
+  const entries = cases.map((c) => ({
+    id: c.id,
+    digest: caseDigest(c),
+    pool: c.pool,
+    ...(c.family === undefined ? {} : { family: c.family }),
+  }));
+  const digest = caseSetDigest(entries);
+  const keys = Object.keys(suite.measures);
+  const primary = Object.entries(suite.policy.primary).flatMap(([key, limit]) =>
+    limit === undefined
+      ? []
+      : [
+          {
+            measure: measureId(suite, key),
+            margin: limit.margin,
+            marginStatus: limit.status ?? "registered",
+            marginReason: limit.reason,
+            marginOwner: limit.owner,
+          },
+        ],
+  );
+  const secondary = (
+    suite.policy.secondary ?? keys.filter((k) => !Object.hasOwn(suite.policy.primary, k))
+  ).map((k) => measureId(suite, k));
+  const replicatesFor = Object.entries(suite.trials.bySlice ?? {}).map(([key, replicates]) => {
+    const at = key.indexOf("=");
+    const [slice, value] = [key.slice(0, at), key.slice(at + 1)];
+    return {
+      slice,
+      value,
+      replicates,
+      reason: `the suite asks for ${replicates} trials per arm where ${slice} is ${value}`,
+    };
+  });
+  const { card } = suite;
+  return {
+    suite: SuiteRecord.parse({
+      schema: "ichnaea.suite/1",
+      id: suite.id,
+      version: suite.version,
+      objective: card.objective,
+      construct: card.construct,
+      decision: card.decision,
+      scope: card.scope,
+      nonCoverage: card.nonCoverage,
+      estimand: "fixed-cases",
+      caseSet: { id: suite.id, path: "suite.cases", digest },
+      replicates: suite.trials.default,
+      ...(replicatesFor.length > 0 ? { replicatesFor } : {}),
+      primary,
+      secondary,
+      budget: { maxCalls: suite.budget.calls, callsPerTrial: suite.budget.callsPerTrial },
+      policy: {
+        onRegression: suite.policy.onRegression,
+        onInconclusive: suite.policy.onInconclusive,
+        onEstimateOnly: suite.policy.onEstimateOnly,
+      },
+      threats: [...card.threats],
+      ...(card.measureReviewDate === undefined
+        ? {}
+        : { measureReviewDate: card.measureReviewDate }),
+    }),
+    caseSet: CaseSet.parse({ schema: "ichnaea.caseSet/1", id: suite.id, digest, cases: entries }),
+    cases,
+  };
 }
