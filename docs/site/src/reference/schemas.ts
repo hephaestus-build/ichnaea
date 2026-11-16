@@ -24,6 +24,8 @@ export interface DataPolicy {
 export interface FieldRow {
   readonly path: string;
   readonly type: string;
+  /** What the field holds, from the schema, when the contract describes it. */
+  readonly description: string | undefined;
   readonly required: boolean;
   readonly data: DataPolicy | undefined;
 }
@@ -91,6 +93,7 @@ export function fieldsOf(node: Node, prefix = ""): FieldRow[] {
     const row: FieldRow = {
       path,
       type: typeOf(child),
+      description: typeof child.description === "string" ? child.description : undefined,
       required: required.has(name),
       data: dataPolicy(child),
     };

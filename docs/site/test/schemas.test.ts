@@ -19,6 +19,13 @@ describe("record schema reference", () => {
     expect(fields.find((field) => field.path === "caseSet")?.required).toBe(false);
   });
 
+  it("carries a field's description when the schema has one", () => {
+    const node = {
+      properties: { a: { type: "string", description: "What a holds." }, b: { type: "string" } },
+    };
+    expect(fieldsOf(node).map((row) => row.description)).toEqual(["What a holds.", undefined]);
+  });
+
   it.each([
     [{ type: "string", format: "date-time" }, "string (date-time)"],
     [{ type: "number", minimum: 0, maximum: 1 }, "number (≥ 0, ≤ 1)"],
