@@ -4,6 +4,7 @@ import starlightLinksValidator from "starlight-links-validator";
 import starlightLlmsTxt from "starlight-llms-txt";
 
 import { browserOnly } from "./browser-only.ts";
+import { loadSchemas } from "./src/reference/schemas.ts";
 
 // DOCS_URL is the one setting for where the site lives. Its origin is `site`, and its path is
 // `base`. Links between pages carry the base path (`/ichnaea/…`), and the links validator fails the
@@ -36,6 +37,20 @@ export default defineConfig({
       sidebar: [
         { label: "Planning explorer", link: "/planner/" },
         { label: "Explanation", items: [{ autogenerate: { directory: "explanation" } }] },
+        {
+          label: "Reference",
+          items: [
+            { label: "Record schemas", link: "/reference/schemas/" },
+            {
+              label: "Records",
+              collapsed: true,
+              items: loadSchemas().map(({ name, title }) => ({
+                label: title,
+                link: `/reference/schemas/${name}/`,
+              })),
+            },
+          ],
+        },
         { label: "Glossary", link: "/glossary/" },
       ],
       plugins: [starlightLinksValidator({ errorOnLocalLinks: true }), starlightLlmsTxt()],
