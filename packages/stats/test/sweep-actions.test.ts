@@ -16,6 +16,7 @@ import { canonical, compareReplica, compareSkips, skipEntry } from "../scripts/c
 import {
   exactFiles,
   MARGINS,
+  MAX_MATRIX_JOBS,
   marginText,
   parsePhases,
   plan,
@@ -57,6 +58,27 @@ describe("the plan", () => {
     expect(() => parsePhases("")).toThrow(/at least one/);
     expect(() => parsePhases("F")).toThrow(/unknown phase/);
     expect(parsePhases("E-large,A")).toEqual(["A", "E-large"]);
+  });
+
+  it("runs a pre-check of one margin for the exact phases and the large suites only", () => {
+    const p = plan(parsePhases("A,B,C,E-large"), [13]);
+    expect(p.margins).toBe("13");
+    expect(p.exact.include.map((j) => j.artifact)).toEqual([
+      "sweep-exact-A-0.115",
+      "sweep-exact-B-0.115",
+      "sweep-exact-C-0.115",
+    ]);
+    expect(p.large.include).toHaveLength(32);
+    expect(() => plan(parsePhases("A,B,C,D"), [13])).toThrow(/need every margin/);
+    expect(() => plan(parsePhases("B,E-embedded"), [13])).toThrow(/need every margin/);
+    expect(plan(parsePhases("A")).margins).toBe(range(MARGINS).join(","));
+  });
+
+  it("keeps every matrix within GitHub's limit of 256 jobs", () => {
+    const p = plan(parsePhases("A,B,C,D,E-large,E-embedded"));
+    for (const m of [p.exact, p.skips, p.large, p.embedded])
+      expect(m.include.length).toBeLessThanOrEqual(MAX_MATRIX_JOBS);
+    expect(() => plan(parsePhases("E-large"), undefined, 300)).toThrow(/at most 256/);
   });
 
   it("names the margins as the sweep prints them", () => {
