@@ -77,6 +77,38 @@ describe("a trial's attempts", () => {
     expect(s.trials.find((t) => t.id === "case-000/candidate/r0")?.usage?.calls).toBe(5);
   });
 
+  it("of a new import are reported in one limitation, and only when it recorded calls", async () => {
+    const line =
+      "The imported trials recorded 162 calls. Ichnaea's budget applies only to the trials it runs.";
+    const imported = await scenario({
+      ...options,
+      armsToRun: [],
+      usage: () => ({ calls: 2 }),
+      attempts: (t) => (first(t) ? [timeout(1, 2)] : undefined),
+    });
+    expect(imported.plan.budget.callsPerTrial).toBe(2);
+    expect((await run(imported)).limitations).toContain(line);
+    const silent = await run(await scenario({ ...options, armsToRun: [], usage: () => ({}) }));
+    expect(silent.limitations.some((l) => l.startsWith("The imported trials"))).toBe(false);
+    // A plan that runs its arms books its calls, so it gets no such line.
+    const ran = await run(await scenario(options));
+    expect(ran.limitations.some((l) => l.startsWith("The imported trials"))).toBe(false);
+  });
+
+  it("of a stored import plan without a bound per trial add no line on recompute", async () => {
+    const s = await scenario({ ...options, armsToRun: [], usage: () => ({ calls: 2 }) });
+    const { callsPerTrial: _, ...budget } = s.plan.budget;
+    const plan = { ...s.plan, budget };
+    const stored: Scenario = {
+      ...s,
+      plan,
+      run: { ...s.run, plan: digest(plan) as Scenario["run"]["plan"] },
+    };
+    const decision = await run(stored);
+    expect(decision.limitations.some((l) => l.startsWith("The imported trials"))).toBe(false);
+    expect(recompute({ ...stored, decision }).matches).toBe(true);
+  });
+
   it("leave a stored plan without a bound per trial decided as before", async () => {
     // A plan written before the bound per trial was recorded: its run's calls are over the
     // budget, and decide must give the decision that was stored for it.

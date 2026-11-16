@@ -637,6 +637,28 @@ function triggerCheck(
  * INVALID. A plan without `callsPerTrial` was written before the plan recorded the bound, and its
  * calls are not checked, so it keeps the decision it was given.
  */
+/** A trial's calls over every attempt, in calls the provider accepted. */
+function callsOf(t: Trial): number {
+  return (t.attempts ?? []).reduce((n, a) => n + a.calls, t.usage?.calls ?? 0);
+}
+
+/**
+ * The limitation that reports an import's calls: another runner made them, so the bounds do not
+ * apply, but the card still says how many there were. Only a new import plan, one that carries
+ * `callsPerTrial`, gets it, so a stored decision recomputes unchanged; and only when the trials
+ * recorded a call.
+ */
+function importedCallsLimitation(input: DecideInput): string[] {
+  const { budget } = input.plan;
+  if (budget.callsPerTrial === undefined || budget.worstCaseCalls > 0) return [];
+  const calls = input.trials.reduce((n, t) => n + callsOf(t), 0);
+  return calls > 0
+    ? [
+        `The imported trials recorded ${calls} calls. Ichnaea's budget applies only to the trials it runs.`,
+      ]
+    : [];
+}
+
 function attemptChecks(input: DecideInput): string[] {
   const { budget } = input.plan;
   const invalid: string[] = [];
@@ -652,7 +674,7 @@ function attemptChecks(input: DecideInput): string[] {
   const over: { readonly trial: string; readonly calls: number }[] = [];
   let total = 0;
   for (const t of input.trials) {
-    const calls = (t.attempts ?? []).reduce((n, a) => n + a.calls, t.usage?.calls ?? 0);
+    const calls = callsOf(t);
     total += calls;
     if (calls > bound) over.push({ trial: t.id, calls });
   }
@@ -1552,6 +1574,7 @@ export function decideWith(input: DecideInput, compare: Compare): Decision {
     "An observed model identity cannot detect a silent update behind the same identity.",
     "Hosted models rarely honour seeds; replicates measure run-to-run noise instead.",
     ...(one ? [CLOCK_LIMITATION] : []),
+    ...importedCallsLimitation(input),
     ...invalid.slice(1).map((m) => `Also invalid: ${m}`),
   ];
 
