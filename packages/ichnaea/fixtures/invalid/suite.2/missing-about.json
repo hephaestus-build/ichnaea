@@ -1,0 +1,179 @@
+{
+  "schema": "ichnaea.suite/2",
+  "id": "answers",
+  "version": "4",
+  "cases": {
+    "from": [
+      {
+        "dataset": "answers-public",
+        "path": "answers/cases.jsonl"
+      },
+      {
+        "dataset": "answers-private",
+        "path": "answers/real.jsonl"
+      }
+    ],
+    "pools": {
+      "development": "dev",
+      "validation": "test"
+    }
+  },
+  "worker": "chatbot",
+  "stages": [
+    "search",
+    "rank",
+    "answer"
+  ],
+  "environment": {
+    "index": {
+      "service": {
+        "fromEnv": "INDEX_URL"
+      },
+      "identity": "snapshot-id",
+      "class": "none",
+      "exposure": "public"
+    }
+  },
+  "instruments": {
+    "quality-judge": {
+      "command": [
+        "poetry",
+        "run",
+        "python",
+        "-m",
+        "judges.quality"
+      ],
+      "prepare": [
+        "poetry",
+        "install",
+        "--no-root"
+      ],
+      "files": [
+        "judges/**",
+        "rubrics/quality.md",
+        "pyproject.toml",
+        "poetry.lock"
+      ],
+      "judge": {
+        "model": "provider/model-x@2026-10-01",
+        "prompt": "judges/prompt.md",
+        "rubric": "rubrics/quality.md",
+        "temperature": 0
+      },
+      "env": [
+        {
+          "name": "JUDGE_API_KEY",
+          "secret": true
+        }
+      ],
+      "endpoints": [
+        "eu-llm"
+      ]
+    },
+    "ts-scorers": {
+      "files": [
+        "scorers/**",
+        "package-lock.json"
+      ]
+    }
+  },
+  "measures": {
+    "searched": {
+      "type": "binary",
+      "stage": "search",
+      "status": "ok",
+      "appliesTo": {
+        "slice": "needs-search"
+      },
+      "direction": "higher"
+    },
+    "grounded": {
+      "type": "binary",
+      "scorer": {
+        "builtin": "links-grounded"
+      }
+    },
+    "cites-page": {
+      "type": "binary",
+      "scorer": {
+        "instrument": "ts-scorers",
+        "module": "scorers/cites.ts",
+        "export": "citesPage"
+      }
+    },
+    "correct": {
+      "type": "binary",
+      "scorer": {
+        "instrument": "quality-judge",
+        "dimension": "correctness"
+      }
+    },
+    "rank-ndcg": {
+      "type": "score",
+      "stage": "rank",
+      "scorer": {
+        "builtin": "ndcg",
+        "options": {
+          "k": 5
+        }
+      }
+    },
+    "latency-ms": {
+      "type": "quantity",
+      "unit": "ms",
+      "scorer": {
+        "builtin": "wall-time"
+      }
+    }
+  },
+  "policy": {
+    "primary": {
+      "grounded": {
+        "limit": 0.05,
+        "owner": "answers-owner",
+        "reason": "Pass needs any drop to stay under 5 points."
+      },
+      "searched": {
+        "limit": 0.1,
+        "owner": "answers-owner",
+        "reason": "Search is how answers get grounded."
+      }
+    },
+    "secondary": [
+      "latency-ms"
+    ],
+    "diagnostic": [
+      "correct",
+      "rank-ndcg",
+      "cites-page"
+    ]
+  },
+  "profiles": {
+    "try": {
+      "trials": 1,
+      "pool": "development",
+      "cases": 10
+    },
+    "pr": {
+      "trials": 2,
+      "pool": "development",
+      "mode": "fast"
+    },
+    "release": {
+      "trials": 2,
+      "pool": "validation",
+      "mode": "confirm"
+    }
+  },
+  "budget": {
+    "calls": 2000,
+    "callsPerTrial": 12,
+    "judgeCalls": 600
+  },
+  "stopReasons": {
+    "COMPLETED": "completed",
+    "RATE_LIMITED": "infrastructure",
+    "NO_RESULTS": "system",
+    "SEARCH_SKIPPED": "not_invoked"
+  }
+}

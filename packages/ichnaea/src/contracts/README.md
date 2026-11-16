@@ -8,19 +8,31 @@ against the schema files in [`schemas/`](../../schemas).
 
 ## Records
 
-| Schema ID                                                               | File                        | Holds                                                      |
-| ----------------------------------------------------------------------- | --------------------------- | ---------------------------------------------------------- |
-| `ichnaea.case/1`                                                        | `case.schema.json`          | One evaluation input with fixtures and hidden references   |
-| `ichnaea.caseSet/1`                                                     | `caseSet.schema.json`       | A versioned collection of cases, identified by a digest    |
-| `ichnaea.configuration/1`                                               | `configuration.schema.json` | A resolved system configuration with factor statuses       |
-| `ichnaea.suite/1`                                                       | `suite.schema.json`         | What an application evaluates, without naming a system     |
-| `ichnaea.plan/1`                                                        | `plan.schema.json`          | The resolved, locked form of a suite for one run           |
-| `ichnaea.trial/1`                                                       | `trial.schema.json`         | The normalised evidence of one trial                       |
-| `ichnaea.run/1`                                                         | `run.schema.json`           | The ledger of a plan's trials with lineage                 |
-| `ichnaea.measureCard/1`                                                 | `measureCard.schema.json`   | The definition of a measure                                |
-| `ichnaea.measureValue/1`                                                | `measureValue.schema.json`  | One measured value on one trial                            |
-| `ichnaea.decision/1`                                                    | `decision.schema.json`      | The verdict of one run with estimates, intervals and flips |
-| `ichnaea.judge/1`, `label/1`, `calibration/1`, `monitor/1`, `finding/1` |                             | In development                                             |
+| Schema ID                                                               | File                          | Holds                                                      |
+| ----------------------------------------------------------------------- | ----------------------------- | ---------------------------------------------------------- |
+| `ichnaea.case/1`                                                        | `case.schema.json`            | One evaluation input with fixtures and hidden references   |
+| `ichnaea.caseSet/1`                                                     | `caseSet.schema.json`         | A versioned collection of cases, identified by a digest    |
+| `ichnaea.configuration/1`                                               | `configuration.schema.json`   | A resolved system configuration with factor statuses       |
+| `ichnaea.suite/1`                                                       | `suite.schema.json`           | What an application evaluates, without naming a system     |
+| `ichnaea.plan/1`                                                        | `plan.schema.json`            | The resolved, locked form of a suite for one run           |
+| `ichnaea.trial/1`                                                       | `trial.schema.json`           | The normalised evidence of one trial                       |
+| `ichnaea.run/1`                                                         | `run.schema.json`             | The ledger of a plan's trials with lineage                 |
+| `ichnaea.measureCard/1`                                                 | `measureCard.schema.json`     | The definition of a measure                                |
+| `ichnaea.measureValue/1`                                                | `measureValue.schema.json`    | One measured value on one trial                            |
+| `ichnaea.decision/1`                                                    | `decision.schema.json`        | The verdict of one run with estimates, intervals and flips |
+| `ichnaea.judge/1`, `label/1`, `calibration/1`, `monitor/1`, `finding/1` |                               | In development                                             |
+| `ichnaea.suite/2`                                                       | `suite.2.schema.json`         | One thing you evaluate, as plain data (alpha)              |
+| `ichnaea.configuration/2`                                               | `configuration.2.schema.json` | An arm's configuration file, by digest (alpha)             |
+| `ichnaea.config/1`                                                      | `project.schema.json`         | The project config that several suites share (alpha)       |
+| `ichnaea.suite.lock/1`                                                  | `suite.lock.schema.json`      | The digests that pin a suite, written by `lock` (alpha)    |
+
+`suite/2`, `configuration/2`, `ichnaea.config/1` and `suite.lock/1` are the records of the next
+framework. They are plain JSON data: a value that JSON cannot hold, or a function, is refused, and
+a TypeScript measure is a module reference (`{ instrument, module, export }`). A JSONC suite or
+project file points its editor at `suite.2.schema.json` or `project.schema.json` with `$schema`.
+`suite/1` and `configuration/1` stay registered beside them while the planner and the importer
+still read them. While two majors of one record are registered, the newer one's files carry its
+major, and it needs no migration until the older one leaves the registry (`majors.json`).
 
 ## Writer and reader schemas
 

@@ -1,0 +1,56 @@
+{
+  "schema": "ichnaea.suite.lock/1",
+  "suite": "answers",
+  "suiteDigest": "sha256:d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1",
+  "measurementDigest": "sha256:d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2",
+  "sources": [
+    {
+      "origin": {
+        "dataset": "answers-public",
+        "path": "answers/cases.jsonl"
+      },
+      "digest": "sha256:d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3d3",
+      "bytes": -1,
+      "pools": {
+        "development": 40,
+        "validation": 20
+      }
+    }
+  ],
+  "datasets": {
+    "answers-public": {
+      "commit": "9e2c1f0a4b7d3e6c8a1f2b5d7e9c0a3b6d8f1e2c",
+      "place": "public"
+    }
+  },
+  "instruments": {
+    "quality-judge": {
+      "files": "sha256:d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4",
+      "judge": {
+        "model": "provider/model-x@2026-10-01",
+        "parameters": {
+          "temperature": 0
+        },
+        "prompt": "sha256:d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5",
+        "rubric": "sha256:d6d6d6d6d6d6d6d6d6d6d6d6d6d6d6d6d6d6d6d6d6d6d6d6d6d6d6d6d6d6d6d6",
+        "inputsDigest": "sha256:d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7d7"
+      }
+    },
+    "ts-scorers": {
+      "files": "sha256:d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8d8"
+    }
+  },
+  "measures": {
+    "searched": "sha256:e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2",
+    "grounded": "sha256:e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3",
+    "cites-page": "sha256:e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4",
+    "correct": "sha256:e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5"
+  },
+  "registration": {
+    "grounded": {
+      "limit": 0.05,
+      "owner": "answers-owner",
+      "reason": "Pass needs any drop to stay under 5 points."
+    }
+  }
+}

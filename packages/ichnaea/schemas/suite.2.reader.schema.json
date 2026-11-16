@@ -1,0 +1,3389 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ichnaea:schema:suite:2:reader",
+  "title": "ichnaea.suite/2 (reader)",
+  "description": "One thing you evaluate, as plain data: its cases, how to run them, what to measure and the limits.",
+  "x-ichnaea-stability": "alpha",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The JSON Schema of this file, for editors. A JSONC suite file carries it.",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
+      }
+    },
+    "schema": {
+      "type": "string",
+      "const": "ichnaea.suite/2",
+      "description": "The record type and its major version.",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
+      }
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
+      "description": "The suite's stable ID.",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
+      }
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "A label for people. The suite's identity is its digest.",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
+      }
+    },
+    "about": {
+      "type": "object",
+      "properties": {
+        "objective": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What the evaluated system must do well.",
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          }
+        },
+        "decision": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The decision that the suite's results inform.",
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          }
+        },
+        "construct": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What the measures stand for, and what they do not.",
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          }
+        },
+        "scope": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The inputs that the cases cover.",
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          }
+        },
+        "nonCoverage": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "What the cases do not cover.",
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          }
+        },
+        "threats": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "What could make the results wrong.",
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          }
+        }
+      },
+      "required": [
+        "objective",
+        "decision",
+        "construct",
+        "scope",
+        "nonCoverage",
+        "threats"
+      ],
+      "description": "What the suite evaluates and what it does not."
+    },
+    "cases": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "from": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "dataset": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$",
+                    "description": "A dataset from the project config.",
+                    "x-ichnaea-data": {
+                      "class": "none",
+                      "identifier": "none",
+                      "egress": [
+                        "*"
+                      ],
+                      "retention": "record"
+                    }
+                  },
+                  "path": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The case file inside the dataset.",
+                    "x-ichnaea-data": {
+                      "class": "none",
+                      "identifier": "none",
+                      "egress": [
+                        "*"
+                      ],
+                      "retention": "record"
+                    }
+                  }
+                },
+                "required": [
+                  "dataset",
+                  "path"
+                ]
+              },
+              "description": "Case files of datasets from the project config."
+            },
+            "exposure": {
+              "type": "string",
+              "description": "Who may see the cases' content. A missing exposure counts as private.",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              },
+              "x-ichnaea-known": [
+                "public",
+                "private",
+                "sealed"
+              ]
+            },
+            "pools": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "x-ichnaea-known": [
+                  "development",
+                  "validation",
+                  "sealed",
+                  "promoted"
+                ]
+              },
+              "additionalProperties": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "For each pool, the label that marks its cases, for example development: dev.",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "frame": {
+              "type": "object",
+              "properties": {
+                "population": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "The population that the cases were drawn from.",
+                  "x-ichnaea-data": {
+                    "class": "none",
+                    "identifier": "none",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "record"
+                  }
+                },
+                "drawnBy": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "How the cases were drawn.",
+                  "x-ichnaea-data": {
+                    "class": "none",
+                    "identifier": "none",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "record"
+                  }
+                },
+                "date": {
+                  "type": "string",
+                  "format": "date",
+                  "pattern": "^(?:(?:[0-9][0-9][2468][048]|[0-9][0-9][13579][26]|[0-9][0-9]0[48]|[02468][048]00|[13579][26]00)-02-29|[0-9]{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12][0-9]|3[01])|(?:0[469]|11)-(?:0[1-9]|[12][0-9]|30)|(?:02)-(?:0[1-9]|1[0-9]|2[0-8])))$",
+                  "description": "When the cases were drawn.",
+                  "x-ichnaea-data": {
+                    "class": "none",
+                    "identifier": "none",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "record"
+                  }
+                }
+              },
+              "required": [
+                "population",
+                "drawnBy",
+                "date"
+              ]
+            }
+          },
+          "required": [
+            "from"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "source": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "file": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "A path, relative to the declaring file.",
+                      "x-ichnaea-data": {
+                        "class": "none",
+                        "identifier": "none",
+                        "egress": [
+                          "*"
+                        ],
+                        "retention": "record"
+                      }
+                    }
+                  },
+                  "required": [
+                    "file"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "git": {
+                      "type": "object",
+                      "properties": {
+                        "repo": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "The repository, as `git clone` takes it.",
+                          "x-ichnaea-data": {
+                            "class": "none",
+                            "identifier": "none",
+                            "egress": [
+                              "*"
+                            ],
+                            "retention": "record"
+                          }
+                        },
+                        "commit": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{40}(?:[0-9a-f]{24})?$",
+                          "description": "The full commit.",
+                          "x-ichnaea-data": {
+                            "class": "none",
+                            "identifier": "none",
+                            "egress": [
+                              "*"
+                            ],
+                            "retention": "record"
+                          }
+                        },
+                        "path": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "A file or directory in the repository.",
+                          "x-ichnaea-data": {
+                            "class": "none",
+                            "identifier": "none",
+                            "egress": [
+                              "*"
+                            ],
+                            "retention": "record"
+                          }
+                        }
+                      },
+                      "required": [
+                        "repo",
+                        "commit"
+                      ],
+                      "description": "A git repository at a full commit."
+                    }
+                  },
+                  "required": [
+                    "git"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "https": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "url": {
+                              "type": "string",
+                              "pattern": "^https:\\/\\/[^\\s/?#@]+(?:\\/[^\\s?#]*)?$",
+                              "description": "The URL.",
+                              "x-ichnaea-data": {
+                                "class": "none",
+                                "identifier": "none",
+                                "egress": [
+                                  "*"
+                                ],
+                                "retention": "record"
+                              }
+                            }
+                          },
+                          "required": [
+                            "url"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "fromEnv": {
+                              "type": "string",
+                              "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,199}$",
+                              "description": "The environment variable that holds the value.",
+                              "x-ichnaea-data": {
+                                "class": "none",
+                                "identifier": "none",
+                                "egress": [
+                                  "*"
+                                ],
+                                "retention": "record"
+                              }
+                            }
+                          },
+                          "required": [
+                            "fromEnv"
+                          ],
+                          "description": "A URL that the environment holds, such as a presigned URL."
+                        }
+                      ],
+                      "description": "Where to fetch the file."
+                    },
+                    "digest": {
+                      "type": "string",
+                      "pattern": "^sha256:[0-9a-f]{64}$",
+                      "description": "The digest that the fetched file must have.",
+                      "x-ichnaea-data": {
+                        "class": "none",
+                        "identifier": "none",
+                        "egress": [
+                          "*"
+                        ],
+                        "retention": "record"
+                      }
+                    }
+                  },
+                  "required": [
+                    "https",
+                    "digest"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "command": {
+                      "minItems": 1,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "description": "The command that fetches the files, run with the user's tools.",
+                      "x-ichnaea-data": {
+                        "class": "none",
+                        "identifier": "none",
+                        "egress": [
+                          "*"
+                        ],
+                        "retention": "record"
+                      }
+                    },
+                    "output": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "The directory or file that the command writes.",
+                      "x-ichnaea-data": {
+                        "class": "none",
+                        "identifier": "none",
+                        "egress": [
+                          "*"
+                        ],
+                        "retention": "record"
+                      }
+                    },
+                    "env": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,199}$"
+                      },
+                      "description": "The environment variables that the command may read.",
+                      "x-ichnaea-data": {
+                        "class": "none",
+                        "identifier": "none",
+                        "egress": [
+                          "*"
+                        ],
+                        "retention": "record"
+                      }
+                    }
+                  },
+                  "required": [
+                    "command",
+                    "output"
+                  ]
+                }
+              ],
+              "description": "One source of the case files."
+            },
+            "exposure": {
+              "type": "string",
+              "description": "Who may see the cases' content. A missing exposure counts as private.",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              },
+              "x-ichnaea-known": [
+                "public",
+                "private",
+                "sealed"
+              ]
+            },
+            "pools": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "x-ichnaea-known": [
+                  "development",
+                  "validation",
+                  "sealed",
+                  "promoted"
+                ]
+              },
+              "additionalProperties": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "For each pool, the label that marks its cases, for example development: dev.",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "frame": {
+              "type": "object",
+              "properties": {
+                "population": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "The population that the cases were drawn from.",
+                  "x-ichnaea-data": {
+                    "class": "none",
+                    "identifier": "none",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "record"
+                  }
+                },
+                "drawnBy": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "How the cases were drawn.",
+                  "x-ichnaea-data": {
+                    "class": "none",
+                    "identifier": "none",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "record"
+                  }
+                },
+                "date": {
+                  "type": "string",
+                  "format": "date",
+                  "pattern": "^(?:(?:[0-9][0-9][2468][048]|[0-9][0-9][13579][26]|[0-9][0-9]0[48]|[02468][048]00|[13579][26]00)-02-29|[0-9]{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12][0-9]|3[01])|(?:0[469]|11)-(?:0[1-9]|[12][0-9]|30)|(?:02)-(?:0[1-9]|1[0-9]|2[0-8])))$",
+                  "description": "When the cases were drawn.",
+                  "x-ichnaea-data": {
+                    "class": "none",
+                    "identifier": "none",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "record"
+                  }
+                }
+              },
+              "required": [
+                "population",
+                "drawnBy",
+                "date"
+              ]
+            }
+          },
+          "required": [
+            "source"
+          ]
+        }
+      ],
+      "description": "Where the cases come from."
+    },
+    "worker": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$",
+          "description": "A worker from the project config.",
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          }
+        },
+        {
+          "type": "object",
+          "properties": {
+            "command": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "The command that starts the worker, run in the arm's directory.",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "prepare": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "A command that each arm runs in its own directory before its worker starts.",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "env": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,199}$",
+                    "description": "The variable's name.",
+                    "x-ichnaea-data": {
+                      "class": "none",
+                      "identifier": "none",
+                      "egress": [
+                        "*"
+                      ],
+                      "retention": "record"
+                    }
+                  },
+                  "secret": {
+                    "type": "boolean",
+                    "description": "Whether the value is a secret, which Ichnaea scrubs from what it writes.",
+                    "x-ichnaea-data": {
+                      "class": "none",
+                      "identifier": "none",
+                      "egress": [
+                        "*"
+                      ],
+                      "retention": "record"
+                    }
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              },
+              "description": "The environment variables that the worker may read."
+            },
+            "envFile": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A file of secrets to load. Only the variables listed in env pass.",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "endpoints": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$"
+              },
+              "description": "The endpoints from the project config that the worker calls.",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "capacity": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991,
+              "description": "How many trials one worker process takes at a time. Default 1.",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "processes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991,
+              "description": "How many worker processes run. Default 1.",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "startTimeout": {
+              "type": "string",
+              "pattern": "^P(?:(?:[0-9]+Y(?:[0-9]+M)?(?:[0-9]+D)?|[0-9]+M(?:[0-9]+D)?|[0-9]+D)(?:T(?:[0-9]+H(?:[0-9]+M)?(?:[0-9]+S)?|[0-9]+M(?:[0-9]+S)?|[0-9]+S))?|T(?:[0-9]+H(?:[0-9]+M)?(?:[0-9]+S)?|[0-9]+M(?:[0-9]+S)?|[0-9]+S))$",
+              "description": "How long a worker may take to be ready. Default PT10M.",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            }
+          },
+          "required": [
+            "command"
+          ]
+        }
+      ],
+      "description": "The worker that runs the system: a name from the project config, or one written here."
+    },
+    "import": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "command": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "A command that writes the import batch.",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            }
+          },
+          "required": [
+            "command"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "module": {
+              "type": "string",
+              "minLength": 1,
+              "description": "A module that writes the import batch.",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            }
+          },
+          "required": [
+            "module"
+          ]
+        }
+      ],
+      "description": "The other runner whose results this suite imports."
+    },
+    "configuration": {
+      "type": "object",
+      "properties": {
+        "record": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "The fields of the arm configuration file that the record keeps.",
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          }
+        }
+      },
+      "required": [
+        "record"
+      ],
+      "description": "What the arm configuration record keeps beside the file's digest."
+    },
+    "stages": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$"
+      },
+      "description": "The stage IDs, in order.",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
+      }
+    },
+    "entry": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$",
+      "description": "The stage where a stage suite starts.",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
+      }
+    },
+    "environment": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$"
+      },
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "object",
+                "properties": {
+                  "fromEnv": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,199}$",
+                    "description": "The environment variable that holds the value.",
+                    "x-ichnaea-data": {
+                      "class": "none",
+                      "identifier": "none",
+                      "egress": [
+                        "*"
+                      ],
+                      "retention": "record"
+                    }
+                  }
+                },
+                "required": [
+                  "fromEnv"
+                ],
+                "description": "A path that the environment holds. Ichnaea computes its digest."
+              },
+              "class": {
+                "type": "string",
+                "description": "The data class of what the factor holds.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                },
+                "x-ichnaea-known": [
+                  "none",
+                  "pseudonymous",
+                  "personal",
+                  "special"
+                ]
+              },
+              "exposure": {
+                "type": "string",
+                "description": "Who may see what the factor holds. A missing exposure counts as private.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                },
+                "x-ichnaea-known": [
+                  "public",
+                  "private",
+                  "sealed"
+                ]
+              }
+            },
+            "required": [
+              "path"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "service": {
+                "type": "object",
+                "properties": {
+                  "fromEnv": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,199}$",
+                    "description": "The environment variable that holds the value.",
+                    "x-ichnaea-data": {
+                      "class": "none",
+                      "identifier": "none",
+                      "egress": [
+                        "*"
+                      ],
+                      "retention": "record"
+                    }
+                  }
+                },
+                "required": [
+                  "fromEnv"
+                ],
+                "description": "A service URL that the environment holds."
+              },
+              "identity": {
+                "type": "string",
+                "minLength": 1,
+                "description": "The name under which the worker reports the service's snapshot ID.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              },
+              "class": {
+                "type": "string",
+                "description": "The data class of what the factor holds.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                },
+                "x-ichnaea-known": [
+                  "none",
+                  "pseudonymous",
+                  "personal",
+                  "special"
+                ]
+              },
+              "exposure": {
+                "type": "string",
+                "description": "Who may see what the factor holds. A missing exposure counts as private.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                },
+                "x-ichnaea-known": [
+                  "public",
+                  "private",
+                  "sealed"
+                ]
+              }
+            },
+            "required": [
+              "service",
+              "identity"
+            ]
+          }
+        ]
+      },
+      "description": "The environment factors that the system reads."
+    },
+    "instruments": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "command": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "The command that starts the scorer.",
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
+            }
+          },
+          "prepare": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "A command that runs in the copy before the scorer starts.",
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
+            }
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Globs over tracked files that make up the instrument; pinned by digest.",
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
+            }
+          },
+          "exclude": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Globs of artifact files that the scorer's copy leaves out.",
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
+            }
+          },
+          "image": {
+            "type": "string",
+            "minLength": 1,
+            "description": "A grading image. The lock pins its registry digest.",
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
+            }
+          },
+          "judge": {
+            "type": "object",
+            "properties": {
+              "model": {
+                "type": "string",
+                "minLength": 1,
+                "description": "The model, with its revision.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              },
+              "prompt": {
+                "type": "string",
+                "minLength": 1,
+                "description": "The prompt file.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              },
+              "rubric": {
+                "type": "string",
+                "minLength": 1,
+                "description": "The rubric file.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              },
+              "temperature": {
+                "type": "number",
+                "minimum": 0,
+                "description": "The sampling temperature.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              }
+            },
+            "required": [
+              "model",
+              "prompt",
+              "rubric"
+            ],
+            "description": "The model identity, when the instrument is a model judge."
+          },
+          "models": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "The model's name.",
+                  "x-ichnaea-data": {
+                    "class": "none",
+                    "identifier": "none",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "record"
+                  }
+                },
+                "revision": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "The revision that the instrument downloads.",
+                  "x-ichnaea-data": {
+                    "class": "none",
+                    "identifier": "none",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "record"
+                  }
+                }
+              },
+              "required": [
+                "name",
+                "revision"
+              ]
+            },
+            "description": "The models that the instrument downloads at run time."
+          },
+          "env": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,199}$",
+                  "description": "The variable's name.",
+                  "x-ichnaea-data": {
+                    "class": "none",
+                    "identifier": "none",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "record"
+                  }
+                },
+                "secret": {
+                  "type": "boolean",
+                  "description": "Whether the value is a secret, which Ichnaea scrubs from what it writes.",
+                  "x-ichnaea-data": {
+                    "class": "none",
+                    "identifier": "none",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "record"
+                  }
+                }
+              },
+              "required": [
+                "name"
+              ]
+            },
+            "description": "The environment variables that the scorer may read."
+          },
+          "endpoints": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$"
+            },
+            "description": "The endpoints from the project config that the scorer calls.",
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
+            }
+          },
+          "imported": {
+            "type": "object",
+            "properties": {
+              "version": {
+                "type": "string",
+                "minLength": 1,
+                "description": "The version of the other runner's instrument.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              },
+              "digest": {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$",
+                "description": "The digest of the other runner's instrument.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              }
+            },
+            "required": [
+              "version",
+              "digest"
+            ],
+            "description": "An instrument of another runner, whose values arrive by import."
+          },
+          "deadline": {
+            "type": "string",
+            "pattern": "^P(?:(?:[0-9]+Y(?:[0-9]+M)?(?:[0-9]+D)?|[0-9]+M(?:[0-9]+D)?|[0-9]+D)(?:T(?:[0-9]+H(?:[0-9]+M)?(?:[0-9]+S)?|[0-9]+M(?:[0-9]+S)?|[0-9]+S))?|T(?:[0-9]+H(?:[0-9]+M)?(?:[0-9]+S)?|[0-9]+M(?:[0-9]+S)?|[0-9]+S))$",
+            "description": "The time bound of one score request.",
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
+            }
+          }
+        }
+      },
+      "description": "The instruments, always the base's."
+    },
+    "measures": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$"
+      },
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "binary",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              },
+              "stage": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$",
+                "description": "The stage whose status or output the measure reads.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              },
+              "status": {
+                "type": "string",
+                "description": "For a stage status measure, the status that counts as true.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                },
+                "x-ichnaea-known": [
+                  "ok",
+                  "not_invoked",
+                  "failed",
+                  "skipped",
+                  "replayed"
+                ]
+              },
+              "iteration": {
+                "type": "string",
+                "description": "The iteration of the stage that the measure reads. Default last.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                },
+                "x-ichnaea-known": [
+                  "last",
+                  "first",
+                  "any",
+                  "all"
+                ]
+              },
+              "scorer": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "builtin": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$",
+                        "description": "The built-in scorer, such as ndcg or links-grounded.",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      },
+                      "options": {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$"
+                        },
+                        "additionalProperties": {
+                          "$ref": "#/$defs/JsonValue"
+                        },
+                        "description": "The built-in scorer's options, such as k for ndcg.",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      }
+                    },
+                    "required": [
+                      "builtin"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "instrument": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$",
+                        "description": "The instrument that exports the function.",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      },
+                      "module": {
+                        "type": "string",
+                        "pattern": "^(?:[A-Za-z0-9_@+-][A-Za-z0-9._@+-]*\\/)*[A-Za-z0-9_@+-][A-Za-z0-9._@+-]*\\.(?:ts|mts|js|mjs)$",
+                        "description": "The module, relative to the instrument's files.",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      },
+                      "export": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "The exported function's name.",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      }
+                    },
+                    "required": [
+                      "instrument",
+                      "module",
+                      "export"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "instrument": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$",
+                        "description": "The instrument that scores the measure.",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      },
+                      "dimension": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "The dimension of the instrument's report that the measure reads.",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      }
+                    },
+                    "required": [
+                      "instrument",
+                      "dimension"
+                    ]
+                  }
+                ],
+                "description": "What computes the measure."
+              },
+              "appliesTo": {
+                "type": "object",
+                "properties": {
+                  "slice": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The slice that a case must have.",
+                    "x-ichnaea-data": {
+                      "class": "none",
+                      "identifier": "none",
+                      "egress": [
+                        "*"
+                      ],
+                      "retention": "record"
+                    }
+                  }
+                },
+                "required": [
+                  "slice"
+                ]
+              },
+              "direction": {
+                "type": "string",
+                "description": "Which way is better.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                },
+                "x-ichnaea-known": [
+                  "higher",
+                  "lower"
+                ]
+              },
+              "reduce": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "all": {
+                        "type": "object",
+                        "properties": {
+                          "k": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 9007199254740991,
+                            "description": "k.",
+                            "x-ichnaea-data": {
+                              "class": "none",
+                              "identifier": "none",
+                              "egress": [
+                                "*"
+                              ],
+                              "retention": "record"
+                            }
+                          }
+                        },
+                        "required": [
+                          "k"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "all"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "any": {
+                        "type": "object",
+                        "properties": {
+                          "k": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 9007199254740991,
+                            "description": "k.",
+                            "x-ichnaea-data": {
+                              "class": "none",
+                              "identifier": "none",
+                              "egress": [
+                                "*"
+                              ],
+                              "retention": "record"
+                            }
+                          }
+                        },
+                        "required": [
+                          "k"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "any"
+                    ]
+                  }
+                ]
+              },
+              "estimand": {
+                "type": "string",
+                "description": "What an estimate is about. Default these-cases.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                },
+                "x-ichnaea-known": [
+                  "these-cases",
+                  "population"
+                ]
+              },
+              "weighting": {
+                "type": "string",
+                "description": "How cases weigh in an estimate. Default per-case.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                },
+                "x-ichnaea-known": [
+                  "per-case",
+                  "per-family"
+                ]
+              },
+              "gate": {
+                "type": "boolean",
+                "description": "A hard gate. It needs deterministic: true on the same measure.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              },
+              "deterministic": {
+                "type": "boolean",
+                "description": "Every trial of a case in an arm gives the same value.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "score",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              },
+              "stage": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$",
+                "description": "The stage whose status or output the measure reads.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              },
+              "status": {
+                "type": "string",
+                "description": "For a stage status measure, the status that counts as true.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                },
+                "x-ichnaea-known": [
+                  "ok",
+                  "not_invoked",
+                  "failed",
+                  "skipped",
+                  "replayed"
+                ]
+              },
+              "iteration": {
+                "type": "string",
+                "description": "The iteration of the stage that the measure reads. Default last.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                },
+                "x-ichnaea-known": [
+                  "last",
+                  "first",
+                  "any",
+                  "all"
+                ]
+              },
+              "scorer": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "builtin": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$",
+                        "description": "The built-in scorer, such as ndcg or links-grounded.",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      },
+                      "options": {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$"
+                        },
+                        "additionalProperties": {
+                          "$ref": "#/$defs/JsonValue"
+                        },
+                        "description": "The built-in scorer's options, such as k for ndcg.",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      }
+                    },
+                    "required": [
+                      "builtin"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "instrument": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$",
+                        "description": "The instrument that exports the function.",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      },
+                      "module": {
+                        "type": "string",
+                        "pattern": "^(?:[A-Za-z0-9_@+-][A-Za-z0-9._@+-]*\\/)*[A-Za-z0-9_@+-][A-Za-z0-9._@+-]*\\.(?:ts|mts|js|mjs)$",
+                        "description": "The module, relative to the instrument's files.",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      },
+                      "export": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "The exported function's name.",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      }
+                    },
+                    "required": [
+                      "instrument",
+                      "module",
+                      "export"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "instrument": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$",
+                        "description": "The instrument that scores the measure.",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      },
+                      "dimension": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "The dimension of the instrument's report that the measure reads.",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      }
+                    },
+                    "required": [
+                      "instrument",
+                      "dimension"
+                    ]
+                  }
+                ],
+                "description": "What computes the measure."
+              },
+              "appliesTo": {
+                "type": "object",
+                "properties": {
+                  "slice": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The slice that a case must have.",
+                    "x-ichnaea-data": {
+                      "class": "none",
+                      "identifier": "none",
+                      "egress": [
+                        "*"
+                      ],
+                      "retention": "record"
+                    }
+                  }
+                },
+                "required": [
+                  "slice"
+                ]
+              },
+              "direction": {
+                "type": "string",
+                "description": "Which way is better.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                },
+                "x-ichnaea-known": [
+                  "higher",
+                  "lower"
+                ]
+              },
+              "reduce": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "all": {
+                        "type": "object",
+                        "properties": {
+                          "k": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 9007199254740991,
+                            "description": "k.",
+                            "x-ichnaea-data": {
+                              "class": "none",
+                              "identifier": "none",
+                              "egress": [
+                                "*"
+                              ],
+                              "retention": "record"
+                            }
+                          }
+                        },
+                        "required": [
+                          "k"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "all"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "any": {
+                        "type": "object",
+                        "properties": {
+                          "k": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 9007199254740991,
+                            "description": "k.",
+                            "x-ichnaea-data": {
+                              "class": "none",
+                              "identifier": "none",
+                              "egress": [
+                                "*"
+                              ],
+                              "retention": "record"
+                            }
+                          }
+                        },
+                        "required": [
+                          "k"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "any"
+                    ]
+                  }
+                ]
+              },
+              "estimand": {
+                "type": "string",
+                "description": "What an estimate is about. Default these-cases.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                },
+                "x-ichnaea-known": [
+                  "these-cases",
+                  "population"
+                ]
+              },
+              "weighting": {
+                "type": "string",
+                "description": "How cases weigh in an estimate. Default per-case.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                },
+                "x-ichnaea-known": [
+                  "per-case",
+                  "per-family"
+                ]
+              },
+              "gate": {
+                "type": "boolean",
+                "description": "A hard gate. It needs deterministic: true on the same measure.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              },
+              "deterministic": {
+                "type": "boolean",
+                "description": "Every trial of a case in an arm gives the same value.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "level",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              },
+              "stage": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$",
+                "description": "The stage whose status or output the measure reads.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              },
+              "status": {
+                "type": "string",
+                "description": "For a stage status measure, the status that counts as true.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                },
+                "x-ichnaea-known": [
+                  "ok",
+                  "not_invoked",
+                  "failed",
+                  "skipped",
+                  "replayed"
+                ]
+              },
+              "iteration": {
+                "type": "string",
+                "description": "The iteration of the stage that the measure reads. Default last.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                },
+                "x-ichnaea-known": [
+                  "last",
+                  "first",
+                  "any",
+                  "all"
+                ]
+              },
+              "scorer": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "builtin": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$",
+                        "description": "The built-in scorer, such as ndcg or links-grounded.",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      },
+                      "options": {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$"
+                        },
+                        "additionalProperties": {
+                          "$ref": "#/$defs/JsonValue"
+                        },
+                        "description": "The built-in scorer's options, such as k for ndcg.",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      }
+                    },
+                    "required": [
+                      "builtin"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "instrument": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$",
+                        "description": "The instrument that exports the function.",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      },
+                      "module": {
+                        "type": "string",
+                        "pattern": "^(?:[A-Za-z0-9_@+-][A-Za-z0-9._@+-]*\\/)*[A-Za-z0-9_@+-][A-Za-z0-9._@+-]*\\.(?:ts|mts|js|mjs)$",
+                        "description": "The module, relative to the instrument's files.",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      },
+                      "export": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "The exported function's name.",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      }
+                    },
+                    "required": [
+                      "instrument",
+                      "module",
+                      "export"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "instrument": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$",
+                        "description": "The instrument that scores the measure.",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      },
+                      "dimension": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "The dimension of the instrument's report that the measure reads.",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      }
+                    },
+                    "required": [
+                      "instrument",
+                      "dimension"
+                    ]
+                  }
+                ],
+                "description": "What computes the measure."
+              },
+              "appliesTo": {
+                "type": "object",
+                "properties": {
+                  "slice": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The slice that a case must have.",
+                    "x-ichnaea-data": {
+                      "class": "none",
+                      "identifier": "none",
+                      "egress": [
+                        "*"
+                      ],
+                      "retention": "record"
+                    }
+                  }
+                },
+                "required": [
+                  "slice"
+                ]
+              },
+              "direction": {
+                "type": "string",
+                "description": "Which way is better.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                },
+                "x-ichnaea-known": [
+                  "higher",
+                  "lower"
+                ]
+              },
+              "reduce": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "all": {
+                        "type": "object",
+                        "properties": {
+                          "k": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 9007199254740991,
+                            "description": "k.",
+                            "x-ichnaea-data": {
+                              "class": "none",
+                              "identifier": "none",
+                              "egress": [
+                                "*"
+                              ],
+                              "retention": "record"
+                            }
+                          }
+                        },
+                        "required": [
+                          "k"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "all"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "any": {
+                        "type": "object",
+                        "properties": {
+                          "k": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 9007199254740991,
+                            "description": "k.",
+                            "x-ichnaea-data": {
+                              "class": "none",
+                              "identifier": "none",
+                              "egress": [
+                                "*"
+                              ],
+                              "retention": "record"
+                            }
+                          }
+                        },
+                        "required": [
+                          "k"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "any"
+                    ]
+                  }
+                ]
+              },
+              "estimand": {
+                "type": "string",
+                "description": "What an estimate is about. Default these-cases.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                },
+                "x-ichnaea-known": [
+                  "these-cases",
+                  "population"
+                ]
+              },
+              "weighting": {
+                "type": "string",
+                "description": "How cases weigh in an estimate. Default per-case.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                },
+                "x-ichnaea-known": [
+                  "per-case",
+                  "per-family"
+                ]
+              },
+              "gate": {
+                "type": "boolean",
+                "description": "A hard gate. It needs deterministic: true on the same measure.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              },
+              "deterministic": {
+                "type": "boolean",
+                "description": "Every trial of a case in an arm gives the same value.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "quantity",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              },
+              "unit": {
+                "type": "string",
+                "minLength": 1,
+                "description": "The unit, such as ms.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              },
+              "stage": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$",
+                "description": "The stage whose status or output the measure reads.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              },
+              "status": {
+                "type": "string",
+                "description": "For a stage status measure, the status that counts as true.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                },
+                "x-ichnaea-known": [
+                  "ok",
+                  "not_invoked",
+                  "failed",
+                  "skipped",
+                  "replayed"
+                ]
+              },
+              "iteration": {
+                "type": "string",
+                "description": "The iteration of the stage that the measure reads. Default last.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                },
+                "x-ichnaea-known": [
+                  "last",
+                  "first",
+                  "any",
+                  "all"
+                ]
+              },
+              "scorer": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "builtin": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$",
+                        "description": "The built-in scorer, such as ndcg or links-grounded.",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      },
+                      "options": {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$"
+                        },
+                        "additionalProperties": {
+                          "$ref": "#/$defs/JsonValue"
+                        },
+                        "description": "The built-in scorer's options, such as k for ndcg.",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      }
+                    },
+                    "required": [
+                      "builtin"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "instrument": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$",
+                        "description": "The instrument that exports the function.",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      },
+                      "module": {
+                        "type": "string",
+                        "pattern": "^(?:[A-Za-z0-9_@+-][A-Za-z0-9._@+-]*\\/)*[A-Za-z0-9_@+-][A-Za-z0-9._@+-]*\\.(?:ts|mts|js|mjs)$",
+                        "description": "The module, relative to the instrument's files.",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      },
+                      "export": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "The exported function's name.",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      }
+                    },
+                    "required": [
+                      "instrument",
+                      "module",
+                      "export"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "instrument": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$",
+                        "description": "The instrument that scores the measure.",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      },
+                      "dimension": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "The dimension of the instrument's report that the measure reads.",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      }
+                    },
+                    "required": [
+                      "instrument",
+                      "dimension"
+                    ]
+                  }
+                ],
+                "description": "What computes the measure."
+              },
+              "appliesTo": {
+                "type": "object",
+                "properties": {
+                  "slice": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The slice that a case must have.",
+                    "x-ichnaea-data": {
+                      "class": "none",
+                      "identifier": "none",
+                      "egress": [
+                        "*"
+                      ],
+                      "retention": "record"
+                    }
+                  }
+                },
+                "required": [
+                  "slice"
+                ]
+              },
+              "direction": {
+                "type": "string",
+                "description": "Which way is better.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                },
+                "x-ichnaea-known": [
+                  "higher",
+                  "lower"
+                ]
+              },
+              "reduce": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "all": {
+                        "type": "object",
+                        "properties": {
+                          "k": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 9007199254740991,
+                            "description": "k.",
+                            "x-ichnaea-data": {
+                              "class": "none",
+                              "identifier": "none",
+                              "egress": [
+                                "*"
+                              ],
+                              "retention": "record"
+                            }
+                          }
+                        },
+                        "required": [
+                          "k"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "all"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "any": {
+                        "type": "object",
+                        "properties": {
+                          "k": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 9007199254740991,
+                            "description": "k.",
+                            "x-ichnaea-data": {
+                              "class": "none",
+                              "identifier": "none",
+                              "egress": [
+                                "*"
+                              ],
+                              "retention": "record"
+                            }
+                          }
+                        },
+                        "required": [
+                          "k"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "any"
+                    ]
+                  }
+                ]
+              },
+              "estimand": {
+                "type": "string",
+                "description": "What an estimate is about. Default these-cases.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                },
+                "x-ichnaea-known": [
+                  "these-cases",
+                  "population"
+                ]
+              },
+              "weighting": {
+                "type": "string",
+                "description": "How cases weigh in an estimate. Default per-case.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                },
+                "x-ichnaea-known": [
+                  "per-case",
+                  "per-family"
+                ]
+              },
+              "gate": {
+                "type": "boolean",
+                "description": "A hard gate. It needs deterministic: true on the same measure.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              },
+              "deterministic": {
+                "type": "boolean",
+                "description": "Every trial of a case in an arm gives the same value.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              }
+            },
+            "required": [
+              "type",
+              "unit"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "pattern": "^(?!(?:binary|score|level|quantity)$)"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "x-ichnaea-unknown-kind": true
+          }
+        ]
+      },
+      "description": "The measures, by ID."
+    },
+    "policy": {
+      "type": "object",
+      "properties": {
+        "primary": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "limit": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1,
+                "description": "The largest drop that the owner accepts. It applies to Pass.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              },
+              "owner": {
+                "type": "string",
+                "minLength": 1,
+                "description": "The role that owns the limit.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Why the limit has this value.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              }
+            },
+            "required": [
+              "limit",
+              "owner",
+              "reason"
+            ]
+          },
+          "description": "The measures that decide, each with its registered limit."
+        },
+        "secondary": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$"
+          },
+          "description": "Measures reported beside the verdict.",
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          }
+        },
+        "diagnostic": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$"
+          },
+          "description": "Measures that only explain.",
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          }
+        }
+      },
+      "required": [
+        "primary"
+      ]
+    },
+    "profiles": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "trials": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Trials per case per version.",
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
+            }
+          },
+          "mode": {
+            "type": "string",
+            "description": "fast or confirm.",
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
+            },
+            "x-ichnaea-known": [
+              "fast",
+              "confirm"
+            ]
+          },
+          "pool": {
+            "type": "string",
+            "description": "The pool that the profile runs.",
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
+            },
+            "x-ichnaea-known": [
+              "development",
+              "validation",
+              "sealed",
+              "promoted"
+            ]
+          },
+          "cases": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "A subset of this many cases.",
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
+            }
+          },
+          "budget": {
+            "type": "object",
+            "properties": {
+              "calls": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "The most system calls in a run.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              },
+              "callsPerTrial": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991,
+                "description": "The most system calls in one trial.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              },
+              "rejectedPerTrial": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "The most calls that the provider may reject in one trial attempt.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              },
+              "judgeCalls": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "The most judge calls in a run.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              },
+              "costMicros": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "The most cost in a run, in millionths of the currency unit.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              }
+            }
+          },
+          "shards": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "How many shards the run is split into.",
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
+            }
+          }
+        }
+      },
+      "description": "The named run settings."
+    },
+    "budget": {
+      "type": "object",
+      "properties": {
+        "calls": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991,
+          "description": "The most system calls in a run.",
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          }
+        },
+        "callsPerTrial": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991,
+          "description": "The most system calls in one trial.",
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          }
+        },
+        "rejectedPerTrial": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991,
+          "description": "The most calls that the provider may reject in one trial attempt.",
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          }
+        },
+        "judgeCalls": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991,
+          "description": "The most judge calls in a run.",
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          }
+        },
+        "costMicros": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991,
+          "description": "The most cost in a run, in millionths of the currency unit.",
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          }
+        }
+      },
+      "required": [
+        "calls",
+        "callsPerTrial"
+      ]
+    },
+    "limits": {
+      "type": "object",
+      "properties": {
+        "artifactBytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991,
+          "description": "The largest artifact of a trial, in bytes.",
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          }
+        },
+        "outputBytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991,
+          "description": "The largest output of a trial, in bytes.",
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          }
+        },
+        "trialDeadline": {
+          "type": "string",
+          "pattern": "^P(?:(?:[0-9]+Y(?:[0-9]+M)?(?:[0-9]+D)?|[0-9]+M(?:[0-9]+D)?|[0-9]+D)(?:T(?:[0-9]+H(?:[0-9]+M)?(?:[0-9]+S)?|[0-9]+M(?:[0-9]+S)?|[0-9]+S))?|T(?:[0-9]+H(?:[0-9]+M)?(?:[0-9]+S)?|[0-9]+M(?:[0-9]+S)?|[0-9]+S))$",
+          "description": "The time bound of one trial, net of throttle waits.",
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          }
+        },
+        "wallClockMax": {
+          "type": "string",
+          "pattern": "^P(?:(?:[0-9]+Y(?:[0-9]+M)?(?:[0-9]+D)?|[0-9]+M(?:[0-9]+D)?|[0-9]+D)(?:T(?:[0-9]+H(?:[0-9]+M)?(?:[0-9]+S)?|[0-9]+M(?:[0-9]+S)?|[0-9]+S))?|T(?:[0-9]+H(?:[0-9]+M)?(?:[0-9]+S)?|[0-9]+M(?:[0-9]+S)?|[0-9]+S))$",
+          "description": "The wall-clock cap of one trial attempt, throttle waits included.",
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          }
+        },
+        "missingMax": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "The largest share of an arm's planned trials that may be missing.",
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          }
+        },
+        "throttleMax": {
+          "type": "string",
+          "pattern": "^P(?:(?:[0-9]+Y(?:[0-9]+M)?(?:[0-9]+D)?|[0-9]+M(?:[0-9]+D)?|[0-9]+D)(?:T(?:[0-9]+H(?:[0-9]+M)?(?:[0-9]+S)?|[0-9]+M(?:[0-9]+S)?|[0-9]+S))?|T(?:[0-9]+H(?:[0-9]+M)?(?:[0-9]+S)?|[0-9]+M(?:[0-9]+S)?|[0-9]+S))$",
+          "description": "How long one call may wait to get through before the trial stops.",
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          }
+        }
+      }
+    },
+    "baselines": {
+      "type": "object",
+      "properties": {
+        "freshness": {
+          "type": "string",
+          "pattern": "^P(?:(?:[0-9]+Y(?:[0-9]+M)?(?:[0-9]+D)?|[0-9]+M(?:[0-9]+D)?|[0-9]+D)(?:T(?:[0-9]+H(?:[0-9]+M)?(?:[0-9]+S)?|[0-9]+M(?:[0-9]+S)?|[0-9]+S))?|T(?:[0-9]+H(?:[0-9]+M)?(?:[0-9]+S)?|[0-9]+M(?:[0-9]+S)?|[0-9]+S))$",
+          "description": "The oldest stored baseline to use. Only lower than the project's.",
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          }
+        }
+      },
+      "description": "How old a stored baseline may be for this suite."
+    },
+    "stopReasons": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "type": "string",
+            "description": "The class of the reason.",
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
+            },
+            "x-ichnaea-known": [
+              "completed",
+              "infrastructure",
+              "system",
+              "not_invoked"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "class": {
+                "type": "string",
+                "description": "The class of the reason.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                },
+                "x-ichnaea-known": [
+                  "completed",
+                  "infrastructure",
+                  "system",
+                  "not_invoked"
+                ]
+              },
+              "selfVerdict": {
+                "type": "boolean",
+                "description": "The reason reports the system's own verdict on its output.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              }
+            },
+            "required": [
+              "class",
+              "selfVerdict"
+            ]
+          }
+        ]
+      },
+      "description": "Each raw stop reason's class. An unmapped reason counts as system."
+    },
+    "attribute": {
+      "type": "object",
+      "properties": {
+        "fidelityMargin": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "The margin of the fidelity test when a stage is attributed.",
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          }
+        }
+      },
+      "description": "Settings for attributing a change to a stage."
+    },
+    "deterministic": {
+      "type": "boolean",
+      "description": "The system is declared deterministic. Default false.",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
+      }
+    }
+  },
+  "required": [
+    "schema",
+    "id",
+    "about",
+    "cases",
+    "measures",
+    "policy",
+    "budget"
+  ],
+  "$defs": {
+    "JsonValue": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/JsonValue"
+          }
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          }
+        }
+      ]
+    }
+  }
+}

@@ -30,6 +30,11 @@ export const Agreement: z.ZodObject<{
 export const ANY_PURPOSE: "*";
 
 // @public
+export const AppliesTo: z.ZodObject<{
+    slice: z.ZodString;
+}, z.core.$strict>;
+
+// @public
 export const Arm: z.ZodObject<{
     name: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
     role: z.ZodEnum<{
@@ -189,6 +194,30 @@ export const Availability: z.ZodObject<{
     notApplicable: z.ZodInt;
     missing: z.ZodInt;
 }, z.core.$strict>;
+
+// @public
+export const Baselines: z.ZodObject<{
+    from: z.ZodOptional<z.ZodXor<readonly [z.ZodLiteral<"store">, z.ZodObject<{
+        githubArtifact: z.ZodObject<{
+            workflow: z.ZodString;
+            branch: z.ZodString;
+        }, z.core.$strict>;
+    }, z.core.$strict>]>>;
+    freshness: z.ZodOptional<z.ZodString>;
+    maxFreshness: z.ZodOptional<z.ZodString>;
+    sentinel: z.ZodOptional<z.ZodObject<{
+        share: z.ZodOptional<z.ZodNumber>;
+        min: z.ZodOptional<z.ZodInt>;
+    }, z.core.$strict>>;
+}, z.core.$strict>;
+
+// @public
+export const BaselineSource: z.ZodXor<readonly [z.ZodLiteral<"store">, z.ZodObject<{
+    githubArtifact: z.ZodObject<{
+        workflow: z.ZodString;
+        branch: z.ZodString;
+    }, z.core.$strict>;
+}, z.core.$strict>]>;
 
 // @public
 export const Budget: z.ZodObject<{
@@ -647,7 +676,30 @@ export const CiPolicy: z.ZodObject<{
 export function classRank(dataClass: DataClass): number;
 
 // @public
+export const Clearance: z.ZodObject<{
+    maxExposure: z.ZodEnum<{
+        private: "private";
+        public: "public";
+        sealed: "sealed";
+    }>;
+    purpose: z.ZodString;
+    reason: z.ZodString;
+}, z.core.$strict>;
+
+// @public
 export const CLOSED_KEY: "x-ichnaea-closed";
+
+// @public
+export const Command: z.ZodArray<z.ZodString>;
+
+// @public
+export const CommitSha: z.ZodString;
+
+// @public
+export const CompareMode: z.ZodEnum<{
+    confirm: "confirm";
+    fast: "fast";
+}>;
 
 // @public
 export const Comparison: z.ZodObject<{
@@ -731,6 +783,12 @@ export const Comparison: z.ZodObject<{
         candidate: z.ZodNumber;
     }, z.core.$strict>>;
 }, z.core.$strict>;
+
+// @public
+export const ConfigName: z.ZodString;
+
+// @public
+export type ConfigName = z.infer<typeof ConfigName>;
 
 // @public
 export const Configuration: z.ZodObject<{
@@ -829,6 +887,16 @@ export type ConfigurationIdentity = z.infer<typeof ConfigurationIdentity>;
 export function configurationIdentity(input: unknown): ConfigurationIdentity;
 
 // @public
+export const ConfigurationV2: z.ZodObject<{
+    schema: z.ZodLiteral<"ichnaea.configuration/2">;
+    digest: z.ZodString;
+    fields: z.ZodRecord<z.ZodString, z.ZodJSONSchema>;
+}, z.core.$strict>;
+
+// @public
+export type ConfigurationV2 = z.infer<typeof ConfigurationV2>;
+
+// @public
 export function content<T extends z.ZodType>(schema: T): T;
 
 // @public
@@ -862,6 +930,34 @@ export interface DataPolicy {
     readonly identifier: IdentifierKind;
     readonly retention: RetentionRule;
 }
+
+// @public
+export const DatasetFile: z.ZodObject<{
+    dataset: z.ZodString;
+    path: z.ZodString;
+}, z.core.$strict>;
+
+// @public
+export const DataSource: z.ZodXor<readonly [z.ZodObject<{
+    file: z.ZodString;
+}, z.core.$strict>, z.ZodObject<{
+    git: z.ZodObject<{
+        repo: z.ZodString;
+        commit: z.ZodString;
+        path: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>;
+}, z.core.$strict>, z.ZodObject<{
+    https: z.ZodXor<readonly [z.ZodObject<{
+        url: z.ZodString;
+    }, z.core.$strict>, z.ZodObject<{
+        fromEnv: z.ZodString;
+    }, z.core.$strict>]>;
+    digest: z.ZodString;
+}, z.core.$strict>, z.ZodObject<{
+    command: z.ZodArray<z.ZodString>;
+    output: z.ZodString;
+    env: z.ZodOptional<z.ZodArray<z.ZodString>>;
+}, z.core.$strict>]>;
 
 // @public
 export const Decision: z.ZodObject<{
@@ -1208,6 +1304,22 @@ export const Decision: z.ZodObject<{
 export type Decision = z.infer<typeof Decision>;
 
 // @public
+export const DeliveryRoute: z.ZodObject<{
+    on: z.ZodEnum<{
+        attribute: "attribute";
+        calibrate: "calibrate";
+        compare: "compare";
+        estimate: "estimate";
+        monitor: "monitor";
+        "monitor.alert": "monitor.alert";
+        noise: "noise";
+    }>;
+    profile: z.ZodOptional<z.ZodString>;
+    to: z.ZodArray<z.ZodString>;
+    required: z.ZodOptional<z.ZodBoolean>;
+}, z.core.$strict>;
+
+// @public
 export const Digest: z.ZodString;
 
 // @public
@@ -1239,6 +1351,9 @@ export interface DigestRule {
 }
 
 // @public
+export const Duration: z.ZodString;
+
+// @public
 export interface EgressContext {
     readonly grants?: ReadonlyArray<{
         readonly path: string;
@@ -1253,6 +1368,58 @@ export interface EgressProjection {
     readonly dropped: readonly string[];
     readonly value: unknown;
 }
+
+// @public
+export const Endpoint: z.ZodObject<{
+    provider: z.ZodOptional<z.ZodString>;
+    region: z.ZodOptional<z.ZodString>;
+    concurrency: z.ZodOptional<z.ZodInt>;
+    requestsPerMinute: z.ZodOptional<z.ZodInt>;
+    tokensPerMinute: z.ZodOptional<z.ZodInt>;
+}, z.core.$strict>;
+
+// @public
+export const EnvEntry: z.ZodObject<{
+    name: z.ZodString;
+    secret: z.ZodOptional<z.ZodBoolean>;
+}, z.core.$strict>;
+
+// @public
+export const EnvironmentFactor: z.ZodXor<readonly [z.ZodObject<{
+    class: z.ZodOptional<z.ZodEnum<{
+        none: "none";
+        personal: "personal";
+        pseudonymous: "pseudonymous";
+        special: "special";
+    }>>;
+    exposure: z.ZodOptional<z.ZodEnum<{
+        private: "private";
+        public: "public";
+        sealed: "sealed";
+    }>>;
+    path: z.ZodObject<{
+        fromEnv: z.ZodString;
+    }, z.core.$strict>;
+}, z.core.$strict>, z.ZodObject<{
+    class: z.ZodOptional<z.ZodEnum<{
+        none: "none";
+        personal: "personal";
+        pseudonymous: "pseudonymous";
+        special: "special";
+    }>>;
+    exposure: z.ZodOptional<z.ZodEnum<{
+        private: "private";
+        public: "public";
+        sealed: "sealed";
+    }>>;
+    service: z.ZodObject<{
+        fromEnv: z.ZodString;
+    }, z.core.$strict>;
+    identity: z.ZodString;
+}, z.core.$strict>]>;
+
+// @public
+export const EnvName: z.ZodString;
 
 // @public
 export const Estimand: z.ZodEnum<{
@@ -1294,6 +1461,16 @@ export const Estimate: z.ZodObject<{
     }>;
     method: z.ZodString;
 }, z.core.$strict>;
+
+// @public
+export const Exposure: z.ZodEnum<{
+    private: "private";
+    public: "public";
+    sealed: "sealed";
+}>;
+
+// @public
+export type Exposure = z.infer<typeof Exposure>;
 
 // @public
 export const Factor: z.ZodObject<{
@@ -1408,6 +1585,11 @@ export const FORBIDDEN_CHECKS: readonly string[];
 export const FORBIDDEN_DEF_TYPES: readonly string[];
 
 // @public
+export const FromEnv: z.ZodObject<{
+    fromEnv: z.ZodString;
+}, z.core.$strict>;
+
+// @public
 export const GateId: z.core.$ZodBranded<z.ZodString, "GateId", "out">;
 
 // @public
@@ -1423,6 +1605,62 @@ export const GateResult: z.ZodObject<{
 
 // @public
 export type GateResult = z.infer<typeof GateResult>;
+
+// @public
+export const GitSource: z.ZodObject<{
+    git: z.ZodObject<{
+        repo: z.ZodString;
+        commit: z.ZodString;
+        path: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>;
+}, z.core.$strict>;
+
+// @public
+export const Governance: z.ZodObject<{
+    home: z.ZodObject<{
+        description: z.ZodString;
+    }, z.core.$strict>;
+    purposes: z.ZodRecord<z.ZodString, z.ZodObject<{
+        enabled: z.ZodBoolean;
+        basis: z.ZodEnum<{
+            consent: "consent";
+            "public-task": "public-task";
+        }>;
+        record: z.ZodString;
+    }, z.core.$strict>>;
+    endpoints: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
+        provider: z.ZodString;
+        region: z.ZodString;
+        purposes: z.ZodArray<z.ZodString>;
+        trainsOnInputs: z.ZodOptional<z.ZodBoolean>;
+    }, z.core.$strict>>>;
+    retention: z.ZodOptional<z.ZodObject<{
+        pseudonymous: z.ZodOptional<z.ZodString>;
+        personal: z.ZodOptional<z.ZodString>;
+        labels: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+    }, z.core.$strict>>;
+}, z.core.$strict>;
+
+// @public
+export const GovernedEndpoint: z.ZodObject<{
+    provider: z.ZodString;
+    region: z.ZodString;
+    purposes: z.ZodArray<z.ZodString>;
+    trainsOnInputs: z.ZodOptional<z.ZodBoolean>;
+}, z.core.$strict>;
+
+// @public
+export const HttpsSource: z.ZodObject<{
+    https: z.ZodXor<readonly [z.ZodObject<{
+        url: z.ZodString;
+    }, z.core.$strict>, z.ZodObject<{
+        fromEnv: z.ZodString;
+    }, z.core.$strict>]>;
+    digest: z.ZodString;
+}, z.core.$strict>;
+
+// @public
+export const HttpsUrl: z.ZodString;
 
 // @public
 export const IDENTIFIER_KINDS: readonly ["none", "direct", "quasi", "content"];
@@ -1442,6 +1680,55 @@ export const IdentityFactor: z.ZodObject<{
         declared: "declared";
         pinned: "pinned";
     }>;
+}, z.core.$strict>;
+
+// @public
+export const InstrumentPin: z.ZodObject<{
+    files: z.ZodOptional<z.ZodString>;
+    image: z.ZodOptional<z.ZodObject<{
+        reference: z.ZodString;
+        digest: z.ZodString;
+    }, z.core.$strict>>;
+    judge: z.ZodOptional<z.ZodObject<{
+        model: z.ZodString;
+        parameters: z.ZodRecord<z.ZodString, z.ZodJSONSchema>;
+        prompt: z.ZodString;
+        rubric: z.ZodString;
+        inputsDigest: z.ZodString;
+    }, z.core.$strict>>;
+    imported: z.ZodOptional<z.ZodObject<{
+        version: z.ZodString;
+        digest: z.ZodString;
+    }, z.core.$strict>>;
+}, z.core.$strict>;
+
+// @public
+export const InstrumentSettings: z.ZodObject<{
+    command: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    prepare: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    files: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    exclude: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    image: z.ZodOptional<z.ZodString>;
+    judge: z.ZodOptional<z.ZodObject<{
+        model: z.ZodString;
+        prompt: z.ZodString;
+        rubric: z.ZodString;
+        temperature: z.ZodOptional<z.ZodNumber>;
+    }, z.core.$strict>>;
+    models: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        name: z.ZodString;
+        revision: z.ZodString;
+    }, z.core.$strict>>>;
+    env: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        name: z.ZodString;
+        secret: z.ZodOptional<z.ZodBoolean>;
+    }, z.core.$strict>>>;
+    endpoints: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    imported: z.ZodOptional<z.ZodObject<{
+        version: z.ZodString;
+        digest: z.ZodString;
+    }, z.core.$strict>>;
+    deadline: z.ZodOptional<z.ZodString>;
 }, z.core.$strict>;
 
 // @public
@@ -1493,6 +1780,23 @@ export const JudgeId: z.core.$ZodBranded<z.ZodString, "JudgeId", "out">;
 
 // @public
 export type JudgeId = z.infer<typeof JudgeId>;
+
+// @public
+export const JudgeIdentity: z.ZodObject<{
+    model: z.ZodString;
+    parameters: z.ZodRecord<z.ZodString, z.ZodJSONSchema>;
+    prompt: z.ZodString;
+    rubric: z.ZodString;
+    inputsDigest: z.ZodString;
+}, z.core.$strict>;
+
+// @public
+export const JudgeSettings: z.ZodObject<{
+    model: z.ZodString;
+    prompt: z.ZodString;
+    rubric: z.ZodString;
+    temperature: z.ZodOptional<z.ZodNumber>;
+}, z.core.$strict>;
 
 // @public
 export const Label: z.ZodObject<{
@@ -1649,6 +1953,69 @@ export function lintContractSchema(schema: z.ZodType, path?: string): ContractVi
 export function lintDataPolicies(schema: z.ZodType, path?: string): ContractViolation[];
 
 // @public
+export const LockedDataset: z.ZodObject<{
+    commit: z.ZodOptional<z.ZodString>;
+    place: z.ZodEnum<{
+        private: "private";
+        public: "public";
+    }>;
+}, z.core.$strict>;
+
+// @public
+export const LockedOrigin: z.ZodXor<readonly [z.ZodObject<{
+    dataset: z.ZodString;
+    path: z.ZodString;
+}, z.core.$strict>, z.ZodObject<{
+    file: z.ZodString;
+}, z.core.$strict>, z.ZodObject<{
+    git: z.ZodObject<{
+        repo: z.ZodString;
+        commit: z.ZodString;
+        path: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>;
+}, z.core.$strict>, z.ZodObject<{
+    https: z.ZodObject<{
+        host: z.ZodString;
+        path: z.ZodString;
+    }, z.core.$strict>;
+}, z.core.$strict>, z.ZodObject<{
+    command: z.ZodArray<z.ZodString>;
+    output: z.ZodString;
+}, z.core.$strict>]>;
+
+// @public
+export const LockedSource: z.ZodObject<{
+    origin: z.ZodXor<readonly [z.ZodObject<{
+        dataset: z.ZodString;
+        path: z.ZodString;
+    }, z.core.$strict>, z.ZodObject<{
+        file: z.ZodString;
+    }, z.core.$strict>, z.ZodObject<{
+        git: z.ZodObject<{
+            repo: z.ZodString;
+            commit: z.ZodString;
+            path: z.ZodOptional<z.ZodString>;
+        }, z.core.$strict>;
+    }, z.core.$strict>, z.ZodObject<{
+        https: z.ZodObject<{
+            host: z.ZodString;
+            path: z.ZodString;
+        }, z.core.$strict>;
+    }, z.core.$strict>, z.ZodObject<{
+        command: z.ZodArray<z.ZodString>;
+        output: z.ZodString;
+    }, z.core.$strict>]>;
+    digest: z.ZodString;
+    bytes: z.ZodInt;
+    pools: z.ZodRecord<z.ZodEnum<{
+        development: "development";
+        promoted: "promoted";
+        sealed: "sealed";
+        validation: "validation";
+    }> & z.core.$partial, z.ZodInt>;
+}, z.core.$strict>;
+
+// @public
 export const MarginStatus: z.ZodEnum<{
     placeholder: "placeholder";
     registered: "registered";
@@ -1715,6 +2082,222 @@ export const MeasureCard: z.ZodObject<{
 
 // @public
 export type MeasureCard = z.infer<typeof MeasureCard>;
+
+// @public
+export const MeasureDefinition: z.ZodDiscriminatedUnion<[z.ZodObject<{
+    stage: z.ZodOptional<z.ZodString>;
+    status: z.ZodOptional<z.ZodEnum<{
+        failed: "failed";
+        not_invoked: "not_invoked";
+        ok: "ok";
+        replayed: "replayed";
+        skipped: "skipped";
+    }>>;
+    iteration: z.ZodOptional<z.ZodEnum<{
+        all: "all";
+        any: "any";
+        first: "first";
+        last: "last";
+    }>>;
+    scorer: z.ZodOptional<z.ZodXor<readonly [z.ZodObject<{
+        builtin: z.ZodString;
+        options: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodJSONSchema>>;
+    }, z.core.$strict>, z.ZodObject<{
+        instrument: z.ZodString;
+        module: z.ZodString;
+        export: z.ZodString;
+    }, z.core.$strict>, z.ZodObject<{
+        instrument: z.ZodString;
+        dimension: z.ZodString;
+    }, z.core.$strict>]>>;
+    appliesTo: z.ZodOptional<z.ZodObject<{
+        slice: z.ZodString;
+    }, z.core.$strict>>;
+    direction: z.ZodOptional<z.ZodEnum<{
+        higher: "higher";
+        lower: "lower";
+    }>>;
+    reduce: z.ZodOptional<z.ZodXor<readonly [z.ZodObject<{
+        all: z.ZodObject<{
+            k: z.ZodInt;
+        }, z.core.$strict>;
+    }, z.core.$strict>, z.ZodObject<{
+        any: z.ZodObject<{
+            k: z.ZodInt;
+        }, z.core.$strict>;
+    }, z.core.$strict>]>>;
+    estimand: z.ZodOptional<z.ZodEnum<{
+        population: "population";
+        "these-cases": "these-cases";
+    }>>;
+    weighting: z.ZodOptional<z.ZodEnum<{
+        "per-case": "per-case";
+        "per-family": "per-family";
+    }>>;
+    gate: z.ZodOptional<z.ZodBoolean>;
+    deterministic: z.ZodOptional<z.ZodBoolean>;
+    type: z.ZodLiteral<"binary">;
+}, z.core.$strict>, z.ZodObject<{
+    stage: z.ZodOptional<z.ZodString>;
+    status: z.ZodOptional<z.ZodEnum<{
+        failed: "failed";
+        not_invoked: "not_invoked";
+        ok: "ok";
+        replayed: "replayed";
+        skipped: "skipped";
+    }>>;
+    iteration: z.ZodOptional<z.ZodEnum<{
+        all: "all";
+        any: "any";
+        first: "first";
+        last: "last";
+    }>>;
+    scorer: z.ZodOptional<z.ZodXor<readonly [z.ZodObject<{
+        builtin: z.ZodString;
+        options: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodJSONSchema>>;
+    }, z.core.$strict>, z.ZodObject<{
+        instrument: z.ZodString;
+        module: z.ZodString;
+        export: z.ZodString;
+    }, z.core.$strict>, z.ZodObject<{
+        instrument: z.ZodString;
+        dimension: z.ZodString;
+    }, z.core.$strict>]>>;
+    appliesTo: z.ZodOptional<z.ZodObject<{
+        slice: z.ZodString;
+    }, z.core.$strict>>;
+    direction: z.ZodOptional<z.ZodEnum<{
+        higher: "higher";
+        lower: "lower";
+    }>>;
+    reduce: z.ZodOptional<z.ZodXor<readonly [z.ZodObject<{
+        all: z.ZodObject<{
+            k: z.ZodInt;
+        }, z.core.$strict>;
+    }, z.core.$strict>, z.ZodObject<{
+        any: z.ZodObject<{
+            k: z.ZodInt;
+        }, z.core.$strict>;
+    }, z.core.$strict>]>>;
+    estimand: z.ZodOptional<z.ZodEnum<{
+        population: "population";
+        "these-cases": "these-cases";
+    }>>;
+    weighting: z.ZodOptional<z.ZodEnum<{
+        "per-case": "per-case";
+        "per-family": "per-family";
+    }>>;
+    gate: z.ZodOptional<z.ZodBoolean>;
+    deterministic: z.ZodOptional<z.ZodBoolean>;
+    type: z.ZodLiteral<"score">;
+}, z.core.$strict>, z.ZodObject<{
+    stage: z.ZodOptional<z.ZodString>;
+    status: z.ZodOptional<z.ZodEnum<{
+        failed: "failed";
+        not_invoked: "not_invoked";
+        ok: "ok";
+        replayed: "replayed";
+        skipped: "skipped";
+    }>>;
+    iteration: z.ZodOptional<z.ZodEnum<{
+        all: "all";
+        any: "any";
+        first: "first";
+        last: "last";
+    }>>;
+    scorer: z.ZodOptional<z.ZodXor<readonly [z.ZodObject<{
+        builtin: z.ZodString;
+        options: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodJSONSchema>>;
+    }, z.core.$strict>, z.ZodObject<{
+        instrument: z.ZodString;
+        module: z.ZodString;
+        export: z.ZodString;
+    }, z.core.$strict>, z.ZodObject<{
+        instrument: z.ZodString;
+        dimension: z.ZodString;
+    }, z.core.$strict>]>>;
+    appliesTo: z.ZodOptional<z.ZodObject<{
+        slice: z.ZodString;
+    }, z.core.$strict>>;
+    direction: z.ZodOptional<z.ZodEnum<{
+        higher: "higher";
+        lower: "lower";
+    }>>;
+    reduce: z.ZodOptional<z.ZodXor<readonly [z.ZodObject<{
+        all: z.ZodObject<{
+            k: z.ZodInt;
+        }, z.core.$strict>;
+    }, z.core.$strict>, z.ZodObject<{
+        any: z.ZodObject<{
+            k: z.ZodInt;
+        }, z.core.$strict>;
+    }, z.core.$strict>]>>;
+    estimand: z.ZodOptional<z.ZodEnum<{
+        population: "population";
+        "these-cases": "these-cases";
+    }>>;
+    weighting: z.ZodOptional<z.ZodEnum<{
+        "per-case": "per-case";
+        "per-family": "per-family";
+    }>>;
+    gate: z.ZodOptional<z.ZodBoolean>;
+    deterministic: z.ZodOptional<z.ZodBoolean>;
+    type: z.ZodLiteral<"level">;
+}, z.core.$strict>, z.ZodObject<{
+    stage: z.ZodOptional<z.ZodString>;
+    status: z.ZodOptional<z.ZodEnum<{
+        failed: "failed";
+        not_invoked: "not_invoked";
+        ok: "ok";
+        replayed: "replayed";
+        skipped: "skipped";
+    }>>;
+    iteration: z.ZodOptional<z.ZodEnum<{
+        all: "all";
+        any: "any";
+        first: "first";
+        last: "last";
+    }>>;
+    scorer: z.ZodOptional<z.ZodXor<readonly [z.ZodObject<{
+        builtin: z.ZodString;
+        options: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodJSONSchema>>;
+    }, z.core.$strict>, z.ZodObject<{
+        instrument: z.ZodString;
+        module: z.ZodString;
+        export: z.ZodString;
+    }, z.core.$strict>, z.ZodObject<{
+        instrument: z.ZodString;
+        dimension: z.ZodString;
+    }, z.core.$strict>]>>;
+    appliesTo: z.ZodOptional<z.ZodObject<{
+        slice: z.ZodString;
+    }, z.core.$strict>>;
+    direction: z.ZodOptional<z.ZodEnum<{
+        higher: "higher";
+        lower: "lower";
+    }>>;
+    reduce: z.ZodOptional<z.ZodXor<readonly [z.ZodObject<{
+        all: z.ZodObject<{
+            k: z.ZodInt;
+        }, z.core.$strict>;
+    }, z.core.$strict>, z.ZodObject<{
+        any: z.ZodObject<{
+            k: z.ZodInt;
+        }, z.core.$strict>;
+    }, z.core.$strict>]>>;
+    estimand: z.ZodOptional<z.ZodEnum<{
+        population: "population";
+        "these-cases": "these-cases";
+    }>>;
+    weighting: z.ZodOptional<z.ZodEnum<{
+        "per-case": "per-case";
+        "per-family": "per-family";
+    }>>;
+    gate: z.ZodOptional<z.ZodBoolean>;
+    deterministic: z.ZodOptional<z.ZodBoolean>;
+    type: z.ZodLiteral<"quantity">;
+    unit: z.ZodString;
+}, z.core.$strict>], "type">;
 
 // @public
 export const MeasuredValue: z.ZodDiscriminatedUnion<[z.ZodObject<{
@@ -2082,6 +2665,9 @@ export const ModelBinding: z.ZodObject<{
 }, z.core.$strict>;
 
 // @public
+export const ModulePath: z.ZodString;
+
+// @public
 export const Monitor: z.ZodObject<{
     schema: z.ZodLiteral<"ichnaea.monitor/1">;
     id: z.core.$ZodBranded<z.ZodString, "MonitorId", "out">;
@@ -2215,6 +2801,12 @@ export const Parameter: z.ZodObject<{
 
 // @public
 export function personal<T extends z.ZodType>(schema: T, egress?: readonly Purpose[]): T;
+
+// @public
+export const PinnedModel: z.ZodObject<{
+    name: z.ZodString;
+    revision: z.ZodString;
+}, z.core.$strict>;
 
 // @public
 export const Plan: z.ZodObject<{
@@ -2543,7 +3135,179 @@ export const PrimaryMeasure: z.ZodObject<{
 }, z.core.$strict>;
 
 // @public
+export const PrimaryRegistration: z.ZodObject<{
+    limit: z.ZodNumber;
+    owner: z.ZodString;
+    reason: z.ZodString;
+}, z.core.$strict>;
+
+// @public
 export const Probability: z.ZodNumber;
+
+// @public
+export const ProfileBudget: z.ZodObject<{
+    calls: z.ZodOptional<z.ZodInt>;
+    callsPerTrial: z.ZodOptional<z.ZodInt>;
+    rejectedPerTrial: z.ZodOptional<z.ZodOptional<z.ZodInt>>;
+    judgeCalls: z.ZodOptional<z.ZodOptional<z.ZodInt>>;
+    costMicros: z.ZodOptional<z.ZodOptional<z.ZodInt>>;
+}, z.core.$strict>;
+
+// @public
+export const ProjectConfig: z.ZodObject<{
+    $schema: z.ZodOptional<z.ZodString>;
+    schema: z.ZodLiteral<"ichnaea.config/1">;
+    suites: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    datasets: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodXor<readonly [z.ZodObject<{
+        file: z.ZodString;
+    }, z.core.$strict>, z.ZodObject<{
+        git: z.ZodObject<{
+            repo: z.ZodString;
+            commit: z.ZodString;
+            path: z.ZodOptional<z.ZodString>;
+        }, z.core.$strict>;
+    }, z.core.$strict>, z.ZodObject<{
+        https: z.ZodXor<readonly [z.ZodObject<{
+            url: z.ZodString;
+        }, z.core.$strict>, z.ZodObject<{
+            fromEnv: z.ZodString;
+        }, z.core.$strict>]>;
+        digest: z.ZodString;
+    }, z.core.$strict>, z.ZodObject<{
+        command: z.ZodArray<z.ZodString>;
+        output: z.ZodString;
+        env: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    }, z.core.$strict>]>>>;
+    workers: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
+        command: z.ZodArray<z.ZodString>;
+        prepare: z.ZodOptional<z.ZodArray<z.ZodString>>;
+        env: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            name: z.ZodString;
+            secret: z.ZodOptional<z.ZodBoolean>;
+        }, z.core.$strict>>>;
+        envFile: z.ZodOptional<z.ZodString>;
+        endpoints: z.ZodOptional<z.ZodArray<z.ZodString>>;
+        capacity: z.ZodOptional<z.ZodInt>;
+        processes: z.ZodOptional<z.ZodInt>;
+        startTimeout: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>>>;
+    endpoints: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
+        provider: z.ZodOptional<z.ZodString>;
+        region: z.ZodOptional<z.ZodString>;
+        concurrency: z.ZodOptional<z.ZodInt>;
+        requestsPerMinute: z.ZodOptional<z.ZodInt>;
+        tokensPerMinute: z.ZodOptional<z.ZodInt>;
+    }, z.core.$strict>>>;
+    store: z.ZodOptional<z.ZodObject<{
+        path: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>>;
+    baselines: z.ZodOptional<z.ZodObject<{
+        from: z.ZodOptional<z.ZodXor<readonly [z.ZodLiteral<"store">, z.ZodObject<{
+            githubArtifact: z.ZodObject<{
+                workflow: z.ZodString;
+                branch: z.ZodString;
+            }, z.core.$strict>;
+        }, z.core.$strict>]>>;
+        freshness: z.ZodOptional<z.ZodString>;
+        maxFreshness: z.ZodOptional<z.ZodString>;
+        sentinel: z.ZodOptional<z.ZodObject<{
+            share: z.ZodOptional<z.ZodNumber>;
+            min: z.ZodOptional<z.ZodInt>;
+        }, z.core.$strict>>;
+    }, z.core.$strict>>;
+    defaults: z.ZodOptional<z.ZodObject<{
+        trials: z.ZodOptional<z.ZodInt>;
+        mode: z.ZodOptional<z.ZodEnum<{
+            confirm: "confirm";
+            fast: "fast";
+        }>>;
+        profile: z.ZodOptional<z.ZodString>;
+        limits: z.ZodOptional<z.ZodObject<{
+            artifactBytes: z.ZodOptional<z.ZodInt>;
+            outputBytes: z.ZodOptional<z.ZodInt>;
+            trialDeadline: z.ZodOptional<z.ZodString>;
+            wallClockMax: z.ZodOptional<z.ZodString>;
+            missingMax: z.ZodOptional<z.ZodNumber>;
+            throttleMax: z.ZodOptional<z.ZodString>;
+        }, z.core.$strict>>;
+    }, z.core.$strict>>;
+    delivery: z.ZodOptional<z.ZodObject<{
+        sinks: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
+            kind: z.ZodEnum<{
+                console: "console";
+                file: "file";
+                github: "github";
+                otlp: "otlp";
+                slack: "slack";
+                "teams-workflow": "teams-workflow";
+                webhook: "webhook";
+            }>;
+            url: z.ZodOptional<z.ZodObject<{
+                fromEnv: z.ZodString;
+            }, z.core.$strict>>;
+            secret: z.ZodOptional<z.ZodObject<{
+                fromEnv: z.ZodString;
+            }, z.core.$strict>>;
+            clearance: z.ZodOptional<z.ZodObject<{
+                maxExposure: z.ZodEnum<{
+                    private: "private";
+                    public: "public";
+                    sealed: "sealed";
+                }>;
+                purpose: z.ZodString;
+                reason: z.ZodString;
+            }, z.core.$strict>>;
+        }, z.core.$strict>>>;
+        routes: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            on: z.ZodEnum<{
+                attribute: "attribute";
+                calibrate: "calibrate";
+                compare: "compare";
+                estimate: "estimate";
+                monitor: "monitor";
+                "monitor.alert": "monitor.alert";
+                noise: "noise";
+            }>;
+            profile: z.ZodOptional<z.ZodString>;
+            to: z.ZodArray<z.ZodString>;
+            required: z.ZodOptional<z.ZodBoolean>;
+        }, z.core.$strict>>>;
+    }, z.core.$strict>>;
+    history: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    privacy: z.ZodOptional<z.ZodObject<{
+        homeKey: z.ZodOptional<z.ZodObject<{
+            fromEnv: z.ZodString;
+        }, z.core.$strict>>;
+        consent: z.ZodOptional<z.ZodString>;
+        governance: z.ZodOptional<z.ZodObject<{
+            home: z.ZodObject<{
+                description: z.ZodString;
+            }, z.core.$strict>;
+            purposes: z.ZodRecord<z.ZodString, z.ZodObject<{
+                enabled: z.ZodBoolean;
+                basis: z.ZodEnum<{
+                    consent: "consent";
+                    "public-task": "public-task";
+                }>;
+                record: z.ZodString;
+            }, z.core.$strict>>;
+            endpoints: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
+                provider: z.ZodString;
+                region: z.ZodString;
+                purposes: z.ZodArray<z.ZodString>;
+                trainsOnInputs: z.ZodOptional<z.ZodBoolean>;
+            }, z.core.$strict>>>;
+            retention: z.ZodOptional<z.ZodObject<{
+                pseudonymous: z.ZodOptional<z.ZodString>;
+                personal: z.ZodOptional<z.ZodString>;
+                labels: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+            }, z.core.$strict>>;
+        }, z.core.$strict>>;
+    }, z.core.$strict>>;
+}, z.core.$strict>;
+
+// @public
+export type ProjectConfig = z.infer<typeof ProjectConfig>;
 
 // @public
 export function projectForEgress(schema: z.ZodType, record: unknown, context: EgressContext): EgressProjection;
@@ -2570,6 +3334,19 @@ export function pseudonym<T extends z.ZodType>(schema: T, egress?: readonly Purp
 
 // @public
 export type Purpose = (typeof PURPOSES)[number];
+
+// @public
+export const PurposeGrant: z.ZodObject<{
+    enabled: z.ZodBoolean;
+    basis: z.ZodEnum<{
+        consent: "consent";
+        "public-task": "public-task";
+    }>;
+    record: z.ZodString;
+}, z.core.$strict>;
+
+// @public
+export const PurposeId: z.ZodString;
 
 // @public
 export const PURPOSES: readonly ["PU-1", "PU-2", "PU-3", "PU-4", "PU-5", "PU-6"];
@@ -2969,6 +3746,40 @@ export const RunId: z.core.$ZodBranded<z.ZodString, "RunId", "out">;
 export type RunId = z.infer<typeof RunId>;
 
 // @public
+export const RunLimits: z.ZodObject<{
+    artifactBytes: z.ZodOptional<z.ZodInt>;
+    outputBytes: z.ZodOptional<z.ZodInt>;
+    trialDeadline: z.ZodOptional<z.ZodString>;
+    wallClockMax: z.ZodOptional<z.ZodString>;
+    missingMax: z.ZodOptional<z.ZodNumber>;
+    throttleMax: z.ZodOptional<z.ZodString>;
+}, z.core.$strict>;
+
+// @public
+export const RunProfile: z.ZodObject<{
+    trials: z.ZodOptional<z.ZodInt>;
+    mode: z.ZodOptional<z.ZodEnum<{
+        confirm: "confirm";
+        fast: "fast";
+    }>>;
+    pool: z.ZodOptional<z.ZodEnum<{
+        development: "development";
+        promoted: "promoted";
+        sealed: "sealed";
+        validation: "validation";
+    }>>;
+    cases: z.ZodOptional<z.ZodInt>;
+    budget: z.ZodOptional<z.ZodObject<{
+        calls: z.ZodOptional<z.ZodInt>;
+        callsPerTrial: z.ZodOptional<z.ZodInt>;
+        rejectedPerTrial: z.ZodOptional<z.ZodOptional<z.ZodInt>>;
+        judgeCalls: z.ZodOptional<z.ZodOptional<z.ZodInt>>;
+        costMicros: z.ZodOptional<z.ZodOptional<z.ZodInt>>;
+    }, z.core.$strict>>;
+    shards: z.ZodOptional<z.ZodInt>;
+}, z.core.$strict>;
+
+// @public
 export const Runtime: z.ZodObject<{
     name: z.ZodString;
     version: z.ZodString;
@@ -2980,6 +3791,13 @@ export const Runtime: z.ZodObject<{
 export type Runtime = z.infer<typeof Runtime>;
 
 // @public
+export const SamplingFrame: z.ZodObject<{
+    population: z.ZodString;
+    drawnBy: z.ZodString;
+    date: z.ZodISODate;
+}, z.core.$strict>;
+
+// @public
 export const Schedule: z.ZodObject<{
     concurrency: z.ZodInt;
     endpoint: z.ZodString;
@@ -2987,6 +3805,19 @@ export const Schedule: z.ZodObject<{
 
 // @public
 export function schemaUri(contract: RecordContract, variant?: "writer" | "reader"): string;
+
+// @public
+export const ScorerRef: z.ZodXor<readonly [z.ZodObject<{
+    builtin: z.ZodString;
+    options: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodJSONSchema>>;
+}, z.core.$strict>, z.ZodObject<{
+    instrument: z.ZodString;
+    module: z.ZodString;
+    export: z.ZodString;
+}, z.core.$strict>, z.ZodObject<{
+    instrument: z.ZodString;
+    dimension: z.ZodString;
+}, z.core.$strict>]>;
 
 // @public
 export const ScriptedTurn: z.ZodObject<{
@@ -3088,6 +3919,34 @@ export function sha256(text: string): `sha256:${string}`;
 export function sha256Hex(message: Uint8Array): string;
 
 // @public
+export const SinkSettings: z.ZodObject<{
+    kind: z.ZodEnum<{
+        console: "console";
+        file: "file";
+        github: "github";
+        otlp: "otlp";
+        slack: "slack";
+        "teams-workflow": "teams-workflow";
+        webhook: "webhook";
+    }>;
+    url: z.ZodOptional<z.ZodObject<{
+        fromEnv: z.ZodString;
+    }, z.core.$strict>>;
+    secret: z.ZodOptional<z.ZodObject<{
+        fromEnv: z.ZodString;
+    }, z.core.$strict>>;
+    clearance: z.ZodOptional<z.ZodObject<{
+        maxExposure: z.ZodEnum<{
+            private: "private";
+            public: "public";
+            sealed: "sealed";
+        }>;
+        purpose: z.ZodString;
+        reason: z.ZodString;
+    }, z.core.$strict>>;
+}, z.core.$strict>;
+
+// @public
 export type Stability = "development" | "alpha" | "beta" | "stable";
 
 // @public
@@ -3112,6 +3971,30 @@ export const Step: z.ZodObject<{
     durationMs: z.ZodOptional<z.ZodNumber>;
     detail: z.ZodOptional<z.ZodJSONSchema>;
 }, z.core.$strict>;
+
+// @public
+export const StopClass: z.ZodEnum<{
+    completed: "completed";
+    infrastructure: "infrastructure";
+    not_invoked: "not_invoked";
+    system: "system";
+}>;
+
+// @public
+export const StopMapping: z.ZodXor<readonly [z.ZodEnum<{
+    completed: "completed";
+    infrastructure: "infrastructure";
+    not_invoked: "not_invoked";
+    system: "system";
+}>, z.ZodObject<{
+    class: z.ZodEnum<{
+        completed: "completed";
+        infrastructure: "infrastructure";
+        not_invoked: "not_invoked";
+        system: "system";
+    }>;
+    selfVerdict: z.ZodBoolean;
+}, z.core.$strict>]>;
 
 // @public
 export const Suite: z.ZodObject<{
@@ -3188,10 +4071,621 @@ export const Suite: z.ZodObject<{
 export type Suite = z.infer<typeof Suite>;
 
 // @public
+export const SuiteAbout: z.ZodObject<{
+    objective: z.ZodString;
+    decision: z.ZodString;
+    construct: z.ZodString;
+    scope: z.ZodString;
+    nonCoverage: z.ZodArray<z.ZodString>;
+    threats: z.ZodArray<z.ZodString>;
+}, z.core.$strict>;
+
+// @public
+export const SuiteBudget: z.ZodObject<{
+    calls: z.ZodInt;
+    callsPerTrial: z.ZodInt;
+    rejectedPerTrial: z.ZodOptional<z.ZodInt>;
+    judgeCalls: z.ZodOptional<z.ZodInt>;
+    costMicros: z.ZodOptional<z.ZodInt>;
+}, z.core.$strict>;
+
+// @public
+export const SuiteCases: z.ZodXor<readonly [z.ZodObject<{
+    exposure: z.ZodOptional<z.ZodEnum<{
+        private: "private";
+        public: "public";
+        sealed: "sealed";
+    }>>;
+    pools: z.ZodOptional<z.ZodRecord<z.ZodEnum<{
+        development: "development";
+        promoted: "promoted";
+        sealed: "sealed";
+        validation: "validation";
+    }> & z.core.$partial, z.ZodString>>;
+    frame: z.ZodOptional<z.ZodObject<{
+        population: z.ZodString;
+        drawnBy: z.ZodString;
+        date: z.ZodISODate;
+    }, z.core.$strict>>;
+    from: z.ZodArray<z.ZodObject<{
+        dataset: z.ZodString;
+        path: z.ZodString;
+    }, z.core.$strict>>;
+}, z.core.$strict>, z.ZodObject<{
+    exposure: z.ZodOptional<z.ZodEnum<{
+        private: "private";
+        public: "public";
+        sealed: "sealed";
+    }>>;
+    pools: z.ZodOptional<z.ZodRecord<z.ZodEnum<{
+        development: "development";
+        promoted: "promoted";
+        sealed: "sealed";
+        validation: "validation";
+    }> & z.core.$partial, z.ZodString>>;
+    frame: z.ZodOptional<z.ZodObject<{
+        population: z.ZodString;
+        drawnBy: z.ZodString;
+        date: z.ZodISODate;
+    }, z.core.$strict>>;
+    source: z.ZodXor<readonly [z.ZodObject<{
+        file: z.ZodString;
+    }, z.core.$strict>, z.ZodObject<{
+        git: z.ZodObject<{
+            repo: z.ZodString;
+            commit: z.ZodString;
+            path: z.ZodOptional<z.ZodString>;
+        }, z.core.$strict>;
+    }, z.core.$strict>, z.ZodObject<{
+        https: z.ZodXor<readonly [z.ZodObject<{
+            url: z.ZodString;
+        }, z.core.$strict>, z.ZodObject<{
+            fromEnv: z.ZodString;
+        }, z.core.$strict>]>;
+        digest: z.ZodString;
+    }, z.core.$strict>, z.ZodObject<{
+        command: z.ZodArray<z.ZodString>;
+        output: z.ZodString;
+        env: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    }, z.core.$strict>]>;
+}, z.core.$strict>]>;
+
+// @public
 export const SuiteId: z.core.$ZodBranded<z.ZodString, "SuiteId", "out">;
 
 // @public
 export type SuiteId = z.infer<typeof SuiteId>;
+
+// @public
+export const SuiteImport: z.ZodXor<readonly [z.ZodObject<{
+    command: z.ZodArray<z.ZodString>;
+}, z.core.$strict>, z.ZodObject<{
+    module: z.ZodString;
+}, z.core.$strict>]>;
+
+// @public
+export const SuiteLock: z.ZodObject<{
+    schema: z.ZodLiteral<"ichnaea.suite.lock/1">;
+    suite: z.core.$ZodBranded<z.ZodString, "SuiteId", "out">;
+    suiteDigest: z.ZodString;
+    measurementDigest: z.ZodString;
+    sources: z.ZodArray<z.ZodObject<{
+        origin: z.ZodXor<readonly [z.ZodObject<{
+            dataset: z.ZodString;
+            path: z.ZodString;
+        }, z.core.$strict>, z.ZodObject<{
+            file: z.ZodString;
+        }, z.core.$strict>, z.ZodObject<{
+            git: z.ZodObject<{
+                repo: z.ZodString;
+                commit: z.ZodString;
+                path: z.ZodOptional<z.ZodString>;
+            }, z.core.$strict>;
+        }, z.core.$strict>, z.ZodObject<{
+            https: z.ZodObject<{
+                host: z.ZodString;
+                path: z.ZodString;
+            }, z.core.$strict>;
+        }, z.core.$strict>, z.ZodObject<{
+            command: z.ZodArray<z.ZodString>;
+            output: z.ZodString;
+        }, z.core.$strict>]>;
+        digest: z.ZodString;
+        bytes: z.ZodInt;
+        pools: z.ZodRecord<z.ZodEnum<{
+            development: "development";
+            promoted: "promoted";
+            sealed: "sealed";
+            validation: "validation";
+        }> & z.core.$partial, z.ZodInt>;
+    }, z.core.$strict>>;
+    datasets: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
+        commit: z.ZodOptional<z.ZodString>;
+        place: z.ZodEnum<{
+            private: "private";
+            public: "public";
+        }>;
+    }, z.core.$strict>>>;
+    instruments: z.ZodRecord<z.ZodString, z.ZodObject<{
+        files: z.ZodOptional<z.ZodString>;
+        image: z.ZodOptional<z.ZodObject<{
+            reference: z.ZodString;
+            digest: z.ZodString;
+        }, z.core.$strict>>;
+        judge: z.ZodOptional<z.ZodObject<{
+            model: z.ZodString;
+            parameters: z.ZodRecord<z.ZodString, z.ZodJSONSchema>;
+            prompt: z.ZodString;
+            rubric: z.ZodString;
+            inputsDigest: z.ZodString;
+        }, z.core.$strict>>;
+        imported: z.ZodOptional<z.ZodObject<{
+            version: z.ZodString;
+            digest: z.ZodString;
+        }, z.core.$strict>>;
+    }, z.core.$strict>>;
+    measures: z.ZodRecord<z.ZodString, z.ZodString>;
+    registration: z.ZodRecord<z.ZodString, z.ZodObject<{
+        limit: z.ZodNumber;
+        owner: z.ZodString;
+        reason: z.ZodString;
+    }, z.core.$strict>>;
+}, z.core.$strict>;
+
+// @public
+export type SuiteLock = z.infer<typeof SuiteLock>;
+
+// @public
+export const SuitePolicy: z.ZodObject<{
+    primary: z.ZodRecord<z.ZodString, z.ZodObject<{
+        limit: z.ZodNumber;
+        owner: z.ZodString;
+        reason: z.ZodString;
+    }, z.core.$strict>>;
+    secondary: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    diagnostic: z.ZodOptional<z.ZodArray<z.ZodString>>;
+}, z.core.$strict>;
+
+// @public
+export const SuiteV2: z.ZodObject<{
+    $schema: z.ZodOptional<z.ZodString>;
+    schema: z.ZodLiteral<"ichnaea.suite/2">;
+    id: z.core.$ZodBranded<z.ZodString, "SuiteId", "out">;
+    version: z.ZodOptional<z.ZodString>;
+    about: z.ZodObject<{
+        objective: z.ZodString;
+        decision: z.ZodString;
+        construct: z.ZodString;
+        scope: z.ZodString;
+        nonCoverage: z.ZodArray<z.ZodString>;
+        threats: z.ZodArray<z.ZodString>;
+    }, z.core.$strict>;
+    cases: z.ZodXor<readonly [z.ZodObject<{
+        exposure: z.ZodOptional<z.ZodEnum<{
+            private: "private";
+            public: "public";
+            sealed: "sealed";
+        }>>;
+        pools: z.ZodOptional<z.ZodRecord<z.ZodEnum<{
+            development: "development";
+            promoted: "promoted";
+            sealed: "sealed";
+            validation: "validation";
+        }> & z.core.$partial, z.ZodString>>;
+        frame: z.ZodOptional<z.ZodObject<{
+            population: z.ZodString;
+            drawnBy: z.ZodString;
+            date: z.ZodISODate;
+        }, z.core.$strict>>;
+        from: z.ZodArray<z.ZodObject<{
+            dataset: z.ZodString;
+            path: z.ZodString;
+        }, z.core.$strict>>;
+    }, z.core.$strict>, z.ZodObject<{
+        exposure: z.ZodOptional<z.ZodEnum<{
+            private: "private";
+            public: "public";
+            sealed: "sealed";
+        }>>;
+        pools: z.ZodOptional<z.ZodRecord<z.ZodEnum<{
+            development: "development";
+            promoted: "promoted";
+            sealed: "sealed";
+            validation: "validation";
+        }> & z.core.$partial, z.ZodString>>;
+        frame: z.ZodOptional<z.ZodObject<{
+            population: z.ZodString;
+            drawnBy: z.ZodString;
+            date: z.ZodISODate;
+        }, z.core.$strict>>;
+        source: z.ZodXor<readonly [z.ZodObject<{
+            file: z.ZodString;
+        }, z.core.$strict>, z.ZodObject<{
+            git: z.ZodObject<{
+                repo: z.ZodString;
+                commit: z.ZodString;
+                path: z.ZodOptional<z.ZodString>;
+            }, z.core.$strict>;
+        }, z.core.$strict>, z.ZodObject<{
+            https: z.ZodXor<readonly [z.ZodObject<{
+                url: z.ZodString;
+            }, z.core.$strict>, z.ZodObject<{
+                fromEnv: z.ZodString;
+            }, z.core.$strict>]>;
+            digest: z.ZodString;
+        }, z.core.$strict>, z.ZodObject<{
+            command: z.ZodArray<z.ZodString>;
+            output: z.ZodString;
+            env: z.ZodOptional<z.ZodArray<z.ZodString>>;
+        }, z.core.$strict>]>;
+    }, z.core.$strict>]>;
+    worker: z.ZodOptional<z.ZodXor<readonly [z.ZodString, z.ZodObject<{
+        command: z.ZodArray<z.ZodString>;
+        prepare: z.ZodOptional<z.ZodArray<z.ZodString>>;
+        env: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            name: z.ZodString;
+            secret: z.ZodOptional<z.ZodBoolean>;
+        }, z.core.$strict>>>;
+        envFile: z.ZodOptional<z.ZodString>;
+        endpoints: z.ZodOptional<z.ZodArray<z.ZodString>>;
+        capacity: z.ZodOptional<z.ZodInt>;
+        processes: z.ZodOptional<z.ZodInt>;
+        startTimeout: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>]>>;
+    import: z.ZodOptional<z.ZodXor<readonly [z.ZodObject<{
+        command: z.ZodArray<z.ZodString>;
+    }, z.core.$strict>, z.ZodObject<{
+        module: z.ZodString;
+    }, z.core.$strict>]>>;
+    configuration: z.ZodOptional<z.ZodObject<{
+        record: z.ZodArray<z.ZodString>;
+    }, z.core.$strict>>;
+    stages: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    entry: z.ZodOptional<z.ZodString>;
+    environment: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodXor<readonly [z.ZodObject<{
+        class: z.ZodOptional<z.ZodEnum<{
+            none: "none";
+            personal: "personal";
+            pseudonymous: "pseudonymous";
+            special: "special";
+        }>>;
+        exposure: z.ZodOptional<z.ZodEnum<{
+            private: "private";
+            public: "public";
+            sealed: "sealed";
+        }>>;
+        path: z.ZodObject<{
+            fromEnv: z.ZodString;
+        }, z.core.$strict>;
+    }, z.core.$strict>, z.ZodObject<{
+        class: z.ZodOptional<z.ZodEnum<{
+            none: "none";
+            personal: "personal";
+            pseudonymous: "pseudonymous";
+            special: "special";
+        }>>;
+        exposure: z.ZodOptional<z.ZodEnum<{
+            private: "private";
+            public: "public";
+            sealed: "sealed";
+        }>>;
+        service: z.ZodObject<{
+            fromEnv: z.ZodString;
+        }, z.core.$strict>;
+        identity: z.ZodString;
+    }, z.core.$strict>]>>>;
+    instruments: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
+        command: z.ZodOptional<z.ZodArray<z.ZodString>>;
+        prepare: z.ZodOptional<z.ZodArray<z.ZodString>>;
+        files: z.ZodOptional<z.ZodArray<z.ZodString>>;
+        exclude: z.ZodOptional<z.ZodArray<z.ZodString>>;
+        image: z.ZodOptional<z.ZodString>;
+        judge: z.ZodOptional<z.ZodObject<{
+            model: z.ZodString;
+            prompt: z.ZodString;
+            rubric: z.ZodString;
+            temperature: z.ZodOptional<z.ZodNumber>;
+        }, z.core.$strict>>;
+        models: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            name: z.ZodString;
+            revision: z.ZodString;
+        }, z.core.$strict>>>;
+        env: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            name: z.ZodString;
+            secret: z.ZodOptional<z.ZodBoolean>;
+        }, z.core.$strict>>>;
+        endpoints: z.ZodOptional<z.ZodArray<z.ZodString>>;
+        imported: z.ZodOptional<z.ZodObject<{
+            version: z.ZodString;
+            digest: z.ZodString;
+        }, z.core.$strict>>;
+        deadline: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>>>;
+    measures: z.ZodRecord<z.ZodString, z.ZodDiscriminatedUnion<[z.ZodObject<{
+        stage: z.ZodOptional<z.ZodString>;
+        status: z.ZodOptional<z.ZodEnum<{
+            failed: "failed";
+            not_invoked: "not_invoked";
+            ok: "ok";
+            replayed: "replayed";
+            skipped: "skipped";
+        }>>;
+        iteration: z.ZodOptional<z.ZodEnum<{
+            all: "all";
+            any: "any";
+            first: "first";
+            last: "last";
+        }>>;
+        scorer: z.ZodOptional<z.ZodXor<readonly [z.ZodObject<{
+            builtin: z.ZodString;
+            options: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodJSONSchema>>;
+        }, z.core.$strict>, z.ZodObject<{
+            instrument: z.ZodString;
+            module: z.ZodString;
+            export: z.ZodString;
+        }, z.core.$strict>, z.ZodObject<{
+            instrument: z.ZodString;
+            dimension: z.ZodString;
+        }, z.core.$strict>]>>;
+        appliesTo: z.ZodOptional<z.ZodObject<{
+            slice: z.ZodString;
+        }, z.core.$strict>>;
+        direction: z.ZodOptional<z.ZodEnum<{
+            higher: "higher";
+            lower: "lower";
+        }>>;
+        reduce: z.ZodOptional<z.ZodXor<readonly [z.ZodObject<{
+            all: z.ZodObject<{
+                k: z.ZodInt;
+            }, z.core.$strict>;
+        }, z.core.$strict>, z.ZodObject<{
+            any: z.ZodObject<{
+                k: z.ZodInt;
+            }, z.core.$strict>;
+        }, z.core.$strict>]>>;
+        estimand: z.ZodOptional<z.ZodEnum<{
+            population: "population";
+            "these-cases": "these-cases";
+        }>>;
+        weighting: z.ZodOptional<z.ZodEnum<{
+            "per-case": "per-case";
+            "per-family": "per-family";
+        }>>;
+        gate: z.ZodOptional<z.ZodBoolean>;
+        deterministic: z.ZodOptional<z.ZodBoolean>;
+        type: z.ZodLiteral<"binary">;
+    }, z.core.$strict>, z.ZodObject<{
+        stage: z.ZodOptional<z.ZodString>;
+        status: z.ZodOptional<z.ZodEnum<{
+            failed: "failed";
+            not_invoked: "not_invoked";
+            ok: "ok";
+            replayed: "replayed";
+            skipped: "skipped";
+        }>>;
+        iteration: z.ZodOptional<z.ZodEnum<{
+            all: "all";
+            any: "any";
+            first: "first";
+            last: "last";
+        }>>;
+        scorer: z.ZodOptional<z.ZodXor<readonly [z.ZodObject<{
+            builtin: z.ZodString;
+            options: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodJSONSchema>>;
+        }, z.core.$strict>, z.ZodObject<{
+            instrument: z.ZodString;
+            module: z.ZodString;
+            export: z.ZodString;
+        }, z.core.$strict>, z.ZodObject<{
+            instrument: z.ZodString;
+            dimension: z.ZodString;
+        }, z.core.$strict>]>>;
+        appliesTo: z.ZodOptional<z.ZodObject<{
+            slice: z.ZodString;
+        }, z.core.$strict>>;
+        direction: z.ZodOptional<z.ZodEnum<{
+            higher: "higher";
+            lower: "lower";
+        }>>;
+        reduce: z.ZodOptional<z.ZodXor<readonly [z.ZodObject<{
+            all: z.ZodObject<{
+                k: z.ZodInt;
+            }, z.core.$strict>;
+        }, z.core.$strict>, z.ZodObject<{
+            any: z.ZodObject<{
+                k: z.ZodInt;
+            }, z.core.$strict>;
+        }, z.core.$strict>]>>;
+        estimand: z.ZodOptional<z.ZodEnum<{
+            population: "population";
+            "these-cases": "these-cases";
+        }>>;
+        weighting: z.ZodOptional<z.ZodEnum<{
+            "per-case": "per-case";
+            "per-family": "per-family";
+        }>>;
+        gate: z.ZodOptional<z.ZodBoolean>;
+        deterministic: z.ZodOptional<z.ZodBoolean>;
+        type: z.ZodLiteral<"score">;
+    }, z.core.$strict>, z.ZodObject<{
+        stage: z.ZodOptional<z.ZodString>;
+        status: z.ZodOptional<z.ZodEnum<{
+            failed: "failed";
+            not_invoked: "not_invoked";
+            ok: "ok";
+            replayed: "replayed";
+            skipped: "skipped";
+        }>>;
+        iteration: z.ZodOptional<z.ZodEnum<{
+            all: "all";
+            any: "any";
+            first: "first";
+            last: "last";
+        }>>;
+        scorer: z.ZodOptional<z.ZodXor<readonly [z.ZodObject<{
+            builtin: z.ZodString;
+            options: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodJSONSchema>>;
+        }, z.core.$strict>, z.ZodObject<{
+            instrument: z.ZodString;
+            module: z.ZodString;
+            export: z.ZodString;
+        }, z.core.$strict>, z.ZodObject<{
+            instrument: z.ZodString;
+            dimension: z.ZodString;
+        }, z.core.$strict>]>>;
+        appliesTo: z.ZodOptional<z.ZodObject<{
+            slice: z.ZodString;
+        }, z.core.$strict>>;
+        direction: z.ZodOptional<z.ZodEnum<{
+            higher: "higher";
+            lower: "lower";
+        }>>;
+        reduce: z.ZodOptional<z.ZodXor<readonly [z.ZodObject<{
+            all: z.ZodObject<{
+                k: z.ZodInt;
+            }, z.core.$strict>;
+        }, z.core.$strict>, z.ZodObject<{
+            any: z.ZodObject<{
+                k: z.ZodInt;
+            }, z.core.$strict>;
+        }, z.core.$strict>]>>;
+        estimand: z.ZodOptional<z.ZodEnum<{
+            population: "population";
+            "these-cases": "these-cases";
+        }>>;
+        weighting: z.ZodOptional<z.ZodEnum<{
+            "per-case": "per-case";
+            "per-family": "per-family";
+        }>>;
+        gate: z.ZodOptional<z.ZodBoolean>;
+        deterministic: z.ZodOptional<z.ZodBoolean>;
+        type: z.ZodLiteral<"level">;
+    }, z.core.$strict>, z.ZodObject<{
+        stage: z.ZodOptional<z.ZodString>;
+        status: z.ZodOptional<z.ZodEnum<{
+            failed: "failed";
+            not_invoked: "not_invoked";
+            ok: "ok";
+            replayed: "replayed";
+            skipped: "skipped";
+        }>>;
+        iteration: z.ZodOptional<z.ZodEnum<{
+            all: "all";
+            any: "any";
+            first: "first";
+            last: "last";
+        }>>;
+        scorer: z.ZodOptional<z.ZodXor<readonly [z.ZodObject<{
+            builtin: z.ZodString;
+            options: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodJSONSchema>>;
+        }, z.core.$strict>, z.ZodObject<{
+            instrument: z.ZodString;
+            module: z.ZodString;
+            export: z.ZodString;
+        }, z.core.$strict>, z.ZodObject<{
+            instrument: z.ZodString;
+            dimension: z.ZodString;
+        }, z.core.$strict>]>>;
+        appliesTo: z.ZodOptional<z.ZodObject<{
+            slice: z.ZodString;
+        }, z.core.$strict>>;
+        direction: z.ZodOptional<z.ZodEnum<{
+            higher: "higher";
+            lower: "lower";
+        }>>;
+        reduce: z.ZodOptional<z.ZodXor<readonly [z.ZodObject<{
+            all: z.ZodObject<{
+                k: z.ZodInt;
+            }, z.core.$strict>;
+        }, z.core.$strict>, z.ZodObject<{
+            any: z.ZodObject<{
+                k: z.ZodInt;
+            }, z.core.$strict>;
+        }, z.core.$strict>]>>;
+        estimand: z.ZodOptional<z.ZodEnum<{
+            population: "population";
+            "these-cases": "these-cases";
+        }>>;
+        weighting: z.ZodOptional<z.ZodEnum<{
+            "per-case": "per-case";
+            "per-family": "per-family";
+        }>>;
+        gate: z.ZodOptional<z.ZodBoolean>;
+        deterministic: z.ZodOptional<z.ZodBoolean>;
+        type: z.ZodLiteral<"quantity">;
+        unit: z.ZodString;
+    }, z.core.$strict>], "type">>;
+    policy: z.ZodObject<{
+        primary: z.ZodRecord<z.ZodString, z.ZodObject<{
+            limit: z.ZodNumber;
+            owner: z.ZodString;
+            reason: z.ZodString;
+        }, z.core.$strict>>;
+        secondary: z.ZodOptional<z.ZodArray<z.ZodString>>;
+        diagnostic: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    }, z.core.$strict>;
+    profiles: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodObject<{
+        trials: z.ZodOptional<z.ZodInt>;
+        mode: z.ZodOptional<z.ZodEnum<{
+            confirm: "confirm";
+            fast: "fast";
+        }>>;
+        pool: z.ZodOptional<z.ZodEnum<{
+            development: "development";
+            promoted: "promoted";
+            sealed: "sealed";
+            validation: "validation";
+        }>>;
+        cases: z.ZodOptional<z.ZodInt>;
+        budget: z.ZodOptional<z.ZodObject<{
+            calls: z.ZodOptional<z.ZodInt>;
+            callsPerTrial: z.ZodOptional<z.ZodInt>;
+            rejectedPerTrial: z.ZodOptional<z.ZodOptional<z.ZodInt>>;
+            judgeCalls: z.ZodOptional<z.ZodOptional<z.ZodInt>>;
+            costMicros: z.ZodOptional<z.ZodOptional<z.ZodInt>>;
+        }, z.core.$strict>>;
+        shards: z.ZodOptional<z.ZodInt>;
+    }, z.core.$strict>>>;
+    budget: z.ZodObject<{
+        calls: z.ZodInt;
+        callsPerTrial: z.ZodInt;
+        rejectedPerTrial: z.ZodOptional<z.ZodInt>;
+        judgeCalls: z.ZodOptional<z.ZodInt>;
+        costMicros: z.ZodOptional<z.ZodInt>;
+    }, z.core.$strict>;
+    limits: z.ZodOptional<z.ZodObject<{
+        artifactBytes: z.ZodOptional<z.ZodInt>;
+        outputBytes: z.ZodOptional<z.ZodInt>;
+        trialDeadline: z.ZodOptional<z.ZodString>;
+        wallClockMax: z.ZodOptional<z.ZodString>;
+        missingMax: z.ZodOptional<z.ZodNumber>;
+        throttleMax: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>>;
+    baselines: z.ZodOptional<z.ZodObject<{
+        freshness: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>>;
+    stopReasons: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodXor<readonly [z.ZodEnum<{
+        completed: "completed";
+        infrastructure: "infrastructure";
+        not_invoked: "not_invoked";
+        system: "system";
+    }>, z.ZodObject<{
+        class: z.ZodEnum<{
+            completed: "completed";
+            infrastructure: "infrastructure";
+            not_invoked: "not_invoked";
+            system: "system";
+        }>;
+        selfVerdict: z.ZodBoolean;
+    }, z.core.$strict>]>>>;
+    attribute: z.ZodOptional<z.ZodObject<{
+        fidelityMargin: z.ZodOptional<z.ZodNumber>;
+    }, z.core.$strict>>;
+    deterministic: z.ZodOptional<z.ZodBoolean>;
+}, z.core.$strict>;
+
+// @public
+export type SuiteV2 = z.infer<typeof SuiteV2>;
 
 // @public
 export interface TargetCase {
@@ -3354,6 +4848,17 @@ export const TrialIdentity: z.ZodObject<{
 
 // @public
 export type TrialIdentity = z.infer<typeof TrialIdentity>;
+
+// @public
+export const TrialReduction: z.ZodXor<readonly [z.ZodObject<{
+    all: z.ZodObject<{
+        k: z.ZodInt;
+    }, z.core.$strict>;
+}, z.core.$strict>, z.ZodObject<{
+    any: z.ZodObject<{
+        k: z.ZodInt;
+    }, z.core.$strict>;
+}, z.core.$strict>]>;
 
 // @public
 export const TrialRequest: z.ZodObject<{
@@ -3550,6 +5055,24 @@ export const WorkerError: z.ZodObject<{
 
 // @public
 export type WorkerError = z.infer<typeof WorkerError>;
+
+// @public
+export const WorkerSettings: z.ZodObject<{
+    command: z.ZodArray<z.ZodString>;
+    prepare: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    env: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        name: z.ZodString;
+        secret: z.ZodOptional<z.ZodBoolean>;
+    }, z.core.$strict>>>;
+    envFile: z.ZodOptional<z.ZodString>;
+    endpoints: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    capacity: z.ZodOptional<z.ZodInt>;
+    processes: z.ZodOptional<z.ZodInt>;
+    startTimeout: z.ZodOptional<z.ZodString>;
+}, z.core.$strict>;
+
+// @public
+export type WorkerSettings = z.infer<typeof WorkerSettings>;
 
 // (No @packageDocumentation comment for this package)
 
