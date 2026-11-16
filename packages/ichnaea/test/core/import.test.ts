@@ -113,6 +113,15 @@ describe("import mode", () => {
       version: "2.0.0",
     });
     expect(stored.run.lineage.find((l) => l.kind === "measure")?.digest).toMatch(/^sha256:/);
+    expect(stored.run.environment).toMatchObject({
+      arch: process.arch,
+      runtime: {
+        name: "node",
+        version: process.versions.node,
+        platform: process.platform,
+        arch: process.arch,
+      },
+    });
     expect(seen.filter((x) => x === "trial")).toHaveLength(result.trials);
     expect(seen.at(-1)).toBe("run");
   });

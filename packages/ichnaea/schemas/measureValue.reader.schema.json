@@ -363,9 +363,21 @@
         "retention": "subject"
       }
     },
+    "why": {
+      "type": "string",
+      "description": "Why the scorer gave the value, in one short sentence. It explains the value to a reader; no statistic reads it.",
+      "x-ichnaea-data": {
+        "class": "inherit",
+        "identifier": "content",
+        "egress": [
+          "*"
+        ],
+        "retention": "subject"
+      }
+    },
     "dataClass": {
       "type": "string",
-      "description": "The data class of the note.",
+      "description": "The data class of the note and the why.",
       "x-ichnaea-data": {
         "class": "none",
         "identifier": "none",
