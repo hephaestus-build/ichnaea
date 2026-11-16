@@ -486,6 +486,82 @@ docker run --rm -v "$PWD":/w -w /w \
 
 The R script installs irr, irrCAC and jsonlite from a dated CRAN snapshot, so it needs the network.
 
+## The judge calibration rule: operating characteristics
+
+A model judge is `calibrated` only when its agreement with two human raters, and its bias between
+the two configurations a plan names, pass a rule. This study measures how often that rule admits a
+judge that is as good as a rater, a worse one, or a biased one. It describes the rule; it does not
+validate an interval or a decision method.
+
+**The rule studied** (`scripts/stats/calibration-rule.ts`; the study takes it as a parameter):
+
+- The agreement statistic is Gwet's AC1 for yes/no labels and Krippendorff's ordinal alpha for 5
+  levels. The gap is judge–rater agreement (the mean over the two raters) minus rater–rater
+  agreement. The agreement condition holds when the gap's one-sided 95 % lower bound is at least −0.15.
+- The bias between the two configurations is, per case, the judge's change minus the raters' mean
+  change, on [0, 1]. Levels are normalised as (level − 1)/4. Its shown bound is max(|lower|, |upper|)
+  of the two-sided 90 % interval of its mean. An equivalence check at tolerance m, or a measure's
+  limit m, passes when the shown bound is at most m.
+- Both come from one case-cluster percentile bootstrap of 2,000 resamples per study.
+
+**The synthetic studies** (`scripts/stats/calibration-rule-study.ts`):
+
+- Each study has 60 cases with two items each, one per configuration. A shared case effect is drawn
+  as N(0, 0.7²).
+- Yes/no: an item is positive with probability prevalence · e^(0.5 · case effect), clamped to
+  [0.02, 0.95]. Each rater reads it correctly with probability 0.90, and the judge with its own
+  accuracy. A biased judge misses positives more often under the second configuration.
+- Levels: a latent quality (case effect plus N(0, 0.7²)) is cut into 5 levels at −1.2, −0.4, 0.4 and
+  1.2. Rater readings add N(0, 0.6²). The judge adds its own noise, and a biased judge shifts its
+  reading under the second configuration.
+
+**Results.** 2,000 studies per cell, seed 6,000,000 + cell index, from
+`validation/calibration-rule.tsv` and its sidecar. The Monte Carlo standard error of a rate is at most
+0.011. "Mean bias" is the per-case bias between the configurations, averaged over the cell's studies.
+
+| Cell                           | Judge                          | Mean bias | P(agreement passes) | P(bound ≤ 0.10) | P(bound ≤ 0.15) | P(bound ≤ 0.20) | P(bound ≤ 0.25) |
+| ------------------------------ | ------------------------------ | --------- | ------------------- | --------------- | --------------- | --------------- | --------------- |
+| Yes/no, prevalence 0.2         | as good as a rater (0.90)      | 0.00      | 0.788               | 0.039           | 0.508           | 0.825           | 0.963           |
+|                                | slightly worse (0.85)          | 0.00      | 0.298               | 0.004           | 0.322           | 0.708           | 0.907           |
+|                                | clearly worse (0.80)           | 0.00      | 0.066               | 0.000           | 0.155           | 0.571           | 0.828           |
+| Yes/no, prevalence 0.1         | as good as a rater             | 0.00      | 0.836               | 0.036           | 0.484           | 0.836           | 0.963           |
+|                                | clearly worse                  | 0.00      | 0.079               | 0.002           | 0.183           | 0.579           | 0.833           |
+| Yes/no, prevalence 0.2, biased | as good as a rater             | −0.068    | 0.752               | 0.027           | 0.318           | 0.624           | 0.839           |
+|                                |                                | −0.136    | 0.696               | 0.006           | 0.096           | 0.267           | 0.532           |
+|                                |                                | −0.204    | 0.640               | 0.000           | 0.012           | 0.070           | 0.192           |
+| 5 levels                       | as good as a rater (noise 0.6) | 0.00      | 0.925               | 0.627           | 0.968           | 1.000           | 1.000           |
+|                                | noisier (0.9)                  | 0.00      | 0.253               | 0.292           | 0.838           | 0.981           | 0.999           |
+|                                | much noisier (1.2)             | 0.00      | 0.017               | 0.106           | 0.654           | 0.933           | 0.993           |
+| 5 levels, biased               | as good as a rater             | 0.065     | 0.885               | 0.223           | 0.711           | 0.961           | 0.998           |
+|                                |                                | 0.130     | 0.720               | 0.009           | 0.142           | 0.554           | 0.914           |
+
+No resample had an undefined agreement statistic (`nanShare` 0 in every cell).
+
+**What the table shows.**
+
+- At 60 cases, the agreement condition admits a judge as good as a rater 79–92 % of the time and a
+  clearly worse one 7–8 % of the time (yes/no). A noisier level judge (noise 1.5 times a rater's) is
+  still admitted 25 % of the time.
+- On yes/no values, the bias bound of an unbiased judge is about 0.16 on average. So an equivalence
+  check at ±0.10 passes it only 4 % of the time; ±0.20 passes it 83 % of the time. A bound of 0.10
+  or less on yes/no values needs a larger study.
+- On levels, the bound of an unbiased judge is about 0.10. It is at most 0.10 in 63 % of studies and
+  at most 0.15 in 97 %.
+- The agreement condition alone still admits a biased yes/no judge (mean bias −0.20) 64 % of the
+  time. The bias check is what catches it.
+
+**Limits.** The raters and the judge are synthetic. The numbers describe this rule on these
+generators, at 60 cases. They are not the coverage of an interval, and they do not validate a
+decision method. A rule or generator change needs a rerun.
+
+Rerun from `packages/ichnaea` (about 14 minutes on 4 cores), or with the `Calibration rule study`
+workflow:
+
+```sh
+for i in 0 1 2 3; do node scripts/stats/study-calibration-rule.ts shard --shard "$i/4" --out /tmp/shards & done; wait
+node scripts/stats/study-calibration-rule.ts merge --in /tmp/shards validation/calibration-rule.tsv
+```
+
 ## Floors and the minimum detectable effect
 
 The zero-noise floor, the smallest margin that can pass when every trial passes in both arms, is
