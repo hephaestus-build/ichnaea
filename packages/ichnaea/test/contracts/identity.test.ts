@@ -21,13 +21,16 @@ import {
   Trial,
   verifyArms,
   verifyConfiguration,
-} from "../src/index.ts";
+} from "../../src/contracts/index.ts";
 import { committedSchema } from "./support/ajv.ts";
 import { arbitraryFor } from "./support/arbitrary.ts";
 
 const fixture = <T>(name: string): T =>
   JSON.parse(
-    readFileSync(join(import.meta.dirname, "..", "fixtures", "valid", `${name}.json`), "utf8"),
+    readFileSync(
+      join(import.meta.dirname, "..", "..", "fixtures", "valid", `${name}.json`),
+      "utf8",
+    ),
   ) as T;
 
 const uniq = <T>(items: readonly T[], key: (t: T) => string): T[] => [
@@ -672,7 +675,7 @@ describe("the digest rules, held to the list of what each digest hashes", () => 
 
   it("is the rule file other languages read", () => {
     const file = JSON.parse(
-      readFileSync(join(import.meta.dirname, "..", "fixtures", "digest-rules.json"), "utf8"),
+      readFileSync(join(import.meta.dirname, "..", "..", "fixtures", "digest-rules.json"), "utf8"),
     ) as unknown;
     expect(file).toEqual(JSON.parse(JSON.stringify(DIGEST_RULES)));
   });

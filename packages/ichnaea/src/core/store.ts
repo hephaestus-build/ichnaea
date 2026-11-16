@@ -16,7 +16,7 @@ import {
   type Run as RunRecord,
   Trial,
   type Trial as TrialRecord,
-} from "@hephaestus-build/ichnaea-contracts";
+} from "../contracts/index.ts";
 import * as z from "zod";
 
 /** Thrown when a write would change a record that already exists. */

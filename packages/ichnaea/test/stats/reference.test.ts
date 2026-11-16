@@ -1,11 +1,11 @@
 // REQ-50, REQ-58, REQ-111: every interval matches pinned reference outputs from an independent
-// implementation (R package ratesci, run as a test-only oracle by scripts/reference.R).
+// implementation (R package ratesci, run as a test-only oracle by scripts/stats/reference.R).
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { scoreDifferenceInterval, tangoInterval, wilson } from "../src/index.ts";
+import { scoreDifferenceInterval, tangoInterval, wilson } from "../../src/stats/index.ts";
 
 interface Bounds {
   lower: number;

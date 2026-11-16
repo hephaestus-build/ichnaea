@@ -1,4 +1,4 @@
-import { readFile, stat } from "node:fs/promises";
+import { stat } from "node:fs/promises";
 import { basename, dirname, extname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
@@ -8,7 +8,7 @@ import {
   RECORD_CONTRACTS,
   toJsonSchema,
   TriggerKind,
-} from "@hephaestus-build/ichnaea-contracts";
+} from "../contracts/index.ts";
 
 import { CORE_COMMANDS, createHost, type Host } from "./host.ts";
 import { importRun } from "./import.ts";
@@ -45,11 +45,6 @@ export async function loadConfig(path: string, load: ModuleLoader = importModule
   if (!module.default || !Array.isArray(module.default.plugins))
     throw new Error(`${path} must export a configuration (defineConfig) as default`);
   return module.default;
-}
-
-async function contractsVersion(): Promise<string> {
-  const url = import.meta.resolve("@hephaestus-build/ichnaea-contracts/package.json");
-  return (JSON.parse(await readFile(new URL(url), "utf8")) as { version: string }).version;
 }
 
 const HELP_COMMANDS = `Usage: ichnaea <command> [options]
@@ -147,7 +142,8 @@ async function dispatch(
   try {
     host = createHost(
       await loadConfig(configPath, load),
-      { core: CORE_VERSION, contracts: await contractsVersion() },
+      // The contracts ship in the same package as the core, at its version.
+      { core: CORE_VERSION, contracts: CORE_VERSION },
       (m) => out(`warning: ${m}`),
     );
     await host.configResolved();

@@ -10,7 +10,7 @@ import type {
   Purpose,
   Run,
   Trial,
-} from "@hephaestus-build/ichnaea-contracts";
+} from "../contracts/index.ts";
 
 /** Stability of a plugin or of one of its parts. Names never encode the stage. */
 export type Stability = "development" | "alpha" | "beta" | "stable";

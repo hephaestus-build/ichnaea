@@ -18,7 +18,7 @@ export interface Stratum {
 /**
  * Options of the stratified score method for a difference of proportions. The defaults are the
  * Miettinen–Nurminen method: bias correction on, skewness correction off. A simulation study
- * (scripts/study-fixed-cases.ts, 252 grid points, 10,000 repetitions) chose them: at 2 replicates
+ * (scripts/stats/study-fixed-cases.ts, 252 grid points, 10,000 repetitions) chose them: at 2 replicates
  * per case the variants without the N/(N-1) factor undercover (minimum 0.88 to 0.92), and the
  * skewness correction does not help once the factor is applied.
  */

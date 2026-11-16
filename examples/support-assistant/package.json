@@ -7,12 +7,12 @@
     "generate": "node scripts/generate.ts"
   },
   "dependencies": {
-    "@hephaestus-build/ichnaea-contracts": "workspace:*",
-    "@hephaestus-build/ichnaea-core": "workspace:*",
-    "@hephaestus-build/ichnaea-decide": "workspace:*",
-    "@hephaestus-build/ichnaea-report": "workspace:*"
+    "@hephaestus-build/ichnaea": "workspace:*"
   },
   "devDependencies": {
     "zod": "4.6.7"
+  },
+  "engines": {
+    "node": ">=24.3"
   }
 }

@@ -1,9 +1,9 @@
-"""Writes test/reference-mpmath-normal.json: the standard normal distribution function and its
+"""Writes test/stats/reference-mpmath-normal.json: the standard normal distribution function and its
 quantile at 60 significant digits (mpmath), rounded to the nearest double, on a dense grid with
 extra points on both sides of every branch boundary of src/normal.ts. Test-only oracle. Run in a
 container:
   docker run --rm --platform linux/amd64 -v "$PWD":/w -w /w python:3.13-slim \
-    sh -c "pip install -q --require-hashes -r scripts/oracle-requirements.txt && python scripts/reference-normal-mpmath.py"
+    sh -c "pip install -q --require-hashes -r scripts/stats/oracle-requirements.txt && python scripts/stats/reference-normal-mpmath.py"
 """
 import json
 import math
@@ -66,7 +66,7 @@ constants = {
     "sqrt_32": float(mp.sqrt(32)),
     "two_pi": float(2 * mp.pi),
 }
-with open("test/reference-mpmath-normal.json", "w") as out:
+with open("test/stats/reference-mpmath-normal.json", "w") as out:
     json.dump(
         {
             "oracle": f"mpmath {mpmath.__version__}, {mp.dps} digits",

@@ -1,7 +1,7 @@
 {
   "$schema": "https://developer.microsoft.com/json-schemas/api-extractor/v7/api-extractor.schema.json",
-  // scripts/api-report.ts emits the declarations to a temporary folder and sets the entry point
-  // and the report's temporary folder there.
+  // scripts/api-report.ts emits the declarations to a temporary folder and sets, for each subpath,
+  // the entry point, the report's name and the report's temporary folder there.
   "mainEntryPointFilePath": "<projectFolder>/index.d.ts",
   "apiReport": {
     "enabled": true,
@@ -15,6 +15,11 @@
       "default": { "logLevel": "warning" },
       "ae-missing-release-tag": { "logLevel": "none" },
       "ae-forgotten-export": { "logLevel": "error" }
+    },
+    // The reports gate the declarations. The statistics' doc comments use mathematical notation
+    // (a < b, x > y) that TSDoc reads as markup; it is not part of any declaration.
+    "tsdocMessageReporting": {
+      "default": { "logLevel": "none" }
     }
   }
 }

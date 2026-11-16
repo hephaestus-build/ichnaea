@@ -1,10 +1,4 @@
-import {
-  type Decision,
-  MeasureCard,
-  Plan,
-  type Run,
-  type Trial,
-} from "@hephaestus-build/ichnaea-contracts";
+import { type Decision, MeasureCard, Plan, type Run, type Trial } from "../contracts/index.ts";
 
 import type {
   CommandDefinition,

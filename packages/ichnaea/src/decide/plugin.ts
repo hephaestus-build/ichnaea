@@ -1,18 +1,13 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { canonicalize, type Decision, type Plan } from "@hephaestus-build/ichnaea-contracts";
-import {
-  type CommandDefinition,
-  FileStore,
-  packageVersion,
-  type Plugin,
-} from "@hephaestus-build/ichnaea-core";
+import { canonicalize, type Decision, type Plan } from "../contracts/index.ts";
+import { type CommandDefinition, FileStore, CORE_VERSION, type Plugin } from "../core/index.ts";
 
 import { decide } from "./decide.ts";
 import { planningPower } from "./planning.ts";
 
-const VERSION = packageVersion(import.meta.url);
+const VERSION = CORE_VERSION;
 
 /**
  * The exit code a CI policy gives a decision (REQ-26, REQ-27): 1 blocks, 0 lets the change pass.

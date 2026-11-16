@@ -1,15 +1,15 @@
 // Decision 0015: REGRESSION needs the regression result validated; NON-INFERIOR, and so PASS,
 // needs both results. While the validated margin floor is not set, no run passes, and a real drop
 // still blocks.
-import type { Decision } from "@hephaestus-build/ichnaea-contracts";
+import type { Decision } from "../../src/contracts/index.ts";
 import {
   type CaseCounts,
   MARGIN_FLOOR_NOT_SET,
   VALIDATED_MARGIN_FLOOR_SET,
-} from "@hephaestus-build/ichnaea-stats";
+} from "../../src/stats/index.ts";
 import { describe, expect, it } from "vitest";
 
-import { decide, decidePrimaries, exitCode, FLOOR_NOT_SET_REASON } from "../src/index.ts";
+import { decide, decidePrimaries, exitCode, FLOOR_NOT_SET_REASON } from "../../src/decide/index.ts";
 import { type Scenario, scenario } from "./support/scenario.ts";
 
 const run = (s: Scenario): Promise<Decision> =>

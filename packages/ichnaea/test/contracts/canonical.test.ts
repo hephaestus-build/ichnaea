@@ -7,7 +7,13 @@ import canonicalizeOracle from "canonicalize";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
-import { canonicalize, digest, NonJsonValueError, RECORD_CONTRACTS, sha256 } from "../src/index.ts";
+import {
+  canonicalize,
+  digest,
+  NonJsonValueError,
+  RECORD_CONTRACTS,
+  sha256,
+} from "../../src/contracts/index.ts";
 import { arbitraryFor } from "./support/arbitrary.ts";
 
 const oracle = canonicalizeOracle as unknown as (value: unknown) => string;

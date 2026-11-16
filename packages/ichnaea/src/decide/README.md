@@ -1,4 +1,4 @@
-# @hephaestus-build/ichnaea-decide
+# Decision rule: `@hephaestus-build/ichnaea`
 
 The decision rule of Ichnaea, as the `decide` plugin and the `decide()` function.
 
@@ -21,7 +21,7 @@ A run verdict is reached in this order (decision 0011):
 
    The run is PASS only when every primary measure is non-inferior.
 
-**No run passes yet.** The statistics package has not set the validated margin floor, so no
+**No run passes yet.** The statistics have not set the validated margin floor, so no
 non-inferiority result is validated. A real drop still gives REGRESSION. A candidate that does not
 regress gives INCONCLUSIVE, and the reason names the cause of each primary measure. When the lower
 bound does not clear the margin, the cases cannot tell yet, and the floor is named as well. When
@@ -34,7 +34,7 @@ Whenever a primary measure misses a trial in either arm, each verdict is tested 
 imputation that works against it. A verdict that this changes becomes INCONCLUSIVE (decision 0010).
 
 The plugin refuses a plan whose margin, less its safety margin, lies outside the validated
-margins of the statistics package (decision 0012). It adds the planning power statement to every
+margins of the statistics (decision 0012). It adds the planning power statement to every
 plan, an estimate-only plan too. Without the plugin, a plan has no power statement, and
 `ichnaea import` says so.
 Each decision carries that statement unchanged, and a run-time statement that never changes the
@@ -45,6 +45,6 @@ no planning statement, and its margin is refused", and carries the refusal text 
 it computes nothing and refuses nothing, each entry says "the plan carries no planning statement,
 and none can be computed from it".
 
-`decidePrimaries` is the per-measure rule on counts alone. `test/req51.sim.test.ts` uses it to
+`decidePrimaries` is the per-measure rule on counts alone. `test/decide/req51.sim.test.ts` uses it to
 show that the rate of false REGRESSION verdicts stays at or below α. Run it with
-`pnpm --filter ./packages/decide run test:sim`.
+`pnpm --filter @hephaestus-build/ichnaea run test:sim:decide`.

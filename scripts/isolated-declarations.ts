@@ -3,12 +3,12 @@ import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 
 /**
- * Where the exemption applies: the zod schema modules of the contracts. Their exported types are
+ * Where the exemption applies: the zod schema modules of the contracts, `src/contracts/primitives.ts` and `src/contracts/records/`. Their exported types are
  * inferred from the schemas, and `isolatedDeclarations` would make each one a second, hand-written
  * copy. Every other source module must pass, including exported constants with inferred types,
  * which the return-type lint cannot see. Decision 0001 in docs/decisions has the reasons.
  */
-export const EXEMPT = /^packages\/contracts\/src\/(primitives\.ts|records\/)/;
+export const EXEMPT = /^packages\/ichnaea\/src\/contracts\/(primitives\.ts|records\/)/;
 
 const TSC = join(import.meta.dirname, "..", "node_modules", ".bin", "tsc");
 

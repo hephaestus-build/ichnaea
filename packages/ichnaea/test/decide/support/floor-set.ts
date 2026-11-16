@@ -1,14 +1,14 @@
 // The comparison as it will be once the validated margin floor is set, for tests of the rule that
 // PASS and NON-INFERIOR need (decision 0015). The statistics constant itself is never changed.
-import type { Decision } from "@hephaestus-build/ichnaea-contracts";
+import type { Decision } from "../../../src/contracts/index.ts";
 import {
   type Comparison,
   type ComparisonInput,
   compareCounts,
   MARGIN_FLOOR_NOT_SET,
-} from "@hephaestus-build/ichnaea-stats";
+} from "../../../src/stats/index.ts";
 
-import { type DecideInput, decideWith } from "../../src/decide.ts";
+import { type DecideInput, decideWith } from "../../../src/decide/decide.ts";
 import type { Scenario } from "./scenario.ts";
 
 /**
@@ -28,4 +28,4 @@ export const decideFloorSet = (
   decideWith({ ...s, decidedAt: "2026-11-15T12:00:00Z", ichnaea: "0.0.0" }, floorSet);
 
 /** The reason of a run that does not regress while the floor is not set. */
-export { FLOOR_NOT_SET_REASON as FLOOR_REASON } from "../../src/index.ts";
+export { FLOOR_NOT_SET_REASON as FLOOR_REASON } from "../../../src/decide/index.ts";

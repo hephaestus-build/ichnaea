@@ -148,24 +148,15 @@ importers:
 
   examples/support-assistant:
     dependencies:
-      '@hephaestus-build/ichnaea-contracts':
+      '@hephaestus-build/ichnaea':
         specifier: workspace:*
-        version: link:../../packages/contracts
-      '@hephaestus-build/ichnaea-core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@hephaestus-build/ichnaea-decide':
-        specifier: workspace:*
-        version: link:../../packages/decide
-      '@hephaestus-build/ichnaea-report':
-        specifier: workspace:*
-        version: link:../../packages/report
+        version: link:../../packages/ichnaea
     devDependencies:
       zod:
         specifier: 4.6.7
         version: 4.6.7
 
-  packages/contracts:
+  packages/ichnaea:
     devDependencies:
       ajv:
         specifier: 8.20.0
@@ -179,53 +170,6 @@ importers:
       zod:
         specifier: 4.6.7
         version: 4.6.7
-
-  packages/core:
-    dependencies:
-      '@hephaestus-build/ichnaea-contracts':
-        specifier: workspace:*
-        version: link:../contracts
-    devDependencies:
-      zod:
-        specifier: 4.6.7
-        version: 4.6.7
-
-  packages/decide:
-    dependencies:
-      '@hephaestus-build/ichnaea-contracts':
-        specifier: workspace:*
-        version: link:../contracts
-      '@hephaestus-build/ichnaea-stats':
-        specifier: workspace:*
-        version: link:../stats
-    devDependencies:
-      '@hephaestus-build/ichnaea-core':
-        specifier: workspace:*
-        version: link:../core
-      zod:
-        specifier: 4.6.7
-        version: 4.6.7
-
-  packages/report:
-    dependencies:
-      '@hephaestus-build/ichnaea-contracts':
-        specifier: workspace:*
-        version: link:../contracts
-      '@hephaestus-build/ichnaea-decide':
-        specifier: workspace:*
-        version: link:../decide
-    devDependencies:
-      '@hephaestus-build/ichnaea-core':
-        specifier: workspace:*
-        version: link:../core
-      '@hephaestus-build/ichnaea-stats':
-        specifier: workspace:*
-        version: link:../stats
-      zod:
-        specifier: 4.6.7
-        version: 4.6.7
-
-  packages/stats: {}
 
 packages:
 

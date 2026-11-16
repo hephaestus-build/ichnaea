@@ -2,7 +2,7 @@
 // every validator (zod, ajv, and later a Java consumer) reads. The application is synthetic: a
 // support assistant that answers questions about a fictional product.
 
-import { sha256 } from "../src/canonical.ts";
+import { sha256 } from "../../src/contracts/canonical.ts";
 
 const d = (c: string): string => `sha256:${c.repeat(64).slice(0, 64)}`;
 const config = d("c1");

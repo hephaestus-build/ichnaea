@@ -4,7 +4,7 @@
 import fc from "fast-check";
 import type * as z from "zod";
 
-import { RECORD_CONTRACTS, toJsonSchema } from "../../src/index.ts";
+import { RECORD_CONTRACTS, toJsonSchema } from "../../../src/contracts/index.ts";
 
 type JsonSchema = Record<string, unknown>;
 

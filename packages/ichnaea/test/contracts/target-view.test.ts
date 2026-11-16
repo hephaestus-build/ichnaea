@@ -2,7 +2,7 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
-import { Case, caseForTarget } from "../src/index.ts";
+import { Case, caseForTarget } from "../../src/contracts/index.ts";
 import { arbitraryFor } from "./support/arbitrary.ts";
 
 describe("target view of a case", () => {

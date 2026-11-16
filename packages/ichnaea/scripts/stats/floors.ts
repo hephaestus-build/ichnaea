@@ -1,5 +1,5 @@
 // Prints the zero-noise floors of the fixed-cases method and the sampled-cases floor.
-import { fixedCasesFloor, sampledCasesFloor } from "../src/index.ts";
+import { fixedCasesFloor, sampledCasesFloor } from "../../src/stats/index.ts";
 
 console.log("cases\tr=2 MN\tr=3 MN\tr=2 no-bc\tdesign r=2 z²/(nr+z²)\tsampled");
 const z2 = 1.6448536269514722 ** 2;

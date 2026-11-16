@@ -13,14 +13,14 @@ export const TABLE_MARKER =
   "<!-- The submodule consumer test checks these verdict lines and exit codes. -->";
 
 /**
- * The zod version that the workspace builds and tests with: the contracts package's development
- * dependency. A consumer installs the same version.
+ * The zod version that the workspace builds and tests with: the package's development dependency.
+ * A consumer installs the same version.
  */
 export function workspaceZod(): string {
-  const contracts = JSON.parse(
-    readFileSync(join(import.meta.dirname, "..", "packages", "contracts", "package.json"), "utf8"),
+  const manifest = JSON.parse(
+    readFileSync(join(import.meta.dirname, "..", "packages", "ichnaea", "package.json"), "utf8"),
   ) as { devDependencies: { zod: string } };
-  return contracts.devDependencies.zod;
+  return manifest.devDependencies.zod;
 }
 
 export interface Scenario {

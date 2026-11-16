@@ -6,11 +6,11 @@ import {
   type GateResult,
   type MeasureValue,
   type Plan,
-} from "@hephaestus-build/ichnaea-contracts";
-import { holm, MARGIN_FLOOR_NOT_SET } from "@hephaestus-build/ichnaea-stats";
+} from "../../src/contracts/index.ts";
+import { holm, MARGIN_FLOOR_NOT_SET } from "../../src/stats/index.ts";
 import { describe, expect, it } from "vitest";
 
-import { decide, exitCode, planningPower } from "../src/index.ts";
+import { decide, exitCode, planningPower } from "../../src/decide/index.ts";
 import { decideFloorSet, FLOOR_REASON } from "./support/floor-set.ts";
 import {
   configuration,

@@ -1,9 +1,9 @@
-"""Writes test/reference-numpy-mt19937.json: numpy's 32-bit Mersenne Twister, seeded with
+"""Writes test/stats/reference-numpy-mt19937.json: numpy's 32-bit Mersenne Twister, seeded with
 init_genrand (numpy's legacy integer seeding), as raw 32-bit outputs and as genrand_res53 doubles.
 The raw sequences cross two state regenerations (624 outputs each). Test-only oracle. Run in a
 container:
   docker run --rm --platform linux/amd64 -v "$PWD":/w -w /w python:3.13-slim \
-    sh -c "pip install -q --require-hashes -r scripts/oracle-requirements.txt && python scripts/reference-mt19937.py"
+    sh -c "pip install -q --require-hashes -r scripts/stats/oracle-requirements.txt && python scripts/stats/reference-mt19937.py"
 """
 import json
 
@@ -25,6 +25,6 @@ def uniform(seed):
 
 
 cases = [{"seed": s, "raw": raw(s), "uniform": uniform(s)} for s in SEEDS]
-with open("test/reference-numpy-mt19937.json", "w") as out:
+with open("test/stats/reference-numpy-mt19937.json", "w") as out:
     json.dump({"oracle": f"numpy {np.__version__}", "cases": cases}, out, indent=None)
     out.write("\n")

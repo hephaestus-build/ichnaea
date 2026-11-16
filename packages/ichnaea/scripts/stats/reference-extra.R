@@ -1,6 +1,6 @@
-# Writes test/reference-r-extra.json: reference values that need no simulated input. Test-only oracle,
+# Writes test/stats/reference-r-extra.json: reference values that need no simulated input. Test-only oracle,
 # on R 4.5.2 with ratesci and jsonlite from a dated CRAN snapshot. Run in a container:
-#   docker run --rm --platform linux/amd64 -v "$PWD":/w -w /w rocker/r-ver:4.5.2 Rscript scripts/reference-extra.R
+#   docker run --rm --platform linux/amd64 -v "$PWD":/w -w /w rocker/r-ver:4.5.2 Rscript scripts/stats/reference-extra.R
 repos <- "https://packagemanager.posit.co/cran/__linux__/noble/2026-11-01"
 dir.create("/tmp/rlib", showWarnings = FALSE)
 .libPaths(c("/tmp/rlib", .libPaths()))
@@ -51,5 +51,5 @@ out$extremes <- unlist(lapply(extremes, function(s) lapply(c(0.95, 0.9), functio
                level = lv, skew = FALSE, bcf = TRUE, precis = 12, warn = FALSE)
   c(s, list(level = lv, lower = unname(r$estimates[1, "lower"]), upper = unname(r$estimates[1, "upper"])))
 })), recursive = FALSE)
-writeLines(toJSON(out, auto_unbox = TRUE, digits = NA, pretty = TRUE), "test/reference-r-extra.json")
+writeLines(toJSON(out, auto_unbox = TRUE, digits = NA, pretty = TRUE), "test/stats/reference-r-extra.json")
 cat("ok\n")

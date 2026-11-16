@@ -1,14 +1,10 @@
 // REQ-51's acceptance: with four correlated primary measures and no change, the rate of REGRESSION
 // verdicts stays at or below α. The simulation runs the decision rule itself (decidePrimaries) on
 // a layout with measures that apply to different numbers of cases.
-import {
-  type CaseCounts,
-  createRng,
-  VALIDATED_MARGIN_FLOOR,
-} from "@hephaestus-build/ichnaea-stats";
+import { type CaseCounts, createRng, VALIDATED_MARGIN_FLOOR } from "../../src/stats/index.ts";
 import { describe, expect, it } from "vitest";
 
-import { decidePrimaries } from "../src/index.ts";
+import { decidePrimaries } from "../../src/decide/index.ts";
 
 const ALPHA = 0.05;
 const REPETITIONS = 2000;

@@ -1,10 +1,10 @@
 // REQ-82, REQ-83, REQ-128, REQ-129: reports from records only, byte-identical, recomputed, linted.
 import { describe, expect, it } from "vitest";
 
-import { decide, FLOOR_NOT_SET_REASON } from "@hephaestus-build/ichnaea-decide";
+import { decide, FLOOR_NOT_SET_REASON } from "../../src/decide/index.ts";
 
-import { decideFloorSet } from "../../decide/test/support/floor-set.ts";
-import { scenario } from "../../decide/test/support/scenario.ts";
+import { decideFloorSet } from "../decide/support/floor-set.ts";
+import { scenario } from "../decide/support/scenario.ts";
 import {
   decisionView,
   lintReport,
@@ -12,7 +12,7 @@ import {
   recompute,
   renderHtml,
   renderMarkdown,
-} from "../src/index.ts";
+} from "../../src/report/index.ts";
 
 async function decided(over: Partial<Parameters<typeof scenario>[0]> = {}) {
   const s = await scenario({

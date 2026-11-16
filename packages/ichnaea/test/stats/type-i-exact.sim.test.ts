@@ -3,7 +3,7 @@
 // the check; confirmations add CONFIRM_SEED_OFFSET, so no two experiments share a stream.
 import { describe, expect, it } from "vitest";
 
-import { exactStratifiedTest, fixedCasesInterval } from "../src/index.ts";
+import { exactStratifiedTest, fixedCasesInterval } from "../../src/stats/index.ts";
 import { exactTypeI } from "./support/exact.ts";
 import { clamp, draw, LEVEL, rates } from "./support/grid.ts";
 import { documented } from "./support/documented.ts";

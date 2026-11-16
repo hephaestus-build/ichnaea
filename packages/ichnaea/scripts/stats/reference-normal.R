@@ -1,6 +1,6 @@
-# Writes test/reference-r-normal.json: R's pnorm and qnorm on a grid that covers both tails, with 17
+# Writes test/stats/reference-r-normal.json: R's pnorm and qnorm on a grid that covers both tails, with 17
 # significant digits. Test-only oracle; base R only. Run in a container:
-#   docker run --rm --platform linux/amd64 -v "$PWD":/w -w /w rocker/r-ver:4.5.2 Rscript scripts/reference-normal.R
+#   docker run --rm --platform linux/amd64 -v "$PWD":/w -w /w rocker/r-ver:4.5.2 Rscript scripts/stats/reference-normal.R
 # The platform matters: R on arm64 gives slightly different last digits.
 # The grid has points on both sides of each branch boundary: |x| = 0.67448975 and sqrt(32), and
 # R 4.5's tail bounds -38.4674 and 8.2924.
@@ -24,4 +24,4 @@ num <- function(v) ifelse(is.infinite(v), ifelse(v > 0, '"inf"', '"-inf"'), spri
 pairs <- function(a, b) paste0("[", num(a), ", ", num(b), "]", collapse = ",\n    ")
 cat(sprintf('{\n  "oracle": "%s",\n  "pnorm": [\n    %s\n  ],\n  "qnorm": [\n    %s\n  ]\n}\n',
             R.version.string, pairs(x, pnorm(x)), pairs(p, qnorm(p))),
-    file = "test/reference-r-normal.json")
+    file = "test/stats/reference-r-normal.json")

@@ -1,5 +1,5 @@
 // REQ-03: canonical forms and digests agree with an implementation in another language (Python
-// rfc8785, committed by scripts/oracle/digest_vectors.py), including the normative projections of
+// rfc8785, committed by scripts/contracts/oracle/digest_vectors.py), including the normative projections of
 // the configuration identity and the case-set digest, so any language can reproduce them.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -12,7 +12,7 @@ import {
   caseSetDigest,
   configurationIdentity,
   digest,
-} from "../src/index.ts";
+} from "../../src/contracts/index.ts";
 
 interface Vector {
   kind:
@@ -27,7 +27,7 @@ interface Vector {
   digest: string;
 }
 const { vectors } = JSON.parse(
-  readFileSync(join(import.meta.dirname, "..", "fixtures", "digests.json"), "utf8"),
+  readFileSync(join(import.meta.dirname, "..", "..", "fixtures", "digests.json"), "utf8"),
 ) as { vectors: Vector[] };
 
 describe("cross-language digest vectors", () => {
@@ -66,7 +66,7 @@ describe("cross-language digest vectors", () => {
 });
 
 const generated = JSON.parse(
-  readFileSync(join(import.meta.dirname, "..", "fixtures", "digests-generated.json"), "utf8"),
+  readFileSync(join(import.meta.dirname, "..", "..", "fixtures", "digests-generated.json"), "utf8"),
 ) as {
   vectors: Array<{ input: unknown; canonical: string; digest: string }>;
 };

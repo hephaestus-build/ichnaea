@@ -1,11 +1,11 @@
-import type { Plan, PowerEntry } from "@hephaestus-build/ichnaea-contracts";
-import type { PlanAdditions } from "@hephaestus-build/ichnaea-core";
+import type { Plan, PowerEntry } from "../contracts/index.ts";
+import type { PlanAdditions } from "../core/index.ts";
 import {
   sampledCasesFloor,
   VALIDATED_MARGIN_CEILING,
   VALIDATED_MARGIN_FLOOR,
   zeroNoiseFloor,
-} from "@hephaestus-build/ichnaea-stats";
+} from "../stats/index.ts";
 
 /** Planned trials per case in one arm (a suite can give some cases more, `replicatesFor`). */
 export function plannedTrialsPerCase(plan: Plan, arm: string): Map<string, number> {

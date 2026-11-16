@@ -1,8 +1,8 @@
 // Decision 0011: the order of run verdicts, and scope sentences and reasons built from the records.
-import { type Decision, type GateResult } from "@hephaestus-build/ichnaea-contracts";
+import { type Decision, type GateResult } from "../../src/contracts/index.ts";
 import { describe, expect, it } from "vitest";
 
-import { decide, exitCode, planningPower } from "../src/index.ts";
+import { decide, exitCode, planningPower } from "../../src/decide/index.ts";
 import { decideFloorSet, FLOOR_REASON } from "./support/floor-set.ts";
 import { type Scenario, scenario } from "./support/scenario.ts";
 
@@ -305,7 +305,7 @@ describe("margins (decision 0012)", () => {
       candidate: () => 0.97,
       marginStatus: "placeholder",
     });
-    const { digest } = await import("@hephaestus-build/ichnaea-contracts");
+    const { digest } = await import("../../src/contracts/index.ts");
     const plan = { ...s.plan, mode: "decision" as const, modeReasons: [] };
     const d = await run({
       ...s,
@@ -320,7 +320,7 @@ describe("margins (decision 0012)", () => {
 
   it("the planner refuses a registered margin outside the validated margins, naming the bound", async () => {
     const { VALIDATED_MARGIN_CEILING, VALIDATED_MARGIN_FLOOR } =
-      await import("@hephaestus-build/ichnaea-stats");
+      await import("../../src/stats/index.ts");
     for (const margin of [0, VALIDATED_MARGIN_FLOOR / 2, VALIDATED_MARGIN_FLOOR - 1e-9])
       expect(await refusal(margin)).toBe(
         `primary measure 'app/correct': its margin of ${margin} less its safety margin of 0 is below the validated margin floor of ${VALIDATED_MARGIN_FLOOR}, where no non-inferiority result is validated`,
@@ -343,14 +343,14 @@ describe("margins (decision 0012)", () => {
       margin: 0.1,
       safetyMargin: 0.06,
     });
-    const { VALIDATED_MARGIN_FLOOR } = await import("@hephaestus-build/ichnaea-stats");
+    const { VALIDATED_MARGIN_FLOOR } = await import("../../src/stats/index.ts");
     expect(planningPower(s.plan).refuse).toBe(
       `primary measure 'app/correct': its margin of 0.1 less its safety margin of 0.06 is below the validated margin floor of ${VALIDATED_MARGIN_FLOOR}, where no non-inferiority result is validated`,
     );
   });
 
   it("a placeholder margin outside the range is refused at plan time too", async () => {
-    const { VALIDATED_MARGIN_CEILING } = await import("@hephaestus-build/ichnaea-stats");
+    const { VALIDATED_MARGIN_CEILING } = await import("../../src/stats/index.ts");
     for (const margin of [0, VALIDATED_MARGIN_CEILING + 0.05]) {
       const s = await scenario({
         cases: 60,

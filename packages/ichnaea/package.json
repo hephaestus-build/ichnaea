@@ -1,37 +1,60 @@
 {
-  "name": "@hephaestus-build/ichnaea-core",
+  "name": "@hephaestus-build/ichnaea",
   "version": "0.0.0",
-  "description": "Ichnaea core: plugin host with lifecycle hooks, default-deny egress, append-only file store, call ledger, planner and CLI.",
+  "description": "Ichnaea: statistically sound evaluation of GenAI applications. Record contracts, statistics, plugin host, decision rule, reports and CLI.",
+  "keywords": [
+    "confidence-interval",
+    "evaluation",
+    "genai",
+    "json-schema",
+    "llm",
+    "non-inferiority",
+    "statistics",
+    "zod"
+  ],
+  "homepage": "https://github.com/hephaestus-build/ichnaea#readme",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/hephaestus-build/ichnaea.git",
-    "directory": "packages/core"
+    "directory": "packages/ichnaea"
   },
   "bin": {
-    "ichnaea": "./src/bin.ts"
+    "ichnaea": "./dist/core/bin.js"
   },
-  "files": [
-    "src",
-    "README.md"
-  ],
   "type": "module",
   "sideEffects": false,
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "default": "./src/index.ts"
+      "ichnaea-source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     },
+    "./contracts": {
+      "ichnaea-source": "./src/contracts/index.ts",
+      "types": "./dist/contracts/index.d.ts",
+      "default": "./dist/contracts/index.js"
+    },
+    "./stats": {
+      "ichnaea-source": "./src/stats/index.ts",
+      "types": "./dist/stats/index.d.ts",
+      "default": "./dist/stats/index.js"
+    },
+    "./schemas/*.json": "./schemas/*.json",
     "./package.json": "./package.json"
   },
-  "publishConfig": {
-    "access": "public",
-    "provenance": true
-  },
-  "dependencies": {
-    "@hephaestus-build/ichnaea-contracts": "workspace:*"
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "generate": "node scripts/contracts/generate-schemas.ts && node scripts/contracts/write-fixtures.ts",
+    "api": "node scripts/api-report.ts --local",
+    "check:api": "node scripts/api-report.ts",
+    "test:sim:stats": "vitest run --config vitest.sim.config.ts --project stats-sim --silent=false",
+    "test:sim:decide": "vitest run --config vitest.sim.config.ts --project decide-sim --silent=false"
   },
   "devDependencies": {
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
+    "canonicalize": "5.1.0",
     "zod": "4.6.7"
   },
   "peerDependencies": {

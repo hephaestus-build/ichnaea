@@ -13,8 +13,8 @@ import {
   type Run,
   type Trial,
   verifyArms,
-} from "@hephaestus-build/ichnaea-contracts";
-import { recordProblems, TRIGGER_VARIES } from "@hephaestus-build/ichnaea-core";
+} from "../contracts/index.ts";
+import { recordProblems, TRIGGER_VARIES } from "../core/index.ts";
 import {
   type CaseCounts,
   type Comparison,
@@ -28,7 +28,7 @@ import {
   sampledCasesFloor,
   type ValueType,
   wilson,
-} from "@hephaestus-build/ichnaea-stats";
+} from "../stats/index.ts";
 import type * as z from "zod";
 
 import { describeCounts, plannedTrialsPerCase, planningPower } from "./planning.ts";

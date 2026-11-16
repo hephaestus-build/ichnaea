@@ -3,7 +3,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { canonicalize, caseDigest, caseSetDigest } from "@hephaestus-build/ichnaea-contracts";
+import { canonicalize, caseDigest, caseSetDigest } from "@hephaestus-build/ichnaea/contracts";
 
 const root = join(import.meta.dirname, "..");
 const topics = [

@@ -1,12 +1,5 @@
-import { defineProject } from "vitest/config";
+import { defineConfig } from "vitest/config";
 
-import { workspaceAlias } from "../../vitest.workspace-alias.ts";
+import { UNIT_PROJECTS } from "./vitest.projects.ts";
 
-export default defineProject({
-  resolve: { alias: workspaceAlias },
-  test: {
-    name: "core",
-    include: ["test/**/*.test.ts"],
-    typecheck: { enabled: true, include: ["test/**/*.test-d.ts"] },
-  },
-});
+export default defineConfig({ test: { projects: UNIT_PROJECTS } });

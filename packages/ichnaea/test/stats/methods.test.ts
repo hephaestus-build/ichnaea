@@ -21,8 +21,8 @@ import {
   tangoInterval,
   wilson,
   withinCasePermutationTest,
-} from "../src/index.ts";
-import type { Count } from "../src/index.ts";
+} from "../../src/stats/index.ts";
+import type { Count } from "../../src/stats/index.ts";
 
 const TOL = 1e-9;
 

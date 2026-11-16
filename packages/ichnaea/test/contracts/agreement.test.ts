@@ -5,11 +5,16 @@ import { join } from "node:path";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
-import { readRecord, RECORD_CONTRACTS, toJsonSchema, toReaderJsonSchema } from "../src/index.ts";
+import {
+  readRecord,
+  RECORD_CONTRACTS,
+  toJsonSchema,
+  toReaderJsonSchema,
+} from "../../src/contracts/index.ts";
 import { ajvValidate, committedSchema, createAjv } from "./support/ajv.ts";
 import { arbitraryFor } from "./support/arbitrary.ts";
 
-const fixtures = join(import.meta.dirname, "..", "fixtures");
+const fixtures = join(import.meta.dirname, "..", "..", "fixtures");
 
 /** Every path to a member or element inside a JSON value. */
 function memberPaths(

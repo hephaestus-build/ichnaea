@@ -1,4 +1,4 @@
-# @hephaestus-build/ichnaea-core
+# Core: `@hephaestus-build/ichnaea`
 
 The core of Ichnaea: the plugin host, the planner, import mode, the record store and the CLI.
 
@@ -24,4 +24,5 @@ The core of Ichnaea: the plugin host, the planner, import mode, the record store
 
 Decisions and reports come from the `decide` and `report` plugins.
 
-The core has one runtime dependency, `@hephaestus-build/ichnaea-contracts`, and zod as a peer.
+The core imports the contracts and no other area. The package has no runtime dependency, and zod
+as a peer.

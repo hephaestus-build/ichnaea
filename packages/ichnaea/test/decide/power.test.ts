@@ -1,8 +1,8 @@
 // REQ-54, decision 0017: the power statement of a decision.
-import { type Decision, notComputedReason } from "@hephaestus-build/ichnaea-contracts";
+import { type Decision, notComputedReason } from "../../src/contracts/index.ts";
 import { describe, expect, it } from "vitest";
 
-import { decide, planningPower } from "../src/index.ts";
+import { decide, planningPower } from "../../src/decide/index.ts";
 import { type Scenario, type ScenarioOptions, scenario } from "./support/scenario.ts";
 
 const run = (s: Scenario): Promise<Decision> =>
@@ -10,7 +10,7 @@ const run = (s: Scenario): Promise<Decision> =>
 /** The scenario with the planning statement that the decide plugin adds before any call. */
 async function planned(o: ScenarioOptions): Promise<Scenario> {
   const s = await scenario(o);
-  const { digest } = await import("@hephaestus-build/ichnaea-contracts");
+  const { digest } = await import("../../src/contracts/index.ts");
   const plan = { ...s.plan, ...planningPower(s.plan) };
   return { ...s, plan, run: { ...s.run, plan: (await digest(plan)) as Scenario["run"]["plan"] } };
 }

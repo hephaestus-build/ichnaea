@@ -4,10 +4,10 @@ import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import type { GateResult, MeasureValue, Trial } from "@hephaestus-build/ichnaea-contracts";
+import type { GateResult, MeasureValue, Trial } from "../../src/contracts/index.ts";
 import { describe, expect, it } from "vitest";
 
-import { card, scenario } from "../../decide/test/support/scenario.ts";
+import { card, scenario } from "../decide/support/scenario.ts";
 import {
   createHost,
   FileStore,
@@ -17,7 +17,7 @@ import {
   type MeasureDefinition,
   NOT_CAPTURED,
   type Plugin,
-} from "../src/index.ts";
+} from "../../src/core/index.ts";
 
 const versions = { core: "0.0.0", contracts: "0.0.0" };
 

@@ -54,13 +54,7 @@ describe("the README's install", () => {
 
   it("links the submodule's packages and adds zod and the packages that the example imports", () => {
     expect(install.commands[0]).toBe("pnpm pkg set type=module");
-    expect(install.added).toEqual([
-      "zod",
-      "@hephaestus-build/ichnaea-contracts",
-      "@hephaestus-build/ichnaea-core",
-      "@hephaestus-build/ichnaea-decide",
-      "@hephaestus-build/ichnaea-report",
-    ]);
+    expect(install.added).toEqual(["zod", "@hephaestus-build/ichnaea"]);
     expect(install.workspace).toBe("packages:\n  - vendor/ichnaea/packages/*\n");
   });
 
@@ -70,10 +64,11 @@ describe("the README's install", () => {
   });
 
   it("fails when its pnpm add leaves out a package that the example imports", () => {
-    const broken = readme.replace(`  '@hephaestus-build/ichnaea-contracts@workspace:*' \\\n`, "");
+    const broken = readme.replace(` '@hephaestus-build/ichnaea@workspace:*'`, "");
     expect(broken).not.toBe(readme);
     expect(missingFromInstall(broken, exampleFile)).toEqual([
-      "plugin.ts imports @hephaestus-build/ichnaea-contracts, which the README's pnpm add leaves out",
+      "ichnaea.config.ts imports @hephaestus-build/ichnaea, which the README's pnpm add leaves out",
+      "plugin.ts imports @hephaestus-build/ichnaea, which the README's pnpm add leaves out",
     ]);
   });
 
@@ -84,7 +79,7 @@ describe("the README's install", () => {
 
   it("quotes each workspace protocol, so that zsh does not read its * as a glob", () => {
     const specifiers = install.commands.join(" ").match(/\S*@workspace:\*\S*/g) ?? [];
-    expect(specifiers).toHaveLength(4);
+    expect(specifiers).toHaveLength(1);
     for (const specifier of specifiers) expect(specifier).toMatch(/^'.*'$/);
   });
 });

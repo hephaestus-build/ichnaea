@@ -1,9 +1,9 @@
 // Manual mutation testing of the contracts until StrykerJS runs at 1.0 (REQ-112). Each mutant is
 // one source change that a test must detect. Run in a scratch copy, never in a working tree:
-//   node scripts/mutants.ts            # every mutant
-//   node scripts/mutants.ts S10 E1     # selected mutants
+//   node scripts/contracts/mutants.ts            # every mutant
+//   node scripts/contracts/mutants.ts S10 E1     # selected mutants
 // A mutant that survives is a test that cannot fail: kill it, or justify it as equivalent here.
-// `test/mutants.test.ts` checks that every anchor still occurs exactly once, so a refactor that
+// `test/contracts/mutants.test.ts` checks that every anchor still occurs exactly once, so a refactor that
 // moves one fails the test run instead of leaving a mutant that silently tests nothing.
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
@@ -27,7 +27,7 @@ export interface Mutant {
  */
 const provenanceMemberDropped = (name: string): Mutant => ({
   id: `provenance.${name} left out of the case digest`,
-  file: "src/identity.ts",
+  file: "src/contracts/identity.ts",
   from: `      "${name}",\n`,
   to: "",
   also: [
@@ -58,263 +58,263 @@ export function mutate(original: string, m: Mutant): { text: string } | { missin
 export const MUTANTS: readonly Mutant[] = [
   {
     id: "I5",
-    file: "src/identity.ts",
+    file: "src/contracts/identity.ts",
     from: 'projection["models"] = sortedUnique(projection["models"], "role", "model role");',
     to: 'projection["models"] = sortedUnique((projection["models"] as Array<Record<string, unknown>>).map(({ version: _v, route: _r, ...m }) => m), "role", "model role");',
   },
   {
     id: "I13 identity accepts unknown members",
-    file: "src/identity.ts",
+    file: "src/contracts/identity.ts",
     from: "const config = Configuration.parse(input);",
     to: "const config = (input as typeof Configuration._output);",
   },
   {
     id: "E1",
-    file: "src/egress.ts",
+    file: "src/contracts/egress.ts",
     from: 'const value = project(schema, record, "", false);',
     to: 'const value = project(schema, record, "", true);',
   },
   {
     id: "E2",
-    file: "src/egress.ts",
+    file: "src/contracts/egress.ts",
     from: "const option = options.find((o) => o.safeParse(value).success);",
     to: "const option = options[0];",
   },
   {
     id: "E3",
-    file: "src/egress.ts",
+    file: "src/contracts/egress.ts",
     from: "if (!keyType.safeParse(key).success) {",
     to: "if (false) {",
   },
   {
     id: "E8",
-    file: "src/egress.ts",
+    file: "src/contracts/egress.ts",
     from: 'return DATA_CLASSES.includes(declared as DataClass) ? (declared as DataClass) : "special";',
     to: 'return DATA_CLASSES.includes(declared as DataClass) ? (declared as DataClass) : "none";',
   },
   {
     id: "E9",
-    file: "src/egress.ts",
+    file: "src/contracts/egress.ts",
     from: "if (value === null) return node.safeParse(null).success && allowed ? null : drop(path);",
     to: "if (value === null) return null;",
   },
-  { id: "L3", file: "src/lint.ts", from: '  "lazy",\n];', to: "];" },
+  { id: "L3", file: "src/contracts/lint.ts", from: '  "lazy",\n];', to: "];" },
   {
     id: "T2",
-    file: "src/target-view.ts",
+    file: "src/contracts/target-view.ts",
     from: "view.fixtures = structuredClone(record.fixtures);",
     to: "view.fixtures = record.fixtures;",
   },
   {
     id: "T3",
-    file: "src/target-view.ts",
+    file: "src/contracts/target-view.ts",
     from: "view.turns = structuredClone(record.turns);",
     to: "view.turns = record.turns;",
   },
   {
     id: "S2",
-    file: "src/records/case.ts",
+    file: "src/contracts/records/case.ts",
     from: "author: personal(Text).optional(),",
     to: "author: none(Text).optional(),",
     regen: true,
   },
   {
     id: "S3",
-    file: "src/records/judge.ts",
+    file: "src/contracts/records/judge.ts",
     from: "perRater: pseudonym(",
     to: "perRater: none(",
     regen: true,
   },
   {
     id: "S4",
-    file: "src/records/case.ts",
+    file: "src/contracts/records/case.ts",
     from: "references: content(z.record(z.string(), Json)).optional(),",
     to: "references: none(z.record(z.string(), Json)).optional(),",
     regen: true,
   },
   {
     id: "S5",
-    file: "src/records/case.ts",
+    file: "src/contracts/records/case.ts",
     from: "note: content(z.string()).optional(),",
     to: "note: none(z.string()).optional(),",
     regen: true,
   },
   {
     id: "S7",
-    file: "src/records/trial.ts",
+    file: "src/contracts/records/trial.ts",
     from: "message: content(z.string()).optional()",
     to: "message: none(z.string()).optional()",
     regen: true,
   },
   {
     id: "S8",
-    file: "src/primitives.ts",
+    file: "src/contracts/primitives.ts",
     from: "export const Real = z.union([z.number(), NonFinite]);",
     to: "export const Real = z.union([z.number()]);",
     regen: true,
   },
   {
     id: "S9",
-    file: "src/records/trial.ts",
+    file: "src/contracts/records/trial.ts",
     from: "case: none(CaseId.nullable()),",
     to: "case: none(CaseId),",
     regen: true,
   },
   {
     id: "S10",
-    file: "src/records/case.ts",
+    file: "src/contracts/records/case.ts",
     from: "      limits: none(Text),",
     to: "      limits: none(Text).optional(),",
     regen: true,
   },
   {
     id: "S12",
-    file: "src/records/configuration.ts",
+    file: "src/contracts/records/configuration.ts",
     from: 'status: none(z.enum(["pinned", "declared"])),',
     to: 'status: none(z.enum(["pinned", "declared", "observed"])),',
     regen: true,
   },
   {
     id: "S13",
-    file: "src/records/configuration.ts",
+    file: "src/contracts/records/configuration.ts",
     from: "  value: none(Json),\n  status: none(FactorStatus),\n  part:",
     to: "  value: none(Json),\n  status: none(FactorStatus).optional(),\n  part:",
     regen: true,
   },
   {
     id: "S14",
-    file: "src/records/case.ts",
+    file: "src/contracts/records/case.ts",
     from: "  created: none(CalendarDate),",
     to: "  created: none(CalendarDate).optional(),",
     regen: true,
   },
   {
     id: "S15",
-    file: "src/records/case.ts",
+    file: "src/contracts/records/case.ts",
     from: '  exposure: none(z.enum(["public", "private", "sealed"])),',
     to: '  exposure: none(z.enum(["public", "private", "sealed"])).optional(),',
     regen: true,
   },
   {
     id: "S19",
-    file: "src/records/run.ts",
+    file: "src/contracts/records/run.ts",
     from: 'schema: none(z.literal("ichnaea.run/1")),',
     to: "schema: none(z.string()),",
     regen: true,
   },
   {
     id: "S21 objects not strict",
-    file: "src/records/configuration.ts",
+    file: "src/contracts/records/configuration.ts",
     from: "export const ModelBinding = z.strictObject({",
     to: "export const ModelBinding = z.object({",
     regen: true,
   },
   {
     id: "nonFinite widened by readers",
-    file: "src/json-schema.ts",
+    file: "src/contracts/json-schema.ts",
     from: 'out["x-ichnaea-closed"] !== true',
     to: "true",
   },
   {
     id: "reader accepts lone surrogates",
-    file: "src/reader.ts",
+    file: "src/contracts/reader.ts",
     from: "  if (hasLoneSurrogate(value)) {",
     to: "  if (false) {",
   },
   {
     id: "grant matches a path prefix",
-    file: "src/egress.ts",
+    file: "src/contracts/egress.ts",
     from: 'return a.length === b.length && a.every((segment, i) => segment === "*" || segment === b[i]);',
     to: "return path.startsWith(pattern);",
   },
   {
     id: "a nested writer object is loose",
-    file: "src/records/measure.ts",
+    file: "src/contracts/records/measure.ts",
     from: "  validation: z\n    .strictObject({",
     to: "  validation: z\n    .object({",
     regen: true,
   },
   {
     id: "template and uri enter the identity",
-    file: "src/identity.ts",
+    file: "src/contracts/identity.ts",
     from: '(projection["prompts"] as unknown[]).map((p) => pick(p, DIGEST_RULES.prompt.members)),',
     to: 'projection["prompts"],',
   },
   {
     id: "provenance hashed whole",
-    file: "src/identity.ts",
+    file: "src/contracts/identity.ts",
     from: 'projection["provenance"] = pick(projection["provenance"], DIGEST_RULES.provenance.members);',
     to: "",
   },
   {
     id: "criticality left out of the case digest",
-    file: "src/identity.ts",
+    file: "src/contracts/identity.ts",
     from: '      "criticality",\n',
     to: "",
     regen: true,
   },
   {
     id: "template not checked",
-    file: "src/identity.ts",
+    file: "src/contracts/identity.ts",
     from: "    if (prompt.template === undefined) continue;",
     to: "    continue;",
   },
   {
     id: "verifyArms skips template errors",
-    file: "src/identity.ts",
+    file: "src/contracts/identity.ts",
     from: "    errors.push(...templates);",
     to: "",
   },
   {
     id: "identity of a contradicting template",
-    file: "src/identity.ts",
+    file: "src/contracts/identity.ts",
     from: "  if (mismatch) {\n",
     to: "  if (false) {\n",
   },
   {
     id: "digits left as \\d",
-    file: "src/json-schema.ts",
+    file: "src/contracts/json-schema.ts",
     from: 'out += next === "d" ? (inClass ? "0-9" : "[0-9]") : char + next;',
     to: "out += char + next;",
     regen: true,
   },
   {
     id: "seed bound one above 2^64 - 1",
-    file: "src/primitives.ts",
+    file: "src/contracts/primitives.ts",
     from: 'const SEED_MAX = "18446744073709551615";',
     to: 'const SEED_MAX = "18446744073709551616";',
     regen: true,
   },
   {
     id: "seed bound itself refused",
-    file: "src/primitives.ts",
+    file: "src/contracts/primitives.ts",
     from: "  alternatives.push(max);",
     to: "",
     regen: true,
   },
   {
     id: "seed accepts a leading zero",
-    file: "src/primitives.ts",
+    file: "src/contracts/primitives.ts",
     from: "const smallest = i === 0 ? 1 : 0;",
     to: "const smallest = 0;",
     regen: true,
   },
   {
     id: "seed of 19 digits refused",
-    file: "src/primitives.ts",
+    file: "src/contracts/primitives.ts",
     from: "[1-9][0-9]{0,${max.length - 2}}",
     to: "[1-9][0-9]{0,${max.length - 3}}",
     regen: true,
   },
   {
     id: "proportion check off by one",
-    file: "src/values.ts",
+    file: "src/contracts/values.ts",
     from: "value.successes > value.trials",
     to: "value.successes > value.trials + 1",
   },
   {
     id: "isKnownKind always true",
-    file: "src/reader.ts",
+    file: "src/contracts/reader.ts",
     from: "  return known.includes((value as Record<string, unknown>)[tag] as string);",
     to: "  return true;",
   },
@@ -330,14 +330,14 @@ export const MUTANTS: readonly Mutant[] = [
   provenanceMemberDropped("finding"),
   {
     id: "author enters the case digest",
-    file: "src/identity.ts",
+    file: "src/contracts/identity.ts",
     from: '      "finding",\n    ],\n    excluded: {\n      author: "A pointer to a person, erased with them. Erasing it keeps the case\'s digest.",\n    },',
     to: '      "finding",\n      "author",\n    ],\n    excluded: {},',
     regen: true,
   },
   {
     id: "case set pointer enters the case digest",
-    file: "src/identity.ts",
+    file: "src/contracts/identity.ts",
     from: '    members: [\n      "unit",',
     to: '    members: [\n      "caseSet",\n      "unit",',
     also: [
@@ -350,7 +350,7 @@ export const MUTANTS: readonly Mutant[] = [
   },
   {
     id: "case ID enters the case digest",
-    file: "src/identity.ts",
+    file: "src/contracts/identity.ts",
     from: '    members: [\n      "unit",',
     to: '    members: [\n      "id",\n      "unit",',
     also: [
@@ -363,7 +363,7 @@ export const MUTANTS: readonly Mutant[] = [
   },
   {
     id: "pool enters the case digest",
-    file: "src/identity.ts",
+    file: "src/contracts/identity.ts",
     from: '      "provenance",\n    ],',
     to: '      "provenance",\n      "pool",\n    ],',
     also: [
@@ -376,7 +376,7 @@ export const MUTANTS: readonly Mutant[] = [
   },
   {
     id: "review status enters the case digest",
-    file: "src/identity.ts",
+    file: "src/contracts/identity.ts",
     from: '      "provenance",\n    ],',
     to: '      "provenance",\n      "validation",\n    ],',
     also: [
@@ -389,7 +389,7 @@ export const MUTANTS: readonly Mutant[] = [
   },
   {
     id: "prompt status left out of the identity",
-    file: "src/identity.ts",
+    file: "src/contracts/identity.ts",
     from: 'members: ["name", "digest", "status"],',
     to: 'members: ["name", "digest"],',
     also: [
@@ -402,32 +402,32 @@ export const MUTANTS: readonly Mutant[] = [
   },
   {
     id: "template digest of the trimmed text",
-    file: "src/identity.ts",
+    file: "src/contracts/identity.ts",
     from: "const computed = await sha256(prompt.template);",
     to: "const computed = await sha256(prompt.template.trim());",
   },
   {
     id: "template with a lone surrogate not reported",
-    file: "src/identity.ts",
+    file: "src/contracts/identity.ts",
     from: "    if (!prompt.template.isWellFormed()) {",
     to: "    if (false) {",
   },
   {
     id: "sha256 hashes a lone surrogate as U+FFFD",
-    file: "src/canonical.ts",
+    file: "src/contracts/canonical.ts",
     from: '  if (!text.isWellFormed())\n    throw new TypeError("cannot hash a string with a lone surrogate: it has no UTF-8 form");',
     to: "",
   },
   {
     id: "verifyArms throws on a bad arm",
-    file: "src/identity.ts",
+    file: "src/contracts/identity.ts",
     from: "      if (!(error instanceof IdentityError || error instanceof z.ZodError)) throw error;",
     to: "      throw error;",
   },
 ];
 
 if (import.meta.main) {
-  const root = join(import.meta.dirname, "..");
+  const root = join(import.meta.dirname, "..", "..");
   const wanted = process.argv.slice(2);
   const run = (cmd: string, args: string[]): boolean => {
     try {
@@ -452,17 +452,17 @@ if (import.meta.main) {
     writeFileSync(path, mutated.text);
     try {
       if (m.regen) {
-        run("node", ["scripts/generate-schemas.ts"]);
-        run("node", ["scripts/write-fixtures.ts"]);
+        run("node", ["scripts/contracts/generate-schemas.ts"]);
+        run("node", ["scripts/contracts/write-fixtures.ts"]);
       }
-      const killed = !run("pnpm", ["exec", "vitest", "run", "--root", "."]);
+      const killed = !run("pnpm", ["exec", "vitest", "run", "--project", "contracts"]);
       console.log(`${m.id}: ${killed ? "killed" : "SURVIVED"}`);
       if (!killed) survivors.push(m.id);
     } finally {
       writeFileSync(path, original);
       if (m.regen) {
-        run("node", ["scripts/generate-schemas.ts"]);
-        run("node", ["scripts/write-fixtures.ts"]);
+        run("node", ["scripts/contracts/generate-schemas.ts"]);
+        run("node", ["scripts/contracts/write-fixtures.ts"]);
       }
     }
   }

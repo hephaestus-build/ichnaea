@@ -1,9 +1,9 @@
 // REQ-20: system failures and budget overruns score as failures on every binary measure, whatever
 // the records say; infrastructure failures, including lost captures, count as missing.
-import type { Decision } from "@hephaestus-build/ichnaea-contracts";
+import type { Decision } from "../../src/contracts/index.ts";
 import { describe, expect, it } from "vitest";
 
-import { decide } from "../src/index.ts";
+import { decide } from "../../src/decide/index.ts";
 import { type Scenario, scenario } from "./support/scenario.ts";
 
 const run = (s: Scenario): Promise<Decision> =>

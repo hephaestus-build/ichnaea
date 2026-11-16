@@ -1,5 +1,5 @@
 // The coefficients and branch bounds of R 4.5.2's pnorm (Cody) and qnorm (AS 241), each written
-// as the shortest literal of the same double. Internal: test/reference-normal-coefficients.json
+// as the shortest literal of the same double. Internal: test/stats/reference-normal-coefficients.json
 // pins every value against R's source.
 
 /** Cody's coefficients, in R's array order. */

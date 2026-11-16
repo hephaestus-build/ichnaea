@@ -27,7 +27,7 @@ import {
   VALIDATED_MARGIN_FLOOR,
   VALIDATED_MARGIN_FLOOR_SET,
   zeroNoiseFloor,
-} from "../src/index.ts";
+} from "../../src/stats/index.ts";
 
 const reference = JSON.parse(
   readFileSync(join(import.meta.dirname, "reference-ratesci.json"), "utf8"),
@@ -815,7 +815,7 @@ const strataOf = (s: { x1: number[]; n1: number[]; x2: number[]; n2: number[] })
     base: { successes: s.x2[j] as number, trials: s.n2[j] as number },
   }));
 
-describe("more values against R (scripts/reference-extra.R)", () => {
+describe("more values against R (scripts/stats/reference-extra.R)", () => {
   const extra = JSON.parse(
     readFileSync(join(import.meta.dirname, "reference-r-extra.json"), "utf8"),
   ) as {

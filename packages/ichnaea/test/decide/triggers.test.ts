@@ -1,8 +1,8 @@
 // REQ-15: arms may differ only in what the trigger varies by its kind and what the plan declares.
-import type { Decision } from "@hephaestus-build/ichnaea-contracts";
+import type { Decision } from "../../src/contracts/index.ts";
 import { describe, expect, it } from "vitest";
 
-import { decide } from "../src/index.ts";
+import { decide } from "../../src/decide/index.ts";
 import { decideFloorSet } from "./support/floor-set.ts";
 import { type Scenario, type ScenarioOptions, scenario } from "./support/scenario.ts";
 

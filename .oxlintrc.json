@@ -14,13 +14,114 @@
       }
     ]
   },
-  "ignorePatterns": ["dist", "coverage", "packages/*/schemas"],
+  "ignorePatterns": ["dist", "coverage", "packages/ichnaea/schemas"],
   "overrides": [
     {
       "files": ["packages/*/src/**/*.ts"],
       "rules": {
         "typescript/explicit-function-return-type": "error",
         "typescript/explicit-module-boundary-types": "error"
+      }
+    },
+    // The boundaries between the areas of the package. The statistics import nothing outside
+    // src/stats. The contracts import nothing outside src/contracts but zod. The other areas
+    // import only the areas below them: core imports contracts; decide imports contracts, stats
+    // and core; report imports contracts, decide and core. scripts/lint-boundaries.test.ts shows
+    // that a forbidden import fails.
+    {
+      "files": ["packages/ichnaea/src/stats/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**", "!./**"],
+                "message": "src/stats imports only its own modules."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["packages/ichnaea/src/contracts/*.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**", "!./**", "!zod"],
+                "message": "src/contracts imports only its own modules and zod."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["packages/ichnaea/src/contracts/*/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**", "!./**", "!../*", "!zod", "../../**"],
+                "message": "src/contracts imports only its own modules and zod."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["packages/ichnaea/src/core/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["../stats/**", "../decide/**", "../report/**", "../index.ts"],
+                "message": "src/core imports only src/contracts from the other areas."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["packages/ichnaea/src/decide/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["../report/**", "../index.ts"],
+                "message": "src/decide imports only src/contracts, src/stats and src/core from the other areas."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["packages/ichnaea/src/report/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["../stats/**", "../index.ts"],
+                "message": "src/report imports only src/contracts, src/decide and src/core from the other areas."
+              }
+            ]
+          }
+        ]
       }
     }
   ]

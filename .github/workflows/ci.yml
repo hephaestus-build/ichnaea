@@ -71,7 +71,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
       - name: The CLI runs from the sources
-        run: node packages/core/src/bin.ts --version
+        run: node packages/ichnaea/src/core/bin.ts --version
       # A real submodule that stays clean after install, the public API under each consumer compiler
       # profile, and the README's example.
       - name: A consumer with Ichnaea as a git submodule installs, type-checks and runs it with Node
@@ -94,9 +94,9 @@ jobs:
       - name: Coverage and type-I error studies (6,000 repetitions per point)
         env:
           ICHNAEA_SIM_REPS: "6000"
-        run: pnpm --filter ./packages/stats run test:sim
+        run: pnpm --filter @hephaestus-build/ichnaea run test:sim:stats
       - name: False REGRESSION verdicts of the decision rule under no change (REQ-51)
-        run: pnpm --filter ./packages/decide run test:sim
+        run: pnpm --filter @hephaestus-build/ichnaea run test:sim:decide
 
   oracle:
     name: oracle
@@ -111,8 +111,8 @@ jobs:
         run: |
           docker run --rm -v "$PWD":/w:ro -w /w "$PYTHON_IMAGE" sh -c \
             "pip install --quiet --root-user-action=ignore --require-hashes \
-            -r packages/contracts/scripts/oracle/requirements.txt \
-            && python packages/contracts/scripts/oracle/verify_vectors.py packages/contracts/fixtures"
+            -r packages/ichnaea/scripts/contracts/oracle/requirements.txt \
+            && python packages/ichnaea/scripts/contracts/oracle/verify_vectors.py packages/ichnaea/fixtures"
 
   stats-oracle:
     name: stats oracle
@@ -129,29 +129,29 @@ jobs:
       # read again from R's source. A committed reference file that its script no longer produces
       # fails the job.
       - name: The stats reference values are what their oracles write
-        working-directory: packages/stats
+        working-directory: packages/ichnaea
         run: |
-          docker run --rm -v "$PWD":/w -w /w "$R_IMAGE" Rscript scripts/reference-normal.R
+          docker run --rm -v "$PWD":/w -w /w "$R_IMAGE" Rscript scripts/stats/reference-normal.R
           docker run --rm -v "$PWD":/w -w /w "$PYTHON_IMAGE" sh -c \
-            "pip install --quiet --root-user-action=ignore --require-hashes -r scripts/oracle-requirements.txt \
-            && python scripts/reference-mt19937.py && python scripts/reference-normal-mpmath.py"
-          node scripts/reference-normal-coefficients.ts
-          git diff --exit-code -- test/reference-r-normal.json test/reference-numpy-mt19937.json \
-            test/reference-mpmath-normal.json test/reference-normal-coefficients.json
+            "pip install --quiet --root-user-action=ignore --require-hashes -r scripts/stats/oracle-requirements.txt \
+            && python scripts/stats/reference-mt19937.py && python scripts/stats/reference-normal-mpmath.py"
+          node scripts/stats/reference-normal-coefficients.ts
+          git diff --exit-code -- test/stats/reference-r-normal.json test/stats/reference-numpy-mt19937.json \
+            test/stats/reference-mpmath-normal.json test/stats/reference-normal-coefficients.json
       # The score permutation test's tables, and its two oracles: coin, and an exact enumeration in
       # Python that was written from the formulas alone and checks itself first.
       - name: The score permutation reference values are what their oracles write
-        working-directory: packages/stats
+        working-directory: packages/ichnaea
         run: |
-          node scripts/score-permutation-tables.ts
-          docker run --rm -v "$PWD":/w -w /w "$R_IMAGE" Rscript scripts/reference-score-permutation.R
+          node scripts/stats/score-permutation-tables.ts
+          docker run --rm -v "$PWD":/w -w /w "$R_IMAGE" Rscript scripts/stats/reference-score-permutation.R
           docker run --rm -v "$PWD":/w -w /w "$PYTHON_IMAGE" sh -c \
-            "pip install --quiet --root-user-action=ignore --require-hashes -r scripts/oracle-requirements.txt \
-            && python scripts/score_permutation_oracle_test.py \
-            && python scripts/score_permutation_oracle.py test/reference-score-permutation-tables.json \
-               test/reference-python-score-permutation.json"
-          git diff --exit-code -- test/reference-score-permutation-tables.json \
-            test/reference-coin-score-permutation.json test/reference-python-score-permutation.json
+            "pip install --quiet --root-user-action=ignore --require-hashes -r scripts/stats/oracle-requirements.txt \
+            && python scripts/stats/score_permutation_oracle_test.py \
+            && python scripts/stats/score_permutation_oracle.py test/stats/reference-score-permutation-tables.json \
+               test/stats/reference-python-score-permutation.json"
+          git diff --exit-code -- test/stats/reference-score-permutation-tables.json \
+            test/stats/reference-coin-score-permutation.json test/stats/reference-python-score-permutation.json
 
   workflows:
     name: workflows

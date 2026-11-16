@@ -9,7 +9,7 @@ import {
   type FactorPart,
   Plan,
   type Suite,
-} from "@hephaestus-build/ichnaea-contracts";
+} from "../contracts/index.ts";
 
 import { testMeasure } from "./measures.ts";
 import type { GateDefinition, MeasureDefinition } from "./plugin.ts";

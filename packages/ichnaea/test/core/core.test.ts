@@ -21,7 +21,7 @@ import {
   type Plan,
   type Run,
   type Trial,
-} from "@hephaestus-build/ichnaea-contracts";
+} from "../../src/contracts/index.ts";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -45,12 +45,12 @@ import {
   StoreError,
   testMeasure,
   TRIGGER_VARIES,
-} from "../src/index.ts";
+} from "../../src/core/index.ts";
 
 const fixture = async (name: string): Promise<unknown> =>
   JSON.parse(
     await readFile(
-      join(import.meta.dirname, "..", "..", "contracts", "fixtures", "valid", `${name}.json`),
+      join(import.meta.dirname, "..", "..", "fixtures", "valid", `${name}.json`),
       "utf8",
     ),
   );
@@ -628,8 +628,8 @@ describe("versions", () => {
 });
 
 describe("planner (REQ-16, REQ-19, REQ-27, REQ-33, REQ-49, decision 0008)", async () => {
-  const { scenario, card, configuration } = await import("../../decide/test/support/scenario.ts");
-  const { createPlan, PlanError } = await import("../src/index.ts");
+  const { scenario, card, configuration } = await import("../decide/support/scenario.ts");
+  const { createPlan, PlanError } = await import("../../src/core/index.ts");
   const s = await scenario({ cases: 8, replicates: 2, base: () => 1, candidate: () => 1 });
   const arms: PlanInput["arms"] = s.plan.arms.map((a) => ({
     name: a.name,
@@ -742,7 +742,7 @@ describe("planner (REQ-16, REQ-19, REQ-27, REQ-33, REQ-49, decision 0008)", asyn
 
   it("selects cases by the case set's pool, and refuses a pool or family the case does not have", async () => {
     const sealedEntries = s.caseSet.cases.map((e) => ({ ...e, pool: "sealed" as const }));
-    const { caseSetDigest } = await import("@hephaestus-build/ichnaea-contracts");
+    const { caseSetDigest } = await import("../../src/contracts/index.ts");
     const sealed = {
       ...s.caseSet,
       cases: sealedEntries,
@@ -752,7 +752,7 @@ describe("planner (REQ-16, REQ-19, REQ-27, REQ-33, REQ-49, decision 0008)", asyn
       planWith({ caseSet: sealed, suite: { ...s.suite, pools: ["sealed"] } }),
     ).rejects.toThrow("is in pool 'development', but the case set lists it in 'sealed'");
     const resealed = s.cases.map((c) => ({ ...c, pool: "sealed" as const }));
-    const { caseDigest } = await import("@hephaestus-build/ichnaea-contracts");
+    const { caseDigest } = await import("../../src/contracts/index.ts");
     const entries = await Promise.all(
       resealed.map(async (c) => ({ id: c.id, digest: await caseDigest(c), pool: c.pool })),
     );

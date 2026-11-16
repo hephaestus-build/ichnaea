@@ -13,7 +13,7 @@ import {
   Run,
   Suite,
   type Trial,
-} from "@hephaestus-build/ichnaea-contracts";
+} from "../contracts/index.ts";
 
 import type { Host } from "./host.ts";
 import { scoreTrials } from "./measures.ts";
@@ -270,7 +270,7 @@ export async function importRun(
       id,
       version: host.gates.get(id)?.version ?? "unknown",
     })),
-    { kind: "package", id: "@hephaestus-build/ichnaea-core", version: input.ichnaea },
+    { kind: "package", id: "@hephaestus-build/ichnaea", version: input.ichnaea },
   ];
   const run = Run.parse({
     schema: "ichnaea.run/1",

@@ -2,10 +2,15 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { caseDigest, caseSetDigest, configurationIdentity, DIGEST_RULES } from "../src/index.ts";
+import {
+  caseDigest,
+  caseSetDigest,
+  configurationIdentity,
+  DIGEST_RULES,
+} from "../../src/contracts/index.ts";
 import { CONFIGURATION_B, INVALID, READER_ONLY, VALID, VALID_EXTRA } from "./fixtures-source.ts";
 
-const root = join(import.meta.dirname, "..", "fixtures");
+const root = join(import.meta.dirname, "..", "..", "fixtures");
 for (const dir of ["valid", "valid-extra", "invalid", "reader-only"])
   rmSync(join(root, dir), { recursive: true, force: true });
 const write = (path: string, value: unknown): void => {

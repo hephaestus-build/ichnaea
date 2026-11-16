@@ -1,6 +1,6 @@
 // Prints the exact coverage of the fixed-cases lower bound for few cases. Usage:
-//   node scripts/exact-coverage.ts
-import { exactCoverage, exactPatternCoverage } from "../test/support/exact.ts";
+//   node scripts/stats/exact-coverage.ts
+import { exactCoverage, exactPatternCoverage } from "../../test/stats/support/exact.ts";
 
 for (const k of [1, 2, 3, 4, 5, 6, 8]) {
   for (const r of [2, 3]) {

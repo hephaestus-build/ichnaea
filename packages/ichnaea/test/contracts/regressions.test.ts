@@ -25,13 +25,16 @@ import {
   isKnownKind,
   proportionProblem,
   Trial,
-} from "../src/index.ts";
+} from "../../src/contracts/index.ts";
 import { ajvValidate, committedSchema, createAjv } from "./support/ajv.ts";
 import { arbitraryFor } from "./support/arbitrary.ts";
 
 const fixture = (name: string): Record<string, unknown> =>
   JSON.parse(
-    readFileSync(join(import.meta.dirname, "..", "fixtures", "valid", `${name}.json`), "utf8"),
+    readFileSync(
+      join(import.meta.dirname, "..", "..", "fixtures", "valid", `${name}.json`),
+      "utf8",
+    ),
   ) as Record<string, unknown>;
 
 describe("per-rater agreement never leaves the calibration record", () => {
@@ -217,7 +220,7 @@ describe("valid data survives an egress it may pass", () => {
 describe("contract package boundaries (REQ-06)", () => {
   it("has no runtime dependency, and zod only as its peer", () => {
     const manifest = JSON.parse(
-      readFileSync(join(import.meta.dirname, "..", "package.json"), "utf8"),
+      readFileSync(join(import.meta.dirname, "..", "..", "package.json"), "utf8"),
     ) as Record<string, Record<string, string> | undefined>;
     expect(manifest["dependencies"] ?? {}).toEqual({});
     expect(Object.keys(manifest["peerDependencies"] ?? {})).toEqual(["zod"]);

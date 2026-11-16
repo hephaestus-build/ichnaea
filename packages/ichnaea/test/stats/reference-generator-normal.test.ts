@@ -1,22 +1,22 @@
 // The generator and the normal functions are Ichnaea's own, so the stats package has no runtime
 // dependency. They are pinned against independent implementations, run as test-only oracles:
-// numpy's MT19937 (scripts/reference-mt19937.py), R's pnorm and qnorm (scripts/reference-normal.R),
-// mpmath at 60 digits on a dense grid (scripts/reference-normal-mpmath.py), and the coefficients
-// as printed in R's source (scripts/reference-normal-coefficients.ts).
+// numpy's MT19937 (scripts/stats/reference-mt19937.py), R's pnorm and qnorm (scripts/stats/reference-normal.R),
+// mpmath at 60 digits on a dense grid (scripts/stats/reference-normal-mpmath.py), and the coefficients
+// as printed in R's source (scripts/stats/reference-normal-coefficients.ts).
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
-import { createRng, pnorm, qnorm } from "../src/index.ts";
-import { mt19937 } from "../src/mt19937.ts";
+import { createRng, pnorm, qnorm } from "../../src/stats/index.ts";
+import { mt19937 } from "../../src/stats/mt19937.ts";
 import {
   PNORM_BOUNDS,
   PNORM_COEFFICIENTS,
   QNORM_BOUNDS,
   QNORM_COEFFICIENTS,
-} from "../src/normal-coefficients.ts";
+} from "../../src/stats/normal-coefficients.ts";
 
 const read = (name: string): unknown =>
   JSON.parse(readFileSync(join(import.meta.dirname, name), "utf8"));
@@ -120,7 +120,7 @@ describe("normal functions: R's pnorm and qnorm", () => {
   });
 
   it("uses the correctly rounded constants", () => {
-    const source = readFileSync(join(import.meta.dirname, "../src/normal.ts"), "utf8");
+    const source = readFileSync(join(import.meta.dirname, "../../src/stats/normal.ts"), "utf8");
     for (const constant of Object.values(mpmath.constants)) {
       expect(source).toContain(String(constant));
     }
@@ -193,13 +193,5 @@ describe("normal functions: R's pnorm and qnorm", () => {
         expect(Math.abs(qnorm(pnorm(x)) - x)).toBeLessThanOrEqual(1e-13 * Math.max(1, -x));
       }),
     );
-  });
-});
-
-describe("package", () => {
-  it("has no runtime dependency", () => {
-    const manifest = read("../package.json") as Record<string, unknown>;
-    expect(manifest["dependencies"] ?? {}).toEqual({});
-    expect(manifest["peerDependencies"] ?? {}).toEqual({});
   });
 });

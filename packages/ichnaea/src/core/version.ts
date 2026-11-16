@@ -11,5 +11,9 @@ export function packageVersion(from: string): string {
   return version;
 }
 
-/** The version of this package, checked against plugins' peer ranges. */
-export const CORE_VERSION: string = packageVersion(import.meta.url);
+/**
+ * The version of the Ichnaea package, checked against plugins' peer ranges. Its package.json sits
+ * two directories above this module, in `src/core/` and in `dist/core/`, so the version is read
+ * from the parent directory.
+ */
+export const CORE_VERSION: string = packageVersion(new URL("../", import.meta.url).href);

@@ -6,7 +6,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { CallLedger, LedgerError, MonthlyCapError } from "../src/index.ts";
+import { CallLedger, LedgerError, MonthlyCapError } from "../../src/core/index.ts";
 
 const AT = "2026-11-15T00:00:00Z";
 

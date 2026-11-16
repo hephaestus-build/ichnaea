@@ -1,4 +1,4 @@
-# @hephaestus-build/ichnaea-report
+# Reports: `@hephaestus-build/ichnaea`
 
 The `report` plugin renders a stored decision as a CI summary in Markdown (`summary.md`) and a
 static HTML report (`report.html`).

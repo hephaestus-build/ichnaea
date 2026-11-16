@@ -5,11 +5,11 @@ import {
   holm,
   MARGIN_FLOOR_NOT_SET,
   VALIDATED_MARGIN_FLOOR,
-} from "@hephaestus-build/ichnaea-stats";
+} from "../../src/stats/index.ts";
 import { describe, expect, it } from "vitest";
 
-import { decidePrimariesWith } from "../src/decide.ts";
-import { decidePrimaries, type PrimaryCounts } from "../src/index.ts";
+import { decidePrimariesWith } from "../../src/decide/decide.ts";
+import { decidePrimaries, type PrimaryCounts } from "../../src/decide/index.ts";
 import { floorSet } from "./support/floor-set.ts";
 
 /** n cases with r trials; the base passes every trial, the candidate fails one in `fails` cases. */

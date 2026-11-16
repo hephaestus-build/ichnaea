@@ -16,7 +16,7 @@ import {
   Trial,
   Calibration,
   Configuration,
-} from "../src/index.ts";
+} from "../../src/contracts/index.ts";
 import { committedSchema } from "./support/ajv.ts";
 import { arbitraryFor } from "./support/arbitrary.ts";
 

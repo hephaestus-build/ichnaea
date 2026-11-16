@@ -9,7 +9,7 @@ import {
   RECORD_CONTRACTS,
   type RecordContract,
   toJsonSchema,
-} from "../src/index.ts";
+} from "../../src/contracts/index.ts";
 import { committedSchema } from "./support/ajv.ts";
 
 type JsonSchema = Record<string, unknown>;

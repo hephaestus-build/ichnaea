@@ -1,6 +1,4 @@
-import { defineConfig } from "@hephaestus-build/ichnaea-core";
-import { decidePlugin } from "@hephaestus-build/ichnaea-decide";
-import { reportPlugin } from "@hephaestus-build/ichnaea-report";
+import { decidePlugin, defineConfig, reportPlugin } from "@hephaestus-build/ichnaea";
 
 import { support } from "./plugin.ts";
 

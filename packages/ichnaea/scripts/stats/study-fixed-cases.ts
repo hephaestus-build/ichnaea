@@ -1,6 +1,6 @@
 // Simulation study: one-sided 95% lower bounds of the stratified score interval under the
 // fixed-cases estimand, for four method variants, and the regression tests' type-I error.
-// Usage: node scripts/study-fixed-cases.ts <reps> <out.json>
+// Usage: node scripts/stats/study-fixed-cases.ts <reps> <out.json>
 import { writeFileSync } from "node:fs";
 
 import {
@@ -10,7 +10,7 @@ import {
   scoreDifferenceTest,
   type Rng,
   type Stratum,
-} from "../src/index.ts";
+} from "../../src/stats/index.ts";
 
 const reps = Number(process.argv[2] ?? 2000);
 const out = process.argv[3] ?? "study-fixed-cases.json";

@@ -80,11 +80,7 @@ ES module:
 
 ```sh
 pnpm pkg set type=module
-pnpm add -w zod@4.6.7 \
-  '@hephaestus-build/ichnaea-contracts@workspace:*' \
-  '@hephaestus-build/ichnaea-core@workspace:*' \
-  '@hephaestus-build/ichnaea-decide@workspace:*' \
-  '@hephaestus-build/ichnaea-report@workspace:*'
+pnpm add -w zod@4.6.7 '@hephaestus-build/ichnaea@workspace:*'
 ```
 
 zod at the root is the one copy that every Ichnaea package uses. Run the CLI with Node 24.3 or later:

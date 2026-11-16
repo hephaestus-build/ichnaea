@@ -4,7 +4,7 @@
 // test is simulated, so this runs in well under a second per check.
 import { describe, expect, it } from "vitest";
 
-import { fixedCasesInterval, scoreDifferenceTest } from "../src/index.ts";
+import { fixedCasesInterval, scoreDifferenceTest } from "../../src/stats/index.ts";
 import { exactGroups, type Group } from "./support/exact.ts";
 import { LEVEL, rates } from "./support/grid.ts";
 import {

@@ -1,10 +1,10 @@
-# @hephaestus-build/ichnaea-contracts
+# Contracts: `@hephaestus-build/ichnaea/contracts`
 
 The record contracts of Ichnaea: zod schemas, the normative JSON Schema 2020-12 files, shared
 fixtures, RFC 8785 canonical hashing, the configuration identity and data policies.
 
 Records cross every boundary as JSON. Any language can take part by writing JSON that validates
-against the schema files in [`schemas/`](schemas).
+against the schema files in [`schemas/`](../../schemas).
 
 ## Records
 
@@ -57,9 +57,9 @@ for (const keyword of ["x-ichnaea-unknown-kind", "x-ichnaea-closed"])
 
 A digest is `sha256:` followed by the lowercase hex SHA-256 of the UTF-8 bytes of an
 [RFC 8785](https://www.rfc-editor.org/rfc/rfc8785) canonical form. Each digest hashes a projection
-of its record. `DIGEST_RULES` in [`src/identity.ts`](src/identity.ts) is the one home of the
+of its record. `DIGEST_RULES` in [`identity.ts`](identity.ts) is the one home of the
 projections: per record, the members hashed and the members excluded, each with its reason. Other
-languages read the same rules from [`fixtures/digest-rules.json`](fixtures/digest-rules.json).
+languages read the same rules from [`fixtures/digest-rules.json`](../../fixtures/digest-rules.json).
 
 | Digest                 | Projection                                                                                                       | Then                                                                                  |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
@@ -96,13 +96,13 @@ stored identity against its configuration, and the configuration's templates aga
 It reports every problem as a `LinkError`, including an arm that is not a valid configuration or
 that has no identity (no `models`, a duplicate role), and does not throw.
 
-Decisions 0002 and 0003 in [`docs/decisions`](../../docs/decisions) give the reasons for the case
+Decisions 0002 and 0003 in [`docs/decisions`](../../../../docs/decisions) give the reasons for the case
 digest and the configuration identity.
 
-[`fixtures/digests.json`](fixtures/digests.json) holds vectors for every digest and projection,
-and [`fixtures/digests-generated.json`](fixtures/digests-generated.json) 1,000 generated values
+[`fixtures/digests.json`](../../fixtures/digests.json) holds vectors for every digest and projection,
+and [`fixtures/digests-generated.json`](../../fixtures/digests-generated.json) 1,000 generated values
 (doubles over the whole range, any Unicode). Both come from an implementation in Python that
-shares no code with this package (`scripts/oracle/`). CI recomputes every vector, the projections
+shares no code with this package (`scripts/contracts/oracle/`). CI recomputes every vector, the projections
 included, and fails on any difference. A new implementation must reproduce them.
 
 The Python code checks the projection logic, the sort order and the canonical form independently.
@@ -123,12 +123,12 @@ A deployment can grant more purposes for named fields, never a higher class.
 
 ## Fixtures
 
-[`fixtures/`](fixtures) holds a valid record per contract, invalid variants that every writer
+[`fixtures/`](../../fixtures) holds a valid record per contract, invalid variants that every writer
 validator must reject, reader-only variants that readers must accept, and the digest vectors.
 
 ## API
 
-The public API is recorded in [`api/ichnaea-contracts.api.md`](api/ichnaea-contracts.api.md)
+The public API is recorded in [`api/ichnaea-contracts.api.md`](../../api/ichnaea-contracts.api.md)
 (API Extractor). CI fails when the API changes without the report.
 
 ## Licence

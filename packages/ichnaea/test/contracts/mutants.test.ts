@@ -5,9 +5,9 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { editsOf, MUTANTS, mutate } from "../scripts/mutants.ts";
+import { editsOf, MUTANTS, mutate } from "../../scripts/contracts/mutants.ts";
 
-const root = join(import.meta.dirname, "..");
+const root = join(import.meta.dirname, "..", "..");
 
 describe("mutants", () => {
   it("have distinct ids", () => {

@@ -1,18 +1,13 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import {
-  type CommandDefinition,
-  FileStore,
-  packageVersion,
-  type Plugin,
-} from "@hephaestus-build/ichnaea-core";
+import { type CommandDefinition, FileStore, CORE_VERSION, type Plugin } from "../core/index.ts";
 
 import { recompute } from "./recompute.ts";
 import { lintReport, neutralView, renderHtml, renderMarkdown } from "./render.ts";
 import { decisionView } from "./view.ts";
 
-const VERSION = packageVersion(import.meta.url);
+const VERSION = CORE_VERSION;
 
 const command: CommandDefinition = {
   name: "report",

@@ -4,7 +4,7 @@ import {
   digest,
   type MeasureValue,
   type Trial,
-} from "@hephaestus-build/ichnaea-contracts";
+} from "../contracts/index.ts";
 
 import type { MeasureDefinition } from "./plugin.ts";
 

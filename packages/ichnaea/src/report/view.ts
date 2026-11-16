@@ -4,7 +4,7 @@ import {
   type PowerEntry,
   type Real,
   type Run,
-} from "@hephaestus-build/ichnaea-contracts";
+} from "../contracts/index.ts";
 
 /** A number as reports show it: a percentage with one decimal, or a dash when undefined. */
 export function percent(value: Real | number): string {

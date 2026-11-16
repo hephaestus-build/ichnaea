@@ -9,7 +9,7 @@ import { REPS, type Rule, type Verdict } from "./simulate.ts";
 export const DOCUMENTED_REPS = 6000;
 
 export const VALIDATION_PAGE: string = readFileSync(
-  join(import.meta.dirname, "..", "..", "VALIDATION.md"),
+  join(import.meta.dirname, "..", "..", "..", "src", "stats", "VALIDATION.md"),
   "utf8",
 );
 

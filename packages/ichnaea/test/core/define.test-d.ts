@@ -7,7 +7,7 @@ import {
   definePlugin,
   type GateIdsOf,
   type MeasureIdsOf,
-} from "../src/index.ts";
+} from "../../src/core/index.ts";
 
 const measure = defineMeasure({
   card: {

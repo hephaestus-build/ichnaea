@@ -3,9 +3,9 @@
 import { mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { RECORD_CONTRACTS, toJsonSchema, toReaderJsonSchema } from "../src/index.ts";
+import { RECORD_CONTRACTS, toJsonSchema, toReaderJsonSchema } from "../../src/contracts/index.ts";
 
-const dir = join(import.meta.dirname, "..", "schemas");
+const dir = join(import.meta.dirname, "..", "..", "schemas");
 mkdirSync(dir, { recursive: true });
 for (const file of readdirSync(dir)) if (file.endsWith(".schema.json")) rmSync(join(dir, file));
 const write = (file: string, schema: unknown): void =>

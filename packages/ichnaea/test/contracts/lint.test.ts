@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import * as z from "zod";
 
-import { lintContractSchema, RECORD_CONTRACTS } from "../src/index.ts";
+import { lintContractSchema, RECORD_CONTRACTS } from "../../src/contracts/index.ts";
 
 describe("contract lint", () => {
   it.each(RECORD_CONTRACTS.map((c) => [c.name, c] as const))(
@@ -39,7 +39,7 @@ describe("contract lint", () => {
   });
 
   it("finds no refinement or transform call in the contract sources", () => {
-    const dir = join(import.meta.dirname, "..", "src", "records");
+    const dir = join(import.meta.dirname, "..", "..", "src", "contracts", "records");
     for (const file of readdirSync(dir)) {
       const text = readFileSync(join(dir, file), "utf8");
       expect(text, file).not.toMatch(

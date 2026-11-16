@@ -1,4 +1,4 @@
-# @hephaestus-build/ichnaea-stats
+# Statistics: `@hephaestus-build/ichnaea/stats`
 
 Statistics for Ichnaea decisions on binary measures: score intervals for differences of proportions
 (stratified over cases with equal case weights for the `fixed-cases` estimand, paired for
@@ -16,12 +16,12 @@ in a first search, and at 9 and 10 cases with mixed trial counts in a second (se
 [VALIDATION.md](VALIDATION.md)). The change that sets the floor lists each point. Until the floor is
 set, a comparison can show a regression, but it cannot show non-inferiority.
 
-The package has no runtime dependency, and no Python or R at runtime. Its methods
+The statistics import nothing outside `src/stats`, and need no Python or R at runtime. Its methods
 are checked against an independent implementation and by simulation: see
 [VALIDATION.md](VALIDATION.md), which also lists the methods that are not yet validated.
 
 ```ts
-import { compareCounts } from "@hephaestus-build/ichnaea-stats";
+import { compareCounts } from "@hephaestus-build/ichnaea/stats";
 
 // Each case: the completed binary trials that passed, of all completed trials, per arm.
 const cases = ["a", "b", "c", "d", "e", "f"].map((id, i) => ({

@@ -12,9 +12,9 @@ import {
   Run,
   type Suite,
   type Trial,
-} from "@hephaestus-build/ichnaea-contracts";
-import { createPlan, type MeasureDefinition } from "@hephaestus-build/ichnaea-core";
-import { createRng } from "@hephaestus-build/ichnaea-stats";
+} from "../../../src/contracts/index.ts";
+import { createPlan, type MeasureDefinition } from "../../../src/core/index.ts";
+import { createRng } from "../../../src/stats/index.ts";
 
 export const configuration = (model: string, commit = "a1"): Configuration => ({
   schema: "ichnaea.configuration/1",

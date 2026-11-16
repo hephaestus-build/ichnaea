@@ -8,7 +8,7 @@ import type {
   MeasureId,
   PlanDigest,
   TrialId,
-} from "../src/index.ts";
+} from "../../src/contracts/index.ts";
 import {
   CaseId as CaseIdSchema,
   contractFor,
@@ -16,7 +16,7 @@ import {
   MeasureValue,
   readRecord,
   Trial,
-} from "../src/index.ts";
+} from "../../src/contracts/index.ts";
 
 const takesCase = (id: CaseId): CaseId => id;
 

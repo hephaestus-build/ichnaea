@@ -1,7 +1,7 @@
-// Writes test/reference-normal-coefficients.json: the coefficients and branch bounds of R 4.5.2's
+// Writes test/stats/reference-normal-coefficients.json: the coefficients and branch bounds of R 4.5.2's
 // pnorm (Cody) and qnorm (AS 241), as printed in R's source, so a test can pin
 // src/normal-coefficients.ts to them. Test-only:
-//   node scripts/reference-normal-coefficients.ts
+//   node scripts/stats/reference-normal-coefficients.ts
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -76,7 +76,7 @@ const qnormBounds = {
 };
 
 writeFileSync(
-  join(import.meta.dirname, "..", "test", "reference-normal-coefficients.json"),
+  join(import.meta.dirname, "..", "..", "test", "stats", "reference-normal-coefficients.json"),
   `${JSON.stringify(
     {
       oracle: `R source, wch/r-source tag ${TAG}, src/nmath`,

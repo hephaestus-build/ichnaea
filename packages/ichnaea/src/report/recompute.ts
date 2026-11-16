@@ -6,8 +6,8 @@ import {
   type Plan,
   type Run,
   type Trial,
-} from "@hephaestus-build/ichnaea-contracts";
-import { decide } from "@hephaestus-build/ichnaea-decide";
+} from "../contracts/index.ts";
+import { decide } from "../decide/index.ts";
 
 /** The result of recomputing a stored decision. */
 export interface RecomputeResult {

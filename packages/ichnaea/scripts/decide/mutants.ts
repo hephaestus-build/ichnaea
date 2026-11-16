@@ -1,9 +1,9 @@
 // Manual mutation testing of the decision rule and the records it reads, until StrykerJS runs at
 // 1.0 (REQ-112). Each mutant is one source change that a test must detect. Run in a scratch copy of
 // the repository, never in a working tree:
-//   node scripts/mutants.ts                 # every mutant
-//   node scripts/mutants.ts sensitivity     # the mutants whose ID starts with the argument
-//   node scripts/mutants.ts --anchors       # check every anchor, run nothing
+//   node scripts/decide/mutants.ts                 # every mutant
+//   node scripts/decide/mutants.ts sensitivity     # the mutants whose ID starts with the argument
+//   node scripts/decide/mutants.ts --anchors       # check every anchor, run nothing
 // A mutant whose anchor is missing, or occurs more than once, is a failure: fix its anchor. A
 // mutant that survives is a test that cannot fail: kill it, or justify it as equivalent here.
 // Equivalent, so not listed: the example importer's own capture-failure class, because import makes
@@ -14,7 +14,7 @@ import { join } from "node:path";
 
 interface Mutant {
   readonly id: string;
-  /** The file, relative to packages/decide. */
+  /** The file, relative to packages/ichnaea. */
   readonly file: string;
   readonly from: string;
   readonly to: string;
@@ -22,9 +22,9 @@ interface Mutant {
   readonly projects?: readonly string[];
 }
 
-const D = "src/decide.ts";
-const P = "src/plugin.ts";
-const PL = "src/planning.ts";
+const D = "src/decide/decide.ts";
+const P = "src/decide/plugin.ts";
+const PL = "src/decide/planning.ts";
 const CORE = ["core", "decide", "report", "example-support-assistant"];
 export const MUTANTS: readonly Mutant[] = [
   // Record checks: INVALID.
@@ -176,7 +176,7 @@ export const MUTANTS: readonly Mutant[] = [
   },
   {
     id: "trigger lets a case-set change vary the system",
-    file: "../core/src/planner.ts",
+    file: "src/core/planner.ts",
     from: '  "case-set": null,',
     to: '  "case-set": [],',
     projects: CORE,
@@ -208,14 +208,14 @@ export const MUTANTS: readonly Mutant[] = [
   },
   {
     id: "import keeps a passing system failure",
-    file: "../core/src/import.ts",
+    file: "src/core/import.ts",
     from: "    if (FAILED_OUTCOMES.has(outcome) && passing(v.value))",
     to: "    if (false)",
     projects: CORE,
   },
   {
     id: "import scores a lost capture",
-    file: "../core/src/import.ts",
+    file: "src/core/import.ts",
     from: "    return checkCaptured(checkConfiguration(t, identities.get(p.arm)));",
     to: "    return checkConfiguration(t, identities.get(p.arm));",
     projects: CORE,
@@ -402,21 +402,21 @@ export const MUTANTS: readonly Mutant[] = [
   },
   {
     id: "validity: report does not label an interval that is not validated",
-    file: "../report/src/view.ts",
+    file: "src/report/view.ts",
     from: '${nonInferiority.validated ? "" : ` ${NOT_VALIDATED}`}',
     to: "",
     projects: CORE,
   },
   {
     id: "validity: report labels by the regression result",
-    file: "../report/src/view.ts",
+    file: "src/report/view.ts",
     from: "                ...differenceCells(comparison.difference, comparison.nonInferiority),",
     to: "                ...differenceCells(comparison.difference, comparison.regression),",
     projects: CORE,
   },
   {
     id: "validity: lint misses an unlabelled bound",
-    file: "../report/src/render.ts",
+    file: "src/report/render.ts",
     from: '  if (cells.get("validated") === "false" && !bound.endsWith(NOT_VALIDATED))',
     to: "  if (false)",
     projects: CORE,
@@ -478,21 +478,21 @@ export const MUTANTS: readonly Mutant[] = [
   },
   {
     id: "report lint misses an estimate without its interval",
-    file: "../report/src/render.ts",
+    file: "src/report/render.ts",
     from: "    if (problem) problems.push(`an estimate without its interval: ${problem}`);",
     to: "    void problem;",
     projects: CORE,
   },
   {
     id: "report lint decodes entities in the wrong order",
-    file: "../report/src/render.ts",
+    file: "src/report/render.ts",
     from: '  text\n    .replaceAll("&quot;", \'"\')',
     to: '  text\n    .replaceAll("&amp;", "&")\n    .replaceAll("&quot;", \'"\')',
     projects: CORE,
   },
   {
     id: "report n column shows planned only",
-    file: "../report/src/view.ts",
+    file: "src/report/view.ts",
     from: "n: `${a.availability.available} of ${a.availability.planned}`,",
     to: "n: `${a.availability.planned}`,",
     projects: CORE,
@@ -573,7 +573,7 @@ export const MUTANTS: readonly Mutant[] = [
   },
   {
     id: "power: import is silent about a plan without a statement",
-    file: "../core/src/cli.ts",
+    file: "src/core/cli.ts",
     from: "  if (result.plan.power.length === 0 && result.plan.primary.length > 0)",
     to: "  if (false)",
     projects: CORE,
@@ -629,7 +629,7 @@ export const MUTANTS: readonly Mutant[] = [
   },
   {
     id: "margin: placeholder plans decide",
-    file: "../core/src/planner.ts",
+    file: "src/core/planner.ts",
     from: '    if (primary.marginStatus === "placeholder")',
     to: "    if (false)",
     projects: CORE,
@@ -637,14 +637,14 @@ export const MUTANTS: readonly Mutant[] = [
   // The monthly call ledger (REQ-86): no corrupt line can lower the month's total.
   {
     id: "ledger: calls unchecked",
-    file: "../core/src/ledger.ts",
+    file: "src/core/ledger.ts",
     from: "const LedgerLine = z.looseObject({ run: z.string(), calls: z.int().min(0) });",
     to: "const LedgerLine = z.looseObject({ run: z.string(), calls: z.unknown() });",
     projects: ["core"],
   },
   {
     id: "ledger: negative calls accepted",
-    file: "../core/src/ledger.ts",
+    file: "src/core/ledger.ts",
     from: "const LedgerLine = z.looseObject({ run: z.string(), calls: z.int().min(0) });",
     to: "const LedgerLine = z.looseObject({ run: z.string(), calls: z.int() });",
     projects: ["core"],
@@ -652,14 +652,14 @@ export const MUTANTS: readonly Mutant[] = [
   // The planner's other refusals and the CI policy.
   {
     id: "planner allows a composite primary",
-    file: "../core/src/planner.ts",
+    file: "src/core/planner.ts",
     from: "    if (measure.card.composite === true)",
     to: "    if (false)",
     projects: CORE,
   },
   {
     id: "planner allows a secondary card as primary",
-    file: "../core/src/planner.ts",
+    file: "src/core/planner.ts",
     from: '    if (measure.card.tier !== "primary")',
     to: "    if (false)",
     projects: CORE,
@@ -672,8 +672,8 @@ export const MUTANTS: readonly Mutant[] = [
   },
 ];
 
-const decide = join(import.meta.dirname, "..");
-const repository = join(decide, "..", "..");
+const ichnaea = join(import.meta.dirname, "..", "..");
+const repository = join(ichnaea, "..", "..");
 const anchorsOnly = process.argv.includes("--anchors");
 const wanted = process.argv.slice(2).filter((a) => a !== "--anchors");
 const passes = (projects: readonly string[]): boolean => {
@@ -693,7 +693,7 @@ const selected = MUTANTS.filter(
 const failures: string[] = [];
 let killed = 0;
 for (const m of selected) {
-  const path = join(decide, m.file);
+  const path = join(ichnaea, m.file);
   const original = readFileSync(path, "utf8");
   const count = original.split(m.from).length - 1;
   if (count !== 1) {

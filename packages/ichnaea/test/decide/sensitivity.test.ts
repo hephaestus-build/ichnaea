@@ -1,9 +1,9 @@
 // REQ-56, decision 0010: whenever a primary measure misses a trial in either arm, each verdict is
 // tested against the imputation that works against it, and a verdict that changes is INCONCLUSIVE.
-import type { Decision } from "@hephaestus-build/ichnaea-contracts";
+import type { Decision } from "../../src/contracts/index.ts";
 import { describe, expect, it } from "vitest";
 
-import { decide } from "../src/index.ts";
+import { decide } from "../../src/decide/index.ts";
 import { decideFloorSet, FLOOR_REASON } from "./support/floor-set.ts";
 import { type Scenario, scenario } from "./support/scenario.ts";
 

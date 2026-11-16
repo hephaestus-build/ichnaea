@@ -4,13 +4,13 @@ import { join } from "node:path";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import addFormatsModule from "ajv-formats";
 
-import { DATA_POLICY_KEY, RECORD_CONTRACTS, schemaUri } from "../../src/index.ts";
+import { DATA_POLICY_KEY, RECORD_CONTRACTS, schemaUri } from "../../../src/contracts/index.ts";
 
 const addFormats = addFormatsModule as unknown as (ajv: Ajv2020) => Ajv2020;
 
 /** Reads the committed, normative JSON Schema file of a record contract. */
 export function committedSchema(name: string): Record<string, unknown> {
-  const path = join(import.meta.dirname, "..", "..", "schemas", `${name}.schema.json`);
+  const path = join(import.meta.dirname, "..", "..", "..", "schemas", `${name}.schema.json`);
   return JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
 }
 
