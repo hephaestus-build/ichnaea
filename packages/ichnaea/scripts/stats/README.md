@@ -141,12 +141,19 @@ No ICHNAEA_* variable is set. Any override makes a smoke run, which the collecto
 
 ## Runners and wall time
 
-The organisation's repositories share 60 concurrent jobs, and the other repositories' merge queues
-must never wait for a study. So every matrix of `confirmation-sweep.yml` and `stats-study.yml` runs at most
-`max_parallel` jobs at once: 20 by default, and the plan refuses more than 30. Every job runs on
-`ubuntu-24.04` with Node 24.22.2, one runtime, so outputs compare byte for byte.
+The organisation's repositories share one pool of runners, and Ichnaea keeps within 20 of them, its
+pull request CI included, so that the other repositories' merge queues never wait for it:
+
+- `confirmation-sweep.yml` and `stats-study.yml` share the concurrency group `heavy-runners`, so one
+  study or sweep runs at a time. A second dispatch waits; a third replaces the second while it waits.
+- Within the sweep, the matrices run one after another: `large` waits for `skips`, and `embedded`
+  for `large`.
+- Every matrix runs at most `max_parallel` jobs at once: 12 by default, and the plan refuses more
+  than 14, which leaves room for the CI of the pull request at the front.
+
+Every job runs on `ubuntu-24.04` with Node 24.22.2, one runtime, so outputs compare byte for byte.
 
 The wall time is about the job-minutes of a phase divided by `max_parallel`, and never less than its
 longest job. The confirmation sweep's exact phases took 1,076 job-minutes on the hosted runners (A
-303, B 575, C 198; the longest job 17 minutes), so about an hour at 20 jobs. Measure a study's
+303, B 575, C 198; the longest job 17 minutes), so about 90 minutes at 12 jobs. Measure a study's
 per-shard time with a pilot before its full dispatch.
