@@ -10,6 +10,7 @@ import { Plan } from "./records/plan.ts";
 import { Run } from "./records/run.ts";
 import { Suite } from "./records/suite.ts";
 import { Trial } from "./records/trial.ts";
+import { TrialRequest, TrialResult } from "./records/worker.ts";
 
 /** Stability level of a record schema (OpenTelemetry levels; names never encode the stage). */
 export type Stability = "development" | "alpha" | "beta" | "stable";
@@ -74,6 +75,21 @@ export const RECORD_CONTRACTS: readonly RecordContract[] = [
     schema: Trial,
     stability: "alpha",
     description: "The normalised evidence of one trial.",
+  },
+  {
+    name: "trialRequest",
+    id: "ichnaea.trialRequest/1",
+    schema: TrialRequest,
+    stability: "alpha",
+    description: "What Ichnaea sends a worker for one trial: the case input, never its references.",
+  },
+  {
+    name: "trialResult",
+    id: "ichnaea.trialResult/1",
+    schema: TrialResult,
+    stability: "alpha",
+    description:
+      "What a worker answers for one trial: the raw output, the calls and the configuration it ran.",
   },
   {
     name: "run",

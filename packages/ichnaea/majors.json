@@ -1,20 +1,56 @@
 {
   "description": "Every major version of every record contract. A major beyond 1 names the migration module that reads the previous major (REQ-07). scripts/check-contract-majors.ts enforces it.",
   "records": {
-    "case": { "1": null },
-    "caseSet": { "1": null },
-    "configuration": { "1": null },
-    "suite": { "1": null },
-    "plan": { "1": null },
-    "trial": { "1": null },
-    "run": { "1": null },
-    "measureCard": { "1": null },
-    "measureValue": { "1": null },
-    "decision": { "1": null },
-    "judge": { "1": null },
-    "label": { "1": null },
-    "calibration": { "1": null },
-    "monitor": { "1": null },
-    "finding": { "1": null }
+    "case": {
+      "1": null
+    },
+    "caseSet": {
+      "1": null
+    },
+    "configuration": {
+      "1": null
+    },
+    "suite": {
+      "1": null
+    },
+    "plan": {
+      "1": null
+    },
+    "trial": {
+      "1": null
+    },
+    "trialRequest": {
+      "1": null
+    },
+    "trialResult": {
+      "1": null
+    },
+    "run": {
+      "1": null
+    },
+    "measureCard": {
+      "1": null
+    },
+    "measureValue": {
+      "1": null
+    },
+    "decision": {
+      "1": null
+    },
+    "judge": {
+      "1": null
+    },
+    "label": {
+      "1": null
+    },
+    "calibration": {
+      "1": null
+    },
+    "monitor": {
+      "1": null
+    },
+    "finding": {
+      "1": null
+    }
   }
 }

@@ -1,0 +1,25 @@
+{
+  "schema": "ichnaea.trialResult/1",
+  "dataClass": "none",
+  "trial": {
+    "id": "refund-window-de/candidate/r0",
+    "suite": "support-assistant",
+    "case": "refund-window-de",
+    "arm": "candidate",
+    "replicate": 0,
+    "attempt": 1
+  },
+  "calls": 0,
+  "observed": {
+    "commit": "0123456789abcdef0123456789abcdef01234567",
+    "model": "example-model-2026-10",
+    "route": "sha256:e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1",
+    "parameters": {
+      "temperature": 0
+    }
+  },
+  "failure": {
+    "class": "system",
+    "kind": "bad-request"
+  }
+}
