@@ -32,8 +32,12 @@ Run two A/A runs before you make a gate required in CI.
 Run them again when you change the runner, the endpoint or how you score.
 
 At one trial per case, clean A/A runs are a condition of the method itself.
-With one trial, a shock between the two arms looks like an effect. The arms must run side by side, and two A/A runs per arm must give no REGRESSION.
+With one trial, a shock between the two arms looks like an effect.
+So the plan must cite at least two A/A decisions that pass Ichnaea's checks, or the result is not validated.
+An A/A REGRESSION blocks one trial per case for that suite, model and schedule.
+The block stays until its cause is found and two later A/A decisions are clean.
 
 ## Evidence
 
+- [Decision 0020](https://github.com/hephaestus-build/ichnaea/blob/main/docs/decisions/0020-binary-regression-at-one-trial.md): the A/A precondition at one trial per case.
 - [Statistics validation, one trial per case](https://github.com/hephaestus-build/ichnaea/blob/main/packages/ichnaea/src/stats/VALIDATION.md#one-trial-per-case-the-binary-regression-test): the conditions for a validated result at one trial per case.

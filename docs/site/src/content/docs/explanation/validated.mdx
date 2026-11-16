@@ -20,12 +20,12 @@ A method is validated when all of these hold:
 
 ## What is validated today
 
-| Method                                                                     | Status                                                                                                |
-| -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| REGRESSION for pass/fail measures, 2 or 3 trials per case, 5 or more cases | Validated. The worst measured type-I error is 0.0454 against a bar of 0.05.                           |
-| REGRESSION at one trial per case                                           | An exact study found no failure from 5 to 300 cases. The validated domain does not include it yet.    |
-| PASS (non-inferiority)                                                     | Not validated. The smallest validated margin is not set.                                              |
-| Measures with scores                                                       | A test exists and matches its reference values. Its type-I study has not run, so it gives no verdict. |
+| Method                                                                     | Status                                                                                                                                                |
+| -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| REGRESSION for pass/fail measures, 2 or 3 trials per case, 5 or more cases | Validated. The worst measured type-I error is 0.0454 against a bar of 0.05.                                                                           |
+| REGRESSION at one trial per case, 5 or more cases                          | Validated when the records pass three checks: a random order within each pair, both trials of a case run close together, and two clean A/A decisions. |
+| PASS (non-inferiority), at any number of trials                            | Not validated. The smallest validated margin is not set.                                                                                              |
+| Measures with scores                                                       | A test exists and matches its reference values. Its type-I study has not run, so it gives no verdict.                                                 |
 
 ## False alarms, measured
 
@@ -58,3 +58,4 @@ A verdict never rests on a result that is not validated.
 - [Statistics validation](https://github.com/hephaestus-build/ichnaea/blob/main/packages/ichnaea/src/stats/VALIDATION.md): the bar, the grids, every result, and the methods that are not validated.
 - [Decision 0006](https://github.com/hephaestus-build/ichnaea/blob/main/docs/decisions/0006-validation-rule.md): why the bar is set where it is.
 - [Decision 0009](https://github.com/hephaestus-build/ichnaea/blob/main/docs/decisions/0009-validity-per-result.md): one validity result for each statistical result.
+- [Decision 0020](https://github.com/hephaestus-build/ichnaea/blob/main/docs/decisions/0020-binary-regression-at-one-trial.md): REGRESSION at one trial per case, and the checks of the records it needs.
