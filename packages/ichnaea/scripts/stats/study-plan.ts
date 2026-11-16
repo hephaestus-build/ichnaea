@@ -5,6 +5,7 @@
 //
 // Usage:
 //   node scripts/stats/study-plan.ts --study <name> --jobs <J> --second-jobs <R> [--pilot i,j]
+//                                    [--max-parallel <m>]   (at most 30; 20 by default)
 //     appends the plan to $GITHUB_OUTPUT, or prints it without one;
 //   node scripts/stats/study-plan.ts prepare --study <name>
 //     runs the study's prepare commands, stops at the first that fails, and appends the paths of
@@ -18,6 +19,26 @@ import { parseArgs } from "node:util";
 export const PROCESSES = 4;
 /** GitHub runs at most 256 jobs from one matrix. */
 export const MAX_MATRIX_JOBS = 256;
+
+/**
+ * Jobs of one matrix that run at the same time. The organisation's repositories share 60
+ * concurrent jobs, and the other repositories' merge queues must never wait for a study, so a
+ * study takes at most 30 of them and 20 by default.
+ */
+export const DEFAULT_MAX_PARALLEL = 20;
+/** The most jobs of one matrix that a study may run at once. */
+export const MAX_PARALLEL_CAP = 30;
+
+/** Parses the jobs of one matrix that run at once: a whole number from 1 to MAX_PARALLEL_CAP. */
+export function maxParallelOf(text: string | undefined): number {
+  if (text === undefined || text.trim() === "") return DEFAULT_MAX_PARALLEL;
+  const n = Number(text);
+  if (!Number.isInteger(n) || n < 1 || n > MAX_PARALLEL_CAP)
+    throw new RangeError(
+      `max-parallel must be a whole number from 1 to ${MAX_PARALLEL_CAP}, so that other repositories keep runners; got '${text}'`,
+    );
+  return n;
+}
 
 /** What a study runs. Every path is relative to packages/ichnaea. */
 export interface Study {
@@ -80,6 +101,8 @@ export interface StudyPlan {
   readonly prepared: boolean;
   /** Whether only the pilot's screen shards run, with no selection, second phase or verdict. */
   readonly pilot: boolean;
+  /** Jobs of one matrix that run at the same time. */
+  readonly maxParallel: number;
   readonly screen: { readonly include: readonly ShardJob[] };
   /** The second phase's shard count and jobs. Its shards come from the points file. */
   readonly secondCount: number;
@@ -120,6 +143,7 @@ export function plan(input: {
   readonly jobs: number;
   readonly secondJobs: number;
   readonly pilot: readonly number[];
+  readonly maxParallel?: number;
 }): StudyPlan {
   const study = STUDIES[input.study];
   if (study === undefined)
@@ -149,6 +173,7 @@ export function plan(input: {
     prepare: JSON.stringify({ commands: study.prepare, artifacts: study.prepareArtifacts }),
     prepared: study.prepare.length > 0,
     pilot: pilot.length > 0,
+    maxParallel: input.maxParallel ?? DEFAULT_MAX_PARALLEL,
     screen: { include: screen },
     secondCount: PROCESSES * input.secondJobs,
     secondJobs: {
@@ -194,6 +219,7 @@ if (import.meta.main) {
       jobs: { type: "string" },
       "second-jobs": { type: "string" },
       pilot: { type: "string" },
+      "max-parallel": { type: "string" },
     },
   });
   if (positionals[0] === "prepare") {
@@ -205,6 +231,7 @@ if (import.meta.main) {
       jobs: jobsOf(values.jobs ?? "", "jobs"),
       secondJobs: jobsOf(values["second-jobs"] ?? "", "second-jobs"),
       pilot: pilotOf(values.pilot),
+      maxParallel: maxParallelOf(values["max-parallel"]),
     });
     output([
       ...Object.entries(p).map(([k, v]) =>
