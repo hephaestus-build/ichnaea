@@ -626,6 +626,39 @@ function triggerCheck(
   return problems;
 }
 
+/**
+ * The checks of each trial's attempts (invariant 12). They are numbered 1 to k with no gap, and the
+ * calls of every attempt count against the plan's bound per trial and against the run's budget,
+ * so a retry cannot hide an overrun. A trial without a count of calls counts none.
+ */
+function attemptChecks(input: DecideInput): string[] {
+  const { budget } = input.plan;
+  const invalid: string[] = [];
+  const over: { readonly trial: string; readonly calls: number }[] = [];
+  let total = 0;
+  for (const t of input.trials) {
+    const attempts = t.attempts ?? [];
+    if (attempts.some((a, i) => a.attempt !== i + 1))
+      invalid.push(
+        `trial '${t.id}' lists attempts ${attempts.map((a) => a.attempt).join(", ")}; they must be numbered 1 to k with no gap`,
+      );
+    const calls = attempts.reduce((n, a) => n + a.calls, t.usage?.calls ?? 0);
+    total += calls;
+    if (budget.callsPerTrial !== undefined && calls > budget.callsPerTrial)
+      over.push({ trial: t.id, calls });
+  }
+  const example = over[0];
+  if (example)
+    invalid.push(
+      `${over.length} trial(s) made more calls over their attempts than the bound of ${budget.callsPerTrial} per trial, for example '${example.trial}' (${example.calls} calls)`,
+    );
+  if (total > budget.maxCalls)
+    invalid.push(
+      `the run made ${total} calls, over the budget of ${budget.maxCalls}, counting every attempt`,
+    );
+  return invalid;
+}
+
 /** Checks of the records themselves. Each problem makes the run INVALID. */
 async function recordChecks(input: DecideInput): Promise<string[]> {
   const { plan, run } = input;
@@ -686,6 +719,7 @@ async function recordChecks(input: DecideInput): Promise<string[]> {
     );
   if (input.trials.some((t) => t.outcome === "budget_exceeded"))
     invalid.push("the run exhausted its budget");
+  invalid.push(...attemptChecks(input));
   for (const p of plan.primary) {
     if (!(p.margin < 1 && (p.safetyMargin ?? 0) <= p.margin))
       invalid.push(

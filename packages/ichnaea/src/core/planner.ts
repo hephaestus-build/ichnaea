@@ -356,6 +356,7 @@ export async function createPlan(input: PlanInput): Promise<Plan> {
     budget: {
       worstCaseCalls,
       maxCalls: suite.budget.maxCalls,
+      callsPerTrial: suite.budget.callsPerTrial,
       ...(input.monthlyRemaining === undefined ? {} : { monthlyRemaining: input.monthlyRemaining }),
     },
     trials,

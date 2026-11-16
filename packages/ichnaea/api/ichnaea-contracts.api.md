@@ -2415,6 +2415,7 @@ export const Plan: z.ZodObject<{
     budget: z.ZodObject<{
         worstCaseCalls: z.ZodInt;
         maxCalls: z.ZodInt;
+        callsPerTrial: z.ZodOptional<z.ZodInt>;
         monthlyRemaining: z.ZodOptional<z.ZodInt>;
     }, z.core.$strict>;
     trials: z.ZodArray<z.ZodObject<{
@@ -3282,6 +3283,17 @@ export const Trial: z.ZodObject<{
     startedAt: z.ZodOptional<z.ZodISODateTime>;
     endedAt: z.ZodOptional<z.ZodISODateTime>;
     inputDigest: z.ZodOptional<z.ZodString>;
+    attempts: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        attempt: z.ZodInt;
+        failure: z.ZodObject<{
+            class: z.ZodEnum<{
+                infrastructure: "infrastructure";
+                not_run: "not_run";
+            }>;
+            kind: z.ZodString;
+        }, z.core.$strict>;
+        calls: z.ZodInt;
+    }, z.core.$strict>>>;
 }, z.core.$strict>;
 
 // @public

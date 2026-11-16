@@ -181,6 +181,11 @@ export const Plan = z.strictObject({
   budget: z.strictObject({
     worstCaseCalls: none(z.int().min(0)),
     maxCalls: none(z.int().min(0)),
+    /**
+     * The suite's bound of calls per trial. The calls of every attempt at a trial count against
+     * it. A plan without it states no bound per trial.
+     */
+    callsPerTrial: none(z.int().min(1)).optional(),
     monthlyRemaining: none(z.int().min(0)).optional(),
   }),
   trials: z.array(PlannedTrial),

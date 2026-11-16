@@ -709,6 +709,9 @@ const REFUSED_PLANNING = {
 /** Further valid records: shapes the main valid fixture does not show. */
 export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
   plan: {
+    "calls-per-trial": (r) => {
+      (r["budget"] as Record<string, unknown>)["callsPerTrial"] = 2;
+    },
     "one-trial-schedule-and-aa": (r) => {
       r["schedule"] = { concurrency: 4, endpoint: "example-endpoint" };
       r["aa"] = {
@@ -738,6 +741,12 @@ export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
     },
   },
   trial: {
+    "after-two-retries": (r) => {
+      r["attempts"] = [
+        { attempt: 1, failure: { class: "infrastructure", kind: "timeout" }, calls: 1 },
+        { attempt: 2, failure: { class: "not_run", kind: "never-reached" }, calls: 0 },
+      ];
+    },
     "protocol-failure": (r) => {
       r["outcome"] = "protocol_failure";
       delete r["output"];
