@@ -175,7 +175,7 @@ scripts run the TypeScript sources.
 ```sh
 pnpm install
 pnpm check                            # format, lint, type check, tests, generated files current
-node scripts/submodule-consumer.ts    # the README's install and example in a consumer workspace
+node scripts/submodule-consumer.ts    # the README's install, type check and example in a consumer
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).

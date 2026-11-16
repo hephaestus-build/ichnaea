@@ -67,7 +67,9 @@ jobs:
       - run: pnpm test
       - name: The CLI runs from the sources
         run: node packages/core/src/bin.ts --version
-      - name: A workspace with Ichnaea as a submodule runs the README's install and example with Node
+      # A real submodule that stays clean after install, the public API under each consumer compiler
+      # profile, and the README's example.
+      - name: A consumer with Ichnaea as a git submodule installs, type-checks and runs it with Node
         run: node scripts/submodule-consumer.ts
 
   simulation:
