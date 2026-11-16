@@ -24,9 +24,11 @@ comes from reproducibility. The verify job of the same workflow rebuilds the new
 - **No new build commit.** A tree equal to the tree of the current build commit is not committed
   again. A pending run that a newer push replaces gets no build commit; the next build commit holds
   the newer source.
-- **A failed verify job.** The build is not reproducible. Do not tell consumers to move to that
-  commit. Find the cause from the first differing path that the job names, fix it on `main`, and the
-  next push writes a new build commit.
+- **A failed verify job.** The build commit is already pushed, but it is not reproducible, so no
+  consumer may pin it: their pin step runs the same verification and refuses it. Tell the consumer
+  lanes the commit's SHA, so that nobody moves a pin to it. Find the cause from the first differing
+  path that the job names and fix it on `main`. The next push writes a new build commit that
+  supersedes it; `build` never moves back, so the bad commit stays in its history, unpinned.
 - **Check a build commit by hand.** In a checkout, with the Node version that the commit's
   `build.json` records: `pnpm install --frozen-lockfile`, then `node scripts/verify-build.ts <sha>`.
 

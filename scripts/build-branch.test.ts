@@ -134,7 +134,7 @@ describe("the build rulesets", () => {
       conditions: { ref_name: { include: ["refs/heads/build"], exclude: [] } },
       rules: [
         { type: "creation" },
-        { type: "update", parameters: { update_allows_fetch_and_merge: false } },
+        { type: "update" },
         { type: "deletion" },
         { type: "non_fast_forward" },
       ],

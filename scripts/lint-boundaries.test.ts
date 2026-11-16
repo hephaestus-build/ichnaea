@@ -23,12 +23,19 @@ function lint(path: string, specifier: string): string[] {
   const file = join(root, "packages", "ichnaea", "src", path);
   mkdirSync(dirname(file), { recursive: true });
   writeFileSync(file, `import { x } from "${specifier}";\n\nexport const y: unknown = x;\n`);
-  const { status, stdout, stderr } = spawnSync(OXLINT, ["-c", ".oxlintrc.json", "."], {
-    cwd: root,
-    encoding: "utf8",
-  });
+  // JSON output, because oxlint picks another text format on GitHub Actions.
+  const { status, stdout, stderr } = spawnSync(
+    OXLINT,
+    ["-c", ".oxlintrc.json", "--format", "json", "."],
+    { cwd: root, encoding: "utf8" },
+  );
   if (status === null || status > 1) throw new Error(`oxlint did not run: ${stderr}`);
-  return stdout.split("\n").filter((line) => line.includes("no-restricted-imports"));
+  const { diagnostics } = JSON.parse(stdout) as {
+    diagnostics: readonly { code: string; message: string; help?: string }[];
+  };
+  return diagnostics
+    .filter((d) => d.code === "eslint(no-restricted-imports)")
+    .map((d) => `${d.message} ${d.help ?? ""}`);
 }
 
 describe("the boundaries between the areas of the package", () => {

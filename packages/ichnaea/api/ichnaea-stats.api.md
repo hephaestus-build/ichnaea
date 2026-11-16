@@ -29,6 +29,18 @@ export interface CaseCounts {
 }
 
 // @public
+export interface CaseScores {
+    // (undocumented)
+    readonly base: readonly number[];
+    // (undocumented)
+    readonly candidate: readonly number[];
+    // (undocumented)
+    readonly family?: string;
+    // (undocumented)
+    readonly id: string;
+}
+
+// @public
 export function compareCounts(input: ComparisonInput): Comparison;
 
 // @public
@@ -186,6 +198,15 @@ export function sampledCasesFloor(cases: number, alpha?: number): number;
 export function sampledCasesNeeded(discordance: number, margin: number, alpha?: number, power?: number): number;
 
 // @public
+export const SCORE_PERMUTATION_RESAMPLES = 10000;
+
+// @public
+export const SCORE_PERMUTATION_RESAMPLES_NEAR_LEVEL = 100000;
+
+// @public
+export const SCORE_PERMUTATION_WORK_LIMIT = 50000000;
+
+// @public
 export function scoreDifferenceInterval(strata: readonly Stratum[], level?: number, sided?: Sided, options?: ScoreOptions): Interval;
 
 // @public
@@ -197,6 +218,27 @@ export interface ScoreOptions {
     readonly skewnessCorrection?: boolean;
     readonly weights?: "equal" | "mantel-haenszel";
 }
+
+// @public
+export interface ScorePermutationOptions {
+    readonly levels?: readonly number[];
+    readonly seed?: number;
+}
+
+// @public
+export interface ScorePermutationResult {
+    // (undocumented)
+    readonly method: "within-case-permutation-exact" | "within-case-permutation-monte-carlo";
+    readonly monteCarloSE?: number;
+    readonly p: number;
+    readonly resamples?: number;
+    readonly seed?: number;
+    readonly statistic: number;
+    readonly work?: number;
+}
+
+// @public
+export function scorePermutationTest(cases: readonly CaseScores[], options?: ScorePermutationOptions): ScorePermutationResult;
 
 // @public
 export type Sided = "two" | "lower" | "upper";
