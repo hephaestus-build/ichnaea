@@ -1,32 +1,51 @@
 // The operating characteristics of a judge calibration rule: how often a judge that is as good as a
 // rater, worse than a rater, uninformative or biased between the two configurations passes it, on
-// synthetic raters and 60 cases × the two configurations a plan names. The rule is a parameter: this
-// module never imports one, so the rule can live wherever the calibration code does, and a changed
-// rule only needs a rerun (VALIDATION.md, "The judge calibration rule").
-import type { Rng } from "../../src/stats/index.ts";
+// synthetic raters. Two kinds of synthetic study: generic cells (cases × the two configurations a
+// plan names), and draw cells that reproduce a calibration draw (a screen of items with repeated
+// answers, a deterministic proxy, oversampled positives, inclusion weights and within-item
+// correlation). The rule is a parameter: this module never imports one, so the rule can live
+// wherever the calibration code does, and a changed rule only needs a rerun (VALIDATION.md, "The
+// judge calibration rule").
+import { qnorm, type Rng } from "../../src/stats/index.ts";
 
-/** One simulated calibration study: three label vectors on the same items. */
+/**
+ * One simulated calibration study: labels on answers, which are grouped into cases (the resampling
+ * clusters, items in a calibration study's own words), each case in one sampling stratum.
+ */
 export interface RatedStudy {
   /** `binary` labels are 0 or 1 (1 is a positive, a defect); `levels` labels are 1 to `levels`. */
   readonly scale: "binary" | "levels";
   /** The number of levels, for the `levels` scale. */
   readonly levels: number;
-  /** Cases. Item 2c is case c under the first configuration, item 2c + 1 under the second. */
+  /** The number of cases. */
   readonly cases: number;
+  /** Per answer: its case, 0 to cases − 1. */
+  readonly caseOf: readonly number[];
+  /**
+   * Per answer: its configuration. 0 and 1 are the two configurations the plan names, which the
+   * bias check compares; 2 is an extra source of answers (a known-worse configuration).
+   */
+  readonly configurationOf: readonly number[];
+  /** Per answer: its weight, 1/π for inclusion probability π (1 when every answer is sampled). */
+  readonly weight: readonly number[];
+  /** Per case: its stratum for the bootstrap, which resamples cases within each stratum. */
+  readonly stratumOf: readonly number[];
   readonly first: readonly number[];
   readonly second: readonly number[];
   readonly judge: readonly number[];
+  /** Per answer, for the study's diagnostics only: whether it truly is a positive. */
+  readonly truth?: readonly number[];
 }
 
 /** What a rule decides about one study, and the bias bound that its equivalence check uses. */
 export interface RuleOutcome {
   /** Whether the rule's agreement part admits the judge. */
   readonly pass: boolean;
-  /** Each condition the rule reports, by name: its status conditions and any context shown beside them. */
+  /** Each condition the rule reports, by name. */
   readonly conditions: Readonly<Record<string, boolean>>;
   /** max(|lower|, |upper|) of the interval of the bias between the two configurations, on [0, 1]. */
   readonly shownBound: number;
-  /** The mean of the per-case bias, on [0, 1]. */
+  /** The bias between the two configurations, on [0, 1]. */
   readonly armBias: number;
   /** Resamples in which a status statistic was undefined; counted, never dropped silently. */
   readonly nanReplicates: number;
@@ -43,20 +62,40 @@ export interface CalibrationRule {
 }
 
 /**
- * How a yes/no judge reads an item: like a rater with its own accuracy; at chance, saying yes with
- * the cell's prevalence whatever the item is; or always no.
+ * How a yes/no judge reads an answer: like a rater with its own accuracy; at chance, saying yes
+ * with the cell's prevalence whatever the answer is; or always no.
  */
 export type BinaryJudge = "reads" | "chance" | "always-no";
+
+/** One group of a calibration draw: the answers drawn from one configuration. */
+export interface DrawGroup {
+  /** The configuration: 0 and 1 are the two the plan names, 2 is the known-worse one. */
+  readonly configuration: 0 | 1 | 2;
+  /** Answers drawn from it. */
+  readonly units: number;
+  /** The share of them wanted from its proxy-positive answers. */
+  readonly positiveShare: number;
+}
+
+/** A calibration draw, as a calibration study's sampling plan states it. */
+export interface DrawDesign {
+  /** Eligible items, after the development pool. */
+  readonly items: number;
+  /** Screening runs per item, per configuration 0, 1 and 2 (0 runs: the configuration is not screened). */
+  readonly runs: readonly [number, number, number];
+  /** The share of each configuration's answers that are truly positive (defects). */
+  readonly defectRate: readonly [number, number, number];
+  readonly groups: readonly DrawGroup[];
+  /** The most proxy-positive answers drawn from one item, over all groups; none when absent. */
+  readonly positiveCap?: number;
+}
 
 /** A cell of the study: one synthetic scenario. */
 export type Cell =
   | {
       readonly id: string;
       readonly scale: "binary";
-      /**
-       * The share of positive items in the calibration sample, before case effects. An oversampled
-       * cell models stratified sampling that raises this share above the population's.
-       */
+      /** The share of positive answers, before case effects. Oversampling raises it. */
       readonly prevalence: number;
       /** True when `prevalence` comes from oversampling positives by stratification. */
       readonly oversampled: boolean;
@@ -66,8 +105,8 @@ export type Cell =
       readonly judgeAccuracy: number;
       /** How much more often the judge misses a positive under the second configuration. */
       readonly armBias: number;
-      /** Cases per study; CASES when absent. */
-      readonly cases?: number;
+      /** Cases per study. */
+      readonly cases: number;
     }
   | {
       readonly id: string;
@@ -77,6 +116,14 @@ export type Cell =
       readonly judgeNoise: number;
       /** How far the judge shifts its reading under the second configuration, on the latent scale. */
       readonly armShift: number;
+    }
+  | {
+      readonly id: string;
+      readonly scale: "draw";
+      readonly design: DrawDesign;
+      readonly judgeAccuracy: number;
+      /** The within-item correlation of the latent defect and of each reader's errors. */
+      readonly rho: number;
     };
 
 /** Cases per study unless a cell names more, as in the chatbot's first calibration study. */
@@ -100,8 +147,44 @@ const binary = (
   cases,
 });
 
-/** The study sizes that the sizing cells try, with positives oversampled to 0.35 of the sample. */
+/** The study sizes that the generic sizing cells try, with positives oversampled to 0.35. */
 export const SIZES = [120, 135, 150, 180] as const;
+
+/** A draw with the known-worse configuration C3: groups of n1, n1 and n3 answers, positives capped. */
+const withC3 = (n1: number, n3: number, positiveCap?: number): DrawDesign => ({
+  items: 127,
+  runs: [2, 2, 2],
+  defectRate: [0.15, 0.15, 0.35],
+  ...(positiveCap === undefined ? {} : { positiveCap }),
+  groups: [
+    { configuration: 0, units: n1, positiveShare: 0.35 },
+    { configuration: 1, units: n1, positiveShare: 0.35 },
+    { configuration: 2, units: n3, positiveShare: 0.6 },
+  ],
+});
+
+/**
+ * The draws studied for the chatbot's first calibration study (VALIDATION.md): 127 eligible items,
+ * two screening runs per configuration, defect rates from its November runs, and the known-worse
+ * configuration C3 (configuration 2) as a source of positives.
+ */
+export const DRAWS: Readonly<Record<string, DrawDesign>> = {
+  "two-arms-140": {
+    items: 127,
+    runs: [2, 2, 0],
+    defectRate: [0.15, 0.15, 0.35],
+    groups: [
+      { configuration: 0, units: 70, positiveShare: 0.35 },
+      { configuration: 1, units: 70, positiveShare: 0.35 },
+    ],
+  },
+  "with-c3-140": withC3(45, 50),
+  "with-c3-140-cap2": withC3(45, 50, 2),
+  "with-c3-200-cap2": withC3(60, 80, 2),
+  "with-c3-260-cap2": withC3(75, 110, 2),
+};
+/** The within-item correlations that the draw cells try. */
+export const RHOS = [0, 0.3, 0.6] as const;
 
 /** The cells of the published study (VALIDATION.md). */
 export const CELLS: readonly Cell[] = [
@@ -113,7 +196,7 @@ export const CELLS: readonly Cell[] = [
   binary("binary-bias-0.05", 0.2, "reads", 0.9, { armBias: 0.05 }),
   binary("binary-bias-0.10", 0.2, "reads", 0.9, { armBias: 0.1 }),
   binary("binary-bias-0.15", 0.2, "reads", 0.9, { armBias: 0.15 }),
-  // Uninformative judges at low prevalence, where AC1 can admit them.
+  // Uninformative judges at low prevalence, where an AC1 rule alone can admit them.
   binary("binary-chance-rare", 0.1, "chance", 0),
   binary("binary-always-no-rare", 0.1, "always-no", 0),
   binary("binary-chance-very-rare", 0.05, "chance", 0),
@@ -123,7 +206,7 @@ export const CELLS: readonly Cell[] = [
   binary("binary-worse-oversampled", 0.35, "reads", 0.8, { oversampled: true }),
   binary("binary-chance-oversampled", 0.35, "chance", 0, { oversampled: true }),
   binary("binary-always-no-oversampled", 0.35, "always-no", 0, { oversampled: true }),
-  // Sizing: the good and the clearly worse judge at larger studies, positives oversampled to 0.35.
+  // Generic sizing: the good and the clearly worse judge at larger studies.
   ...SIZES.flatMap((cases) => [
     binary(`binary-equal-oversampled-n${cases}`, 0.35, "reads", 0.9, { oversampled: true, cases }),
     binary(`binary-worse-oversampled-n${cases}`, 0.35, "reads", 0.8, { oversampled: true, cases }),
@@ -133,12 +216,37 @@ export const CELLS: readonly Cell[] = [
   { id: "levels-much-noisier", scale: "levels", raterNoise: 0.6, judgeNoise: 1.2, armShift: 0 },
   { id: "levels-shift-0.25", scale: "levels", raterNoise: 0.6, judgeNoise: 0.6, armShift: 0.25 },
   { id: "levels-shift-0.50", scale: "levels", raterNoise: 0.6, judgeNoise: 0.6, armShift: 0.5 },
+  // The chatbot's draw, for the good (0.90) and the clearly worse (0.80) judge, at each ρ.
+  ...Object.entries(DRAWS).flatMap(([name, design]) =>
+    RHOS.flatMap((rho) =>
+      (
+        [
+          ["equal", 0.9],
+          ["worse", 0.8],
+        ] as const
+      ).map(([who, judgeAccuracy]): Cell => ({
+        id: `draw-${name}-rho${rho}-${who}`,
+        scale: "draw",
+        design,
+        judgeAccuracy,
+        rho,
+      })),
+    ),
+  ),
 ];
 
 /** The bias tolerances and limits at which the study reports P(shown bound ≤ m). */
 export const MARGINS = [0.1, 0.15, 0.2, 0.25] as const;
 /** The five levels' cut points on the latent scale. */
 const CUTS = [-1.2, -0.4, 0.4, 1.2] as const;
+/** The draw model's raters read with this accuracy. */
+const RATER_ACCURACY = 0.9;
+/** The share of true defects that the deterministic proxy catches (the obvious ones). */
+const PROXY_CATCHES = 0.65;
+/** The share of non-defects that the proxy flags anyway. */
+const PROXY_FALSE_POSITIVE = 0.01;
+/** Readers are this much more accurate on an obvious defect, and this much less on a subtle one. */
+const OBVIOUS_SHIFT = 0.07;
 
 function gaussian(rng: Rng): number {
   // Box–Muller; 1 − u keeps the logarithm's argument in (0, 1].
@@ -151,19 +259,25 @@ function level(latent: number): number {
   return l;
 }
 
-/** Draws one synthetic calibration study for a cell: its cases (CASES unless it names more), two items each. */
-export function drawStudy(
-  cell: Cell,
-  rng: Rng,
-  cases = cell.scale === "binary" ? (cell.cases ?? CASES) : CASES,
-): RatedStudy {
+/** Draws one synthetic calibration study for a cell. */
+export function drawStudy(cell: Cell, rng: Rng): RatedStudy {
+  return cell.scale === "draw" ? drawCalibration(cell, rng) : drawGeneric(cell, rng);
+}
+
+/** A generic study: its cases, one answer per configuration each, every answer sampled. */
+function drawGeneric(cell: Exclude<Cell, { scale: "draw" }>, rng: Rng): RatedStudy {
+  const cases = cell.scale === "binary" ? cell.cases : CASES;
   const first: number[] = [];
   const second: number[] = [];
   const judge: number[] = [];
+  const caseOf: number[] = [];
+  const configurationOf: number[] = [];
   for (let c = 0; c < cases; c++) {
-    // A case effect that both configurations' items share.
+    // A case effect that both of the case's answers share.
     const caseEffect = gaussian(rng) * 0.7;
     for (let configuration = 0; configuration < 2; configuration++) {
+      caseOf.push(c);
+      configurationOf.push(configuration);
       if (cell.scale === "levels") {
         const truth = caseEffect + gaussian(rng) * 0.7;
         first.push(level(truth + gaussian(rng) * cell.raterNoise));
@@ -186,7 +300,129 @@ export function drawStudy(
       }
     }
   }
-  return { scale: cell.scale, levels: 5, cases, first, second, judge };
+  return {
+    scale: cell.scale,
+    levels: 5,
+    cases,
+    caseOf,
+    configurationOf,
+    weight: caseOf.map(() => 1),
+    stratumOf: Array.from({ length: cases }, () => 0),
+    first,
+    second,
+    judge,
+  };
+}
+
+/** A screened answer before the draw. */
+interface Screened {
+  readonly item: number;
+  readonly configuration: 0 | 1 | 2;
+  readonly truth: number;
+  readonly obvious: boolean;
+  readonly proxy: boolean;
+}
+
+/** Fisher–Yates on a copy, from `rng`. */
+function shuffled<T>(xs: readonly T[], rng: Rng): T[] {
+  const out = [...xs];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(rng.uniform() * (i + 1));
+    [out[i], out[j]] = [out[j]!, out[i]!];
+  }
+  return out;
+}
+
+/**
+ * A calibration draw, as the chatbot's sampling plan states it:
+ * 1. Screen: each item gets the design's runs per configuration. An answer is a defect when its
+ *    latent √ρ·u_item + √(1−ρ)·e exceeds the threshold of its configuration's defect rate, so
+ *    defects cluster within items with correlation ρ. The proxy catches a defect with probability
+ *    PROXY_CATCHES (an obvious defect) and flags a non-defect with PROXY_FALSE_POSITIVE.
+ * 2. Draw: each group takes round(positiveShare · units) of its configuration's proxy-positive
+ *    answers (all of them if fewer exist) and the rest from its proxy-negative answers, by simple
+ *    random sampling within those two strata, so π = n_s/N_s. With a positive cap, each item's
+ *    proxy-positive answers are first thinned at random to the cap, and π is multiplied by the
+ *    thinning share.
+ * 3. Label: two raters and the judge read each drawn answer. A reader is correct with its accuracy,
+ *    shifted up on an obvious defect and down on a subtle one; its errors correlate within an item
+ *    through √ρ·z_item + √(1−ρ)·ε, the reader's own item effect.
+ * The bootstrap strata are items with a drawn proxy-positive answer, and the rest.
+ */
+function drawCalibration(cell: Extract<Cell, { scale: "draw" }>, rng: Rng): RatedStudy {
+  const { design, rho } = cell;
+  const shared = Math.sqrt(rho);
+  const own = Math.sqrt(1 - rho);
+  const screened: Screened[] = [];
+  for (let item = 0; item < design.items; item++) {
+    const u = gaussian(rng);
+    for (const configuration of [0, 1, 2] as const) {
+      const threshold = qnorm(1 - design.defectRate[configuration]);
+      for (let run = 0; run < design.runs[configuration]; run++) {
+        const truth = shared * u + own * gaussian(rng) > threshold ? 1 : 0;
+        const obvious = truth === 1 && rng.uniform() < PROXY_CATCHES;
+        const proxy = obvious || (truth === 0 && rng.uniform() < PROXY_FALSE_POSITIVE);
+        screened.push({ item, configuration, truth, obvious, proxy });
+      }
+    }
+  }
+
+  // Thin each item's proxy-positive answers to the cap; keep each answer's thinning share.
+  const kept = new Map<Screened, number>();
+  for (let item = 0; item < design.items; item++) {
+    const positives = screened.filter((s) => s.item === item && s.proxy);
+    const cap = design.positiveCap ?? positives.length;
+    const keep = shuffled(positives, rng).slice(0, cap);
+    for (const s of keep) kept.set(s, keep.length / positives.length);
+  }
+
+  const drawn: { answer: Screened; weight: number }[] = [];
+  for (const group of design.groups) {
+    const answers = screened.filter((s) => s.configuration === group.configuration);
+    const positives = answers.filter((s) => s.proxy && kept.has(s));
+    const negatives = answers.filter((s) => !s.proxy);
+    const wantedPositives = Math.min(
+      Math.round(group.positiveShare * group.units),
+      positives.length,
+    );
+    const wantedNegatives = Math.min(group.units - wantedPositives, negatives.length);
+    for (const s of shuffled(positives, rng).slice(0, wantedPositives)) {
+      drawn.push({ answer: s, weight: 1 / ((wantedPositives / positives.length) * kept.get(s)!) });
+    }
+    for (const s of shuffled(negatives, rng).slice(0, wantedNegatives)) {
+      drawn.push({ answer: s, weight: negatives.length / wantedNegatives });
+    }
+  }
+
+  // Renumber the drawn items as cases, and label every drawn answer.
+  const caseIndex = new Map<number, number>();
+  for (const { answer } of drawn) {
+    if (!caseIndex.has(answer.item)) caseIndex.set(answer.item, caseIndex.size);
+  }
+  const readerEffect = (): Map<number, number> =>
+    new Map([...caseIndex.keys()].map((item) => [item, gaussian(rng)] as const));
+  const effects = [readerEffect(), readerEffect(), readerEffect()];
+  const read = (reader: number, s: Screened, accuracy: number): number => {
+    const shifted =
+      s.truth === 0 ? accuracy : accuracy + (s.obvious ? OBVIOUS_SHIFT : -OBVIOUS_SHIFT);
+    const p = Math.min(0.995, Math.max(0.005, shifted));
+    const correct = shared * effects[reader]!.get(s.item)! + own * gaussian(rng) < qnorm(p);
+    return correct ? s.truth : 1 - s.truth;
+  };
+  const hasPositive = new Set(drawn.filter((d) => d.answer.proxy).map((d) => d.answer.item));
+  return {
+    scale: "binary",
+    levels: 5,
+    cases: caseIndex.size,
+    caseOf: drawn.map((d) => caseIndex.get(d.answer.item)!),
+    configurationOf: drawn.map((d) => d.answer.configuration),
+    weight: drawn.map((d) => d.weight),
+    stratumOf: [...caseIndex.keys()].map((item) => (hasPositive.has(item) ? 1 : 0)),
+    first: drawn.map((d) => read(0, d.answer, RATER_ACCURACY)),
+    second: drawn.map((d) => read(1, d.answer, RATER_ACCURACY)),
+    judge: drawn.map((d) => read(2, d.answer, cell.judgeAccuracy)),
+    truth: drawn.map((d) => d.answer.truth),
+  };
 }
 
 /** What a cell's studies give: rates with their Monte Carlo standard errors. */
@@ -202,6 +438,12 @@ export interface CellResult {
   /** P(shown bound ≤ m) for each m of MARGINS: the equivalence check at tolerance m, or a limit of m. */
   readonly withinMargin: readonly number[];
   readonly nanShare: number;
+  /** Per study, on average: the drawn answers that truly are positive (NaN without truth). */
+  readonly meanPositives: number;
+  /** Per study, on average: the distinct items among them. */
+  readonly meanPositiveItems: number;
+  /** Per study, on average: Kish's effective number of positives, (Σw)² / Σw² over them. */
+  readonly meanEffectivePositives: number;
 }
 
 /** Runs `studies` studies of one cell through `rule`, from one seeded stream. */
@@ -211,11 +453,16 @@ export function runCell(cell: Cell, rule: CalibrationRule, rng: Rng, studies: nu
   let bound = 0;
   let nan = 0;
   let replicates = 0;
+  let positives = 0;
+  let positiveItems = 0;
+  let effective = 0;
+  let withTruth = 0;
   const holds = rule.conditions.map(() => 0);
   const reported = rule.conditions.map(() => 0);
   const within = MARGINS.map(() => 0);
   for (let s = 0; s < studies; s++) {
-    const outcome = rule.evaluate(drawStudy(cell, rng), rng);
+    const study = drawStudy(cell, rng);
+    const outcome = rule.evaluate(study, rng);
     if (outcome.pass) passes += 1;
     rule.conditions.forEach((name, i) => {
       const value = outcome.conditions[name];
@@ -230,8 +477,19 @@ export function runCell(cell: Cell, rule: CalibrationRule, rng: Rng, studies: nu
     MARGINS.forEach((m, i) => {
       if (outcome.shownBound <= m) within[i]! += 1;
     });
+    if (study.truth) {
+      withTruth += 1;
+      const index = study.truth.flatMap((t, i) => (t === 1 ? [i] : []));
+      const w = index.map((i) => study.weight[i]!);
+      const sum = w.reduce((x, y) => x + y, 0);
+      const squares = w.reduce((x, y) => x + y * y, 0);
+      positives += index.length;
+      positiveItems += new Set(index.map((i) => study.caseOf[i])).size;
+      effective += squares === 0 ? 0 : (sum * sum) / squares;
+    }
   }
   const rate = passes / studies;
+  const perStudy = (x: number): number => (withTruth === 0 ? Number.NaN : x / withTruth);
   return {
     cell: cell.id,
     studies,
@@ -242,5 +500,8 @@ export function runCell(cell: Cell, rule: CalibrationRule, rng: Rng, studies: nu
     meanShownBound: bound / studies,
     withinMargin: within.map((count) => count / studies),
     nanShare: replicates === 0 ? 0 : nan / replicates,
+    meanPositives: perStudy(positives),
+    meanPositiveItems: perStudy(positiveItems),
+    meanEffectivePositives: perStudy(effective),
   };
 }

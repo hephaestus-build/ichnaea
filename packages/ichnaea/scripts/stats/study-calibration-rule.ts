@@ -31,6 +31,9 @@ export const COLUMNS = [
   "meanShownBound",
   ...MARGINS.map((m) => `withinMargin${m.toFixed(2)}`),
   "nanShare",
+  "meanPositives",
+  "meanPositiveItems",
+  "meanEffectivePositives",
 ] as const;
 
 const format = (x: number): string => (Number.isNaN(x) ? "NA" : x.toPrecision(6));
@@ -47,6 +50,9 @@ export function row(result: CellResult, resamples: number): string {
     format(result.meanShownBound),
     ...result.withinMargin.map(format),
     format(result.nanShare),
+    format(result.meanPositives),
+    format(result.meanPositiveItems),
+    format(result.meanEffectivePositives),
   ].join("\t");
 }
 

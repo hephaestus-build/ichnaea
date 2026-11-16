@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { CONDITIONS, calibrationRule } from "../../scripts/stats/calibration-rule.ts";
+import { CONDITIONS, calibrationRule, weightedAc1 } from "../../scripts/stats/calibration-rule.ts";
 import {
   CELLS,
   MARGINS,
@@ -9,7 +9,7 @@ import {
   type CalibrationRule,
 } from "../../scripts/stats/calibration-rule-study.ts";
 import { COLUMNS, row, seedOf } from "../../scripts/stats/study-calibration-rule.ts";
-import { createRng } from "../../src/stats/index.ts";
+import { createRng, gwetAc1 } from "../../src/stats/index.ts";
 
 // A smoke run: 50 studies per cell and 200 resamples per study. The published study runs 2,000 and
 // 2,000 (VALIDATION.md, "The judge calibration rule").
@@ -81,6 +81,38 @@ describe("the judge calibration rule study, smoke run", () => {
     expect(Math.abs(smoke("binary-equal").meanArmBias)).toBeLessThan(0.03);
     expect(smoke("binary-bias-0.15").meanArmBias).toBeLessThan(-0.12);
     expect(smoke("levels-shift-0.50").meanArmBias).toBeGreaterThan(0.08);
+  });
+});
+
+describe("the calibration draw cells", () => {
+  it("weights every drawn answer by 1/π ≥ 1, clusters by item and names the item strata", () => {
+    const cell = CELLS.find((c) => c.id === "draw-with-c3-140-cap2-rho0.3-equal")!;
+    const study = drawStudy(cell, createRng(11));
+    expect(study.caseOf).toHaveLength(140);
+    expect(study.weight.every((w) => w >= 1)).toBe(true);
+    expect(new Set(study.stratumOf)).toEqual(new Set([0, 1]));
+  });
+
+  it("passes the good judge more often than the clearly worse one on the chatbot's draw", () => {
+    expect(smoke("draw-with-c3-260-cap2-rho0-equal").pass).toBeGreaterThan(
+      smoke("draw-with-c3-260-cap2-rho0-worse").pass + 0.2,
+    );
+  });
+});
+
+describe("the weighted statistics", () => {
+  it("give ./stats' gwetAc1 when every weight is 1", () => {
+    const study = drawStudy(CELLS[0]!, createRng(3));
+    const answers = study.caseOf.map((_, i) => i);
+    const table = [
+      [0, 0],
+      [0, 0],
+    ];
+    for (const i of answers) table[study.judge[i]!]![study.first[i]!]! += 1;
+    expect(weightedAc1(study.judge, study.first, answers, study.weight)).toBeCloseTo(
+      gwetAc1(table),
+      12,
+    );
   });
 });
 
