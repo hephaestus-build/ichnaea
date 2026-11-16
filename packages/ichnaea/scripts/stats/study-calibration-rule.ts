@@ -11,7 +11,13 @@ import { parseArgs } from "node:util";
 
 import { createRng } from "../../src/stats/index.ts";
 import { CONDITIONS, calibrationRule } from "./calibration-rule.ts";
-import { CELLS, MARGINS, runCell, type CellResult } from "./calibration-rule-study.ts";
+import {
+  CELLS,
+  MARGINS,
+  SLOPE_LEVELS,
+  runCell,
+  type CellResult,
+} from "./calibration-rule-study.ts";
 import { provenance, writeMeta } from "./provenance.ts";
 
 export const STUDIES = 2000;
@@ -34,6 +40,12 @@ export const COLUMNS = [
   "meanPositives",
   "meanPositiveItems",
   "meanEffectivePositives",
+  "meanSlope",
+  "meanSlopeLower",
+  ...SLOPE_LEVELS.map((s) => `slopeLowerAtLeast${s.toFixed(1)}`),
+  "dropShown",
+  "meanHumanDrop",
+  "passable",
 ] as const;
 
 const format = (x: number): string => (Number.isNaN(x) ? "NA" : x.toPrecision(6));
@@ -53,6 +65,12 @@ export function row(result: CellResult, resamples: number): string {
     format(result.meanPositives),
     format(result.meanPositiveItems),
     format(result.meanEffectivePositives),
+    format(result.meanSlope),
+    format(result.meanSlopeLower),
+    ...result.slopeLowerAtLeast.map(format),
+    format(result.dropShown),
+    format(result.meanHumanDrop),
+    format(result.passable),
   ].join("\t");
 }
 

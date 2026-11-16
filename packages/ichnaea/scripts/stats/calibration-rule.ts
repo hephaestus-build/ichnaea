@@ -113,10 +113,14 @@ function gap(study: RatedStudy, statistic: Pairwise, answers: Answers): number {
   return judge - raters;
 }
 
+/** The finite values, sorted. */
+const sorted = (xs: readonly number[]): number[] =>
+  xs.filter((x) => Number.isFinite(x)).toSorted((x, y) => x - y);
+
 /** True when the one-sided 95 % lower bound of the gaps is at least −tolerance. */
 function holds(gaps: readonly number[], tolerance: number): boolean {
-  const sorted = gaps.filter((g) => !Number.isNaN(g)).toSorted((x, y) => x - y);
-  return sorted.length > 0 && quantile(sorted, 0.05) >= -tolerance;
+  const values = sorted(gaps);
+  return values.length > 0 && quantile(values, 0.05) >= -tolerance;
 }
 
 /**
@@ -137,6 +141,23 @@ function bias(
     const d = value(study.judge, i) - (value(study.first, i) + value(study.second, i)) / 2;
     sum[k]! += study.weight[i]! * d;
     weight[k]! += study.weight[i]!;
+  }
+  return sum[1]! / weight[1]! - sum[0]! / weight[0]!;
+}
+
+/**
+ * The weighted mean quality (1 − label) of `labels` on configuration 2 minus configuration 0: the
+ * change from the base to the known-worse configuration, on yes/no labels.
+ */
+function pairChange(study: RatedStudy, answers: Answers, labels: (i: number) => number): number {
+  const sum = [0, 0];
+  const weight = [0, 0];
+  for (const i of answers) {
+    const k = study.configurationOf[i]!;
+    if (k === 1) continue;
+    const slot = k === 2 ? 1 : 0;
+    sum[slot]! += study.weight[i]! * (1 - labels(i));
+    weight[slot]! += study.weight[i]!;
   }
   return sum[1]! / weight[1]! - sum[0]! / weight[0]!;
 }
@@ -186,6 +207,13 @@ export function calibrationRule(settings: RuleSettings = DEFAULT_SETTINGS): Cali
     const gaps: Record<string, number[]> = Object.fromEntries(status.map((k) => [k, []]));
 
     const biases: number[] = [];
+    // The slope on the base against known-worse pair, when the study has known-worse answers.
+    const hasPair = study.scale === "binary" && study.configurationOf.includes(2);
+    const judgeLabel = (i: number): number => study.judge[i]!;
+    const raterLabel = (i: number): number => (study.first[i]! + study.second[i]!) / 2;
+    const slopes: number[] = [];
+    const humanChanges: number[] = [];
+    const pairBiases: number[] = [];
     let nanReplicates = 0;
     for (let r = 0; r < settings.resamples; r++) {
       const answers: number[] = [];
@@ -195,6 +223,13 @@ export function calibrationRule(settings: RuleSettings = DEFAULT_SETTINGS): Cali
         }
       }
       biases.push(bias(study, answers, value));
+      if (hasPair) {
+        const human = pairChange(study, answers, raterLabel);
+        const judgeChange = pairChange(study, answers, judgeLabel);
+        humanChanges.push(human);
+        slopes.push(judgeChange / human);
+        pairBiases.push(judgeChange - human);
+      }
       let undefinedStatus = false;
       for (const [name, statistic] of Object.entries(statistics)) {
         const g = gap(study, statistic, answers);
@@ -209,6 +244,20 @@ export function calibrationRule(settings: RuleSettings = DEFAULT_SETTINGS): Cali
     const sortedBiases = biases.filter((x) => !Number.isNaN(x)).toSorted((x, y) => x - y);
     const lower = quantile(sortedBiases, 0.05);
     const upper = quantile(sortedBiases, 0.95);
+    const all = study.caseOf.map((_, i) => i);
+    const slope = hasPair
+      ? (() => {
+          const pair = sorted(pairBiases);
+          const human = pairChange(study, all, raterLabel);
+          return {
+            estimate: pairChange(study, all, judgeLabel) / human,
+            lower: Math.min(1, quantile(sorted(slopes), 0.05)),
+            humanChange: human,
+            humanChangeUpper: quantile(sorted(humanChanges), 0.95),
+            pairBound: Math.max(Math.abs(quantile(pair, 0.05)), Math.abs(quantile(pair, 0.95))),
+          };
+        })()
+      : undefined;
     return {
       pass: status.every((name) => conditions[name] === true),
       conditions,
@@ -216,6 +265,7 @@ export function calibrationRule(settings: RuleSettings = DEFAULT_SETTINGS): Cali
       armBias,
       nanReplicates,
       replicates: settings.resamples,
+      ...(slope === undefined ? {} : { slope }),
     };
   };
   return { conditions: CONDITIONS, evaluate };

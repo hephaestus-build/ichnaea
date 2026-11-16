@@ -51,6 +51,22 @@ export interface RuleOutcome {
   readonly nanReplicates: number;
   /** All resamples. */
   readonly replicates: number;
+  /** The judge's slope on the base (0) against known-worse (2) pair, when the study has that pair. */
+  readonly slope?: Slope;
+}
+
+/** The judge's slope against people on the base against known-worse pair, on quality (1 − defect). */
+export interface Slope {
+  /** β = judge change ÷ human change. */
+  readonly estimate: number;
+  /** The one-sided 95 % item-cluster lower bound of β, capped at 1. */
+  readonly lower: number;
+  /** The human change (the raters' mean quality on known-worse minus base); negative is a drop. */
+  readonly humanChange: number;
+  /** Its one-sided 95 % upper bound: the drop is shown when it is below 0. */
+  readonly humanChangeUpper: number;
+  /** The shown bound of (judge change − human change) on this pair: B. */
+  readonly pairBound: number;
 }
 
 /** A calibration rule: the conditions it reports, and its evaluation of one study. */
@@ -88,6 +104,10 @@ export interface DrawDesign {
   readonly groups: readonly DrawGroup[];
   /** The most proxy-positive answers drawn from one item, over all groups; none when absent. */
   readonly positiveCap?: number;
+  /** The raters' accuracy, which sets human–human agreement; RATER_ACCURACY when absent. */
+  readonly raterAccuracy?: number;
+  /** The share of true defects that the proxy catches; PROXY_CATCHES when absent. */
+  readonly proxyRecall?: number;
 }
 
 /** A cell of the study: one synthetic scenario. */
@@ -237,6 +257,10 @@ export const CELLS: readonly Cell[] = [
 
 /** The bias tolerances and limits at which the study reports P(shown bound ≤ m). */
 export const MARGINS = [0.1, 0.15, 0.2, 0.25] as const;
+/** The slope lower bounds at which the study reports P(β_L ≥ s). */
+export const SLOPE_LEVELS = [0.5, 0.7, 0.9] as const;
+/** The measure's limit for the Pass margin β_L · limit − B. */
+export const LIMIT = 0.1;
 /** The five levels' cut points on the latent scale. */
 const CUTS = [-1.2, -0.4, 0.4, 1.2] as const;
 /** The draw model's raters read with this accuracy. */
@@ -360,7 +384,7 @@ function drawCalibration(cell: Extract<Cell, { scale: "draw" }>, rng: Rng): Rate
       const threshold = qnorm(1 - design.defectRate[configuration]);
       for (let run = 0; run < design.runs[configuration]; run++) {
         const truth = shared * u + own * gaussian(rng) > threshold ? 1 : 0;
-        const obvious = truth === 1 && rng.uniform() < PROXY_CATCHES;
+        const obvious = truth === 1 && rng.uniform() < (design.proxyRecall ?? PROXY_CATCHES);
         const proxy = obvious || (truth === 0 && rng.uniform() < PROXY_FALSE_POSITIVE);
         screened.push({ item, configuration, truth, obvious, proxy });
       }
@@ -418,8 +442,8 @@ function drawCalibration(cell: Extract<Cell, { scale: "draw" }>, rng: Rng): Rate
     configurationOf: drawn.map((d) => d.answer.configuration),
     weight: drawn.map((d) => d.weight),
     stratumOf: [...caseIndex.keys()].map((item) => (hasPositive.has(item) ? 1 : 0)),
-    first: drawn.map((d) => read(0, d.answer, RATER_ACCURACY)),
-    second: drawn.map((d) => read(1, d.answer, RATER_ACCURACY)),
+    first: drawn.map((d) => read(0, d.answer, design.raterAccuracy ?? RATER_ACCURACY)),
+    second: drawn.map((d) => read(1, d.answer, design.raterAccuracy ?? RATER_ACCURACY)),
     judge: drawn.map((d) => read(2, d.answer, cell.judgeAccuracy)),
     truth: drawn.map((d) => d.answer.truth),
   };
@@ -444,6 +468,17 @@ export interface CellResult {
   readonly meanPositiveItems: number;
   /** Per study, on average: Kish's effective number of positives, (Σw)² / Σw² over them. */
   readonly meanEffectivePositives: number;
+  /** The slope, where the cell has a known-worse configuration; NaN otherwise. */
+  readonly meanSlope: number;
+  readonly meanSlopeLower: number;
+  /** P(β_L ≥ s) for each s of SLOPE_LEVELS. */
+  readonly slopeLowerAtLeast: readonly number[];
+  /** P(the human-rated drop is shown: the human change's upper bound is below 0). */
+  readonly dropShown: number;
+  /** The human-rated drop from base to known-worse, on quality, on average. */
+  readonly meanHumanDrop: number;
+  /** P(β_L · LIMIT − B > 0), with B the bias bound on the base against known-worse pair. */
+  readonly passable: number;
 }
 
 /** Runs `studies` studies of one cell through `rule`, from one seeded stream. */
@@ -457,6 +492,13 @@ export function runCell(cell: Cell, rule: CalibrationRule, rng: Rng, studies: nu
   let positiveItems = 0;
   let effective = 0;
   let withTruth = 0;
+  let withSlope = 0;
+  let slopeSum = 0;
+  let slopeLowerSum = 0;
+  let dropShown = 0;
+  let dropSum = 0;
+  let passable = 0;
+  const slopeAtLeast = SLOPE_LEVELS.map(() => 0);
   const holds = rule.conditions.map(() => 0);
   const reported = rule.conditions.map(() => 0);
   const within = MARGINS.map(() => 0);
@@ -477,6 +519,18 @@ export function runCell(cell: Cell, rule: CalibrationRule, rng: Rng, studies: nu
     MARGINS.forEach((m, i) => {
       if (outcome.shownBound <= m) within[i]! += 1;
     });
+    if (outcome.slope) {
+      const { estimate, lower, humanChange, humanChangeUpper, pairBound } = outcome.slope;
+      withSlope += 1;
+      slopeSum += estimate;
+      slopeLowerSum += lower;
+      dropSum += -humanChange;
+      if (humanChangeUpper < 0) dropShown += 1;
+      if (lower * LIMIT - pairBound > 0) passable += 1;
+      SLOPE_LEVELS.forEach((threshold, i) => {
+        if (lower >= threshold) slopeAtLeast[i]! += 1;
+      });
+    }
     if (study.truth) {
       withTruth += 1;
       const index = study.truth.flatMap((t, i) => (t === 1 ? [i] : []));
@@ -503,5 +557,11 @@ export function runCell(cell: Cell, rule: CalibrationRule, rng: Rng, studies: nu
     meanPositives: perStudy(positives),
     meanPositiveItems: perStudy(positiveItems),
     meanEffectivePositives: perStudy(effective),
+    meanSlope: withSlope === 0 ? Number.NaN : slopeSum / withSlope,
+    meanSlopeLower: withSlope === 0 ? Number.NaN : slopeLowerSum / withSlope,
+    slopeLowerAtLeast: slopeAtLeast.map((n) => (withSlope === 0 ? Number.NaN : n / withSlope)),
+    dropShown: withSlope === 0 ? Number.NaN : dropShown / withSlope,
+    meanHumanDrop: withSlope === 0 ? Number.NaN : dropSum / withSlope,
+    passable: withSlope === 0 ? Number.NaN : passable / withSlope,
   };
 }
