@@ -1,15 +1,14 @@
 /**
- * The verdict labels a card shows, with their symbols. A label refines the decision's verdict: NO
- * DECREASE DETECTED and INCONCLUSIVE are both an INCONCLUSIVE decision, and ESTIMATE ONLY is a
- * decision without a verdict. `✓` belongs to PASS alone.
+ * The verdict labels a card shows, with their symbols. Estimate only is a decision without a
+ * verdict. `✓` belongs to Pass alone. A run with no decrease detected is Inconclusive: its
+ * sentences say both halves, so the label never reads as reassurance.
  */
 export const CARD_LABELS = [
-  { label: "REGRESSION", symbol: "✗", verdict: "REGRESSION" },
-  { label: "PASS", symbol: "✓", verdict: "PASS" },
-  { label: "NO DECREASE DETECTED", symbol: "○", verdict: "INCONCLUSIVE" },
-  { label: "INCONCLUSIVE", symbol: "?", verdict: "INCONCLUSIVE" },
-  { label: "INVALID", symbol: "!", verdict: "INVALID" },
-  { label: "ESTIMATE ONLY", symbol: "·", verdict: null },
+  { label: "Regression", symbol: "✗", verdict: "REGRESSION" },
+  { label: "Pass", symbol: "✓", verdict: "PASS" },
+  { label: "Inconclusive", symbol: "?", verdict: "INCONCLUSIVE" },
+  { label: "Invalid", symbol: "!", verdict: "INVALID" },
+  { label: "Estimate only", symbol: "·", verdict: null },
 ] as const;
 
 /** A verdict label that a card shows. */
@@ -129,35 +128,35 @@ export type ReasonCode = (typeof REASON_CODES)[number];
  */
 export const REASONS: { readonly [C in ReasonCode]: Reason } = {
   REGRESSION_DETECTED: run(
-    ["REGRESSION"],
+    ["Regression"],
     "A primary measure decreased beyond run-to-run noise: its regression test rejects, Holm-adjusted across the declared primary measures.",
     [
       {
         key: "noise",
-        when: "every case has at least 2 trials per arm",
+        when: "every case has at least 2 trials each for base and candidate",
         text: "The paired decrease is beyond run-to-run noise ({test}, {p}).",
       },
       {
         key: "single-trial",
-        when: "every case has one trial per arm",
+        when: "every case has one trial each for base and candidate",
         text: "{broke} {caseNoun} broke and {fixed} got fixed. With no real change, both directions are equally likely. A split this uneven arises by chance with probability {rawP}.",
       },
       {
         key: "single-trial-holm",
-        when: "every case has one trial per arm, and the plan declares more than one primary measure",
+        when: "every case has one trial each for base and candidate, and the plan declares more than one primary measure",
         text: "Holm-adjusted across the {m} primary measures: p = {p}.",
       },
-      always("margin", "This does not establish that the loss exceeds the {margin}-point margin."),
+      always("margin", "This does not establish that the loss exceeds the {margin}-point limit."),
       {
         key: "unvalidated-margin",
-        when: "non-inferiority is not validated, and every case has at least 2 trials per arm",
-        text: "Until the margin check is validated, any decrease beyond run-to-run noise counts as worse.",
+        when: "non-inferiority is not validated, and every case has at least 2 trials each for base and candidate",
+        text: "Until the limit check is validated, any decrease beyond run-to-run noise counts as worse.",
       },
     ],
     "Inspect the {changed} changed cases.",
   ),
   HARD_CHECK_FAILED: run(
-    ["REGRESSION"],
+    ["Regression"],
     "A hard check failed. A hard check is deterministic, so it decides without a statistical test.",
     [
       always(
@@ -168,80 +167,85 @@ export const REASONS: { readonly [C in ReasonCode]: Reason } = {
     "Inspect the {failures} failing answers.",
   ),
   PASS: run(
-    ["PASS"],
-    "Every primary measure is non-inferior: its validated one-sided 95% bound lies inside its margin.",
+    ["Pass"],
+    "Every primary measure is non-inferior: its validated one-sided 95% bound lies inside its limit.",
     [
       {
         key: "one-measure",
         when: "the plan has one primary measure",
-        text: "With 95% confidence, the average decrease on these cases is at most {bound} points, within the {margin}-point margin.",
+        text: "With 95% confidence, the average decrease on these cases is at most {bound} points, within the {margin}-point limit.",
       },
       {
         key: "measures",
         when: "the plan has more than one primary measure",
-        text: "With 95% confidence, each primary measure’s average decrease on these cases is within its margin.",
+        text: "With 95% confidence, each primary measure’s average decrease on these cases is within its limit.",
       },
       always("scope", "This holds for these {cases} cases. It makes no claim about new inputs."),
       {
         key: "small-decrease",
         when: "a primary measure is non-inferior and its regression test also rejects",
-        text: "{measure} changed by {change} points, beyond run-to-run noise, but within its {margin}-point margin.",
+        text: "{measure} changed by {change} points, beyond run-to-run noise, but within its {margin}-point limit.",
       },
     ],
   ),
   NO_DECREASE_DETECTED: run(
-    ["NO DECREASE DETECTED"],
-    "No primary measure’s validated regression test finds a decrease beyond run-to-run noise. This is not a PASS: the codes beside it say why.",
-    [],
+    ["Inconclusive"],
+    "No primary measure’s validated regression test finds a decrease beyond run-to-run noise, but that is not evidence that no larger decrease exists. The verdict is Inconclusive, and the codes beside it say why it is not a Pass.",
+    [
+      always(
+        "both-halves",
+        "No decrease detected. The data cannot rule out a decrease larger than your limit of {margin} points.",
+      ),
+    ],
   ),
   NON_INFERIORITY_UNVALIDATED: run(
-    ["NO DECREASE DETECTED"],
-    "A bound clears its margin, but the non-inferiority result is not validated, so no PASS is possible yet.",
+    ["Inconclusive"],
+    "A bound clears its limit, but the non-inferiority result is not validated, so no Pass is possible yet.",
     [
       {
         key: "floor",
-        when: "the validated margin floor is not set",
-        text: "This is not a statistical PASS: this Ichnaea version cannot establish non-inferiority yet.",
+        when: "the smallest validated limit is not set yet",
+        text: "This is not a statistical Pass: this Ichnaea version cannot establish non-inferiority yet.",
       },
       {
         key: "single-trial",
-        when: "every case has one trial per arm",
-        text: "This is not a statistical PASS: one trial per case cannot establish non-inferiority yet.",
+        when: "every case has one trial each for base and candidate",
+        text: "This is not a statistical Pass: one trial per case cannot establish non-inferiority yet.",
       },
     ],
   ),
   MARGIN_NOT_CLEARED: run(
-    ["NO DECREASE DETECTED"],
-    "A primary measure’s bound does not clear its margin, so non-inferiority is not shown.",
+    ["Inconclusive"],
+    "A primary measure’s bound does not clear its limit, so non-inferiority is not shown.",
     [
       always(
         "not-pass",
-        "This is not a statistical PASS: the bound of {measure} does not clear its {margin}-point margin.",
+        "This is not a statistical Pass: the bound of {measure} does not clear its {margin}-point limit.",
       ),
     ],
   ),
   MARGIN_UNREACHABLE: run(
-    ["NO DECREASE DETECTED"],
-    "The plan’s best-case bound is above the margin, so even an unchanged candidate cannot reach PASS. The chance of PASS at no change is 0%.",
+    ["Inconclusive"],
+    "The plan’s best-case bound is above the limit, so even an unchanged candidate cannot reach a Pass. The chance of a Pass at no change is 0%.",
     [
       always(
         "floor",
-        "With {cases} cases and {trials} trials per arm, the best-case bound is {floor} points.",
+        "With {cases} cases and {trials} trials each for base and candidate, the best-case bound is {floor} points.",
       ),
       always(
         "consequence",
-        "So this suite cannot clear the {margin}-point margin of {measure}, even when nothing changes. Chance of PASS at no change: 0%.",
+        "So this suite cannot clear the {margin}-point limit of {measure}, even when nothing changes. Chance of a Pass at no change: 0%.",
       ),
     ],
-    "To make PASS possible for {measure}, add at least {add} cases.",
+    "To make a Pass possible for {measure}, add at least {add} cases.",
   ),
   MISSING_TRIALS_CHANGE_VERDICT: run(
-    ["INCONCLUSIVE"],
+    ["Inconclusive"],
     "Imputing the missing trials against the verdict changes it, so no verdict holds. Missing trials are missing, never failures.",
     [
       always(
         "sensitivity",
-        "As recorded, the decrease is beyond run-to-run noise ({test}, {p}). If the {missing} missing {arm} trials had {imputed}, it would not be ({imputedP}). No verdict holds.",
+        "As recorded, the decrease is beyond run-to-run noise ({test}, {p}). If the {missing} missing trials of the {side} {arm} had {imputed}, it would not be ({imputedP}). No verdict holds.",
       ),
       always(
         "missing",
@@ -251,17 +255,17 @@ export const REASONS: { readonly [C in ReasonCode]: Reason } = {
     "Find out why {missing} trials did not finish, then resume the run.",
   ),
   REGRESSION_TEST_UNVALIDATED: run(
-    ["INCONCLUSIVE"],
+    ["Inconclusive"],
     "A primary measure’s regression test is outside its validated domain, so it can show neither a decrease nor its absence.",
     [always("domain", "The regression test is not validated for this design: {limitation}.")],
   ),
   INVALID_COVERAGE: run(
-    ["INVALID"],
+    ["Invalid"],
     "Too few trials of a primary measure finished. The missing trials are missing, not failed.",
     [
       always(
         "coverage",
-        "Only {available} of {planned} trials of {measure} finished in the {arm} arm ({share}). A decision needs {coverageFloor}.",
+        "Only {available} of {planned} trials of {measure} finished for the {side} {arm} ({share}). A decision needs {coverageFloor}.",
       ),
       always(
         "missing",
@@ -271,7 +275,7 @@ export const REASONS: { readonly [C in ReasonCode]: Reason } = {
     "Check that the system is reachable, then resume the run.",
   ),
   INVALID_BUDGET: run(
-    ["INVALID"],
+    ["Invalid"],
     "The run stopped at its call budget before every trial finished.",
     [
       always(
@@ -282,19 +286,24 @@ export const REASONS: { readonly [C in ReasonCode]: Reason } = {
     "Raise the budget in the suite, or run fewer cases.",
   ),
   INVALID_NO_BASE_RESULTS: run(
-    ["INVALID"],
-    "The base arm produced no value, so there is nothing to compare.",
-    [always("no-base", "The base arm gave no answers, so there is nothing to compare.")],
+    ["Invalid"],
+    "The base produced no value, so there is nothing to compare.",
+    [always("no-base", "The base gave no answers, so there is nothing to compare.")],
     "Check that the base version starts. The full report shows its first error.",
   ),
   INVALID_UNDECLARED_CHANGE: run(
-    ["INVALID"],
-    "The arms differ in more than the intended change, so a difference cannot be attributed to it.",
-    [always("factors", "The arms differ in more than the intended change: also {factors}.")],
+    ["Invalid"],
+    "Base and candidate differ in more than the intended change, so a difference cannot be attributed to it.",
+    [
+      always(
+        "factors",
+        "Base and candidate differ in more than the intended change: also {factors}.",
+      ),
+    ],
     "Declare {factors} as part of the intended change, or remove the difference.",
   ),
   INVALID_RECORDS_MISMATCH: run(
-    ["INVALID"],
+    ["Invalid"],
     "The records do not match their plan: a digest differs, or a trial or value is not in the plan.",
     [
       always(
@@ -305,7 +314,7 @@ export const REASONS: { readonly [C in ReasonCode]: Reason } = {
     "Run again. If you import, check the importer.",
   ),
   INVALID_RECORDS_CONTRADICT: run(
-    ["INVALID"],
+    ["Invalid"],
     "The records contradict themselves, for example a failed trial with a passing value.",
     [
       always(
@@ -316,48 +325,48 @@ export const REASONS: { readonly [C in ReasonCode]: Reason } = {
     "Fix the importer, then import again.",
   ),
   INVALID_HARD_CHECK_MISSING: run(
-    ["INVALID"],
+    ["Invalid"],
     "A hard check that the plan requires has no result.",
     [always("missing", 'Hard check "{check}" has no result, so no verdict is possible.')],
     'Check that the suite runs "{check}".',
   ),
   INVALID_SUITE_SETUP: run(
-    ["INVALID"],
-    "The suite cannot decide as it is set up, for example a placeholder margin in a decision plan.",
+    ["Invalid"],
+    "The suite cannot decide as it is set up, for example a placeholder limit in a decision plan.",
     [always("setup", "The suite is not set up to decide: {detail}.")],
     "{fix}",
   ),
   ESTIMATE_ONLY_SINGLE_TRIAL: run(
-    ["ESTIMATE ONLY"],
-    "Each case has one trial per arm, and this version decides only from 2 trials per case.",
+    ["Estimate only"],
+    "Each case has one trial each for base and candidate, and this version decides only from 2 trials per case.",
     [
       always(
         "single-trial",
-        "Each case has one trial per arm, and this Ichnaea version decides from 2.",
+        "Each case has one trial each for base and candidate, and this Ichnaea version decides from 2.",
       ),
     ],
     "Run with 2 or 3 trials per case to decide.",
   ),
   ESTIMATE_ONLY_FEW_CASES: run(
-    ["ESTIMATE ONLY"],
+    ["Estimate only"],
     "Too few cases for the validated method.",
     [always("few", "{cases} cases are too few: the method is validated from 5.")],
     "Add cases.",
   ),
   ESTIMATE_ONLY_NO_COMPARISON: run(
-    ["ESTIMATE ONLY"],
-    "The run has one arm, so there is nothing to compare.",
-    [always("one-arm", "The run has one arm, so there is nothing to compare.")],
-    "Add a base arm to the suite.",
+    ["Estimate only"],
+    "The run has no base or no candidate, so there is nothing to compare.",
+    [always("one-arm", "The run has no base or no candidate, so there is nothing to compare.")],
+    "Add a base to the suite.",
   ),
   ESTIMATE_ONLY_NO_PRIMARY: run(
-    ["ESTIMATE ONLY"],
+    ["Estimate only"],
     "The suite declares no primary measure.",
     [always("no-primary", "The suite has no primary measure.")],
     "Mark a measure as primary.",
   ),
   ESTIMATE_ONLY_SAMPLED_CASES: run(
-    ["ESTIMATE ONLY"],
+    ["Estimate only"],
     "The suite asks about new inputs (sampled cases), and no method for that is validated yet.",
     [
       always(
@@ -368,30 +377,30 @@ export const REASONS: { readonly [C in ReasonCode]: Reason } = {
     "Use fixed cases to decide.",
   ),
   ESTIMATE_ONLY_EXPLORATORY: run(
-    ["ESTIMATE ONLY"],
+    ["Estimate only"],
     "The plan changed after the first trial, so the run is exploratory.",
     [always("exploratory", "The plan changed after the run started, so the run cannot decide.")],
     "Start a new run.",
   ),
   ESTIMATE_ONLY_CACHED_ARM: run(
-    ["ESTIMATE ONLY"],
-    "An arm reused cached outputs, so the arms did not run side by side.",
+    ["Estimate only"],
+    "The base or the candidate reused cached outputs, so they did not run side by side.",
     [
       always(
         "cached",
-        "The base answers came from the cache, so the arms did not run side by side.",
+        "The base answers came from the cache, so base and candidate did not run side by side.",
       ),
     ],
-    "To decide, run both arms together.",
+    "To decide, run base and candidate together.",
   ),
   ESTIMATE_ONLY_PLACEHOLDER_MARGIN: run(
-    ["ESTIMATE ONLY"],
-    "A primary measure has a placeholder margin, so it gives no verdict.",
-    [always("placeholder", "{measure} has no registered margin yet.")],
-    "Register a margin for {measure} in the suite.",
+    ["Estimate only"],
+    "A primary measure has a placeholder limit, so it gives no verdict.",
+    [always("placeholder", "{measure} has no registered limit yet.")],
+    "Register a limit for {measure} in the suite.",
   ),
   ESTIMATE_ONLY_NO_METHOD: run(
-    ["ESTIMATE ONLY"],
+    ["Estimate only"],
     "No primary measure has a validated method for its kind of value yet, so the run gives no verdict.",
     [
       always(
@@ -407,8 +416,8 @@ export const REASONS: { readonly [C in ReasonCode]: Reason } = {
   ),
   INTERVAL_UNAVAILABLE_NO_VALUE: run(
     [],
-    "A change has no interval because an arm has no value to compare. The record says `interval: unavailable`.",
-    [always("no-interval", "No interval yet: an arm has no value to compare.")],
+    "A change has no interval because the base or the candidate has no value to compare. The record says `interval: unavailable`.",
+    [always("no-interval", "No interval yet: the base or the candidate has no value to compare.")],
   ),
   INTERVAL_UNAVAILABLE_DESCRIPTIVE: run(
     [],
@@ -424,11 +433,11 @@ export const REASONS: { readonly [C in ReasonCode]: Reason } = {
     scope: "judge",
     labels: JUDGE_LABELS,
     meaning:
-      "A judge-based measure’s estimated change is within its calibration’s shown bias bound between arms. The verdict does not change.",
+      "A judge-based measure’s estimated change is within its calibration’s shown bias bound between base and candidate. The verdict does not change.",
     sentences: [
       always(
         "caution",
-        "This change is within the judge’s possible bias between arms (at most {shownBound} points, shown on {boundCases} cases). Confirm it with human labels.",
+        "This change is within the judge’s possible bias between base and candidate (at most {shownBound} points, shown on {boundCases} cases). Confirm it with human labels.",
       ),
     ],
   },
@@ -472,11 +481,12 @@ export const REASONS: { readonly [C in ReasonCode]: Reason } = {
     scope: "judge",
     labels: JUDGE_LABELS,
     parent: "JUDGE_DIAGNOSTIC",
-    meaning: "The calibration does not show that the judge’s bias between arms is small.",
+    meaning:
+      "The calibration does not show that the judge’s bias between base and candidate is small.",
     sentences: [
       always(
         "condition",
-        "The judge’s bias between arms is not shown to be small: it may reach {shownBound} points, beyond the {limit}-point limit.",
+        "The judge’s bias between base and candidate is not shown to be small: it may reach {shownBound} points, beyond the {limit}-point limit.",
       ),
       {
         key: "reachable",
@@ -535,15 +545,13 @@ export const REASONS: { readonly [C in ReasonCode]: Reason } = {
     scope: "judge",
     labels: JUDGE_LABELS,
     parent: "JUDGE_NOT_COVERED",
-    meaning: "An arm uses a system model whose answers the calibration does not cover.",
+    meaning:
+      "The base or the candidate uses a system model whose answers the calibration does not cover.",
     sentences: [
-      always(
-        "reason",
-        "An arm uses {model}, and the calibration covers only answers from {covered}.",
-      ),
+      always("reason", "The calibration covers only answers from {covered}, not from {model}."),
     ],
     action:
-      "Label that arm’s answers on the same {calibrationCases} cases, about {hours} h for each rater.",
+      "Label the answers from {model} on the same {calibrationCases} cases, about {hours} h for each rater.",
   },
   ANSWER_LENGTH_OUTSIDE: {
     scope: "judge",
@@ -612,8 +620,10 @@ export const REASONS: { readonly [C in ReasonCode]: Reason } = {
 
 /**
  * The slots that `report` fills from the decision and the suite for any reason: the measure, its
- * margin and change, the case and trial counts, and the test result. Every other slot of a reason
- * is one of its own parameters (`ReasonParams`).
+ * margin and change, the case and trial counts, and the test result. `side` is "base" or
+ * "candidate": `report` reads it from the decision's role for the reason's `arm` parameter, because
+ * an arm name is opaque and never says its side. Every other slot of a reason is one of its own
+ * parameters (`ReasonParams`).
  */
 export const CONTEXT_SLOTS = [
   "measure",
@@ -630,6 +640,7 @@ export const CONTEXT_SLOTS = [
   "p",
   "rawP",
   "m",
+  "side",
 ] as const;
 
 /** A slot that `report` fills from the decision and the suite. */
