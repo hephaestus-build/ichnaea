@@ -10,7 +10,7 @@ import { Plan } from "./records/plan.ts";
 import { Run } from "./records/run.ts";
 import { Suite } from "./records/suite.ts";
 import { Trial } from "./records/trial.ts";
-import { TrialRequest, TrialResult } from "./records/worker.ts";
+import { TrialRequest, TrialResult, WorkerError } from "./records/worker.ts";
 
 /** Stability level of a record schema (OpenTelemetry levels; names never encode the stage). */
 export type Stability = "development" | "alpha" | "beta" | "stable";
@@ -90,6 +90,13 @@ export const RECORD_CONTRACTS: readonly RecordContract[] = [
     stability: "alpha",
     description:
       "What a worker answers for one trial: the raw output, the calls and the configuration it ran.",
+  },
+  {
+    name: "workerError",
+    id: "ichnaea.workerError/1",
+    schema: WorkerError,
+    stability: "alpha",
+    description: "What a worker writes for a request line it cannot read: an error with no trial.",
   },
   {
     name: "run",

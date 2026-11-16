@@ -5,7 +5,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { TrialFailure, TrialRequest, TrialResult } from "../../src/contracts/index.ts";
+import { TrialFailure, TrialRequest, TrialResult, WorkerError } from "../../src/contracts/index.ts";
 
 const fixture = (kind: string, name: string): Record<string, unknown> =>
   JSON.parse(
@@ -32,5 +32,27 @@ describe("the worker protocol", () => {
     expect(
       TrialRequest.safeParse({ ...request, arm: { name: "candidate", role: "candidate" } }).success,
     ).toBe(false);
+  });
+
+  it("answers a request line it cannot read with a worker error that names no trial", () => {
+    expect(
+      WorkerError.safeParse({
+        schema: "ichnaea.workerError/1",
+        dataClass: "none",
+        kind: "bad-json",
+      }).success,
+    ).toBe(true);
+    // A guessed identity would attach the error to the wrong trial, so a writer refuses one.
+    const guessed = {
+      ...fixture("valid", "workerError.json"),
+      trial: fixture("valid", "trialResult.json")["trial"],
+    };
+    expect(WorkerError.safeParse(guessed).success).toBe(false);
+  });
+
+  it("still needs the request's identity on a protocol failure", () => {
+    const anonymous = fixture("valid-extra", "trialResult/bad-request.json");
+    delete anonymous["trial"];
+    expect(TrialResult.safeParse(anonymous).success).toBe(false);
   });
 });

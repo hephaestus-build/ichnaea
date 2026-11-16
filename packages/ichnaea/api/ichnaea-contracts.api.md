@@ -3479,6 +3479,22 @@ export function verifyArms(arms: ReadonlyArray<{
 // @public
 export function verifyConfiguration(input: unknown, at?: string): Promise<LinkError[]>;
 
+// @public
+export const WorkerError: z.ZodObject<{
+    schema: z.ZodLiteral<"ichnaea.workerError/1">;
+    dataClass: z.ZodEnum<{
+        none: "none";
+        personal: "personal";
+        pseudonymous: "pseudonymous";
+        special: "special";
+    }>;
+    kind: z.ZodString;
+    message: z.ZodOptional<z.ZodString>;
+}, z.core.$strict>;
+
+// @public
+export type WorkerError = z.infer<typeof WorkerError>;
+
 // (No @packageDocumentation comment for this package)
 
 ```

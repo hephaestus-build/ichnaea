@@ -1,0 +1,13 @@
+{
+  "schema": "ichnaea.workerError/1",
+  "dataClass": "none",
+  "kind": "bad-json",
+  "trial": {
+    "id": "refund-window-de/candidate/r0",
+    "suite": "support-assistant",
+    "case": "refund-window-de",
+    "arm": "candidate",
+    "replicate": 0,
+    "attempt": 1
+  }
+}

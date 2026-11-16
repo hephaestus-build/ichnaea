@@ -91,7 +91,10 @@ export type TrialRequest = z.infer<typeof TrialRequest>;
  *   That is a fault of Ichnaea or the harness, never of the system: Ichnaea does not retry it, never
  *   counts it as a pass or a failure, and makes the whole run INVALID on the first one.
  *
- * A worker answers a request it cannot read with class `protocol`, never with a guess.
+ * A worker answers a request line it cannot read with an `ichnaea.workerError/1` line, never with a
+ * guessed identity. A request it can read but cannot serve gets a `protocol` failure carrying the
+ * request's own identity: for example, one with an unknown required member or a limit it cannot
+ * honor.
  */
 export const TrialFailure = z.strictObject({
   /** The failure's class. */
@@ -173,3 +176,23 @@ export const TrialResult = z.strictObject({
 });
 /** A trial result. */
 export type TrialResult = z.infer<typeof TrialResult>;
+
+/**
+ * What a worker writes for a request line it cannot read, for example a line that is not JSON or
+ * not a trial request. It never guesses a trial identity: a guess would attach the error to the
+ * wrong trial. Ichnaea makes the whole run INVALID on the first one. It is a fault of the harness or
+ * of the worker's protocol handling, never of the system, and it is never counted as a pass, a
+ * failure or a missing trial. Because the run stops, the error needs no trial: Ichnaea records it
+ * against the run.
+ */
+export const WorkerError = z.strictObject({
+  schema: none(z.literal("ichnaea.workerError/1")),
+  /** The data class of the message. */
+  dataClass: none(RecordDataClass),
+  /** A short, stable kind, such as `bad-json` or `bad-request`. */
+  kind: none(Text),
+  /** A human-readable message. It may quote the line that the worker could not read. */
+  message: content(z.string()).optional(),
+});
+/** A worker error. */
+export type WorkerError = z.infer<typeof WorkerError>;

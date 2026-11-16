@@ -251,6 +251,7 @@ export const VALID: Record<string, Record<string, unknown>> = {
       parameters: { temperature: 0 },
     },
   },
+  workerError: { schema: "ichnaea.workerError/1", dataClass: "none", kind: "bad-json" },
   run: {
     schema: "ichnaea.run/1",
     id: "run-2026-11-15-a",
@@ -609,6 +610,10 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
     "code-without-commit-or-image": (r) =>
       ((r["observed"] as Record<string, unknown>)["code"] = {}),
   },
+  workerError: {
+    "missing-kind": (r) => delete r["kind"],
+    "empty-kind": (r) => (r["kind"] = ""),
+  },
   run: {
     "missing-ledger": (r) => delete r["ledger"],
     "missing-lineage": (r) => delete r["lineage"],
@@ -771,6 +776,9 @@ export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
       r["calls"] = 0;
     },
   },
+  workerError: {
+    "with-message": (r) => (r["message"] = "line 3 is not JSON: unexpected end of input"),
+  },
   label: { "rater-cannot-tell": (r) => (r["value"] = { type: "unknown" }) },
   configuration: {
     "model-version-route-and-informational": (r) => {
@@ -829,6 +837,11 @@ export const READER_ONLY: Record<string, Record<string, Mutation>> = {
     // The base suite scores the output: a worker sends no score, and a reader ignores one.
     "worker-score": (r) => (r["values"] = { "support/facts-stated": true }),
     "future-failure-class": (r) => (r["failure"] = { class: "quality", kind: "wrong-answer" }),
+  },
+  workerError: {
+    // A worker never guesses which trial an unreadable line was for: a writer refuses a trial
+    // identity, and a reader ignores one as an unknown member.
+    "guessed-trial": (r) => (r["trial"] = structuredClone(VALID["trialResult"]!["trial"])),
   },
   run: {
     "future-ledger-state": (r) =>
