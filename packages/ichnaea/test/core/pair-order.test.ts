@@ -119,4 +119,22 @@ describe("a plan", async () => {
     for (const roles of rolesByBatch.values())
       expect(roles).toEqual(new Set(["base", "candidate"]));
   });
+
+  it("numbers the batch r x n + k for n arms, a reference arm after the pair", async () => {
+    const reference = {
+      name: "ref",
+      role: "reference" as const,
+      configuration: s.plan.arms[0]!.configuration,
+    };
+    const plan = await createPlan({ ...input, arms: [...input.arms, reference] });
+    const roleOf = new Map(plan.arms.map((a) => [a.name as string, a.role]));
+    for (let i = 0; i < plan.trials.length; i += 3) {
+      const trio = plan.trials.slice(i, i + 3);
+      const r = trio[0]!.replicate;
+      expect(trio.map((t) => t.batch)).toEqual([3 * r, 3 * r + 1, 3 * r + 2]);
+      expect(trio[2]!.arm).toBe("ref");
+      const candidateFirst = candidateRunsFirst(plan.seed, trio[0]!.case, r);
+      expect(roleOf.get(trio[0]!.arm)).toBe(candidateFirst ? "candidate" : "base");
+    }
+  });
 });

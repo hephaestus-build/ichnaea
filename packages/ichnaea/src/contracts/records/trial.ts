@@ -23,10 +23,11 @@ import {
  * of nothing else. It is the harness's fault, never the system's: it is missing, never a failure or
  * a pass, and any one makes the run INVALID.
  *
- * The enumeration is closed (`x-ichnaea-closed`) from this version on: a reader built from it
- * refuses an outcome it does not know, so a later outcome fails closed. An older build's reader
- * widens it, so it reads `protocol_failure` as an unknown outcome and counts the trial as missing:
- * never as a pass or a failure of the system.
+ * The enumeration is closed (`x-ichnaea-closed`) from this version on: a reader of this version
+ * refuses a trial or a ledger entry with an outcome it does not know, so a later outcome fails
+ * closed. A build from before this version widens the enumeration: it counts a `protocol_failure`
+ * trial as missing, never as a pass or a failure of the system, but it does not know that the
+ * outcome makes the run INVALID, so it can still reach a verdict on that run.
  */
 export const Outcome = z.enum([
   "completed",
