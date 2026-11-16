@@ -1,9 +1,13 @@
-// Builds the package and assembles the tree that the `build` branch holds: the shipped package.json,
-// dist/, src/, schemas/, README.md, LICENSE, the SBOM (sbom.cdx.json) and build.json. The tree is
-// deterministic: the same source commit, lockfile, Node and pnpm give the same bytes and modes, so
-// that anyone can rebuild a build commit and compare (scripts/verify-build.ts).
+// Builds the package and assembles its tree: the shipped package.json, dist/, src/, schemas/,
+// README.md, LICENSE, the SBOM (sbom.cdx.json) and build.json. The `build` branch holds this tree,
+// and a release packs it. The tree is deterministic: the same source commit, lockfile, Node and
+// pnpm give the same bytes and modes, so that anyone can rebuild a build commit and compare
+// (scripts/verify-build.ts).
 // Usage: node scripts/build-package.ts <empty output directory> [--source-commit <sha>]
+//          [--version <x.y.z>]
 // Without --source-commit, the source commit is HEAD. The tree holds the working tree's files.
+// Without --version, the shipped package.json has main's version, 0.0.0. The release workflow
+// stamps the tag's version, so that a release needs no commit that changes the version.
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
@@ -55,12 +59,18 @@ type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
  * The shipped manifest: the kept fields of the development manifest, without the source condition.
  * It has no scripts, so installing it runs nothing; no devDependencies; and no dependency at all,
  * so no `workspace:` range. Its top-level keys are sorted. The conditions of an export keep their
- * order, because Node and TypeScript take the first condition that matches.
+ * order, because Node and TypeScript take the first condition that matches. A `version`, `x.y.z`,
+ * replaces the development manifest's version.
  */
-export function shippedManifest(development: Readonly<Record<string, Json>>): Record<string, Json> {
+export function shippedManifest(
+  development: Readonly<Record<string, Json>>,
+  version?: string,
+): Record<string, Json> {
+  if (version !== undefined && !/^\d+\.\d+\.\d+$/.test(version))
+    throw new Error(`${version} is not a release version, x.y.z`);
   const manifest: Record<string, Json> = {};
   for (const key of KEPT.toSorted()) {
-    const value = development[key];
+    const value = key === "version" && version !== undefined ? version : development[key];
     if (value !== undefined) manifest[key] = structuredClone(value);
   }
   const exports = manifest["exports"];
@@ -221,8 +231,11 @@ export interface BuildInfo {
   readonly treeDigest: string;
 }
 
-/** Builds the package and assembles its tree in `tree`, which must not exist or be empty. */
-export function assemble(tree: string, sourceCommit: string): BuildInfo {
+/**
+ * Builds the package and assembles its tree in `tree`, which must not exist or be empty. A
+ * `version` is stamped into the shipped manifest.
+ */
+export function assemble(tree: string, sourceCommit: string, version?: string): BuildInfo {
   if (!/^[0-9a-f]{40}$/.test(sourceCommit)) throw new Error(`${sourceCommit} is not a commit SHA`);
   if (existsSync(tree) && readdirSync(tree).length > 0) throw new Error(`${tree} is not empty`);
   mkdirSync(tree, { recursive: true });
@@ -238,7 +251,7 @@ export function assemble(tree: string, sourceCommit: string): BuildInfo {
     string,
     Json
   >;
-  const manifest = shippedManifest(development);
+  const manifest = shippedManifest(development, version);
   const problems = manifestProblems(manifest);
   if (problems.length > 0) throw new Error(`the shipped manifest is wrong: ${problems.join("; ")}`);
   writeFileSync(join(tree, "package.json"), jsonText(manifest));
@@ -280,14 +293,19 @@ export function assemble(tree: string, sourceCommit: string): BuildInfo {
 if (import.meta.main) {
   const { values, positionals } = parseArgs({
     allowPositionals: true,
-    options: { "source-commit": { type: "string" } },
+    options: { "source-commit": { type: "string" }, version: { type: "string" } },
   });
   const [out] = positionals;
   if (!out || positionals.length !== 1)
-    throw new Error("usage: build-package.ts <output directory> [--source-commit <sha>]");
+    throw new Error(
+      "usage: build-package.ts <output directory> [--source-commit <sha>] [--version <x.y.z>]",
+    );
   const commit =
     values["source-commit"] ??
     execFileSync("git", ["rev-parse", "HEAD"], { cwd: REPOSITORY, encoding: "utf8" }).trim();
-  const info = assemble(resolve(out), commit);
-  console.log(`build: ${out} from ${info.sourceCommit}, tree ${info.treeDigest}`);
+  const info = assemble(resolve(out), commit, values.version);
+  const { version } = JSON.parse(readFileSync(join(out, "package.json"), "utf8")) as {
+    version: string;
+  };
+  console.log(`build: ${out} at ${version} from ${info.sourceCommit}, tree ${info.treeDigest}`);
 }

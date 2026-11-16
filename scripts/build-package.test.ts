@@ -65,6 +65,17 @@ describe("the shipped manifest", () => {
     expect(JSON.stringify(shippedManifest(reversed))).toBe(JSON.stringify(shipped));
   });
 
+  it("keeps main's version, or has the release's version stamped in its place", () => {
+    expect(shipped["version"]).toBe("0.0.0");
+    const stamped = shippedManifest(development, "0.3.1");
+    expect(stamped).toEqual({ ...shipped, version: "0.3.1" });
+    expect(Object.keys(stamped)).toEqual(Object.keys(shipped));
+    for (const wrong of ["v0.3.1", "0.3", "0.3.1-rc.1", ""])
+      expect(() => shippedManifest(development, wrong), wrong).toThrow(
+        `${wrong} is not a release version`,
+      );
+  });
+
   it.each(["prepare", "install", "postinstall", "preinstall", "prepack", "postpack"])(
     "refuses a manifest with a %s script",
     (script) => {
