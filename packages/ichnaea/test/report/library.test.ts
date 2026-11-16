@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { importResults } from "../../src/core/index.ts";
 import { compare, createPlan } from "../../src/decide/index.ts";
 import { report, ReportError } from "../../src/report/index.ts";
-import { answer, configuration, SUITE } from "../core/support/library.ts";
+import { answer, configuration, roleOf, SUITE } from "../core/support/library.ts";
 
 const base = configuration("base prompt", 0.2);
 const candidate = configuration("candidate prompt", 0.2);
@@ -16,7 +16,7 @@ const plan = createPlan(SUITE, {
   createdAt: "2026-11-16T12:00:00Z",
 });
 const rows = plan.record.trials.map((t) => ({
-  result: answer(t, { text: t.arm === "base" ? "answer" : "", declined: true }),
+  result: answer(t, { text: roleOf(plan, t.arm) === "base" ? "answer" : "", declined: true }),
 }));
 const { records } = importResults(plan, rows);
 const decision = compare(plan, records, { decidedAt: "2026-11-16T13:00:00Z" });
@@ -28,6 +28,15 @@ describe("report", () => {
     expect(text).toContain("REGRESSION");
     expect(text).toContain("composer/answered");
     expect(text).toContain("Lineage");
+  });
+
+  it("names each arm by its role beside its opaque name", () => {
+    const html = report(decision, { format: "html" });
+    const markdown = report(decision, { format: "markdown" });
+    for (const a of plan.record.arms) {
+      expect(html).toContain(`<td>${a.role} (${a.name})</td>`);
+      expect(markdown).toContain(`| ${a.role} \\(${a.name}\\) |`);
+    }
   });
 
   it("renders HTML, and the view model as JSON", () => {

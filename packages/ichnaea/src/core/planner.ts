@@ -70,6 +70,14 @@ export interface PlanInput {
  */
 export const MAX_SEED = 1_000_000_000;
 
+/** The seed record of a plan seeded with `seed`, for the `mt19937` generator. */
+export function seedRecord(seed: number): {
+  readonly algorithm: "mt19937";
+  readonly value: string;
+} {
+  return { algorithm: "mt19937", value: String(seed) };
+}
+
 /** Fewest cases a fixed-cases decision is validated for (VALIDATED_FIXED_CASES in stats). */
 export const MIN_DECISION_CASES = 5;
 
@@ -283,7 +291,7 @@ export function resolvePlan(input: PlanInput): Plan {
     replicate,
     batch,
   });
-  const seed = { algorithm: "mt19937", value: String(input.seed) };
+  const seed = seedRecord(input.seed);
   if (oneTrial) {
     // One pair per case, in the coin's order, so the plan's order is the run order. An arm that is
     // neither base nor candidate runs after the pair.

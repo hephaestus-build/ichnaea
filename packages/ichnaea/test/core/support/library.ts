@@ -143,6 +143,11 @@ export function configuration(prompt: string, temperature: number): Configuratio
   };
 }
 
+/** The role of a plan's arm, by its opaque name. */
+export function roleOf(plan: { readonly record: Plan }, arm: string): string | undefined {
+  return plan.record.arms.find((a) => a.name === arm)?.role;
+}
+
 /** The code every synthetic worker runs. */
 export const COMMIT = "a".repeat(40);
 

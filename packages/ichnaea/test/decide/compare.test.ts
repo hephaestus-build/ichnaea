@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { digest } from "../../src/contracts/index.ts";
 import { importResults, type TimedResult } from "../../src/core/index.ts";
 import { compare, createPlan } from "../../src/decide/index.ts";
-import { answer, configuration, SUITE } from "../core/support/library.ts";
+import { answer, configuration, roleOf, SUITE } from "../core/support/library.ts";
 
 const base = configuration("base prompt", 0.2);
 const candidate = configuration("candidate prompt", 0.2);
@@ -40,7 +40,7 @@ describe("compare", () => {
   it("ignores why: the same values without it give the same decision", () => {
     const { records } = importResults(
       plan,
-      rows((arm) => arm === "base"),
+      rows((arm) => roleOf(plan, arm) === "base"),
     );
     expect(records.values.some((v) => v.why !== undefined)).toBe(true);
     const bare = {
@@ -56,7 +56,7 @@ describe("compare", () => {
   it("gives REGRESSION when the candidate stops answering", () => {
     const { records } = importResults(
       plan,
-      rows((arm) => arm === "base"),
+      rows((arm) => roleOf(plan, arm) === "base"),
     );
     const decision = compare(plan, records, { decidedAt });
     expect(decision.verdict).toBe("REGRESSION");
@@ -109,7 +109,7 @@ describe("compare", () => {
         result: answer(
           t,
           { text: "answer", declined: true },
-          { temperature: t.arm === "base" ? 0.2 : 0.9 },
+          { temperature: roleOf(undeclared, t.arm) === "base" ? 0.2 : 0.9 },
         ),
       })),
     );

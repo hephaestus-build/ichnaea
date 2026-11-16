@@ -2,6 +2,7 @@ import * as z from "zod";
 
 import {
   AaCitation,
+  armNames,
   Case,
   caseDigest,
   CaseSet,
@@ -14,7 +15,7 @@ import {
   Timestamp,
 } from "../contracts/index.ts";
 import { CORE_VERSION } from "../core/version.ts";
-import { MAX_SEED, PlanError, resolvePlan } from "../core/planner.ts";
+import { MAX_SEED, PlanError, resolvePlan, seedRecord } from "../core/planner.ts";
 import { IntendedChange, intendedFactors } from "../core/pointers.ts";
 import { measureId, type SuiteDefinition, suiteMeasures, type SuitePlan } from "../core/suite.ts";
 
@@ -37,8 +38,9 @@ export interface PlanComparison {
    */
   readonly intendedChanges?: readonly string[];
   /**
-   * The seed of the plan's generator, an integer from 0 to below 10^9. It decides each case's coin
-   * (which arm runs first), so a plan is reproducible from it.
+   * The seed of the plan's generator, an integer from 0 to below 10^9. It decides which arm is
+   * named `a` and which `b` (`armNames`), and each case's coin (which arm runs first), so a plan is
+   * reproducible from it.
    */
   readonly seed: number;
   /** The plan's creation time, ISO 8601. The caller reads the clock; createPlan never does. */
@@ -75,6 +77,9 @@ const ComparisonSchema = z.strictObject({
  * measure applies to, tests each measure against its examples, states the planning power, and
  * gives the plan's mode with the reasons when it is estimate-only. What cannot be resolved throws
  * a PlanError that names the fix.
+ *
+ * The arms are named `a` and `b` by a coin from the seed, so no trial ID and no trial request
+ * names its side; the plan records each name's role.
  *
  * The suite, its cases, its scorers and its limits are the BASE's: a change cannot judge
  * itself by a suite it edits. So the function takes one suite, and the arms differ only in their
@@ -125,6 +130,7 @@ export function createPlan<const S extends SuiteDefinition>(
     };
   });
   const { card } = suite;
+  const names = armNames(seedRecord(checked.data.seed));
   const plan = resolvePlan({
     suite: SuiteRecord.parse({
       schema: "ichnaea.suite/1",
@@ -154,9 +160,10 @@ export function createPlan<const S extends SuiteDefinition>(
     }),
     caseSet: CaseSet.parse({ schema: "ichnaea.caseSet/1", id: suite.id, digest, cases: entries }),
     cases,
+    // Opaque names, so no trial ID or request tells a system which side it is on.
     arms: [
-      { name: "base", role: "base", configuration: base },
-      { name: "candidate", role: "candidate", configuration: candidate },
+      { name: names.base, role: "base", configuration: base },
+      { name: names.candidate, role: "candidate", configuration: candidate },
     ],
     measures: suiteMeasures(suite),
     gates: new Map(),

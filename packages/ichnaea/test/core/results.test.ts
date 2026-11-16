@@ -35,6 +35,9 @@ const results = (): TimedResult[] =>
 const replace = (index: number, row: TimedResult): TimedResult[] =>
   results().map((r, i) => (i === index ? row : r));
 const first = plan.record.trials[0]!;
+/** The first planned trial, c1 under the base arm, and c1 under the candidate arm. */
+const FIRST = first.id;
+const SECOND = plan.record.trials[1]!.id;
 
 /** A result's observed configuration on the synthetic model, with this commit and route. */
 const observed = (commit: string, route: string) => ({
@@ -47,7 +50,7 @@ describe("importResults", () => {
     expect(records.plan).toBe(plan.record);
     expect(records.trials).toHaveLength(24);
     expect(records.trials[0]).toMatchObject({
-      id: "c1/base/r0",
+      id: FIRST,
       run: "run-1",
       outcome: "completed",
       configuration: plan.record.arms[0]?.identity,
@@ -80,11 +83,11 @@ describe("importResults", () => {
     const { records } = importResults(plan, silent);
     const value = (trial: string, measure: string) =>
       records.values.find((v) => v.trial === trial && v.measure === measure);
-    expect(value("c1/base/r0", "composer/answered")).toMatchObject({
+    expect(value(FIRST, "composer/answered")).toMatchObject({
       value: { type: "binary", pass: false },
       why: "the answer is empty",
     });
-    expect(value("c1/candidate/r0", "composer/answered")).not.toHaveProperty("why");
+    expect(value(SECOND, "composer/answered")).not.toHaveProperty("why");
   });
 
   it.each([
@@ -115,7 +118,7 @@ describe("importResults", () => {
         p.record.trials.map((t) => ({ result: answer(t, OK) })),
       );
     expect(run).toThrow(ScoreError);
-    expect(run).toThrow("measure 'composer/declines' on trial 'c1/base/r0': ");
+    expect(run).toThrow(`measure 'composer/declines' on trial '${FIRST}': `);
     expect(run).toThrow(message);
   });
 
@@ -148,7 +151,7 @@ describe("importResults", () => {
     const failed = answer(first, OK, { failure: { class: "system", kind: "crash" } });
     const { records } = importResults(plan, replace(0, { result: failed }));
     const value = records.values.find(
-      (v) => v.trial === "c1/base/r0" && v.measure === "composer/answered",
+      (v) => v.trial === FIRST && v.measure === "composer/answered",
     );
     expect(value?.value).toEqual({ type: "binary", pass: false });
   });
@@ -162,9 +165,9 @@ describe("importResults", () => {
       outcome: "infrastructure_failure",
       error: { kind: NOT_CAPTURED },
     });
-    expect(records.values.filter((v) => v.trial === "c1/base/r0" && v.applicable)).toEqual([]);
+    expect(records.values.filter((v) => v.trial === FIRST && v.applicable)).toEqual([]);
     expect(summary.warnings).toEqual([
-      "1 completed result(s) had no captured output, for example 'c1/base/r0'; they count as missing trials, never as failures of the system",
+      `1 completed result(s) had no captured output, for example '${FIRST}'; they count as missing trials, never as failures of the system`,
     ]);
   });
 
@@ -208,7 +211,7 @@ describe("importResults", () => {
         outcome: "invalid_configuration",
         error: { kind: "configuration-mismatch", message: reason },
       });
-      expect(records.values.some((v) => v.trial === "c1/base/r0")).toBe(false);
+      expect(records.values.some((v) => v.trial === FIRST)).toBe(false);
       expect(summary.warnings[0]).toContain(reason);
     },
   );
@@ -247,12 +250,12 @@ describe("importResults", () => {
   it("records a protocol failure in the run, never as a trial, and warns", () => {
     const bad = answer(first, undefined, { failure: { class: "protocol", kind: "bad-request" } });
     const { records, summary } = importResults(plan, replace(0, { result: bad }));
-    expect(records.run.protocolFailures).toEqual([{ trial: "c1/base/r0", kind: "bad-request" }]);
-    expect(records.trials.some((t) => t.id === "c1/base/r0")).toBe(false);
-    expect(records.values.some((v) => v.trial === "c1/base/r0")).toBe(false);
+    expect(records.run.protocolFailures).toEqual([{ trial: FIRST, kind: "bad-request" }]);
+    expect(records.trials.some((t) => t.id === FIRST)).toBe(false);
+    expect(records.values.some((v) => v.trial === FIRST)).toBe(false);
     expect(summary.notRun).toBe(0);
     expect(summary.warnings).toEqual([
-      "1 result(s) reported a protocol failure, for example 'c1/base/r0' (bad-request); the harness failed, so the run is INVALID",
+      `1 result(s) reported a protocol failure, for example '${FIRST}' (bad-request); the harness failed, so the run is INVALID`,
     ]);
   });
 
@@ -275,7 +278,7 @@ describe("importResults", () => {
   it("records a planned trial without a result as not run", () => {
     const { records, summary } = importResults(plan, results().slice(1));
     expect(records.run.ledger[0]).toEqual({
-      trial: "c1/base/r0",
+      trial: FIRST,
       state: "planned",
       outcome: "not_run",
     });
@@ -283,16 +286,19 @@ describe("importResults", () => {
   });
 
   it("refuses a result of a trial the plan does not list, of another suite, or repeated", () => {
-    const stray = answer({ ...first, id: "nope/base/r0" as never, case: "nope" as never }, OK);
+    const stray = answer(
+      { ...first, id: `nope/${first.arm}/r0` as never, case: "nope" as never },
+      OK,
+    );
     expect(() => importResults(plan, replace(0, { result: stray }))).toThrow(
-      "result 1: trial 'nope/base/r0' is not in the plan",
+      `result 1: trial 'nope/${first.arm}/r0' is not in the plan`,
     );
     const other = answer(first, OK, { trial: { ...answer(first, OK).trial, suite: "other" } });
     expect(() => importResults(plan, replace(0, { result: other }))).toThrow(
       "belongs to suite 'other', not 'composer'",
     );
     expect(() => importResults(plan, [...results(), results()[0]!])).toThrow(
-      /duplicate trial ID\(s\): c1\/base\/r0/,
+      `duplicate trial ID(s): ${FIRST}`,
     );
   });
 

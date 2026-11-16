@@ -142,7 +142,7 @@ function composer(prompt: string): Configuration {
 
 /**
  * What a worker would answer, with the times an importer knows: each arm declines, and answers as
- * `answers` says. This is a consumer's mapper: it writes `ichnaea.trialResult/1` records.
+ * `answers` says of its opaque name. This is a consumer's mapper: it writes `ichnaea.trialResult/1` records.
  */
 function rowsFor(
   plan: ReturnType<typeof createPlan<typeof suite>>,
@@ -192,7 +192,7 @@ describe("the library API, end to end", () => {
     expect(plan.record.trials).toHaveLength(6 * 2 * 2);
     const { records, summary } = importResults(
       plan,
-      rowsFor(plan, (arm) => arm === "base"),
+      rowsFor(plan, (arm) => plan.record.arms.find((a) => a.name === arm)?.role === "base"),
     );
     expect(summary).toMatchObject({ rows: 24, trials: 24, warnings: [], unused: [] });
 

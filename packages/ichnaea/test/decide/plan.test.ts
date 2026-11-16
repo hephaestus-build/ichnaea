@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { candidateRunsFirst } from "../../src/contracts/index.ts";
+import {
+  armNames,
+  canonicalize,
+  candidateRunsFirst,
+  caseDigest,
+  digest,
+  TrialRequest,
+} from "../../src/contracts/index.ts";
 import { CORE_VERSION, PlanError } from "../../src/core/index.ts";
 import { type PlanComparison, createPlan } from "../../src/decide/index.ts";
 import { configuration, SUITE } from "../core/support/library.ts";
@@ -19,6 +26,12 @@ const comparison: PlanComparison = {
 /** How decide seeds its generator: seed mod (2^32 - 1) + 1, so 0 and 2^32 - 1 would collide. */
 const seedOf = (seed: number): number => (seed % 4294967295) + 1;
 
+/** The arm names of the test plan seeded with `seed`, by role. */
+const namesOf = (seed: number): Record<string, string> =>
+  Object.fromEntries(
+    createPlan(SUITE, { ...comparison, seed }).record.arms.map((a) => [a.role, a.name]),
+  );
+
 describe("createPlan", () => {
   it("lists every trial in alternating batches, with the power statement, in decision mode", () => {
     const { record, suite, run } = createPlan(SUITE, comparison);
@@ -26,10 +39,14 @@ describe("createPlan", () => {
     expect(run).toBe("run-1");
     expect(record.mode).toBe("decision");
     expect(record.trials).toHaveLength(6 * 2 * 2);
-    expect(record.trials.slice(0, 2).map((t) => t.id)).toEqual(["c1/base/r0", "c1/candidate/r0"]);
+    const names = armNames(record.seed);
+    expect(record.trials.slice(0, 2).map((t) => t.id)).toEqual([
+      `c1/${names.base}/r0`,
+      `c1/${names.candidate}/r0`,
+    ]);
     expect(record.arms.map((a) => [a.name, a.role])).toEqual([
-      ["base", "base"],
-      ["candidate", "candidate"],
+      [names.base, "base"],
+      [names.candidate, "candidate"],
     ]);
     expect(record.primary.map((p) => p.measure)).toEqual([
       "composer/answered",
@@ -50,6 +67,39 @@ describe("createPlan", () => {
     expect(record.seed).toEqual({ algorithm: "mt19937", value: "1" });
   });
 
+  it("names the arms a and b by a coin from the seed, and records each name's role", () => {
+    for (let seed = 0; seed < 8; seed++) {
+      const { base: b, candidate: c } = armNames({ algorithm: "mt19937", value: String(seed) });
+      expect(namesOf(seed)).toEqual({ base: b, candidate: c });
+      expect(namesOf(seed)).toEqual(namesOf(seed));
+    }
+    const bases = new Set(Array.from({ length: 32 }, (_, seed) => namesOf(seed)["base"]));
+    expect(bases).toEqual(new Set(["a", "b"]));
+  });
+
+  it("gives no trial request a word that names its side", () => {
+    const { record } = createPlan(SUITE, comparison);
+    for (const t of record.trials) {
+      const c = SUITE.cases.find((x) => x.id === t.case)!;
+      const request = TrialRequest.parse({
+        schema: "ichnaea.trialRequest/1",
+        dataClass: c.dataClass,
+        plan: digest(record),
+        trial: {
+          id: t.id,
+          suite: record.suite,
+          case: t.case,
+          arm: t.arm,
+          replicate: t.replicate,
+          attempt: 1,
+        },
+        case: { id: c.id, digest: caseDigest(c), unit: c.unit, input: c.input },
+        limits: { calls: SUITE.budget.callsPerTrial },
+      });
+      expect(canonicalize(request)).not.toMatch(/base|candidate/i);
+    }
+  });
+
   it("is deterministic for a given seed and creation time", () => {
     expect(createPlan(SUITE, comparison)).toEqual(createPlan(SUITE, comparison));
   });
@@ -58,7 +108,7 @@ describe("createPlan", () => {
     const sliced = { ...SUITE, trials: { default: 2, bySlice: { "expected=decline": 3 } } };
     const { record } = createPlan(sliced, comparison);
     const count = (c: string): number =>
-      record.trials.filter((t) => t.case === c && t.arm === "base").length;
+      record.trials.filter((t) => t.case === c && t.arm === armNames(record.seed).base).length;
     expect([count("c1"), count("c4")]).toEqual([2, 3]);
   });
 
@@ -66,7 +116,10 @@ describe("createPlan", () => {
     const { record } = createPlan({ ...SUITE, trials: { default: 1 } }, comparison);
     for (let i = 0; i < record.trials.length; i += 2) {
       const first = record.trials[i]!;
-      expect(first.arm).toBe(candidateRunsFirst(record.seed, first.case) ? "candidate" : "base");
+      const names = armNames(record.seed);
+      expect(first.arm).toBe(
+        candidateRunsFirst(record.seed, first.case) ? names.candidate : names.base,
+      );
     }
   });
 

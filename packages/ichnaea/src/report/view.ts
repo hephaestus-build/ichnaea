@@ -231,6 +231,11 @@ export function decisionView(
   suite: string,
   lineage: Run["lineage"] = [],
 ): DecisionView {
+  // An arm with an opaque name (`a`, `b`) is shown with its role, so a reader knows its side.
+  const armLabel = (name: string): string => {
+    const role = decision.arms.find((a) => a.name === name)?.role;
+    return role === undefined || role === name ? name : `${role} (${name})`;
+  };
   const verdict = decision.verdict ?? "ESTIMATE-ONLY";
   const level = Math.round((1 - decision.alpha) * 100);
   return {
@@ -249,7 +254,7 @@ export function decisionView(
         tier: m.tier,
         verdict: m.verdict,
         arms: m.arms.map((a) => ({
-          arm: a.arm,
+          arm: armLabel(a.arm),
           rate: percent(a.rate.estimate),
           interval: `${percent(a.rate.lower)} to ${percent(a.rate.upper)}`,
           n: `${a.availability.available} of ${a.availability.planned}`,
@@ -314,7 +319,7 @@ export function decisionView(
         })),
       )
       .map(({ estimate, ...rest }) => ({ ...rest, difference: estimate })),
-    missingness: `${decision.missingness.byArm.map((a) => `${a.arm}: ${a.missing} of ${a.planned} trials missing`).join("; ")}. ${
+    missingness: `${decision.missingness.byArm.map((a) => `${armLabel(a.arm)}: ${a.missing} of ${a.planned} trials missing`).join("; ")}. ${
       decision.missingness.sensitivity === "not-needed"
         ? "No primary measure misses a trial in either arm, so no sensitivity analysis ran."
         : `A primary measure misses trials, so each verdict was decided again with the missing trials imputed against it: for non-inferiority, missing candidate trials fail and missing base trials pass; for regression, the reverse. ${
