@@ -64,8 +64,9 @@ interface Row {
   readonly worstStructure: Structure;
 }
 
+const local = (file: string): string => new URL(file, import.meta.url).pathname;
+
 function main(output: string): void {
-  const local = (file: string): string => new URL(file, import.meta.url).pathname;
   const meta = provenance(
     local("./study-binary-one-trial.ts"),
     [
