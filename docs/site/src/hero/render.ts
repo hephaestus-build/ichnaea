@@ -343,7 +343,7 @@ export function renderHero(card: HeroCard, theme: Theme): string {
   parts.push(
     `<line x1="${marginX}" y1="${axisY - 26}" x2="${marginX}" y2="${axisY + 4}" stroke="${colors.text}" stroke-width="1.5" stroke-dasharray="2 2"/>`,
   );
-  text(marginX + 4, axisY - 30, `limit −${margin.shown}`, `font-size="11" fill="${colors.muted}"`);
+  text(marginX + 4, axisY - 30, `limit, ${margin.shown}`, `font-size="11" fill="${colors.muted}"`);
   const boundX = scale(change.bound.value);
   const estimateX = scale(change.estimate);
   const validated = change.bound.validity === "validated";
