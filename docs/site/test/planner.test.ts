@@ -52,7 +52,7 @@ describe("planning explorer model", () => {
       "utf8",
     );
     expect(landing).toContain(`blocks ${percent(thresholds)} of the runs`);
-    expect(landing).toContain(`REGRESSION in ${percent(regressions)} of the runs`);
+    expect(landing).toContain(`a Regression in ${percent(regressions)} of the runs`);
   });
 
   it("repeats its numbers for the same seed", () => {

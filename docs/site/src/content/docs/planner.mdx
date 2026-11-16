@@ -12,10 +12,10 @@ Enter the size of your suite. The explorer simulates comparisons with Ichnaea's 
 
 ## How to read the results
 
-- **Best-case floor.** The smallest margin that any run of this suite can clear, even when every trial passes. It is exact, not simulated.
-- **Smallest decrease detected in 80% of runs.** In these simulated runs, every case loses the same pass rate. A decrease this large then gives REGRESSION in 4 of 5 runs. Smaller decreases are often missed.
-- **No change between the arms.** Every alarm here is false. Compare Ichnaea with a rule that blocks whenever the mean falls by 3 points.
-- **Bound clears the margin when nothing changes.** The share of runs whose bound clears your margin. PASS would also need both statistical results validated for this design. Today no run can pass.
+- **Best-case floor.** The smallest limit that any run of this suite can clear, even when every trial passes. It is exact, not simulated.
+- **Smallest decrease detected in 80% of runs.** In these simulated runs, every case loses the same pass rate. A decrease this large then gives a Regression in 4 of 5 runs. Smaller decreases are often missed.
+- **No change between the base and the candidate.** This is a noise check: every alarm here is false. Compare Ichnaea with a rule that blocks whenever the mean falls by 3 points.
+- **Bound clears the limit when nothing changes.** The share of runs whose bound clears your limit. Pass would also need both statistical results validated for this design. Today no run can pass.
 
 ## Where these numbers come from
 
@@ -27,7 +27,7 @@ The command line tool's planner does not print them today. It prints a power sta
 - Cases are independent. Each trial passes with its case's pass rate.
 - The cases have the two pass rates you enter: some always pass, and the rest pass at one rate. With the defaults, 10 of the 12 cases always pass, so only 2 cases can vary.
 - For the detected decrease, every case loses the same amount of pass rate.
-- At one trial per case, your records pass the order, timing and A/A checks. [A/A runs](/ichnaea/explanation/aa-runs/) explains them.
+- At one trial per case, your records pass the order, timing and noise checks. [Noise checks](/ichnaea/explanation/noise-checks/) explains them.
 
 Real suites have more varied cases. Use the explorer to compare designs, not to predict one run.
 Each result names its number of simulated runs. With 100 runs, a simulated share is uncertain by several points.
@@ -35,5 +35,5 @@ The same inputs give the same numbers, because the simulation uses a fixed seed.
 
 ## Evidence
 
-- [Margins](/ichnaea/explanation/margins/): the floor, and why you set the margin first.
+- [Limits](/ichnaea/explanation/limits/): the floor, and why you set the limit first.
 - [What "validated" means](/ichnaea/explanation/validated/): which designs have a validated test.
