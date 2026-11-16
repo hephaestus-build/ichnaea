@@ -1,0 +1,308 @@
+name: Confirmation sweep
+
+# The confirmation sweep of the non-inferiority floor (packages/stats/scripts/README.md): the exact
+# phases A, B and C, one job per margin; the simulation of their skipped structures (D); and the
+# large suites and the embedded worst structures (E). The collector checks every output and writes
+# summary.json. Started by hand only; nothing here writes to the repository.
+on:
+  workflow_dispatch:
+    inputs:
+      a:
+        description: "A: the second sweep's replica (k 9-17, seed base 1)"
+        type: boolean
+        default: true
+      b:
+        description: "B: k 11-17 with one-trial cells (seed base 1,000,000)"
+        type: boolean
+        default: true
+      c:
+        description: "C: the extra seed set at k 12 and 17 (seed base 2,000,000)"
+        type: boolean
+        default: true
+      d:
+        description: "D: simulate the skipped structures of A, B and C (needs A, B and C)"
+        type: boolean
+        default: true
+      e-large:
+        description: "E: the large suites at k 20, 30, 52 and 60"
+        type: boolean
+        default: true
+      e-embedded:
+        description: "E: B's worst structures embedded at K 20, 30 and 60 (needs B)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+# A second dispatch waits for the running sweep and never cancels it. (A third one replaces the
+# second while it waits.)
+concurrency:
+  group: confirmation-sweep
+  cancel-in-progress: false
+
+# The confirmation run on the server ran on this Node version, and every job here runs on it too.
+env:
+  NODE_VERSION: 24.22.2
+
+jobs:
+  plan:
+    name: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      phases: ${{ steps.plan.outputs.phases }}
+      exact: ${{ steps.plan.outputs.exact }}
+      exact_count: ${{ steps.plan.outputs.exact_count }}
+      skips: ${{ steps.plan.outputs.skips }}
+      skips_count: ${{ steps.plan.outputs.skips_count }}
+      large: ${{ steps.plan.outputs.large }}
+      large_count: ${{ steps.plan.outputs.large_count }}
+      embedded: ${{ steps.plan.outputs.embedded }}
+      embedded_count: ${{ steps.plan.outputs.embedded_count }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - id: plan
+        name: The job matrices of the selected phases
+        env:
+          SWEEP_A: ${{ inputs.a }}
+          SWEEP_B: ${{ inputs.b }}
+          SWEEP_C: ${{ inputs.c }}
+          SWEEP_D: ${{ inputs.d }}
+          SWEEP_E_LARGE: ${{ inputs.e-large }}
+          SWEEP_E_EMBEDDED: ${{ inputs.e-embedded }}
+        run: node packages/stats/scripts/sweep-job.ts plan
+
+  exact:
+    name: ${{ matrix.artifact }}
+    needs: plan
+    if: needs.plan.outputs.exact_count != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.exact) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: The margin, as worker i of 51
+        env:
+          PHASE: ${{ matrix.phase }}
+          MARGIN: ${{ matrix.margin }}
+        run: >-
+          node packages/stats/scripts/sweep-job.ts exact --phase "$PHASE" --margin "$MARGIN"
+          --out "$RUNNER_TEMP/out"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ runner.temp }}/out/
+          if-no-files-found: error
+
+  skips:
+    name: ${{ matrix.artifact }}
+    needs: [plan, exact]
+    if: needs.plan.outputs.skips_count != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.skips) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: sweep-exact-*
+          path: ${{ runner.temp }}/in
+      - name: Four shards of the runner on the skip logs
+        env:
+          SET: ${{ matrix.set }}
+          JOB: ${{ matrix.job }}
+        run: >-
+          node packages/stats/scripts/sweep-job.ts simulate --set "$SET" --job "$JOB"
+          --in "$RUNNER_TEMP/in" --out "$RUNNER_TEMP/out"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ runner.temp }}/out/
+          if-no-files-found: error
+
+  structures:
+    name: structures
+    needs: plan
+    if: needs.plan.outputs.large_count != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: The large suites, with the generator's sha256
+        run: node packages/stats/scripts/sweep-job.ts structures --out "$RUNNER_TEMP/out"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: sweep-structures
+          path: ${{ runner.temp }}/out/
+          if-no-files-found: error
+
+  large:
+    name: ${{ matrix.artifact }}
+    needs: [plan, structures]
+    if: needs.plan.outputs.large_count != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.large) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: sweep-structures
+          path: ${{ runner.temp }}/in/sweep-structures
+      - name: Four shards of the runner on the large suites
+        env:
+          SET: ${{ matrix.set }}
+          JOB: ${{ matrix.job }}
+        run: >-
+          node packages/stats/scripts/sweep-job.ts simulate --set "$SET" --job "$JOB"
+          --in "$RUNNER_TEMP/in" --out "$RUNNER_TEMP/out"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ runner.temp }}/out/
+          if-no-files-found: error
+
+  embed:
+    name: embed
+    needs: [plan, exact]
+    if: needs.plan.outputs.embedded_count != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: sweep-exact-B-*
+          path: ${{ runner.temp }}/in
+      - name: B's worst structures, embedded at K 20, 30 and 60
+        run: >-
+          node packages/stats/scripts/sweep-job.ts embed --in "$RUNNER_TEMP/in"
+          --out "$RUNNER_TEMP/out"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: sweep-embedded
+          path: ${{ runner.temp }}/out/
+          if-no-files-found: error
+
+  embedded:
+    name: ${{ matrix.artifact }}
+    needs: [plan, embed]
+    if: needs.plan.outputs.embedded_count != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.embedded) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: sweep-embedded
+          path: ${{ runner.temp }}/in/sweep-embedded
+      - name: Four shards of the runner on the embedded structures
+        env:
+          SET: ${{ matrix.set }}
+          JOB: ${{ matrix.job }}
+        run: >-
+          node packages/stats/scripts/sweep-job.ts simulate --set "$SET" --job "$JOB"
+          --in "$RUNNER_TEMP/in" --out "$RUNNER_TEMP/out"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ runner.temp }}/out/
+          if-no-files-found: error
+
+  # Runs when a job before it failed too, so that the summary names what is missing; it then fails.
+  collect:
+    name: collect
+    needs: [plan, exact, skips, structures, large, embed, embedded]
+    if: ${{ !cancelled() && needs.plan.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      # Only the jobs' artifacts, so that a rerun of this job leaves its own earlier uploads out.
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: sweep-*
+          path: ${{ runner.temp }}/in
+      - name: Completeness, provenance and digests; summary.json
+        env:
+          PHASES: ${{ needs.plan.outputs.phases }}
+        run: >-
+          node packages/stats/scripts/collect-sweep.ts --in "$RUNNER_TEMP/in"
+          --out "$RUNNER_TEMP/summary" --phases "$PHASES"
+      # The archive's bytes depend only on the artifacts: sorted names, no times, no owners.
+      - name: The archive of every artifact, and the checksums
+        if: ${{ !cancelled() }}
+        run: |
+          tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner \
+            -cf "$RUNNER_TEMP/summary/confirmation-sweep.tar" -C "$RUNNER_TEMP/in" .
+          cd "$RUNNER_TEMP/summary"
+          sha256sum -- summary.json confirmation-sweep.tar > SHA256SUMS
+          cat SHA256SUMS
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ !cancelled() }}
+        with:
+          name: summary
+          path: |
+            ${{ runner.temp }}/summary/summary.json
+            ${{ runner.temp }}/summary/SHA256SUMS
+          if-no-files-found: error
+          overwrite: true
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ !cancelled() }}
+        with:
+          name: archive
+          path: |
+            ${{ runner.temp }}/summary/confirmation-sweep.tar
+            ${{ runner.temp }}/summary/SHA256SUMS
+          if-no-files-found: error
+          overwrite: true
