@@ -36,6 +36,7 @@ export default defineConfig({
       components: { Banner: "./src/components/StatusBanner.astro" },
       sidebar: [
         { label: "Planning explorer", link: "/planner/" },
+        { label: "How-to guides", items: [{ autogenerate: { directory: "how-to" } }] },
         { label: "Explanation", items: [{ autogenerate: { directory: "explanation" } }] },
         {
           label: "Reference",
@@ -53,7 +54,15 @@ export default defineConfig({
         },
         { label: "Glossary", link: "/glossary/" },
       ],
-      plugins: [starlightLinksValidator({ errorOnLocalLinks: true }), starlightLlmsTxt()],
+      plugins: [
+        starlightLinksValidator({
+          errorOnLocalLinks: true,
+          // The record pages are generated routes, which the validator cannot see, so links to
+          // them are not checked.
+          exclude: ["/ichnaea/reference/schemas/", "/ichnaea/reference/schemas/*/"],
+        }),
+        starlightLlmsTxt(),
+      ],
     }),
   ],
 });
