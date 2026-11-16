@@ -216,10 +216,11 @@ export const VALID: Record<string, Record<string, unknown>> = {
     dataClass: "none",
     plan: d("f1"),
     trial: {
-      id: "refund-window-de/candidate/r0",
+      // An opaque arm name, as a plan assigns it: never base or candidate (REQ-22).
+      id: "refund-window-de/b/r0",
       suite: "support-assistant",
       case: "refund-window-de",
-      arm: "candidate",
+      arm: "b",
       replicate: 0,
       attempt: 1,
     },
@@ -235,10 +236,11 @@ export const VALID: Record<string, Record<string, unknown>> = {
     schema: "ichnaea.trialResult/1",
     dataClass: "none",
     trial: {
-      id: "refund-window-de/candidate/r0",
+      // An opaque arm name, as a plan assigns it: never base or candidate (REQ-22).
+      id: "refund-window-de/b/r0",
       suite: "support-assistant",
       case: "refund-window-de",
-      arm: "candidate",
+      arm: "b",
       replicate: 0,
       attempt: 1,
     },

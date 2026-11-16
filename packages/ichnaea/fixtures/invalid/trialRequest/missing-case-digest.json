@@ -3,10 +3,10 @@
   "dataClass": "none",
   "plan": "sha256:f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1",
   "trial": {
-    "id": "refund-window-de/candidate/r0",
+    "id": "refund-window-de/b/r0",
     "suite": "support-assistant",
     "case": "refund-window-de",
-    "arm": "candidate",
+    "arm": "b",
     "replicate": 0,
     "attempt": 1
   },

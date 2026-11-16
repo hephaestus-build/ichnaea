@@ -35,6 +35,13 @@ describe("the worker protocol", () => {
     const request = fixture("valid", "trialRequest.json");
     expect(Object.keys(request)).not.toContain("arm");
     expect(JSON.stringify(request)).not.toMatch(/"role"|"base"/);
+    // The arm's name, and the trial ID that holds it, never say which side the arm is: not in the
+    // request, and not in the result that echoes its identity.
+    for (const record of [request, fixture("valid", "trialResult.json")]) {
+      const trial = record["trial"] as { id: string; arm: string };
+      expect(trial.arm).not.toMatch(/candidate|base/i);
+      expect(trial.id).not.toMatch(/candidate|base/i);
+    }
     // A writer is refused a role, and the arm's name stays an opaque part of the identity.
     expect(
       TrialRequest.safeParse({ ...request, arm: { name: "candidate", role: "candidate" } }).success,
