@@ -4,7 +4,8 @@ import starlightLinksValidator from "starlight-links-validator";
 import starlightLlmsTxt from "starlight-llms-txt";
 
 // DOCS_URL is the one setting for where the site lives. Its origin is `site`, and its path is
-// `base`. A custom domain later only changes this value.
+// `base`. Links between pages carry the base path (`/ichnaea/…`), and the links validator fails the
+// build when one does not, so a change of base shows every link to update.
 const docsUrl = new URL(process.env.DOCS_URL ?? "https://hephaestus-build.github.io/ichnaea/");
 const repository = "https://github.com/hephaestus-build/ichnaea";
 
@@ -23,6 +24,7 @@ export default defineConfig({
       editLink: { baseUrl: `${repository}/edit/main/docs/site/` },
       lastUpdated: true,
       components: { Banner: "./src/components/StatusBanner.astro" },
+      sidebar: [{ label: "Explanation", items: [{ autogenerate: { directory: "explanation" } }] }],
       plugins: [starlightLinksValidator({ errorOnLocalLinks: true }), starlightLlmsTxt()],
     }),
   ],

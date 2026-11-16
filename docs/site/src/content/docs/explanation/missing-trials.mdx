@@ -1,0 +1,54 @@
+---
+title: Missing trials are not failures
+description: A trial with no answer stays visible as missing. Ichnaea never counts it as a failure, and it checks whether the missing trials could change the verdict.
+sidebar:
+  order: 3
+---
+
+Some trials produce no result.
+The endpoint times out, the capture breaks, or the trial never runs.
+Ichnaea keeps those trials in the record as missing. It does not drop them, and it does not count them as failures.
+
+## Missing or failed
+
+| What happened                                       | Ichnaea records |
+| --------------------------------------------------- | --------------- |
+| The system answered, and the answer is wrong        | A failed trial  |
+| The system crashed, or the run went over its budget | A failed trial  |
+| The endpoint was not reachable                      | A missing trial |
+| The answer was not captured                         | A missing trial |
+| The trial never ran                                 | A missing trial |
+| The trial has no value for the measure              | A missing trial |
+
+A capture failure says nothing about your system. Counting it as a failure would blame your change for a broken pipe.
+
+## When missing trials change the verdict
+
+Missing trials can hide a decrease. The trials that were lost may be exactly the ones that failed.
+Ichnaea cannot see that from the records, so it tests the worst case.
+
+Whenever a primary measure has a missing trial in either arm, Ichnaea decides again twice:
+
+- **Against PASS:** every missing candidate trial counts as failed, and every missing base trial as passed.
+- **Against REGRESSION:** every missing candidate trial counts as passed, and every missing base trial as failed.
+
+If a verdict does not survive the imputation that works against it, the verdict becomes INCONCLUSIVE.
+The card states the observed result and what would change it.
+
+## An example
+
+Each of 60 cases has 3 trials per arm. The base passes every trial.
+In 6 cases, the candidate fails 2 of 3 trials, and exactly those trials are lost.
+
+Without the check, the candidate looks unchanged.
+With the check, the missing trials could hide a REGRESSION, so the verdict is INCONCLUSIVE.
+
+## Limits
+
+- A case with no completed trial in one arm cannot be compared. It is excluded, and the card counts it.
+- A validated result assumes that within a case, a trial is not missing because of its outcome. The check above is how Ichnaea handles the case where that assumption fails.
+
+## Evidence
+
+- [Decision 0010](https://github.com/hephaestus-build/ichnaea/blob/main/docs/decisions/0010-sensitivity-analysis.md): the sensitivity analysis, with this example and its reverse.
+- [Decision 0009](https://github.com/hephaestus-build/ichnaea/blob/main/docs/decisions/0009-validity-per-result.md): when missing trials keep a result inside its validated domain.
