@@ -1,5 +1,11 @@
 name: Release
 
+# Releases are paused: consumers pin a commit of this repository as a git submodule (README § Use
+# Ichnaea from a TypeScript project). The packages ship TypeScript sources, and Node does not strip
+# types from files under node_modules, so the tarballs that the steps below pack and attest do not
+# run once installed. The build job's first step fails every run until a release design replaces
+# this one. The rest of this comment describes that paused design.
+#
 # A maintainer starts a pre-release by hand, on main, with its tag `v0.<minor>.<patch>`. The
 # workflow creates the tag itself: no pushed tag starts a release. The build job has read access
 # only. It checks that the commit is on main, runs the checks, packs every package once, and writes
@@ -29,6 +35,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      - name: Releases are paused
+        run: |
+          echo "::error::Releases are paused: consumers pin a commit. See README.md § Use Ichnaea from a TypeScript project."
+          exit 1
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
@@ -47,11 +57,8 @@ jobs:
         run: node scripts/check-release-versions.ts "$TAG"
       - run: pnpm install --frozen-lockfile
       - run: pnpm run check
-      - run: pnpm run build
       - name: Pack every package
         run: pnpm -r --filter './packages/*' exec pnpm pack --pack-destination "$GITHUB_WORKSPACE/release"
-      - name: Smoke test the packed tarballs
-        run: node scripts/smoke-tarballs.ts release
       - name: SBOM of what the tarballs install, with their download URLs on the release
         env:
           TAG: ${{ inputs.tag }}

@@ -1,14 +1,14 @@
 // Writes the release SBOM (CycloneDX JSON) from what is shipped: it installs the tarballs into an
-// empty project with the README's install, as a consumer would, and lets pnpm list that project's
-// production dependencies. pnpm gives each tarball's path on this machine as its distribution URL;
-// the SBOM gives the tarball's download URL on the release instead.
+// empty project (tarball-project.ts) and lets pnpm list that project's production dependencies.
+// pnpm gives each tarball's path on this machine as its distribution URL; the SBOM gives the
+// tarball's download URL on the release instead.
 // Usage: node scripts/release-sbom.ts <directory with .tgz files> <output file> [<tag>]
 // Without a tag, as in CI, the URLs name the placeholder tag `untagged`, and no release has them.
 import { execFileSync } from "node:child_process";
 import { rmSync, writeFileSync } from "node:fs";
 import { basename } from "node:path";
 
-import { installAsReadme } from "./consumer-project.ts";
+import { installTarballs } from "./tarball-project.ts";
 import { downloadUrl } from "./release-notes.ts";
 
 /** The tag in the download URLs of an SBOM that is not for a release. It is not a release tag. */
@@ -49,7 +49,7 @@ if (import.meta.main) {
   if (!dir || !out)
     throw new Error("usage: release-sbom.ts <tarball directory> <output file> [<tag>]");
   const tag = tagArgument(tagArg);
-  const { project, tarballs } = installAsReadme(dir);
+  const { project, tarballs } = installTarballs(dir);
   try {
     const sbom = execFileSync("pnpm", ["sbom", "--sbom-format", "cyclonedx", "--prod"], {
       cwd: project,

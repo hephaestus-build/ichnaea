@@ -9,7 +9,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { basename } from "node:path";
 
-import { PROJECT, tarballsIn } from "./consumer-project.ts";
+import { PROJECT, tarballsIn } from "./tarball-project.ts";
 import { downloadUrl } from "./release-notes.ts";
 import { tagArgument, UNTAGGED } from "./release-sbom.ts";
 

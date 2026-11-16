@@ -1,17 +1,27 @@
 // Reads the install and the five-minute example of the README: the install's workspace file and
 // shell block, the example's shell block, and the table of the verdict line and exit code that each
-// scenario expects. The tarball smoke test installs with the install blocks, runs the example block
-// and checks the table, so the README is the only place that states how to install and what the
-// example gives.
+// scenario expects. The submodule consumer test installs with the install blocks, runs the example
+// block and checks the table, so the README is the only place that states how to install and what
+// the example gives.
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
-export const WORKSPACE_MARKER =
-  "<!-- The tarball smoke test writes this file, with each release URL changed to its tarball. -->";
-export const INSTALL_MARKER =
-  "<!-- The tarball smoke test runs this block, with each release URL changed to its tarball. -->";
-export const BLOCK_MARKER =
-  "<!-- The tarball smoke test runs this block on the packed tarballs. -->";
+export const WORKSPACE_MARKER = "<!-- The submodule consumer test writes this file. -->";
+export const INSTALL_MARKER = "<!-- The submodule consumer test runs this install. -->";
+export const BLOCK_MARKER = "<!-- The submodule consumer test runs this example. -->";
 export const TABLE_MARKER =
-  "<!-- The tarball smoke test checks these verdict lines and exit codes. -->";
+  "<!-- The submodule consumer test checks these verdict lines and exit codes. -->";
+
+/**
+ * The zod version that the workspace builds and tests with: the contracts package's development
+ * dependency. A consumer installs the same version.
+ */
+export function workspaceZod(): string {
+  const contracts = JSON.parse(
+    readFileSync(join(import.meta.dirname, "..", "packages", "contracts", "package.json"), "utf8"),
+  ) as { devDependencies: { zod: string } };
+  return contracts.devDependencies.zod;
+}
 
 export interface Scenario {
   readonly scenario: string;
@@ -98,16 +108,12 @@ export function decides(command: string, run: string): boolean {
   return new RegExp(`\\bdecide\\b.*--run ${run}(\\s|$)`).test(command);
 }
 
-/** A release URL of a tarball, as the README writes it. The group is the tarball's file name. */
-const RELEASE_URL =
-  /https:\/\/github\.com\/hephaestus-build\/ichnaea\/releases\/download\/v[^/\s"]+\/(hephaestus-build-ichnaea-[a-z-]+)-\d[^/\s"]*\.tgz/g;
-
 export interface Install {
   /** The text of `pnpm-workspace.yaml`, as written. */
   readonly workspace: string;
   /** The commands of the install block, as written. */
   readonly commands: readonly string[];
-  /** The packages that the `pnpm add` commands add, by name. */
+  /** The packages that the `pnpm add` commands add, by name, without a version or protocol. */
   readonly added: readonly string[];
 }
 
@@ -120,25 +126,10 @@ export function readmeInstall(readme: string): Install {
     .filter((c) => /^pnpm add\b/.test(c))
     .flatMap((c) => c.replace(/\\\n/g, " ").split(/\s+/).slice(2))
     .filter((arg) => arg !== "" && !arg.startsWith("-"))
-    .map((arg) => {
-      const tarball = new RegExp(RELEASE_URL.source).exec(arg);
-      if (tarball) return `@hephaestus-build/${tarball[1]!.replace("hephaestus-build-", "")}`;
-      // A registry package, with its version: `zod@4.6.7` or `@scope/name@1.0.0`.
-      return arg.replace(/(.)@[^@]*$/, "$1");
-    });
+    // A package with its version or protocol, quoted where a shell would expand it: `zod@4.6.7`
+    // or `'@scope/name@workspace:*'`.
+    .map((arg) => arg.replace(/^'(.*)'$/, "$1").replace(/(.)@[^@]*$/, "$1"));
   return { workspace, commands, added };
-}
-
-/**
- * Changes each release URL in an install text to the tarball of the same package in `tarballs`,
- * a map from tarball file name without its version to its path. Nothing else changes.
- */
-export function withTarballs(text: string, tarballs: ReadonlyMap<string, string>): string {
-  return text.replace(RELEASE_URL, (url, name: string) => {
-    const file = tarballs.get(name);
-    if (!file) throw new Error(`no packed tarball for ${url}`);
-    return `file:${file}`;
-  });
 }
 
 /** The files of the example that its block copies into the project: the `$example/<file>.ts`. */
