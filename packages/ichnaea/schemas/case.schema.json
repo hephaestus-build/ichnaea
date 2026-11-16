@@ -9,6 +9,7 @@
     "schema": {
       "type": "string",
       "const": "ichnaea.case/1",
+      "description": "The record type and its major version.",
       "x-ichnaea-data": {
         "class": "none",
         "identifier": "none",
@@ -21,6 +22,7 @@
     "id": {
       "type": "string",
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
+      "description": "The case's identifier, unique within its case set.",
       "x-ichnaea-data": {
         "class": "none",
         "identifier": "none",
@@ -33,6 +35,7 @@
     "caseSet": {
       "type": "string",
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
+      "description": "The case set that the case belongs to.",
       "x-ichnaea-data": {
         "class": "none",
         "identifier": "none",
@@ -50,6 +53,7 @@
         "session",
         "episode"
       ],
+      "description": "What one trial of the case is: one turn, a trace, a session of several turns, or an agent episode.",
       "x-ichnaea-data": {
         "class": "none",
         "identifier": "none",
@@ -67,6 +71,7 @@
         "personal",
         "special"
       ],
+      "description": "The data class of the case's content. The input, the turns, the references, the slices and the review note take this class.",
       "x-ichnaea-data": {
         "class": "none",
         "identifier": "none",
@@ -84,6 +89,7 @@
       "additionalProperties": {
         "$ref": "#/$defs/JsonValue"
       },
+      "description": "What the system receives. The keys are the application's own.",
       "x-ichnaea-data": {
         "class": "inherit",
         "identifier": "content",
@@ -106,6 +112,7 @@
               "system",
               "tool"
             ],
+            "description": "Who speaks the turn.",
             "x-ichnaea-data": {
               "class": "none",
               "identifier": "none",
@@ -132,7 +139,8 @@
           "content"
         ],
         "additionalProperties": false
-      }
+      },
+      "description": "The scripted turns of a session case, in order."
     },
     "fixtures": {
       "type": "array",
@@ -181,7 +189,8 @@
           "digest"
         ],
         "additionalProperties": false
-      }
+      },
+      "description": "Files that the case needs, each named with its digest."
     },
     "references": {
       "type": "object",
@@ -191,6 +200,7 @@
       "additionalProperties": {
         "$ref": "#/$defs/JsonValue"
       },
+      "description": "Hidden references, such as the facts that a correct answer states. Measures read them, and the system never receives them.",
       "x-ichnaea-data": {
         "class": "inherit",
         "identifier": "content",
@@ -203,6 +213,7 @@
     "family": {
       "type": "string",
       "minLength": 1,
+      "description": "The family of variants that the case belongs to. Variants of one input share a family.",
       "x-ichnaea-data": {
         "class": "none",
         "identifier": "none",
@@ -220,6 +231,7 @@
       "additionalProperties": {
         "type": "string"
       },
+      "description": "Labels for descriptive slices of the results, such as a topic. A slice never gets a verdict.",
       "x-ichnaea-data": {
         "class": "inherit",
         "identifier": "quasi",
@@ -237,6 +249,7 @@
         "high",
         "critical"
       ],
+      "description": "How much a failure of the case matters.",
       "x-ichnaea-data": {
         "class": "none",
         "identifier": "none",
@@ -271,6 +284,7 @@
                 "promoted",
                 "generated"
               ],
+              "description": "How the case entered its case set. It decides which estimand the case supports.",
               "x-ichnaea-data": {
                 "class": "none",
                 "identifier": "none",
@@ -283,6 +297,7 @@
             "author": {
               "type": "string",
               "minLength": 1,
+              "description": "Who wrote the case.",
               "x-ichnaea-data": {
                 "class": "personal",
                 "identifier": "direct",
@@ -294,6 +309,7 @@
               "type": "string",
               "format": "date",
               "pattern": "^(?:(?:[0-9][0-9][2468][048]|[0-9][0-9][13579][26]|[0-9][0-9]0[48]|[02468][048]00|[13579][26]00)-02-29|[0-9]{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12][0-9]|3[01])|(?:0[469]|11)-(?:0[1-9]|[12][0-9]|30)|(?:02)-(?:0[1-9]|1[0-9]|2[0-8])))$",
+              "description": "The date the case was created.",
               "x-ichnaea-data": {
                 "class": "none",
                 "identifier": "none",
@@ -307,6 +323,7 @@
               "type": "string",
               "format": "date",
               "pattern": "^(?:(?:[0-9][0-9][2468][048]|[0-9][0-9][13579][26]|[0-9][0-9]0[48]|[02468][048]00|[13579][26]00)-02-29|[0-9]{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12][0-9]|3[01])|(?:0[469]|11)-(?:0[1-9]|[12][0-9]|30)|(?:02)-(?:0[1-9]|1[0-9]|2[0-8])))$",
+              "description": "The date the input was collected.",
               "x-ichnaea-data": {
                 "class": "none",
                 "identifier": "none",
@@ -319,6 +336,7 @@
             "licence": {
               "type": "string",
               "minLength": 1,
+              "description": "The licence of the case content.",
               "x-ichnaea-data": {
                 "class": "none",
                 "identifier": "none",
@@ -335,6 +353,7 @@
                 "private",
                 "sealed"
               ],
+              "description": "Who may see the case.",
               "x-ichnaea-data": {
                 "class": "none",
                 "identifier": "none",
@@ -377,6 +396,7 @@
                 "promoted",
                 "generated"
               ],
+              "description": "How the case entered its case set. It decides which estimand the case supports.",
               "x-ichnaea-data": {
                 "class": "none",
                 "identifier": "none",
@@ -389,6 +409,7 @@
             "author": {
               "type": "string",
               "minLength": 1,
+              "description": "Who wrote the case.",
               "x-ichnaea-data": {
                 "class": "personal",
                 "identifier": "direct",
@@ -400,6 +421,7 @@
               "type": "string",
               "format": "date",
               "pattern": "^(?:(?:[0-9][0-9][2468][048]|[0-9][0-9][13579][26]|[0-9][0-9]0[48]|[02468][048]00|[13579][26]00)-02-29|[0-9]{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12][0-9]|3[01])|(?:0[469]|11)-(?:0[1-9]|[12][0-9]|30)|(?:02)-(?:0[1-9]|1[0-9]|2[0-8])))$",
+              "description": "The date the case was created.",
               "x-ichnaea-data": {
                 "class": "none",
                 "identifier": "none",
@@ -413,6 +435,7 @@
               "type": "string",
               "format": "date",
               "pattern": "^(?:(?:[0-9][0-9][2468][048]|[0-9][0-9][13579][26]|[0-9][0-9]0[48]|[02468][048]00|[13579][26]00)-02-29|[0-9]{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12][0-9]|3[01])|(?:0[469]|11)-(?:0[1-9]|[12][0-9]|30)|(?:02)-(?:0[1-9]|1[0-9]|2[0-8])))$",
+              "description": "The date the input was collected.",
               "x-ichnaea-data": {
                 "class": "none",
                 "identifier": "none",
@@ -425,6 +448,7 @@
             "licence": {
               "type": "string",
               "minLength": 1,
+              "description": "The licence of the case content.",
               "x-ichnaea-data": {
                 "class": "none",
                 "identifier": "none",
@@ -441,6 +465,7 @@
                 "private",
                 "sealed"
               ],
+              "description": "Who may see the case.",
               "x-ichnaea-data": {
                 "class": "none",
                 "identifier": "none",
@@ -456,6 +481,7 @@
                 "method": {
                   "type": "string",
                   "minLength": 1,
+                  "description": "How the case was generated.",
                   "x-ichnaea-data": {
                     "class": "none",
                     "identifier": "none",
@@ -468,6 +494,7 @@
                 "model": {
                   "type": "string",
                   "minLength": 1,
+                  "description": "The model that generated the case.",
                   "x-ichnaea-data": {
                     "class": "none",
                     "identifier": "none",
@@ -480,6 +507,7 @@
                 "seedSource": {
                   "type": "string",
                   "minLength": 1,
+                  "description": "Where the seed of the generation came from.",
                   "x-ichnaea-data": {
                     "class": "none",
                     "identifier": "none",
@@ -529,6 +557,7 @@
                 "promoted",
                 "generated"
               ],
+              "description": "How the case entered its case set. It decides which estimand the case supports.",
               "x-ichnaea-data": {
                 "class": "none",
                 "identifier": "none",
@@ -541,6 +570,7 @@
             "author": {
               "type": "string",
               "minLength": 1,
+              "description": "Who wrote the case.",
               "x-ichnaea-data": {
                 "class": "personal",
                 "identifier": "direct",
@@ -552,6 +582,7 @@
               "type": "string",
               "format": "date",
               "pattern": "^(?:(?:[0-9][0-9][2468][048]|[0-9][0-9][13579][26]|[0-9][0-9]0[48]|[02468][048]00|[13579][26]00)-02-29|[0-9]{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12][0-9]|3[01])|(?:0[469]|11)-(?:0[1-9]|[12][0-9]|30)|(?:02)-(?:0[1-9]|1[0-9]|2[0-8])))$",
+              "description": "The date the case was created.",
               "x-ichnaea-data": {
                 "class": "none",
                 "identifier": "none",
@@ -565,6 +596,7 @@
               "type": "string",
               "format": "date",
               "pattern": "^(?:(?:[0-9][0-9][2468][048]|[0-9][0-9][13579][26]|[0-9][0-9]0[48]|[02468][048]00|[13579][26]00)-02-29|[0-9]{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12][0-9]|3[01])|(?:0[469]|11)-(?:0[1-9]|[12][0-9]|30)|(?:02)-(?:0[1-9]|1[0-9]|2[0-8])))$",
+              "description": "The date the input was collected.",
               "x-ichnaea-data": {
                 "class": "none",
                 "identifier": "none",
@@ -577,6 +609,7 @@
             "licence": {
               "type": "string",
               "minLength": 1,
+              "description": "The licence of the case content.",
               "x-ichnaea-data": {
                 "class": "none",
                 "identifier": "none",
@@ -593,6 +626,7 @@
                 "private",
                 "sealed"
               ],
+              "description": "Who may see the case.",
               "x-ichnaea-data": {
                 "class": "none",
                 "identifier": "none",
@@ -608,6 +642,7 @@
                 "name": {
                   "type": "string",
                   "minLength": 1,
+                  "description": "The name of the reused dataset.",
                   "x-ichnaea-data": {
                     "class": "none",
                     "identifier": "none",
@@ -620,6 +655,7 @@
                 "version": {
                   "type": "string",
                   "minLength": 1,
+                  "description": "The version of the reused dataset.",
                   "x-ichnaea-data": {
                     "class": "none",
                     "identifier": "none",
@@ -632,6 +668,7 @@
                 "limits": {
                   "type": "string",
                   "minLength": 1,
+                  "description": "The known limits of the dataset for this use.",
                   "x-ichnaea-data": {
                     "class": "none",
                     "identifier": "none",
@@ -682,6 +719,7 @@
                 "promoted",
                 "generated"
               ],
+              "description": "How the case entered its case set. It decides which estimand the case supports.",
               "x-ichnaea-data": {
                 "class": "none",
                 "identifier": "none",
@@ -694,6 +732,7 @@
             "author": {
               "type": "string",
               "minLength": 1,
+              "description": "Who wrote the case.",
               "x-ichnaea-data": {
                 "class": "personal",
                 "identifier": "direct",
@@ -705,6 +744,7 @@
               "type": "string",
               "format": "date",
               "pattern": "^(?:(?:[0-9][0-9][2468][048]|[0-9][0-9][13579][26]|[0-9][0-9]0[48]|[02468][048]00|[13579][26]00)-02-29|[0-9]{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12][0-9]|3[01])|(?:0[469]|11)-(?:0[1-9]|[12][0-9]|30)|(?:02)-(?:0[1-9]|1[0-9]|2[0-8])))$",
+              "description": "The date the case was created.",
               "x-ichnaea-data": {
                 "class": "none",
                 "identifier": "none",
@@ -718,6 +758,7 @@
               "type": "string",
               "format": "date",
               "pattern": "^(?:(?:[0-9][0-9][2468][048]|[0-9][0-9][13579][26]|[0-9][0-9]0[48]|[02468][048]00|[13579][26]00)-02-29|[0-9]{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12][0-9]|3[01])|(?:0[469]|11)-(?:0[1-9]|[12][0-9]|30)|(?:02)-(?:0[1-9]|1[0-9]|2[0-8])))$",
+              "description": "The date the input was collected.",
               "x-ichnaea-data": {
                 "class": "none",
                 "identifier": "none",
@@ -730,6 +771,7 @@
             "licence": {
               "type": "string",
               "minLength": 1,
+              "description": "The licence of the case content.",
               "x-ichnaea-data": {
                 "class": "none",
                 "identifier": "none",
@@ -746,6 +788,7 @@
                 "private",
                 "sealed"
               ],
+              "description": "Who may see the case.",
               "x-ichnaea-data": {
                 "class": "none",
                 "identifier": "none",
@@ -789,6 +832,7 @@
                 "promoted",
                 "generated"
               ],
+              "description": "How the case entered its case set. It decides which estimand the case supports.",
               "x-ichnaea-data": {
                 "class": "none",
                 "identifier": "none",
@@ -801,6 +845,7 @@
             "author": {
               "type": "string",
               "minLength": 1,
+              "description": "Who wrote the case.",
               "x-ichnaea-data": {
                 "class": "personal",
                 "identifier": "direct",
@@ -812,6 +857,7 @@
               "type": "string",
               "format": "date",
               "pattern": "^(?:(?:[0-9][0-9][2468][048]|[0-9][0-9][13579][26]|[0-9][0-9]0[48]|[02468][048]00|[13579][26]00)-02-29|[0-9]{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12][0-9]|3[01])|(?:0[469]|11)-(?:0[1-9]|[12][0-9]|30)|(?:02)-(?:0[1-9]|1[0-9]|2[0-8])))$",
+              "description": "The date the case was created.",
               "x-ichnaea-data": {
                 "class": "none",
                 "identifier": "none",
@@ -825,6 +871,7 @@
               "type": "string",
               "format": "date",
               "pattern": "^(?:(?:[0-9][0-9][2468][048]|[0-9][0-9][13579][26]|[0-9][0-9]0[48]|[02468][048]00|[13579][26]00)-02-29|[0-9]{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12][0-9]|3[01])|(?:0[469]|11)-(?:0[1-9]|[12][0-9]|30)|(?:02)-(?:0[1-9]|1[0-9]|2[0-8])))$",
+              "description": "The date the input was collected.",
               "x-ichnaea-data": {
                 "class": "none",
                 "identifier": "none",
@@ -837,6 +884,7 @@
             "licence": {
               "type": "string",
               "minLength": 1,
+              "description": "The licence of the case content.",
               "x-ichnaea-data": {
                 "class": "none",
                 "identifier": "none",
@@ -853,6 +901,7 @@
                 "private",
                 "sealed"
               ],
+              "description": "Who may see the case.",
               "x-ichnaea-data": {
                 "class": "none",
                 "identifier": "none",
@@ -865,6 +914,7 @@
             "finding": {
               "type": "string",
               "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
+              "description": "The finding that the case was promoted from.",
               "x-ichnaea-data": {
                 "class": "none",
                 "identifier": "none",
@@ -885,7 +935,8 @@
           ],
           "additionalProperties": false
         }
-      ]
+      ],
+      "description": "Where the case came from: authored, generated, reused from a dataset, collected, or promoted from a finding."
     },
     "pool": {
       "type": "string",
@@ -895,6 +946,7 @@
         "sealed",
         "promoted"
       ],
+      "description": "The pool that the case belongs to. Each pool has its own exposure rule.",
       "x-ichnaea-data": {
         "class": "none",
         "identifier": "none",
@@ -915,6 +967,7 @@
             "validated",
             "suspect"
           ],
+          "description": "The review status of the case itself. A suspect case may be broken.",
           "x-ichnaea-data": {
             "class": "none",
             "identifier": "none",
@@ -926,6 +979,7 @@
         },
         "note": {
           "type": "string",
+          "description": "A reviewer's note on the case.",
           "x-ichnaea-data": {
             "class": "inherit",
             "identifier": "content",
@@ -939,7 +993,8 @@
       "required": [
         "status"
       ],
-      "additionalProperties": false
+      "additionalProperties": false,
+      "description": "The review of the case itself."
     }
   },
   "required": [
