@@ -1,0 +1,71 @@
+name: Mutants
+
+# Runs every mutant script: scripts/contracts/mutants.ts, scripts/decide/mutants.ts and
+# scripts/stats/mutants.ts. Each mutant is one source change that a test must detect. A survivor,
+# or an anchor that does not apply exactly once, fails the job. A present-tense mutation claim in
+# VALIDATION.md or a decision record rests on this job's latest green run on main.
+#
+# On a pull request the job always runs, so that it always reports. It exits at once when the pull
+# request changes nothing under the package's src/ or test/ or under a mutant script's directory,
+# because no mutant can then change its result. On main, nightly and by hand it runs every script.
+# The scripts run one after another on one runner, which keeps Ichnaea within its 20 runners.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "41 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mutants-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  mutants:
+    name: mutants
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    steps:
+      # The checkout is the scratch copy the scripts require: they rewrite a source file, run the
+      # tests and restore it.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Whether this pull request can change a mutant's result
+        id: scope
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$EVENT" != pull_request ]; then echo "run=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          changed="$(git diff --name-only "$BASE...$HEAD" -- \
+            packages/ichnaea/src packages/ichnaea/test \
+            packages/ichnaea/scripts/contracts packages/ichnaea/scripts/decide packages/ichnaea/scripts/stats)"
+          if [ -n "$changed" ]; then echo "run=true" >> "$GITHUB_OUTPUT"; else echo "run=false" >> "$GITHUB_OUTPUT"; fi
+      - if: steps.scope.outputs.run == 'true'
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - if: steps.scope.outputs.run == 'true'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - if: steps.scope.outputs.run == 'true'
+        run: pnpm install --frozen-lockfile --filter '!ichnaea-docs'
+      - if: steps.scope.outputs.run == 'true'
+        name: Contract mutants
+        working-directory: packages/ichnaea
+        run: node scripts/contracts/mutants.ts
+      - if: ${{ !cancelled() && steps.scope.outputs.run == 'true' }}
+        name: Decide mutants
+        working-directory: packages/ichnaea
+        run: node scripts/decide/mutants.ts
+      - if: ${{ !cancelled() && steps.scope.outputs.run == 'true' }}
+        name: Statistics mutants
+        working-directory: packages/ichnaea
+        run: node scripts/stats/mutants.ts
