@@ -5,7 +5,14 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { TrialFailure, TrialRequest, TrialResult, WorkerError } from "../../src/contracts/index.ts";
+import {
+  contractFor,
+  readRecord,
+  TrialFailure,
+  TrialRequest,
+  TrialResult,
+  WorkerError,
+} from "../../src/contracts/index.ts";
 
 const fixture = (kind: string, name: string): Record<string, unknown> =>
   JSON.parse(
@@ -54,5 +61,21 @@ describe("the worker protocol", () => {
     const anonymous = fixture("valid-extra", "trialResult/bad-request.json");
     delete anonymous["trial"];
     expect(TrialResult.safeParse(anonymous).success).toBe(false);
+  });
+
+  it("refuses a short commit next to an image in the writer and the reader alike", () => {
+    const result = fixture("valid", "trialResult.json");
+    const withCode = (code: Record<string, unknown>): Record<string, unknown> => ({
+      ...result,
+      observed: { ...(result["observed"] as Record<string, unknown>), code },
+    });
+    const contract = contractFor("ichnaea.trialResult/1")!;
+    const image = `sha256:${"b2".repeat(32)}`;
+    const short = withCode({ image, commit: "abc" });
+    expect(TrialResult.safeParse(short).success).toBe(false);
+    expect(readRecord(contract, short).ok).toBe(false);
+    const full = withCode({ image, commit: "0123456789abcdef0123456789abcdef01234567" });
+    expect(TrialResult.safeParse(full).success).toBe(true);
+    expect(readRecord(contract, full).ok).toBe(true);
   });
 });

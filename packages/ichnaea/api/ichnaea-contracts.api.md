@@ -2140,6 +2140,7 @@ export const ObservedCode: z.ZodUnion<readonly [z.ZodObject<{
     image: z.ZodOptional<z.ZodString>;
 }, z.core.$strict>, z.ZodObject<{
     image: z.ZodString;
+    commit: z.ZodOptional<z.ZodString>;
 }, z.core.$strict>]>;
 
 // @public
@@ -2152,6 +2153,7 @@ export const ObservedConfiguration: z.ZodObject<{
         image: z.ZodOptional<z.ZodString>;
     }, z.core.$strict>, z.ZodObject<{
         image: z.ZodString;
+        commit: z.ZodOptional<z.ZodString>;
     }, z.core.$strict>]>;
     model: z.ZodString;
     route: z.ZodString;
@@ -3390,6 +3392,7 @@ export const TrialResult: z.ZodObject<{
             image: z.ZodOptional<z.ZodString>;
         }, z.core.$strict>, z.ZodObject<{
             image: z.ZodString;
+            commit: z.ZodOptional<z.ZodString>;
         }, z.core.$strict>]>;
         model: z.ZodString;
         route: z.ZodString;

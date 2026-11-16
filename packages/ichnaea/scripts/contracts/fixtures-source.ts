@@ -609,6 +609,8 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
       ((r["observed"] as Record<string, unknown>)["code"] = { commit: "0123456" }),
     "code-without-commit-or-image": (r) =>
       ((r["observed"] as Record<string, unknown>)["code"] = {}),
+    "image-with-short-commit": (r) =>
+      ((r["observed"] as Record<string, unknown>)["code"] = { image: d("b2"), commit: "abc" }),
   },
   workerError: {
     "missing-kind": (r) => delete r["kind"],

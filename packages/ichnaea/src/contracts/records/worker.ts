@@ -124,6 +124,11 @@ export const ObservedCode = z.union([
   z.strictObject({
     /** The digest of the image that ran the code. */
     image: none(Digest),
+    /**
+     * A commit, when there is one. It is constrained here too: a reader ignores unknown members, so
+     * an unconstrained `commit` would let a reader accept a short commit that a writer refuses.
+     */
+    commit: Commit.optional(),
   }),
 ]);
 /** The code a worker ran. */
