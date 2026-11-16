@@ -9,7 +9,7 @@ Decision 0013 made pre-releases attested tarballs on GitHub releases. Three cons
 Ichnaea from their own repositories. Each needs to run Ichnaea from a reviewed commit that it
 controls, update that commit on purpose, and never depend on a registry or a build step.
 
-Node 24.2 and later run TypeScript sources with type stripping. They refuse to strip types for a
+Node 24 runs TypeScript sources with type stripping. They refuse to strip types for a
 file under `node_modules` (`ERR_UNSUPPORTED_NODE_MODULES_TYPE_STRIPPING`), so packed tarballs of
 TypeScript sources cannot run once installed. A workspace package that a symbolic link points to
 resolves to its real path, outside `node_modules`, so Node runs it.
@@ -18,7 +18,7 @@ resolves to its real path, outside `node_modules`, so Node runs it.
 
 1. The packages ship their TypeScript sources. Each package's main export and core's `ichnaea` bin
    name `src/*.ts`. There is no build step and no `dist/`. Every package and the repository need
-   Node 24.2 or later, the one floor for consumers and developers alike.
+   Node 24.3 or later, the one floor for consumers and developers alike.
 2. A consumer pins Ichnaea as a git submodule at `vendor/ichnaea`, at the root of its TypeScript
    workspace. It lists `vendor/ichnaea/packages/*` in its pnpm workspace, and installs zod 4.6 or
    later once at its root, because the library packages take zod as a peer dependency.
@@ -49,11 +49,13 @@ the SBOM and Scorecard when releases resume).
   at a missing file, when the bin loses its executable bit, and when a source file breaks a strict
   profile.
 - The consumer installs one copy of zod, because every library package names it as a peer.
-- CI runs the tests at the floor, Node 24.2.0, and at the current Node 24.
+- CI runs the tests at the floor, Node 24.3.0, and at the current Node 24.
+- Node 24.2.0 sets `import.meta.main` to false for a TypeScript entry file, and 24.3.0 sets it to
+  true. The repository's scripts rely on it, so the floor is 24.3.
 
 ## Consequences
 
-- A consumer needs Node 24.2 or later and a pnpm workspace. It does not need a build, a registry or
+- A consumer needs Node 24.3 or later and a pnpm workspace. It does not need a build, a registry or
   a release.
 - A consumer's lockfile pins zod, and the submodule commit pins Ichnaea. Updating Ichnaea is a
   reviewed change in the consumer's repository.

@@ -33,7 +33,7 @@ points.
 
 ## Run it
 
-Install once at the repository root. There is no build. The commands need Node 24.2 or later.
+Install once at the repository root. There is no build. The commands need Node 24.3 or later.
 
 ```sh
 pnpm install
