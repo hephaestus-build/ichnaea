@@ -10,7 +10,10 @@ The core of Ichnaea: the plugin host, the planner, import mode, the record store
   validated method can decide it. Examples: a placeholder margin, a primary measure whose values
   are not binary, one trial in some cases and more in others. At one trial per case and arm, it
   lists each case's two trials together, in the order `candidateRunsFirst` chooses from the plan
-  seed, so the plan's order is the run order (decision 0020).
+  seed, so the plan's order is the run order (decision 0020). At two or more trials, each case's
+  pair in each replicate runs in the order of its own coin for that replicate. An arm given without
+  a name is named by `armNames`: the base and the candidate become `a` and `b` by a coin on the seed,
+  so no trial ID names its side.
 - **Import mode.** `ichnaea import` turns another runner's result files into trial records and
   measure values. It makes no model call. A completed record without captured output becomes an
   infrastructure failure (`NOT_CAPTURED`). A failed trial that carries a passing value is refused.

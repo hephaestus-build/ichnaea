@@ -117,6 +117,8 @@ export interface ScenarioOptions {
   readonly aa?: Plan["aa"];
   /** The run's ID; default run-1. */
   readonly runId?: string;
+  /** Leaves the arms unnamed, so the planner names them `a` and `b` (default: base, candidate). */
+  readonly opaque?: boolean;
 }
 
 export interface Scenario {
@@ -200,12 +202,12 @@ export async function scenario(o: ScenarioOptions): Promise<Scenario> {
     cases,
     arms: [
       {
-        name: "base",
+        ...(o.opaque ? {} : { name: "base" }),
         role: "base",
         configuration: (o.baseConfig ?? ((c: Configuration) => c))(configuration("model-a", "a1")),
       },
       {
-        name: "candidate",
+        ...(o.opaque ? {} : { name: "candidate" }),
         role: "candidate",
         configuration: (o.candidateConfig ?? ((c: Configuration) => c))(
           configuration(o.candidateModel ?? "model-a", "b2"),
@@ -227,7 +229,19 @@ export async function scenario(o: ScenarioOptions): Promise<Scenario> {
   const rng = createRng(o.seed ?? 7);
   const trials: Trial[] = [];
   const values: MeasureValue[] = [];
-  for (const t of plan.trials) {
+  // The draws follow a fixed order, by replicate, case and arm, so a scenario's data does not
+  // depend on the order in which each replicate's pairs run. At one trial per case, the plan's
+  // own order is that order.
+  const armIndex = new Map(plan.arms.map((a, i) => [a.name as string, i]));
+  const order = plan.trials.some((t) => t.replicate > 0)
+    ? plan.trials.toSorted(
+        (a, b) =>
+          a.replicate - b.replicate ||
+          Number(a.case.slice(5)) - Number(b.case.slice(5)) ||
+          (armIndex.get(a.arm) ?? 0) - (armIndex.get(b.arm) ?? 0),
+      )
+    : plan.trials;
+  for (const t of order) {
     const index = Number(t.case.slice(5));
     const outcome =
       o.outcome?.({ case: t.case, arm: t.arm, replicate: t.replicate }) ?? "completed";
@@ -253,7 +267,8 @@ export async function scenario(o: ScenarioOptions): Promise<Scenario> {
     const forced = o.value?.({ ...at, outcome });
     if (forced === null) continue;
     if (forced === undefined && outcome !== "completed" && outcome !== "abstained") continue;
-    const p = t.arm === "base" ? o.base(index) : o.candidate(index);
+    const role = plan.arms.find((a) => a.name === t.arm)?.role;
+    const p = role === "base" ? o.base(index) : o.candidate(index);
     for (const m of [...measureIds, ...(o.secondary ?? [])]) {
       if (o.applies && !o.applies(m, index)) {
         values.push({

@@ -67,6 +67,26 @@ describe("reports", () => {
     expect(html).not.toContain("<script");
   });
 
+  it("name an opaque arm by its role beside its name, and the lint leaves the words around it", async () => {
+    const { decision } = await decided({ opaque: true });
+    const view = decisionView(decision, "synthetic");
+    const md = renderMarkdown(view);
+    const html = renderHtml(view);
+    for (const a of decision.arms) {
+      expect(html).toContain(`<td>${a.role} (${a.name})</td>`);
+      expect(md).toContain(`| ${a.role} \\(${a.name}\\) |`);
+    }
+    expect(lintReport(renderHtml(neutralView(view)))).toEqual([]);
+    expect(lintReport(renderMarkdown(neutralView(view)))).toEqual([]);
+    // The neutral view replaces a short identifier, such as an arm shown only as `a`, as a whole
+    // token, so "trials" keeps its letters.
+    const short = {
+      ...view,
+      measures: view.measures.map((m) => ({ ...m, arms: m.arms.map((x) => ({ ...x, arm: "a" })) })),
+    };
+    expect(neutralView(short).missingness).toContain("0 of 80 trials missing");
+  });
+
   it("the lint catches forbidden wording and a missing lineage", () => {
     expect(lintReport("A significant improvement. Lineage")).toHaveLength(1);
     expect(lintReport("no footer here")).toEqual(["no lineage footer"]);

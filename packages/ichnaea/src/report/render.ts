@@ -254,8 +254,16 @@ export function neutralView(view: DecisionView): DecisionView {
   ]
     .filter((id) => id.length > 0)
     .toSorted((a, b) => b.length - a.length);
+  // Whole tokens only, so a short identifier such as the arm name `a` leaves the words around it.
+  const token =
+    ids.length === 0
+      ? undefined
+      : new RegExp(
+          `(?<![\\p{L}\\p{N}_])(?:${ids.map((id) => id.replaceAll(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})(?![\\p{L}\\p{N}_])`,
+          "gu",
+        );
   const neutral = (value: unknown): unknown => {
-    if (typeof value === "string") return ids.reduce((t, id) => t.replaceAll(id, "id"), value);
+    if (typeof value === "string") return token ? value.replaceAll(token, "id") : value;
     if (Array.isArray(value)) return value.map(neutral);
     if (value && typeof value === "object")
       return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, neutral(v)]));

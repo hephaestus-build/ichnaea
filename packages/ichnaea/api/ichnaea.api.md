@@ -449,7 +449,7 @@ export class PlanError extends Error {
 export interface PlanInput {
     readonly aa?: Plan["aa"];
     readonly arms: ReadonlyArray<{
-        readonly name: string;
+        readonly name?: string;
         readonly role: "base" | "candidate" | "reference";
         readonly configuration: Configuration;
     }>;
@@ -648,7 +648,7 @@ export const TRIGGER_VARIES: {
 
 // Warnings were encountered during analysis:
 //
-// src/core/planner.ts:36:5 - (ae-forgotten-export) The symbol "Configuration" needs to be exported by the entry point index.d.ts
+// src/core/planner.ts:42:5 - (ae-forgotten-export) The symbol "Configuration" needs to be exported by the entry point index.d.ts
 // src/core/plugin.ts:65:5 - (ae-forgotten-export) The symbol "Case" needs to be exported by the entry point index.d.ts
 
 // (No @packageDocumentation comment for this package)

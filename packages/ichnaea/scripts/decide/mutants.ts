@@ -190,9 +190,9 @@ export const MUTANTS: readonly Mutant[] = [
     projects: ["core", "decide"],
   },
   {
-    id: "one trial: the planner ignores the coin",
+    id: "the planner ignores the coin",
     file: "src/core/planner.ts",
-    from: "          ? (await candidateRunsFirst(seed, c.id))",
+    from: "        ? candidateRunsFirst(seed, c.id, replicate)",
     to: "          ? false",
     projects: CORE,
   },

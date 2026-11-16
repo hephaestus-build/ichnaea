@@ -284,7 +284,7 @@ async function oneTrialRecords(
       const rc = rank.get(candidate);
       // A pair without both trials on record is missing a trial already.
       if (rb === undefined || rc === undefined) continue;
-      const [first, second] = (await candidateRunsFirst(plan.seed, id))
+      const [first, second] = candidateRunsFirst(plan.seed, id, 0)
         ? [candidate, base]
         : [base, candidate];
       if (startOf(second) < startOf(first) || Math.abs(rb - rc) > 2 * c - 1) unpaired.add(id);

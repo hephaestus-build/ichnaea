@@ -170,6 +170,15 @@ export const ArmName: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
 export type ArmName = z.infer<typeof ArmName>;
 
 // @public
+export function armNames(seed: {
+    readonly algorithm: string;
+    readonly value: string;
+}): {
+    readonly base: "a" | "b";
+    readonly candidate: "a" | "b";
+};
+
+// @public
 export function attribute<T extends z.ZodType>(schema: T): T;
 
 // @public
@@ -257,7 +266,7 @@ export type Calibration = z.infer<typeof Calibration>;
 export function candidateRunsFirst(seed: {
     readonly algorithm: string;
     readonly value: string;
-}, caseId: string): boolean;
+}, caseId: string, replicate?: number): boolean;
 
 // @public
 export function canonicalize(value: unknown): string;
