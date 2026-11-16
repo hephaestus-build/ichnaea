@@ -13,6 +13,8 @@ import {
   SCORE_PERMUTATION_RESAMPLES_NEAR_LEVEL,
   scorePermutationTest,
 } from "../src/index.ts";
+import * as stats from "../src/index.ts";
+import { scorePermutationCore } from "../src/score-permutation-core.ts";
 
 interface Table {
   id: string;
@@ -192,7 +194,7 @@ describe("score permutation test: the exact and the Monte Carlo path", () => {
         base: [900_001 + i, 800_003 + i],
       })),
     );
-    expect(scorePermutationTest(floor, { rng: createRng(5), resamples: 9 }).p).toBe(0.1);
+    expect(scorePermutationCore(floor, { rng: createRng(5), resamples: 9 }).p).toBe(0.1);
   });
 
   it("runs Monte Carlo when one case has more than 100,000 labellings", () => {
@@ -232,5 +234,34 @@ describe("score permutation test: the exact and the Monte Carlo path", () => {
     expect(near.seed).not.toBe(5);
     expect(near.monteCarloSE as number).toBeLessThan(plain.monteCarloSE as number);
     expect(near.statistic).toBe(plain.statistic);
+  });
+});
+
+describe("score permutation test: the public entry point", () => {
+  it("exports the test and its fixed resample counts, never the internal entry point", () => {
+    expect(Object.keys(stats).filter((n) => /^score_?permutation/i.test(n))).toEqual([
+      "SCORE_PERMUTATION_RESAMPLES",
+      "SCORE_PERMUTATION_RESAMPLES_NEAR_LEVEL",
+      "scorePermutationTest",
+    ]);
+  });
+
+  it("has no switch for the resample count or for Monte Carlo", () => {
+    const table = units(4, [
+      { candidate: [4, 3], base: [2, 3] },
+      { candidate: [4, 4], base: [1, 2] },
+    ]);
+    // Settings that only the internal entry point reads are ignored here.
+    const settings = { rng: createRng(5), resamples: 9, exact: false } as Parameters<
+      typeof scorePermutationTest
+    >[1];
+    expect(scorePermutationTest(table, settings).method).toBe("within-case-permutation-exact");
+    const off = units(1_000_000, [
+      { candidate: [123_457, 654_321], base: [500_001, 700_003] },
+      { candidate: [222_223, 311_111], base: [400_007, 300_001] },
+    ]);
+    expect(scorePermutationTest(off, { rng: createRng(5), resamples: 9 } as never).resamples).toBe(
+      SCORE_PERMUTATION_RESAMPLES,
+    );
   });
 });
