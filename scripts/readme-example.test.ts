@@ -4,10 +4,12 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  BUILD_SPEC,
   copiedSources,
   decides,
   importedPackages,
   missingFromInstall,
+  PACKAGE_NAME,
   readmeExample,
   readmeInstall,
   workspaceZod,
@@ -52,10 +54,12 @@ describe("the README's five-minute example", () => {
 describe("the README's install", () => {
   const install = readmeInstall(readme);
 
-  it("links the submodule's packages and adds zod and the packages that the example imports", () => {
-    expect(install.commands[0]).toBe("pnpm pkg set type=module");
-    expect(install.added).toEqual(["zod", "@hephaestus-build/ichnaea"]);
-    expect(install.workspace).toBe("packages:\n  - vendor/ichnaea/packages/*\n");
+  it("adds zod and a build commit of the package", () => {
+    expect(install.commands).toEqual([
+      "pnpm pkg set type=module",
+      `pnpm add zod@${workspaceZod()} '${BUILD_SPEC}'`,
+    ]);
+    expect(install.added).toEqual(["zod", PACKAGE_NAME]);
   });
 
   it("adds every package that the copied files of the example import", () => {
@@ -64,7 +68,7 @@ describe("the README's install", () => {
   });
 
   it("fails when its pnpm add leaves out a package that the example imports", () => {
-    const broken = readme.replace(` '@hephaestus-build/ichnaea@workspace:*'`, "");
+    const broken = readme.replace(` '${BUILD_SPEC}'`, "");
     expect(broken).not.toBe(readme);
     expect(missingFromInstall(broken, exampleFile)).toEqual([
       "ichnaea.config.ts imports @hephaestus-build/ichnaea, which the README's pnpm add leaves out",
@@ -77,9 +81,7 @@ describe("the README's install", () => {
     expect(importedPackages(source)).toEqual(["@scope/b", "c"]);
   });
 
-  it("quotes each workspace protocol, so that zsh does not read its * as a glob", () => {
-    const specifiers = install.commands.join(" ").match(/\S*@workspace:\*\S*/g) ?? [];
-    expect(specifiers).toHaveLength(1);
-    for (const specifier of specifiers) expect(specifier).toMatch(/^'.*'$/);
+  it("quotes the build commit's specifier, so that a shell does not read its # or < > as syntax", () => {
+    expect(install.commands.join(" ")).toContain(`'${BUILD_SPEC}'`);
   });
 });

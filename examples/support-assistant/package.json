@@ -4,7 +4,7 @@
   "description": "A synthetic support assistant evaluated with Ichnaea in import mode.",
   "type": "module",
   "scripts": {
-    "generate": "node scripts/generate.ts"
+    "generate": "node --conditions=ichnaea-source scripts/generate.ts"
   },
   "dependencies": {
     "@hephaestus-build/ichnaea": "workspace:*"

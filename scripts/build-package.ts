@@ -153,6 +153,30 @@ export function treeDigest(files: readonly TreeFile[]): string {
   return hash.digest("hex");
 }
 
+/**
+ * Every difference between an expected tree and an actual one, in path order: a path that only one
+ * holds, other bytes, or another mode. The first entry names the first differing path.
+ */
+export function treeDifferences(
+  expected: readonly TreeFile[],
+  actual: readonly TreeFile[],
+): string[] {
+  const want = new Map(expected.map((f) => [f.path, f]));
+  const have = new Map(actual.map((f) => [f.path, f]));
+  const paths = [...new Set([...want.keys(), ...have.keys()])].toSorted((a, b) =>
+    a < b ? -1 : a > b ? 1 : 0,
+  );
+  return paths.flatMap((path) => {
+    const w = want.get(path);
+    const h = have.get(path);
+    if (!w) return [`${path}: only in the rebuilt tree`];
+    if (!h) return [`${path}: missing from the rebuilt tree`];
+    if (!w.bytes.equals(h.bytes)) return [`${path}: the bytes differ`];
+    if (w.mode !== h.mode) return [`${path}: mode ${h.mode}, expected ${w.mode}`];
+    return [];
+  });
+}
+
 /** The tracked and untracked, not ignored files under a directory of the repository. */
 function workingTreeFiles(dir: string): string[] {
   return execFileSync(
