@@ -4,7 +4,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   CARD_LABELS,
+  CONTEXT_SLOTS,
   REASON_CODES,
+  REASON_PARAMS,
   REASONS,
   reasonFor,
   type ReasonCode,
@@ -14,60 +16,6 @@ const entries = REASON_CODES.map((code) => [code, REASONS[code]] as const);
 const texts = entries.flatMap(([code, r]) => [
   ...r.sentences.map((s) => ({ code, key: s.key, text: s.text })),
   ...(r.action === undefined ? [] : [{ code, key: "action", text: r.action }]),
-]);
-
-/** The slots a template may use; `report` fills each from the decision or the suite. */
-const SLOTS = new Set([
-  "add",
-  "arm",
-  "available",
-  "boundCases",
-  "bound",
-  "broke",
-  "calls",
-  "caseNoun",
-  "cases",
-  "change",
-  "changed",
-  "check",
-  "checked",
-  "classes",
-  "count",
-  "covered",
-  "detail",
-  "expiresAt",
-  "factors",
-  "failures",
-  "fix",
-  "fixed",
-  "floor",
-  "gap",
-  "high",
-  "hours",
-  "imputed",
-  "imputedP",
-  "limit",
-  "limitation",
-  "low",
-  "m",
-  "margin",
-  "measure",
-  "median",
-  "minimum",
-  "missing",
-  "model",
-  "observed",
-  "p",
-  "planned",
-  "probes",
-  "rater",
-  "rawP",
-  "share",
-  "shownBound",
-  "test",
-  "tolerance",
-  "trials",
-  "humanHuman",
 ]);
 
 /** Words the card never uses, with the rule each breaks. */
@@ -167,10 +115,26 @@ describe("REASONS", () => {
       expect(new Set(r.sentences.map((s) => s.key)).size, code).toBe(r.sentences.length);
   });
 
-  it("uses only known slots", () => {
-    for (const { code, key, text } of texts)
-      for (const [, slot] of text.matchAll(/\{([^}]*)\}/g))
-        expect(SLOTS, `${code}/${key}: {${slot}}`).toContain(slot);
+  it("fills every slot from the context or from the reason's own parameters, and uses every parameter", () => {
+    const context = new Set<string>(CONTEXT_SLOTS);
+    for (const [code] of entries) {
+      const params = new Set<string>(REASON_PARAMS[code]);
+      const slots = new Set(
+        texts
+          .filter((t) => t.code === code)
+          .flatMap((t) => [...t.text.matchAll(/\{([^}]*)\}/g)].map((m) => m[1] as string)),
+      );
+      for (const slot of slots)
+        expect(context.has(slot) || params.has(slot), `${code}: {${slot}} has no source`).toBe(
+          true,
+        );
+      for (const param of params) {
+        expect(slots, `${code}: parameter ${param} is never shown`).toContain(param);
+        expect(context.has(param), `${code}: parameter ${param} shadows a context slot`).toBe(
+          false,
+        );
+      }
+    }
   });
 
   it.each(BANNED)("keeps the card rule %s", (pattern, rule) => {
