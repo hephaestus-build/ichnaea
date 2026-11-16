@@ -41,6 +41,23 @@ const crossed = (s: Awaited<ReturnType<typeof scenario>>, c: number) => timed(s,
 // [A1, B1, B2, C1, C2, D1, A2, D2, ...]: case A is 6 ranks apart and case D 2.
 const far = (s: Awaited<ReturnType<typeof scenario>>, c: number) => timed(s, c, moved(s, 1, 6));
 
+// A sequential runner: each trial ends exactly when the next starts. Half-open [start, end) intervals do not
+// overlap there; closed ones would count 2 and loosen the rank rule to 3 ranks.
+const touching = (s: Awaited<ReturnType<typeof scenario>>) => {
+  const t = crossed(s, 1);
+  return {
+    ...t,
+    trials: t.trials.map((trial) =>
+      trial.startedAt === undefined
+        ? trial
+        : {
+            ...trial,
+            endedAt: new Date(Date.parse(trial.startedAt) + 1000).toISOString(),
+          },
+    ),
+  };
+};
+
 const limitations = async (
   evidence: readonly AaEvidence[],
   given: readonly AaEvidence[] = evidence,
@@ -140,6 +157,13 @@ describe("adjacency by start rank, at the concurrency the records show", async (
     expect(d.measures[0]?.coverage).toBe(0.9);
     const both = await decideOne(aa, {}, (s) => far(s, 1));
     expect(notes(both)).toContain("2 case(s) lost their pair");
+  });
+
+  it("reads a sequential runner whose trials touch end to start as concurrency 1", async () => {
+    const d = await decideOne(aa, {}, touching);
+    expect(notes(d)).toContain(
+      "2 case(s) lost their pair: their trials ran against the planned order or more than 1 start rank(s) apart (concurrency 1 in the records), so they count as missing",
+    );
   });
 
   it("at concurrency 3, computed from the overlaps, pairs up to 5 ranks apart hold", async () => {
