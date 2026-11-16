@@ -785,7 +785,14 @@ describe("planner (REQ-16, REQ-19, REQ-27, REQ-33, REQ-49, decision 0008)", asyn
     expect(await reasonsOf({ suite: { ...s.suite, primary: [] } })).toEqual([
       "the suite declares no primary measure",
     ]);
-    expect(await reasonsOf({ suite: { ...s.suite, replicates: 1 } })).toEqual([
+    // One trial per case and arm decides binary measures only (test/core/one-trial-plan.test.ts).
+    expect(
+      await reasonsOf({
+        suite: { ...s.suite, replicates: 1 },
+        measures: new Map([["app/correct", card("app/correct", "proportion")]]),
+      }),
+    ).toEqual([
+      "primary measure 'app/correct' has proportion values, which no validated method decides yet (decision 0008)",
       "one trial per case and arm is outside the validated domain",
     ]);
     const few = await scenario({ cases: 4, replicates: 2, base: () => 1, candidate: () => 1 });

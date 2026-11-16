@@ -1,4 +1,5 @@
 export {
+  type AaEvidence,
   type DecideInput,
   decide,
   decidePrimaries,

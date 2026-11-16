@@ -7,6 +7,12 @@
 import * as z from 'zod';
 
 // @public
+export const AaCitation: z.ZodObject<{
+    run: z.core.$ZodBranded<z.ZodString, "RunId", "out">;
+    digest: z.ZodString;
+}, z.core.$strict>;
+
+// @public
 export const Agreement: z.ZodObject<{
     statistic: z.ZodEnum<{
         "cohen-kappa": "cohen-kappa";
@@ -246,6 +252,12 @@ export const Calibration: z.ZodObject<{
 
 // @public
 export type Calibration = z.infer<typeof Calibration>;
+
+// @public
+export function candidateRunsFirst(seed: {
+    readonly algorithm: string;
+    readonly value: string;
+}, caseId: string): Promise<boolean>;
 
 // @public
 export function canonicalize(value: unknown): string;
@@ -2330,6 +2342,16 @@ export const Plan: z.ZodObject<{
         replicate: z.ZodInt;
         batch: z.ZodInt;
     }, z.core.$strict>>;
+    schedule: z.ZodOptional<z.ZodObject<{
+        concurrency: z.ZodInt;
+        endpoint: z.ZodString;
+    }, z.core.$strict>>;
+    aa: z.ZodOptional<z.ZodObject<{
+        decisions: z.ZodArray<z.ZodObject<{
+            run: z.core.$ZodBranded<z.ZodString, "RunId", "out">;
+            digest: z.ZodString;
+        }, z.core.$strict>>;
+    }, z.core.$strict>>;
     seed: z.ZodObject<{
         algorithm: z.ZodString;
         value: z.ZodString;
@@ -2682,6 +2704,12 @@ export const RunId: z.core.$ZodBranded<z.ZodString, "RunId", "out">;
 
 // @public
 export type RunId = z.infer<typeof RunId>;
+
+// @public
+export const Schedule: z.ZodObject<{
+    concurrency: z.ZodInt;
+    endpoint: z.ZodString;
+}, z.core.$strict>;
 
 // @public
 export function schemaUri(contract: RecordContract, variant?: "writer" | "reader"): string;

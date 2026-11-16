@@ -54,6 +54,7 @@ export interface ComparisonInput {
     readonly cases: readonly CaseCounts[];
     readonly estimand: Estimand;
     readonly margin: number;
+    readonly oneTrial?: OneTrialChecks;
     readonly rng?: Rng;
     readonly valueType: ValueType;
 }
@@ -131,6 +132,18 @@ export interface Interval {
 
 // @public
 export const MARGIN_FLOOR_NOT_SET = "the validated margin floor is not set yet";
+
+// @public
+export const NON_INFERIORITY_AT_ONE_TRIAL = "non-inferiority is not validated at one trial per case";
+
+// @public
+export const ONE_TRIAL_NEEDS_CHECKS = "one trial per case needs decide's checks of the trial order, the timestamps and the A/A runs";
+
+// @public
+export interface OneTrialChecks {
+    readonly checksPassed: boolean;
+    readonly limitations: readonly string[];
+}
 
 // @public
 export interface PairedTable {
