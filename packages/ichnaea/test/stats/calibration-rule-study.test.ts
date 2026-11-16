@@ -4,7 +4,6 @@ import {
   ARM_BIAS_MARGIN,
   CONDITIONS,
   calibrationRule,
-  weightedAc1,
 } from "../../scripts/stats/calibration-rule.ts";
 import {
   CELLS,
@@ -16,6 +15,7 @@ import {
   type CalibrationRule,
 } from "../../scripts/stats/calibration-rule-study.ts";
 import { COLUMNS, row, seedOf } from "../../scripts/stats/study-calibration-rule.ts";
+import { weightedAc1 } from "../../src/calibration/statistics.ts";
 import { createRng, gwetAc1 } from "../../src/stats/index.ts";
 
 // A smoke run: 50 studies per cell and 200 resamples per study. The published study runs 2,000 and
