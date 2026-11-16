@@ -23,7 +23,7 @@ export type ModuleLoader = (url: string) => Promise<unknown>;
 const importModule: ModuleLoader = (url) => import(url);
 
 /** The Node that Ichnaea needs: it runs the `.ts` sources and configuration with type stripping. */
-const NODE_WITHOUT_FLAG = "24";
+const NODE_WITHOUT_FLAG = "24.2";
 
 /** Loads `ichnaea.config.ts` (or another file) and returns its default export. */
 export async function loadConfig(path: string, load: ModuleLoader = importModule): Promise<Config> {

@@ -15,7 +15,9 @@ The procedure below is the paused design.
 
 Before 1.0, a release is a pre-release `v0.<minor>.<patch>`: tarballs on a GitHub release, with
 build provenance and an SBOM attested by the release workflow. Nothing is published to npm.
-[Decision 0013](docs/decisions/0013-release-attested-tarballs.md) gives the reasons.
+[Decision 0013](docs/decisions/0013-release-attested-tarballs.md) gives the reasons for this paused
+design, and [decision 0018](docs/decisions/0018-pinned-source-distribution.md) why consumers pin a
+source commit instead.
 
 ### Set up once
 

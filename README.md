@@ -44,7 +44,7 @@ Inspect's log format) instead of building its own store, dashboard or labelling 
 | `@hephaestus-build/ichnaea-testkit`   | Conformance kits                                                                                                                        | planned   |
 
 All packages have the same version. They ship their TypeScript sources, with no build step, and need
-Node 24 or later, which runs TypeScript with its type stripping. zod 4 (4.6 or later) is a peer
+Node 24.2 or later, which runs TypeScript with its type stripping. zod 4 (4.6 or later) is a peer
 dependency.
 
 ## Use Ichnaea from a TypeScript project
@@ -87,7 +87,7 @@ pnpm add -w zod@4.6.7 \
   '@hephaestus-build/ichnaea-report@workspace:*'
 ```
 
-zod at the root is the one copy that every Ichnaea package uses. Run the CLI with Node 24 or later:
+zod at the root is the one copy that every Ichnaea package uses. Run the CLI with Node 24.2 or later:
 `pnpm exec ichnaea <command>` runs `node vendor/ichnaea/packages/core/src/bin.ts <command>`.
 
 ### Update the pin
@@ -169,7 +169,7 @@ language. An application in any language can write records that validate against
 
 ## Develop
 
-Developing Ichnaea needs Node 24 or later and pnpm. There is no build: tests, the CLI and the
+Developing Ichnaea needs Node 24.2 or later and pnpm. There is no build: tests, the CLI and the
 scripts run the TypeScript sources.
 
 ```sh

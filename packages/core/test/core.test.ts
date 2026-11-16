@@ -537,7 +537,7 @@ describe("CLI (REQ-26, REQ-114)", () => {
     expect(await main(["doctor", "--config", ts], (t) => out.push(t), unknownExtension)).toBe(2);
     expect(out).toHaveLength(1);
     expect(out[0]).toMatch(/^configuration error: .*ichnaea\.config\.ts is TypeScript/);
-    expect(out[0]).toContain("Ichnaea needs Node 24 or later");
+    expect(out[0]).toContain("Ichnaea needs Node 24.2 or later");
     // Another failure of the loader, or the same code on a file that is not TypeScript, is not rewritten.
     out.length = 0;
     expect(await main(["doctor", "--config", ts], (t) => out.push(t), failing)).toBe(2);
