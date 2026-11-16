@@ -18,6 +18,7 @@ export * from "./records/plan.js";
 export * from "./records/run.js";
 export * from "./records/suite.js";
 export * from "./records/trial.js";
+export * from "./records/worker.js";
 export * from "./registry.js";
 export * from "./target-view.js";
 export * from "./values.js";

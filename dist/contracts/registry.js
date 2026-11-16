@@ -8,6 +8,7 @@ import { Plan } from "./records/plan.js";
 import { Run } from "./records/run.js";
 import { Suite } from "./records/suite.js";
 import { Trial } from "./records/trial.js";
+import { TrialRequest, TrialResult, WorkerError } from "./records/worker.js";
 /** Every record contract, by name. The generated JSON Schema files follow this list. */
 export const RECORD_CONTRACTS = [
     {
@@ -51,6 +52,27 @@ export const RECORD_CONTRACTS = [
         schema: Trial,
         stability: "alpha",
         description: "The normalised evidence of one trial.",
+    },
+    {
+        name: "trialRequest",
+        id: "ichnaea.trialRequest/1",
+        schema: TrialRequest,
+        stability: "alpha",
+        description: "What Ichnaea sends a worker for one trial: the case input, never its references.",
+    },
+    {
+        name: "trialResult",
+        id: "ichnaea.trialResult/1",
+        schema: TrialResult,
+        stability: "alpha",
+        description: "What a worker answers for one trial: the raw output, the calls and the configuration it ran.",
+    },
+    {
+        name: "workerError",
+        id: "ichnaea.workerError/1",
+        schema: WorkerError,
+        stability: "alpha",
+        description: "What a worker writes for a request line it cannot read: an error with no trial.",
     },
     {
         name: "run",
