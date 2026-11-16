@@ -21,9 +21,9 @@ on:
         type: string
         default: "40"
       max_parallel:
-        description: "Jobs of one matrix at once, at most 30 (the organisation shares 60, and other repositories keep 30 or more)"
+        description: "Jobs of one matrix at once, at most 14 (Ichnaea keeps within 20 runners of the shared pool, its pull request CI included)"
         type: string
-        default: "20"
+        default: "12"
       pilot:
         description: "Screen shard indices for a pilot, comma-separated (stops before select); empty runs the study"
         type: string
@@ -32,9 +32,12 @@ on:
 permissions:
   contents: read
 
-# A second dispatch of one study waits for the running one and never cancels it.
+# Ichnaea's heavy workflows, every study and the confirmation sweep, share one concurrency group,
+# so at most one of them runs at a time: Ichnaea keeps within 20 runners of the organisation's
+# shared pool, with its own pull request CI included. A second dispatch waits for the running one
+# and never cancels it. (A third one replaces the second while it waits.)
 concurrency:
-  group: stats-study-${{ inputs.study }}
+  group: heavy-runners
   cancel-in-progress: false
 
 # One runtime for every shard of a study (REQ-83): the same runner image label, x64 Linux, and the

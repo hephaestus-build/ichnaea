@@ -92,18 +92,18 @@ describe("the plan of a study", () => {
     expect(() => prepare("score", "/nonexistent")).toThrow(/unknown study/);
   });
 
-  it("runs 20 jobs of a matrix at once by default and refuses more than 30", () => {
-    expect([DEFAULT_MAX_PARALLEL, MAX_PARALLEL_CAP]).toEqual([20, 30]);
-    expect(maxParallelOf(undefined)).toBe(20);
-    expect(maxParallelOf("")).toBe(20);
-    expect(maxParallelOf("30")).toBe(30);
-    for (const bad of ["31", "0", "2.5", "all"])
+  it("runs 12 jobs of a matrix at once by default and refuses more than 14", () => {
+    expect([DEFAULT_MAX_PARALLEL, MAX_PARALLEL_CAP]).toEqual([12, 14]);
+    expect(maxParallelOf(undefined)).toBe(12);
+    expect(maxParallelOf("")).toBe(12);
+    expect(maxParallelOf("14")).toBe(14);
+    for (const bad of ["15", "20", "0", "2.5", "all"])
       expect(() => maxParallelOf(bad)).toThrow(
-        /from 1 to 30, so that other repositories keep runners/,
+        /from 1 to 14, so that Ichnaea keeps within 20 runners of the shared pool/,
       );
-    expect(plan({ study: "score-ni", jobs: 40, secondJobs: 40, pilot: [] }).maxParallel).toBe(20);
+    expect(plan({ study: "score-ni", jobs: 40, secondJobs: 40, pilot: [] }).maxParallel).toBe(12);
     expect(
-      plan({ study: "score-ni", jobs: 40, secondJobs: 40, pilot: [], maxParallel: 12 }).maxParallel,
-    ).toBe(12);
+      plan({ study: "score-ni", jobs: 40, secondJobs: 40, pilot: [], maxParallel: 8 }).maxParallel,
+    ).toBe(8);
   });
 });
