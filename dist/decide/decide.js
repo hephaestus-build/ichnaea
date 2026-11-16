@@ -93,8 +93,9 @@ function oneTrialPlan(plan) {
     return (cases.size > 0 && cells.size === 2 * cases.size && [...cells.values()].every((n) => n === 1));
 }
 /**
- * The largest number of trials whose closed [startedAt, endedAt] intervals overlap. A start sorts
- * before an end at the same time, so a trial that starts as another ends overlaps it.
+ * The largest number of trials whose half-open [startedAt, endedAt) intervals overlap. An end sorts
+ * before a start at the same time, so a trial that starts as another ends does not overlap it: a
+ * sequential runner reads as concurrency 1. Closed intervals would raise c and loosen the rank rule.
  */
 function concurrencyOf(intervals) {
     const events = [...intervals]
@@ -102,7 +103,7 @@ function concurrencyOf(intervals) {
         { at: i.start, step: 1 },
         { at: i.end, step: -1 },
     ])
-        .toSorted((a, b) => a.at - b.at || b.step - a.step);
+        .toSorted((a, b) => a.at - b.at || a.step - b.step);
     let open = 0;
     let most = 0;
     for (const e of events) {
