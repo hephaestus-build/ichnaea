@@ -7,5 +7,5 @@
 ## Verification
 
 - [ ] `pnpm check` passes
-- [ ] A changeset describes the change for package users (or none is needed)
+- [ ] The title says what changes for the package's users: the titles on `main` are the change log
 - [ ] No application special case, personal data, production content or secret

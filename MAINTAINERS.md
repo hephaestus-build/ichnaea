@@ -26,8 +26,9 @@ the `release` environment, its deploy key, the tag rulesets and immutable releas
 
 ### Cut a release
 
-1. On a branch, run `pnpm changeset version`. Every package moves to the same version. Open a pull
-   request with the result and merge it into `main`.
+1. On a branch, set the new version in `packages/ichnaea/package.json`. Open a pull request and
+   merge it into `main`. The conventional commit titles on `main` since the last release are its
+   change log.
 2. Start the release on `main` with the new version:
 
    ```sh

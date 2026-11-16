@@ -20,10 +20,12 @@ Thank you for helping. Ichnaea is a general framework: it must work for any GenA
 1. Open an issue first for anything larger than a fix.
 2. Branch from `main`. Use [Conventional Commits](https://www.conventionalcommits.org/) with a scope
    from `commitlint.config.ts`, for example `feat(contracts): case sets record their pools`.
-3. Run `pnpm check` before you push.
-4. Add a changeset (`pnpm changeset`) for every change to a published package, written for its users.
-5. Open a pull request. Its title and body become the squash commit on `main`, so the title
-   follows the same commit rule; the `pull request text` check lints it. CI must be green and a maintainer must
+3. Run `pnpm check` before you push. A change to the package also runs
+   `node scripts/build-consumer.ts`, which builds it, installs the build and runs the README's
+   example.
+4. Open a pull request. Its title and body become the squash commit on `main`, so the title
+   follows the same commit rule; the `pull request text` check lints it. The titles on `main` are
+   the change log: write the title for the package's users. CI must be green and a maintainer must
    approve it.
 
 ## Signed commits

@@ -18,11 +18,10 @@
     "generate": "pnpm -r --filter './packages/*' run generate",
     "check": "pnpm run format:check && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run check:generated",
     "check:generated": "pnpm run generate && git status --porcelain -- packages && test -z \"$(git status --porcelain -- packages/*/schemas packages/*/fixtures)\"",
-    "changeset": "changeset",
-    "check:api": "pnpm -r --filter './packages/*' --if-present run check:api"
+    "check:api": "pnpm -r --filter './packages/*' --if-present run check:api",
+    "build": "pnpm --filter @hephaestus-build/ichnaea build"
   },
   "devDependencies": {
-    "@changesets/cli": "3.0.3",
     "@commitlint/cli": "21.2.4",
     "@commitlint/config-conventional": "21.2.4",
     "@microsoft/api-extractor": "7.60.1",
