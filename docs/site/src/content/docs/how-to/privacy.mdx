@@ -8,9 +8,15 @@ sidebar:
 import { Code } from "@astrojs/starlight/components";
 import exportCase from "../../../../examples/privacy/export-case.ts?raw";
 
-Ichnaea runs in your CI or on your machine. It listens on no port and sends nothing itself.
-It labels every field of every record with a data class.
-Your runner calls your system and your model judge. Ichnaea only reads and writes files.
+Ichnaea runs in your CI or on your machine. It:
+
+- listens on no port
+- makes no network call of its own
+- writes only where you tell it
+- labels every field with a data class
+- does not enforce where data goes
+
+Your runner calls your system and your model judge. Ichnaea reads and writes files.
 
 ## Where your data is written
 
