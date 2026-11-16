@@ -1,0 +1,36 @@
+{
+  "schema": "ichnaea.scoreResult/1",
+  "dataClass": "none",
+  "values": [
+    {
+      "trial": "refund-window-de/b/r0",
+      "measure": "correct",
+      "status": "ok",
+      "why": "States the 30-day window from the policy.",
+      "observed": {
+        "model": "example-judge-2026-10",
+        "responseIds": [
+          "resp_j1"
+        ]
+      }
+    },
+    {
+      "trial": "refund-window-de/b/r0",
+      "measure": "complete",
+      "status": "ok",
+      "value": 0.5,
+      "observed": {
+        "model": "example-judge-2026-10",
+        "responseIds": [
+          "resp_j2"
+        ]
+      }
+    },
+    {
+      "trial": "refund-window-de/a/r0",
+      "measure": "complete",
+      "status": "not_applicable",
+      "why": "The case asks one question."
+    }
+  ]
+}

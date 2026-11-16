@@ -16,6 +16,7 @@ export * from "./records/measure.ts";
 export * from "./records/monitor.ts";
 export * from "./records/plan.ts";
 export * from "./records/run.ts";
+export * from "./records/scorer.ts";
 export * from "./records/suite.ts";
 export * from "./records/trial.ts";
 export * from "./records/worker.ts";

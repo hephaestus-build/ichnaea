@@ -314,6 +314,60 @@ export const VALID: Record<string, Record<string, unknown>> = {
       attempt: 2,
     },
   },
+  scoreRequest: {
+    schema: "ichnaea.scoreRequest/1",
+    dataClass: "none",
+    instrument: "quality-judge",
+    deadline: "PT120S",
+    settings: { judge: { model: "example-judge-2026-10", temperature: 0 } },
+    measures: [
+      { id: "correct", dimension: "correctness" },
+      { id: "complete", dimension: "completeness" },
+    ],
+    case: {
+      id: "refund-window-de",
+      input: { question: "Kann ich nach 40 Tagen noch zurückgeben?" },
+      references: { facts: [{ text: "Return window is 30 days", polarity: "positive" }] },
+    },
+    scratch: "/tmp/ichnaea/run-2026-11-15-a/score-0001",
+    units: [
+      {
+        trial: "refund-window-de/b/r0",
+        output: { text: "Nein, die Frist beträgt 30 Tage.", sources: ["policy.md"] },
+        artifacts: [
+          { name: "exercise", path: "/tmp/ichnaea/run-2026-11-15-a/score-0001/exercise" },
+        ],
+        events: [{ stage: "answer", iteration: 0, ran: true, stop: { reason: "end_turn" } }],
+      },
+    ],
+  },
+  scoreResult: {
+    schema: "ichnaea.scoreResult/1",
+    dataClass: "none",
+    values: [
+      {
+        trial: "refund-window-de/b/r0",
+        measure: "correct",
+        status: "ok",
+        value: true,
+        why: "States the 30-day window from the policy.",
+        observed: { model: "example-judge-2026-10", responseIds: ["resp_j1"] },
+      },
+      {
+        trial: "refund-window-de/b/r0",
+        measure: "complete",
+        status: "ok",
+        value: 0.5,
+        observed: { model: "example-judge-2026-10", responseIds: ["resp_j2"] },
+      },
+      {
+        trial: "refund-window-de/a/r0",
+        measure: "complete",
+        status: "not_applicable",
+        why: "The case asks one question.",
+      },
+    ],
+  },
   run: {
     schema: "ichnaea.run/1",
     id: "run-2026-11-15-a",
@@ -733,6 +787,47 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
     "missing-trial": (r) => delete r["trial"],
     "trial-as-id": (r) => (r["trial"] = "refund-window-de/a/r1"),
   },
+  scoreRequest: {
+    "missing-deadline": (r) => delete r["deadline"],
+    "missing-scratch": (r) => delete r["scratch"],
+    "no-units": (r) => (r["units"] = []),
+    "no-measures": (r) => (r["measures"] = []),
+    "unit-without-trial": (r) => delete (r["units"] as Array<Record<string, unknown>>)[0]!["trial"],
+    "artifact-without-path": (r) =>
+      ((r["units"] as Array<Record<string, unknown>>)[0]!["artifacts"] = [{ name: "exercise" }]),
+    "references-not-an-object": (r) =>
+      ((r["case"] as Record<string, unknown>)["references"] = "30 days"),
+    "deadline-in-minutes": (r) => (r["deadline"] = "PT2M"),
+  },
+  scoreResult: {
+    "no-values": (r) => (r["values"] = []),
+    "ok-without-value": (r) => delete (r["values"] as Array<Record<string, unknown>>)[0]!["value"],
+    "non-finite-score": (r) =>
+      ((r["values"] as Array<Record<string, unknown>>)[1]!["value"] = { nonFinite: "nan" }),
+    "error-without-failure": (r) =>
+      ((r["values"] as Array<Record<string, unknown>>)[0] = {
+        trial: "t-1",
+        measure: "correct",
+        status: "error",
+      }),
+    "missing-without-reason": (r) =>
+      ((r["values"] as Array<Record<string, unknown>>)[0] = {
+        trial: "t-1",
+        measure: "correct",
+        status: "missing",
+      }),
+    "proportion-without-items": (r) =>
+      ((r["values"] as Array<Record<string, unknown>>)[1]!["value"] = {
+        numerator: 0,
+        denominator: 0,
+      }),
+    "observed-without-response-ids": (r) =>
+      ((r["values"] as Array<Record<string, unknown>>)[0]!["observed"] = {
+        model: "example-judge-2026-10",
+      }),
+    "value-without-measure": (r) =>
+      delete (r["values"] as Array<Record<string, unknown>>)[0]!["measure"],
+  },
   run: {
     "missing-ledger": (r) => delete r["ledger"],
     "missing-lineage": (r) => delete r["lineage"],
@@ -969,6 +1064,64 @@ export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
     "throttled-heartbeat": (r) =>
       (r["throttled"] = { count: 1, ms: 1200, firstAcceptedAt: "2026-11-15T10:01:01.300Z" }),
   },
+  scoreRequest: {
+    // A deterministic scorer has no settings, and a trial may deliver only its output.
+    "without-settings-or-artifacts": (r) => {
+      delete r["settings"];
+      const unit = (r["units"] as Array<Record<string, unknown>>)[0]!;
+      delete unit["artifacts"];
+      delete unit["events"];
+    },
+  },
+  scoreResult: {
+    "judge-reply-unparsable": (r) =>
+      (r["values"] = [
+        {
+          trial: "refund-window-de/b/r0",
+          measure: "correct",
+          status: "missing",
+          reason: "JUDGE_REPLY_UNPARSABLE",
+          observed: { model: "example-judge-2026-10", responseIds: ["resp_j3"] },
+        },
+      ]),
+    // The request's unit identities parse but its body does not: each unit is echoed.
+    "bad-request": (r) =>
+      (r["values"] = ["correct", "complete"].map((measure) => ({
+        trial: "refund-window-de/b/r0",
+        measure,
+        status: "error",
+        failure: { class: "protocol", kind: "bad-request" },
+      }))),
+    "judge-endpoint-down": (r) =>
+      (r["values"] = [
+        {
+          trial: "refund-window-de/b/r0",
+          measure: "correct",
+          status: "error",
+          failure: {
+            class: "infrastructure",
+            kind: "timeout",
+            message: "judge endpoint timed out",
+          },
+        },
+      ]),
+    "level-and-proportion": (r) => {
+      const values = r["values"] as Array<Record<string, unknown>>;
+      values[0]!["value"] = "mostly-correct";
+      values[1]!["value"] = { numerator: 3, denominator: 4 };
+    },
+    // A hanging test run inside the deadline is a measured failure, not an error.
+    "tests-timed-out": (r) =>
+      (r["values"] = [
+        {
+          trial: "refund-window-de/b/r0",
+          measure: "tests-pass",
+          status: "ok",
+          value: false,
+          why: "tests timed out",
+        },
+      ]),
+  },
   label: { "rater-cannot-tell": (r) => (r["value"] = { type: "unknown" }) },
   configuration: {
     "model-version-route-and-informational": (r) => {
@@ -1056,6 +1209,38 @@ export const READER_ONLY: Record<string, Record<string, Mutation>> = {
     // A worker never guesses which trial an unreadable line was for: a writer refuses a trial
     // identity, and a reader ignores one as an unknown member.
     "guessed-trial": (r) => (r["trial"] = structuredClone(VALID["trialResult"]!["trial"])),
+  },
+  scoreRequest: {
+    // A worker never receives references; a scorer may get a member a later minor version adds.
+    "future-unit-member": (r) =>
+      ((r["units"] as Array<Record<string, unknown>>)[0]!["turns"] = [{ role: "user" }]),
+  },
+  scoreResult: {
+    // A value on an entry that is not ok is an unknown member: a writer refuses it, and a reader
+    // ignores it, because the status alone says that there is no value.
+    "not-applicable-with-value": (r) =>
+      ((r["values"] as Array<Record<string, unknown>>)[2]!["value"] = false),
+    "missing-with-value": (r) =>
+      ((r["values"] as Array<Record<string, unknown>>)[0] = {
+        trial: "t-1",
+        measure: "correct",
+        status: "missing",
+        reason: "X",
+        value: 0,
+      }),
+    "future-status": (r) =>
+      (r["values"] = [
+        { trial: "refund-window-de/b/r0", measure: "correct", status: "deferred", until: "later" },
+      ]),
+    "future-error-class": (r) =>
+      (r["values"] = [
+        {
+          trial: "refund-window-de/b/r0",
+          measure: "correct",
+          status: "error",
+          failure: { class: "quota", kind: "judge-quota" },
+        },
+      ]),
   },
   run: {
     "future-ledger-state": (r) =>

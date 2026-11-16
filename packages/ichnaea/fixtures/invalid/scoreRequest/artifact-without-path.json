@@ -1,0 +1,63 @@
+{
+  "schema": "ichnaea.scoreRequest/1",
+  "dataClass": "none",
+  "instrument": "quality-judge",
+  "deadline": "PT120S",
+  "settings": {
+    "judge": {
+      "model": "example-judge-2026-10",
+      "temperature": 0
+    }
+  },
+  "measures": [
+    {
+      "id": "correct",
+      "dimension": "correctness"
+    },
+    {
+      "id": "complete",
+      "dimension": "completeness"
+    }
+  ],
+  "case": {
+    "id": "refund-window-de",
+    "input": {
+      "question": "Kann ich nach 40 Tagen noch zurückgeben?"
+    },
+    "references": {
+      "facts": [
+        {
+          "text": "Return window is 30 days",
+          "polarity": "positive"
+        }
+      ]
+    }
+  },
+  "scratch": "/tmp/ichnaea/run-2026-11-15-a/score-0001",
+  "units": [
+    {
+      "trial": "refund-window-de/b/r0",
+      "output": {
+        "text": "Nein, die Frist beträgt 30 Tage.",
+        "sources": [
+          "policy.md"
+        ]
+      },
+      "artifacts": [
+        {
+          "name": "exercise"
+        }
+      ],
+      "events": [
+        {
+          "stage": "answer",
+          "iteration": 0,
+          "ran": true,
+          "stop": {
+            "reason": "end_turn"
+          }
+        }
+      ]
+    }
+  ]
+}

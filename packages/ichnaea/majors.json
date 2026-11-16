@@ -37,6 +37,12 @@
     "cancel": {
       "1": null
     },
+    "scoreRequest": {
+      "1": null
+    },
+    "scoreResult": {
+      "1": null
+    },
     "run": {
       "1": null
     },

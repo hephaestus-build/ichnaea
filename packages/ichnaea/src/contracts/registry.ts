@@ -8,6 +8,7 @@ import { MeasureCard, MeasureValue } from "./records/measure.ts";
 import { Finding, Monitor } from "./records/monitor.ts";
 import { Plan } from "./records/plan.ts";
 import { Run } from "./records/run.ts";
+import { ScoreRequest, ScoreResult } from "./records/scorer.ts";
 import { Suite } from "./records/suite.ts";
 import { Trial } from "./records/trial.ts";
 import {
@@ -125,6 +126,20 @@ export const RECORD_CONTRACTS: readonly RecordContract[] = [
     schema: Cancel,
     stability: "alpha",
     description: "What Ichnaea sends to stop one trial in flight.",
+  },
+  {
+    name: "scoreRequest",
+    id: "ichnaea.scoreRequest/1",
+    schema: ScoreRequest,
+    stability: "alpha",
+    description: "What Ichnaea sends a scorer: a case with its references and the trials to score.",
+  },
+  {
+    name: "scoreResult",
+    id: "ichnaea.scoreResult/1",
+    schema: ScoreResult,
+    stability: "alpha",
+    description: "What a scorer answers: a value or a status for each trial and measure.",
   },
   {
     name: "run",

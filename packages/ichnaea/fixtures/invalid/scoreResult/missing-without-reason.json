@@ -1,0 +1,29 @@
+{
+  "schema": "ichnaea.scoreResult/1",
+  "dataClass": "none",
+  "values": [
+    {
+      "trial": "t-1",
+      "measure": "correct",
+      "status": "missing"
+    },
+    {
+      "trial": "refund-window-de/b/r0",
+      "measure": "complete",
+      "status": "ok",
+      "value": 0.5,
+      "observed": {
+        "model": "example-judge-2026-10",
+        "responseIds": [
+          "resp_j2"
+        ]
+      }
+    },
+    {
+      "trial": "refund-window-de/a/r0",
+      "measure": "complete",
+      "status": "not_applicable",
+      "why": "The case asks one question."
+    }
+  ]
+}

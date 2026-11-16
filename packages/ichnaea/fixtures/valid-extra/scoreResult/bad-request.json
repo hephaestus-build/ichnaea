@@ -1,0 +1,24 @@
+{
+  "schema": "ichnaea.scoreResult/1",
+  "dataClass": "none",
+  "values": [
+    {
+      "trial": "refund-window-de/b/r0",
+      "measure": "correct",
+      "status": "error",
+      "failure": {
+        "class": "protocol",
+        "kind": "bad-request"
+      }
+    },
+    {
+      "trial": "refund-window-de/b/r0",
+      "measure": "complete",
+      "status": "error",
+      "failure": {
+        "class": "protocol",
+        "kind": "bad-request"
+      }
+    }
+  ]
+}

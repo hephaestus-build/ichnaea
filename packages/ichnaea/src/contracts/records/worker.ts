@@ -428,8 +428,8 @@ export const TrialResult = z.strictObject({
 export type TrialResult = z.infer<typeof TrialResult>;
 
 /**
- * What a worker writes for a request line it cannot read, for example a line that is not JSON or
- * not a trial request. It never guesses a trial identity: a guess would attach the error to the
+ * What a worker or a scorer writes for a request line it cannot read, for example a line that is
+ * not JSON or not a request. It never guesses a trial identity: a guess would attach the error to the
  * wrong trial. Ichnaea makes the whole run INVALID on the first one. It is a fault of the harness or
  * of the worker's protocol handling, never of the system, and it is never counted as a pass, a
  * failure or a missing trial. Because the run stops, the error needs no trial: Ichnaea records it
