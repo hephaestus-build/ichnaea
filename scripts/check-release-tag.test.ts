@@ -13,6 +13,7 @@ import {
   isBreaking,
   latestTag,
   previousTag,
+  releaseLine,
   releaseTags,
   tagProblem,
 } from "./check-release-tag.ts";
@@ -58,9 +59,20 @@ describe("the release tag", () => {
       );
   });
 
-  it("is refused while another v* tag is not a version, because the order is then unclear", () => {
-    expect(tagProblem("v0.2.0", ["v0.1.0", "vnext", "v0.0.0+x"])).toBe(
-      "the v* tags vnext, v0.0.0+x are not versions, so no release can be ordered after them",
+  it("ignores a v* tag that is not a version, or not in the 0.x line, and names it", () => {
+    const stray = ["v0.1.0", "vnext", "v0.0.0+x", "v1.0.0", "v2.3.4-rc.1"];
+    expect(releaseLine(stray)).toEqual({
+      line: ["v0.1.0"],
+      ignored: ["vnext", "v0.0.0+x", "v1.0.0", "v2.3.4-rc.1"],
+    });
+    expect(tagProblem("v0.2.0", stray)).toBeUndefined();
+    expect(latestTag(stray)).toBe("v0.1.0");
+    expect(previousTag("v0.2.0", stray)).toBe("v0.1.0");
+  });
+
+  it("is still refused below a stray tag that is a version of the 0.x line", () => {
+    expect(tagProblem("v0.2.0", ["v0.1.0", "v0.10.0"])).toBe(
+      "release tag v0.2.0 is not greater than v0.10.0, the greatest other v* tag",
     );
   });
 
@@ -107,6 +119,10 @@ describe("a breaking change since the last tag", () => {
     expect(breakingProblem("v0.3.0-rc.2", ["v0.2.4", "v0.3.0-rc.1"], breaking)).toBeUndefined();
     expect(breakingProblem("v0.3.0", ["v0.2.4", "v0.3.0-rc.1"], breaking)).toBeUndefined();
     expect(breakingProblem("v0.2.5-rc.1", ["v0.2.4"], breaking)).toMatch(/must raise the minor/);
+  });
+
+  it("ignores a stray release outside the 0.x line", () => {
+    expect(breakingProblem("v0.2.5", ["v0.2.4", "v1.0.0"], breaking)).toMatch(/since v0\.2\.4/);
   });
 
   it("needs nothing before the first release", () => {

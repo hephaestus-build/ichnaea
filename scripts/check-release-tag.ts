@@ -54,9 +54,21 @@ export function releaseTags(cwd = process.cwd()): string[] {
     .filter((t) => t !== "");
 }
 
-/** The greatest of the version tags: the previous release or pre-release. */
+/** Whether a tag is a version of the 0.x release line. */
+const inLine = (tag: string): boolean => VERSION_TAG.test(tag) && parse(tag).core[0] === 0;
+
+/**
+ * Splits v* tags into the release line, the versions with major 0, and the tags that it ignores:
+ * a typo such as `vnext`, or a version of another major such as `v1.0.0`. A tag that nobody may
+ * delete then cannot block every later release.
+ */
+export function releaseLine(tags: readonly string[]): { line: string[]; ignored: string[] } {
+  return { line: tags.filter(inLine), ignored: tags.filter((t) => !inLine(t)) };
+}
+
+/** The greatest tag of the release line: the previous release or pre-release. */
 export function latestTag(tags: readonly string[]): string | undefined {
-  return tags.toSorted(compareTags).at(-1);
+  return releaseLine(tags).line.toSorted(compareTags).at(-1);
 }
 
 /**
@@ -64,20 +76,20 @@ export function latestTag(tags: readonly string[]): string | undefined {
  * was tagged before `tag` was finished.
  */
 export function previousTag(tag: string, tags: readonly string[]): string | undefined {
-  return latestTag(tags.filter((t) => VERSION_TAG.test(t) && compareTags(t, tag) < 0));
+  return latestTag(releaseLine(tags).line.filter((t) => compareTags(t, tag) < 0));
 }
 
 /** The npm dist-tag of a release: `next` for a pre-release, so that it never becomes `latest`. */
 export const distTag = (tag: string): "latest" | "next" =>
   parse(tag).pre.length > 0 ? "next" : "latest";
 
-/** Returns why `tag` may not be released after the other v* tags, or nothing if it may. */
+/**
+ * Returns why `tag` may not be released after the other v* tags, or nothing if it may. Only the
+ * release line counts: {@link releaseLine} ignores the other tags.
+ */
 export function tagProblem(tag: string, others: readonly string[]): string | undefined {
-  if (!VERSION_TAG.test(tag) || parse(tag).core[0] !== 0)
+  if (releaseLine([tag]).line.length === 0)
     return `release tag ${tag} is not v0.<minor>.<patch>[-<pre-release>]`;
-  const wrong = others.filter((t) => !VERSION_TAG.test(t));
-  if (wrong.length > 0)
-    return `the v* tags ${wrong.join(", ")} are not versions, so no release can be ordered after them`;
   const latest = latestTag(others);
   if (latest !== undefined && compareTags(tag, latest) <= 0)
     return `release tag ${tag} is not greater than ${latest}, the greatest other v* tag`;
@@ -99,7 +111,7 @@ export function breakingProblem(
   messages: readonly string[],
 ): string | undefined {
   const breaking = messages.find(isBreaking);
-  const release = latestTag(others.filter((t) => parse(t).pre.length === 0));
+  const release = latestTag(releaseLine(others).line.filter((t) => parse(t).pre.length === 0));
   if (breaking === undefined || release === undefined) return undefined;
   const [, minor] = parse(release).core;
   if (parse(tag).core[1] > minor) return undefined;
@@ -125,7 +137,10 @@ export function commitMessages(
 if (import.meta.main) {
   const [tag = "", head = "HEAD"] = process.argv.slice(2);
   const others = releaseTags().filter((t) => t !== tag);
-  const previous = VERSION_TAG.test(tag) ? latestTag(others) : undefined;
+  const { ignored } = releaseLine(others);
+  if (ignored.length > 0)
+    console.error(`ignored: the v* tags ${ignored.join(", ")} are not versions of the 0.x line`);
+  const previous = latestTag(others);
   const why =
     tagProblem(tag, others) ?? breakingProblem(tag, others, commitMessages(previous, head));
   if (why) {
