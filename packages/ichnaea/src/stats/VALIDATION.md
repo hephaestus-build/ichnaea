@@ -395,6 +395,37 @@ exactly (0.0525, see above) and requires the rule to fail it.
 Seeds 1–999 serve coverage points, 1000–1999 type-I points, 9000 and above the checks of the check;
 confirmations add 100,000.
 
+## Descriptive cluster percentile estimates
+
+`clusterBootstrap` resamples whole clusters and computes the mean of their observed rows in each
+draw. Unequal clusters keep their row weights. Null values stay missing, and their clusters remain
+in the resampling frame. A planned-attempt estimand supplies its defined binary outcome for every
+planned attempt instead of dropping unavailable quality evidence.
+
+The method is **estimate-only**, not a validated decision method. It never establishes
+non-inferiority or a population claim. Small-cluster coverage is not established. A constant
+resampling distribution is marked degenerate, with no coverage claim. Draws containing only missing
+values are omitted and counted explicitly.
+
+Native mode uses the package's seeded MT19937 generator. Replay mode consumes a recorded cluster
+schedule and checks its ordered cluster IDs, dimensions, indices, algorithm, and seed. It does not
+claim that a seed from another generator produces the same draws.
+
+`scripts/reference-cluster-bootstrap.R` generates synthetic reference vectors with base R 4.5.2 in
+`rocker/r-ver@sha256:fd4ccdd3a4a6f7ef805e2daeee2a0fe3bf126bc231f36351223baecf5a595a4c`.
+The committed TSV includes every cluster draw. It covers binary outcomes, unequal cluster sizes,
+missing values, paired differences, and a degenerate distribution. The tests match R's observed mean
+and type-7 percentile bounds within an absolute tolerance of 1e-12. This numerical agreement does
+not validate coverage or a decision rule.
+
+Regenerate from `packages/stats` with the repository mounted at `/work`:
+
+```sh
+docker run --rm --network none --volume "$PWD:/work" --workdir /work \
+  rocker/r-ver@sha256:fd4ccdd3a4a6f7ef805e2daeee2a0fe3bf126bc231f36351223baecf5a595a4c \
+  Rscript scripts/reference-cluster-bootstrap.R
+```
+
 ## Floors and the minimum detectable effect
 
 The zero-noise floor, the smallest margin that can pass when every trial passes in both arms, is
