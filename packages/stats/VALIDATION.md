@@ -359,8 +359,18 @@ trials run for over a minute.
 The time per unit of W is about 4–40 ns on an Apple M3 Max under heavy load from other jobs. The
 `simulation` CI job (`test/score-permutation-work.sim.test.ts`) takes, for five shapes, the
 largest table whose W is within the limit, runs it exactly on the CI runner, prints its time and
-fails above 3 seconds. The limit aims at about 1 second there. On the M3 Max at a load average of
-144 the five shapes took 0.13–0.20 s.
+fails above 3 seconds. The limit aims at about 1 second there. On the CI runner (`ubuntu-latest`,
+image 20261103.629, Node 24) the largest exact tables took:
+
+| Shape                      | Cases | W          | Seconds |
+| -------------------------- | ----- | ---------- | ------- |
+| 3-decimal scores, 3 trials | 68    | 48,987,374 | 0.136   |
+| 3-decimal scores, 2 trials | 161   | 49,456,927 | 0.184   |
+| 3-decimal scores, 1 trial  | 495   | 49,952,430 | 0.355   |
+| 2-decimal scores, 3 trials | 226   | 49,696,804 | 0.179   |
+| 3-decimal scores, 9 trials | 3     | 38,365,728 | 0.126   |
+
+The slowest is 0.36 s, so the limit stays at 5·10⁷.
 
 ### Reference values
 
