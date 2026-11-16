@@ -106,6 +106,29 @@ describe("the check", () => {
       "a random draw: getRandomValues(",
     ],
     ["randomUUID", "export const id = crypto.randomUUID();", "a random draw: randomUUID("],
+    ["Date called without new", "export const d = Date();", "a read of the clock: Date("],
+    ['Date["now"]', 'export const t = Date["now"]();', "a computed member of Date: Date["],
+    ["Date['now']", "export const t = Date['now']();", "a computed member of Date: Date["],
+    [
+      "Intl.DateTimeFormat",
+      "export const s = new Intl.DateTimeFormat().format();",
+      "a read of the clock: Intl.DateTimeFormat",
+    ],
+    [
+      "a division after a non-null assertion",
+      "export const t = x! / Date.now() / 2;",
+      "a read of the clock: Date.now(",
+    ],
+    [
+      "a division after an increment",
+      "export const r = i++ / Math.random() / 2;",
+      "a random draw: Math.random(",
+    ],
+    [
+      "a division after a decrement",
+      "export const r = i-- / Math.random() / 2;",
+      "a random draw: Math.random(",
+    ],
     [
       "a dynamic import in a local module",
       'export const m = import("./other.ts" + suffix);',
@@ -154,6 +177,12 @@ describe("the check", () => {
     expect(codeOnly('const r = /a"b/g;')).toBe("const r = /   /g;");
     expect(codeOnly("x = a / b / c;")).toBe("x = a / b / c;");
     expect(codeOnly("return /x/.test(s) ? 1 : 0;")).toBe("return / /.test(s) ? 1 : 0;");
+    // A non-null assertion, an increment and a decrement end an operand, so a `/` divides.
+    expect(codeOnly("y = x! / a / b;")).toBe("y = x! / a / b;");
+    expect(codeOnly("y = i++ / a / b;")).toBe("y = i++ / a / b;");
+    // A negation or a sum still starts an expression, so a `/` after it starts a literal.
+    expect(codeOnly('y = !/"/.test(s);')).toBe("y = !/ /.test(s);");
+    expect(codeOnly('y = a + /"/.source;')).toBe("y = a + / /.source;");
   });
 
   it("refuses a module it cannot read: brackets that do not balance once text is blanked", () => {

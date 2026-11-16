@@ -27,6 +27,11 @@ const IMPURE: readonly (readonly [RegExp, string])[] = [
   [/\bDate\s*\.\s*now\s*\(/g, "a read of the clock: Date.now("],
   [/\bnew\s+Date\s*\(\s*\)/g, "a read of the clock: new Date()"],
   [/\bnew\s+Date\b(?!\s*\()/g, "a read of the clock: new Date"],
+  [/(?<!\bnew\s+)\bDate\s*\(/g, "a read of the clock: Date("],
+  // The checks read code with string contents blanked, so `Date["now"]` cannot be told from
+  // `Date["parse"]`: every computed member of Date is refused.
+  [/\bDate\s*\[/g, "a computed member of Date: Date["],
+  [/\bIntl\s*\.\s*DateTimeFormat\b/g, "a read of the clock: Intl.DateTimeFormat"],
   [/\bperformance\s*\.\s*now\s*\(/g, "a read of the clock: performance.now("],
   [/\bMath\s*\.\s*random\s*\(/g, "a random draw: Math.random("],
   [/\bgetRandomValues\s*\(/g, "a random draw: getRandomValues("],
@@ -54,8 +59,10 @@ const PACKAGES = new Set(["zod"]);
 
 /**
  * Whether a `/` at `at` starts a regular expression: the previous token in the blanked code so
- * far is not an operand's end (a name, a number, a closing parenthesis or bracket, or a string),
- * or it is a keyword after which an expression starts.
+ * far is not an operand's end (a name, a number, a closing parenthesis or bracket, a string, a
+ * postfix `++` or `--`, or a TypeScript non-null `!` right after an operand), or it is a keyword
+ * after which an expression starts. A `++` or `--` just before a `/` is postfix: a prefix one is
+ * followed by its operand.
  */
 function regexMayStart(out: readonly string[], at: number): boolean {
   let k = at - 1;
@@ -67,6 +74,9 @@ function regexMayStart(out: readonly string[], at: number): boolean {
     while (start > 0 && /[\w$]/.test(out[start - 1] as string)) start--;
     return BEFORE_REGEX.has(out.slice(start, k + 1).join(""));
   }
+  const before = k > 0 ? (out[k - 1] as string) : "";
+  if ((c === "+" || c === "-") && before === c) return false;
+  if (c === "!" && /[\w$)\]]/.test(before)) return false;
   return !")]\"'`".includes(c);
 }
 
