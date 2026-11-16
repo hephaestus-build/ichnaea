@@ -1,0 +1,19 @@
+{
+  "name": "ichnaea-docs",
+  "private": true,
+  "description": "The Ichnaea documentation site. It is never packed or published to npm.",
+  "license": "CC-BY-4.0",
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check"
+  },
+  "dependencies": {
+    "@astrojs/starlight": "0.42.8",
+    "astro": "7.4.5",
+    "starlight-links-validator": "0.27.0",
+    "starlight-llms-txt": "0.12.0"
+  }
+}

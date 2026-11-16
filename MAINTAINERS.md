@@ -283,7 +283,7 @@ commands from a checkout of `main`.
     gh api --method PUT repos/hephaestus-build/ichnaea/immutable-releases
     ```
 
-11. **Read back.** Read the settings of steps 3 to 10 and 13 back. Step 1 has its own read-back:
+11. **Read back.** Read the settings of steps 3 to 10, 13 and 14 back. Step 1 has its own read-back:
 
     ```sh
     gh api repos/hephaestus-build/ichnaea --jq '{visibility, has_wiki, has_projects,
@@ -392,3 +392,24 @@ commands from a checkout of `main`.
     ```
 
     The first run of the workflow on `main` creates `build`.
+
+14. **GitHub Pages.** The docs site deploys from `.github/workflows/docs.yml`, from `main` only. Pages
+    builds from a workflow, not from a branch, and serves HTTPS only. The `github-pages` environment
+    lets only `main` deploy and has no secret:
+
+    ```sh
+    gh api --method POST repos/hephaestus-build/ichnaea/pages -f build_type=workflow
+    gh api --method PUT repos/hephaestus-build/ichnaea/pages -F https_enforced=true
+    gh api --method PUT repos/hephaestus-build/ichnaea/environments/github-pages \
+      --input .github/environments/github-pages.json
+    gh api --method POST repos/hephaestus-build/ichnaea/environments/github-pages/deployment-branch-policies \
+      -f name=main -f type=branch
+    ```
+
+    Read it back:
+
+    ```sh
+    gh api repos/hephaestus-build/ichnaea/pages --jq '{build_type, https_enforced, html_url}'
+    gh api repos/hephaestus-build/ichnaea/environments/github-pages/deployment-branch-policies \
+      --jq '.branch_policies[] | {name, type}' # only main, as a branch
+    ```
