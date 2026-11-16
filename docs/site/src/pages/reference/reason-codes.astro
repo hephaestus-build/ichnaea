@@ -1,0 +1,103 @@
+---
+import StarlightPage from "@astrojs/starlight/components/StarlightPage.astro";
+
+import { reasonSections, SLOT_NOTES, templateParts } from "../../reference/reasons.ts";
+
+const sections = reasonSections();
+---
+
+<StarlightPage
+  frontmatter={{
+    title: "Reason codes",
+    description: "Every reason code a decision can carry: what it means, the card's exact sentences, and the next step.",
+  }}
+  headings={sections.map((section) => ({ depth: 2, slug: section.title.toLowerCase().replaceAll(/[^a-z]+/g, "-"), text: section.title }))}
+>
+  <p>
+    A reason code says why a decision got its verdict, in a form a machine can read. A decision can
+    carry several codes, for the run and for each measure. The card's sentences below come from the
+    same list that Ichnaea's report reads, so this page and a card never disagree.
+  </p>
+  <p>
+    <strong>Status:</strong> today a decision carries its reason in words, and the exit code tells a
+    CI job what to do. Decisions carry these codes from a later change.
+  </p>
+  <p>A word in braces, such as <code>{"{margin}"}</code>, is a slot. The report fills it from the decision, or from the reason's own parameters.</p>
+  {
+    sections.map((section) => (
+      <section>
+        <h2 id={section.title.toLowerCase().replaceAll(/[^a-z]+/g, "-")}>{section.title}</h2>
+        <p>{section.intro}</p>
+        {section.reasons.map((reason) => (
+          <article class="reason">
+            <h3 id={reason.code}><code>{reason.code}</code></h3>
+            <p>{reason.meaning}</p>
+            <dl>
+              <dt>Card labels</dt>
+              <dd>{reason.labels.length > 0 ? reason.labels.join(", ") : "any"}</dd>
+              {reason.parent && (
+                <>
+                  <dt>Details</dt>
+                  <dd><a href={`#${reason.parent}`}><code>{reason.parent}</code></a></dd>
+                </>
+              )}
+              {reason.sentences.length > 0 && (
+                <>
+                  <dt>The card says</dt>
+                  <dd>
+                    <ul>
+                      {reason.sentences.map((sentence) => (
+                        <li>
+                          {templateParts(sentence.text).map((part) => (part.slot ? <var>{part.text}</var> : part.text))}
+                          {sentence.when !== "always" && <span class="when"> (when {sentence.when})</span>}
+                        </li>
+                      ))}
+                    </ul>
+                  </dd>
+                </>
+              )}
+              <dt>Parameters</dt>
+              <dd>{reason.params.length > 0 ? reason.params.map((name, i) => <>{i > 0 && ", "}<var>{`{${name}}`}</var></>) : "none"}</dd>
+              {reason.context.length > 0 && (
+                <>
+                  <dt>Filled from the decision</dt>
+<dd>
+                    {reason.context.map((name, i) => (
+                      <>
+                        {i > 0 && ", "}
+                        <var>{`{${name}}`}</var>
+                        {SLOT_NOTES[name] && ` (${SLOT_NOTES[name]})`}
+                      </>
+                    ))}
+                  </dd>
+                </>
+              )}
+              {reason.action && (
+                <>
+                  <dt>Next step</dt>
+                  <dd>{templateParts(reason.action).map((part) => (part.slot ? <var>{part.text}</var> : part.text))}</dd>
+                </>
+              )}
+            </dl>
+          </article>
+        ))}
+      </section>
+    ))
+  }
+</StarlightPage>
+
+<style>
+  .reason dt {
+    font-weight: 600;
+  }
+  .reason dd {
+    margin-left: 0;
+  }
+  .when {
+    color: var(--sl-color-gray-2);
+  }
+  var {
+    font-family: var(--sl-font-mono);
+    font-style: normal;
+  }
+</style>

@@ -1,0 +1,50 @@
+---
+import StarlightPage from "@astrojs/starlight/components/StarlightPage.astro";
+
+import { loadSchemas } from "../../../reference/schemas.ts";
+
+const schemas = loadSchemas();
+const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
+---
+
+<StarlightPage
+  frontmatter={{
+    title: "Record schemas",
+    description: "The JSON Schema of each record that Ichnaea reads and writes, with each field's type and data class.",
+  }}
+>
+  <p>
+    Every record crosses a boundary as JSON. These JSON Schema 2020-12 files are the contract, for
+    any language. The package exports each one as
+    <code>@hephaestus-build/ichnaea/schemas/&lt;record&gt;.schema.json</code>.
+  </p>
+  <p>
+    Each record has a strict writer schema and a lenient reader schema. A writer must produce a
+    record that the writer schema accepts. A reader accepts fields and values that a later minor
+    version adds. These pages show the writer schema.
+  </p>
+  <table>
+    <thead>
+      <tr><th scope="col">Record</th><th scope="col">Holds</th><th scope="col">Stability</th></tr>
+    </thead>
+    <tbody>
+      {
+        schemas.map((schema) => (
+          <tr>
+            <td><a href={`${base}reference/schemas/${schema.name}/`}><code>{schema.title}</code></a></td>
+            <td>{schema.description}</td>
+            <td>{schema.stability}</td>
+          </tr>
+        ))
+      }
+    </tbody>
+  </table>
+  <h2>How to read a record page</h2>
+  <ul>
+    <li><strong>Field</strong>: a nested field is written <code>parent.child</code>, and a field of each array item <code>parent[].child</code>.</li>
+    <li><strong>Data class</strong>: what the field may contain. <code>none</code> holds no personal data. <code>inherit</code> takes the class that the record declares in its own <code>dataClass</code> field.</li>
+    <li><strong>Identifier</strong>: whether the field can identify a person or carries content.</li>
+    <li><strong>Leaves for</strong>: the purposes (PU-1 to PU-6) for which the contract lets the field leave your systems. <code>*</code> means any purpose, within the field's class. A destination also sets the most sensitive class it accepts, and a deployment can grant more purposes for named fields, never a higher class. Ichnaea's <code>projectForEgress</code> and your own export code read this policy. Ichnaea makes no network call of its own and does not enforce where data goes.</li>
+    <li><strong>Kept for</strong>: <code>record</code> means the field lives as long as its record. <code>subject</code> means the field is also erased when the person it refers to is erased, through the record's lineage.</li>
+  </ul>
+</StarlightPage>
