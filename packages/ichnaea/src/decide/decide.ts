@@ -636,6 +636,10 @@ function recordChecks(input: DecideInput): string[] {
   const plannedIds = new Set(plan.trials.map((t) => t.id as string));
   if (plannedIds.size !== plan.trials.length) invalid.push("the plan has duplicate trial IDs");
   invalid.push(...recordProblems(input));
+  for (const kind of new Set((run.protocolFailures ?? []).map((f) => f.kind)))
+    invalid.push(
+      `a worker reported a protocol failure (${kind}): the harness, not the system, failed`,
+    );
   const unplannedTrial = input.trials.find((t) => !plannedIds.has(t.id));
   if (unplannedTrial) invalid.push(`trial '${unplannedTrial.id}' is not in the plan`);
   const unplannedValue = input.values.find((v) => !plannedIds.has(v.trial));

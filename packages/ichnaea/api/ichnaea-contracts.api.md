@@ -2730,6 +2730,10 @@ export const Run: z.ZodObject<{
     }, z.core.$strict>>;
     startedAt: z.ZodISODateTime;
     completedAt: z.ZodOptional<z.ZodISODateTime>;
+    protocolFailures: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        trial: z.core.$ZodBranded<z.ZodString, "TrialId", "out">;
+        kind: z.ZodString;
+    }, z.core.$strict>>>;
 }, z.core.$strict>;
 
 // @public

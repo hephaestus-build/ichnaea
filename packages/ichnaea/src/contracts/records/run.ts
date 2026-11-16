@@ -50,6 +50,12 @@ export const Run = z.strictObject({
   ledger: z.array(LedgerEntry),
   startedAt: none(Timestamp),
   completedAt: none(Timestamp).optional(),
+  /**
+   * The trials whose worker reported a protocol failure: a malformed request or a broken protocol,
+   * the harness's fault and never the system's. Such a trial is not recorded as a trial, and any
+   * one of them makes the run INVALID.
+   */
+  protocolFailures: z.array(z.strictObject({ trial: none(TrialId), kind: none(Text) })).optional(),
 });
 /** A run. */
 export type Run = z.infer<typeof Run>;

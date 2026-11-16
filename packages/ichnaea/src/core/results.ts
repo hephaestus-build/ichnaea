@@ -49,11 +49,14 @@ export interface ImportSummary {
   readonly values: number;
   /** The trials by recorded outcome. */
   readonly outcomes: Readonly<Partial<Record<Outcome, number>>>;
-  /** The planned trials that no result answered: they are recorded as not run. */
+  /**
+   * The planned trials that no result answered: they are recorded as not run. A trial whose worker
+   * reported a protocol failure is not among them.
+   */
   readonly notRun: number;
   /**
-   * Warnings about the results: completed results that lost their output, and results whose
-   * observed configuration is not the arm's, with the reason.
+   * Warnings about the results: completed results that lost their output, results whose observed
+   * configuration is not the arm's, with the reason, and protocol failures.
    */
   readonly warnings: readonly string[];
   /** The members some result carried that no record defines, by path, sorted. They are ignored. */
@@ -145,7 +148,8 @@ function remove(root: unknown, path: readonly PropertyKey[]): void {
  * Each result must answer a trial the plan lists, with the plan's suite, case, arm and replicate.
  * A failure's class gives the outcome: `infrastructure` an infrastructure failure, `system` a
  * system failure (a failed trial, never a pass), `not_run` a trial not run. A `protocol` failure
- * is a fault of the harness, never of the system, so the run cannot be decided: it throws. A result
+ * is a fault of the harness, never of the system: the run records it in `protocolFailures` and is
+ * INVALID, and the trial is recorded neither as a failure nor as missing, and never retried. A result
  * with no failure and neither `output` nor `pointer` is a capture failure (`not-captured`): it
  * counts as missing, never as a failure of the system. A result whose observed configuration is not
  * the arm's is an invalid configuration with the reason, and gives no value.
@@ -171,6 +175,7 @@ export function importResults(
   const cases = new Map(plan.suite.cases.map((c) => [c.id, Case.parse(c)]));
   const unused = new Set<string>();
   const mismatched: string[] = [];
+  const protocolFailures: Array<{ readonly trial: string; readonly kind: string }> = [];
   const trials: Trial[] = [];
   let index = 0;
   for (const input of results) {
@@ -208,10 +213,12 @@ export function importResults(
       throw new ImportError(
         `${where}: trial '${id.id}' is planned as case '${p.case}', arm '${p.arm}', replicate ${p.replicate}`,
       );
-    if (failure?.class === "protocol")
-      throw new ImportError(
-        `${where}: trial '${id.id}' failed the protocol (${failure.kind}); that is a fault of the harness, never of the system, so the run cannot be decided`,
-      );
+    // The harness failed, not the system: the run records it and is INVALID, and the trial is
+    // neither a failure nor a missing trial of the system.
+    if (failure?.class === "protocol") {
+      protocolFailures.push({ trial: id.id, kind: failure.kind });
+      continue;
+    }
     const problem = observedProblem(result.observed, arm.configuration);
     if (problem !== undefined) mismatched.push(`'${id.id}': ${problem}`);
     const outcome: Outcome =
@@ -295,6 +302,7 @@ export function importResults(
     }),
     startedAt,
     completedAt,
+    ...(protocolFailures.length === 0 ? {} : { protocolFailures }),
   });
 
   const outcomes: Partial<Record<Outcome, number>> = {};
@@ -309,6 +317,10 @@ export function importResults(
     warnings.push(
       `${mismatched.length} result(s) ran another configuration than their arm, so they give no value; for example ${mismatched[0]}`,
     );
+  if (protocolFailures.length > 0)
+    warnings.push(
+      `${protocolFailures.length} result(s) reported a protocol failure, for example '${protocolFailures[0]?.trial}' (${protocolFailures[0]?.kind}); the harness failed, so the run is INVALID`,
+    );
   return {
     records: { plan: record, run, trials, values, gates: [] },
     summary: {
@@ -316,7 +328,7 @@ export function importResults(
       trials: trials.length,
       values: values.length,
       outcomes,
-      notRun: record.trials.length - trials.length,
+      notRun: record.trials.length - trials.length - protocolFailures.length,
       warnings,
       unused: [...unused].toSorted(),
     },

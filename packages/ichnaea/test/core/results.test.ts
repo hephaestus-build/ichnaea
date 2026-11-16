@@ -196,11 +196,16 @@ describe("importResults", () => {
     );
   });
 
-  it("refuses a protocol failure: the harness, not the system, failed", () => {
+  it("records a protocol failure in the run, never as a trial, and warns", () => {
     const bad = answer(first, undefined, { failure: { class: "protocol", kind: "bad-request" } });
-    expect(() => importResults(plan, replace(0, { result: bad }))).toThrow(
-      /failed the protocol \(bad-request\); that is a fault of the harness/,
-    );
+    const { records, summary } = importResults(plan, replace(0, { result: bad }));
+    expect(records.run.protocolFailures).toEqual([{ trial: "c1/base/r0", kind: "bad-request" }]);
+    expect(records.trials.some((t) => t.id === "c1/base/r0")).toBe(false);
+    expect(records.values.some((v) => v.trial === "c1/base/r0")).toBe(false);
+    expect(summary.notRun).toBe(0);
+    expect(summary.warnings).toEqual([
+      "1 result(s) reported a protocol failure, for example 'c1/base/r0' (bad-request); the harness failed, so the run is INVALID",
+    ]);
   });
 
   it("refuses a failure class this version does not know", () => {

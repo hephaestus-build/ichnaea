@@ -48,6 +48,19 @@ describe("compare", () => {
     );
   });
 
+  it("is INVALID when a worker reported a protocol failure, whatever the other trials show", () => {
+    const all = rows(() => true);
+    const [t] = plan.record.trials;
+    all[0] = {
+      result: answer(t!, undefined, { failure: { class: "protocol", kind: "bad-request" } }),
+    };
+    const decision = compare(plan, importResults(plan, all).records, { decidedAt });
+    expect(decision.verdict).toBe("INVALID");
+    expect(decision.invalidReasons).toContain(
+      "a worker reported a protocol failure (bad-request): the harness, not the system, failed",
+    );
+  });
+
   it("is INVALID when the records belong to another plan", () => {
     const other = createPlan(SUITE, { run: "run-2", base, candidate, seed: 7 });
     const { records } = importResults(

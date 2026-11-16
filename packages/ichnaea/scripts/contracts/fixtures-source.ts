@@ -779,6 +779,9 @@ export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
   },
   label: { "rater-cannot-tell": (r) => (r["value"] = { type: "unknown" }) },
   run: {
+    "protocol-failure": (r) => {
+      r["protocolFailures"] = [{ trial: "t-0002", kind: "bad-request" }];
+    },
     "runtime-and-arch": (r) => {
       r["environment"] = {
         node: "24.22.2",
