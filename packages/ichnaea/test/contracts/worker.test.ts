@@ -6,12 +6,15 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  Cancel,
   contractFor,
   readRecord,
   TrialFailure,
   TrialRequest,
   TrialResult,
   WorkerError,
+  WorkerEvent,
+  WorkerReady,
 } from "../../src/contracts/index.ts";
 
 const fixture = (kind: string, name: string): Record<string, unknown> =>
@@ -37,7 +40,10 @@ describe("the worker protocol", () => {
     expect(JSON.stringify(request)).not.toMatch(/"role"|"base"/);
     // The arm's name, and the trial ID that holds it, never say which side the arm is: not in the
     // request, and not in the result that echoes its identity.
-    for (const record of [request, fixture("valid", "trialResult.json")]) {
+    const others = ["trialResult", "workerEvent", "cancel"].map((n) =>
+      fixture("valid", `${n}.json`),
+    );
+    for (const record of [request, ...others]) {
       const trial = record["trial"] as { id: string; arm: string };
       expect(trial.arm).not.toMatch(/candidate|base/i);
       expect(trial.id).not.toMatch(/candidate|base/i);
@@ -209,5 +215,38 @@ describe("the worker protocol", () => {
       expect(TrialResult.safeParse({ ...result, timing: { ...timing, waitedMs } }).success).toBe(
         false,
       );
+  });
+
+  it("announces ready with its capacity and the requests it reads", () => {
+    const ready = WorkerReady.parse(fixture("valid", "workerReady.json"));
+    expect(ready).toMatchObject({ capacity: 2, protocol: "ichnaea.trialRequest/1" });
+    expect(contractFor("ichnaea.workerReady/1")?.schema).toBe(WorkerReady);
+    // A process that can take no request is never ready.
+    expect(WorkerReady.safeParse({ ...ready, capacity: 0 }).success).toBe(false);
+    // A scorer uses the same framing and says that it reads score requests.
+    const scorer = { ...ready, protocol: "ichnaea.scoreRequest/1" };
+    expect(WorkerReady.safeParse(scorer).success).toBe(true);
+  });
+
+  it("keeps a trial alive with a heartbeat that reports the calls made so far", () => {
+    const event = WorkerEvent.parse(fixture("valid", "workerEvent.json"));
+    expect(event).toMatchObject({ kind: "heartbeat", calls: 2 });
+    const valid = fixture("valid", "workerEvent.json");
+    const without = { ...valid };
+    delete without["calls"];
+    // Without a count, a killed attempt counts the full per-trial bound: a writer always sends it.
+    expect(WorkerEvent.safeParse(without).success).toBe(false);
+    // A later minor version may add a kind of event, which a reader accepts and reports.
+    const later = { ...valid, kind: "progress", share: 0.5 };
+    expect(WorkerEvent.safeParse(later).success).toBe(false);
+    expect(readRecord(contractFor("ichnaea.workerEvent/1")!, later).ok).toBe(true);
+  });
+
+  it("cancels one trial by its identity, and says nothing else", () => {
+    const cancel = Cancel.parse(fixture("valid", "cancel.json"));
+    expect(Object.keys(cancel).toSorted()).toEqual(["schema", "trial"]);
+    const reason = { ...fixture("valid", "cancel.json"), reason: "deadline" };
+    expect(Cancel.safeParse(reason).success).toBe(false);
+    expect(Cancel.safeParse({ schema: "ichnaea.cancel/1" }).success).toBe(false);
   });
 });

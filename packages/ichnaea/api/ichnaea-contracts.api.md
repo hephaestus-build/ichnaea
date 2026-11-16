@@ -270,6 +270,22 @@ export const Calibration: z.ZodObject<{
 export type Calibration = z.infer<typeof Calibration>;
 
 // @public
+export const Cancel: z.ZodObject<{
+    schema: z.ZodLiteral<"ichnaea.cancel/1">;
+    trial: z.ZodObject<{
+        id: z.core.$ZodBranded<z.ZodString, "TrialId", "out">;
+        suite: z.core.$ZodBranded<z.ZodString, "SuiteId", "out">;
+        case: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
+        arm: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
+        replicate: z.ZodInt;
+        attempt: z.ZodInt;
+    }, z.core.$strict>;
+}, z.core.$strict>;
+
+// @public
+export type Cancel = z.infer<typeof Cancel>;
+
+// @public
 export function candidateRunsFirst(seed: {
     readonly algorithm: string;
     readonly value: string;
@@ -3676,6 +3692,44 @@ export const WorkerError: z.ZodObject<{
 
 // @public
 export type WorkerError = z.infer<typeof WorkerError>;
+
+// @public
+export const WorkerEvent: z.ZodObject<{
+    schema: z.ZodLiteral<"ichnaea.workerEvent/1">;
+    trial: z.ZodObject<{
+        id: z.core.$ZodBranded<z.ZodString, "TrialId", "out">;
+        suite: z.core.$ZodBranded<z.ZodString, "SuiteId", "out">;
+        case: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
+        arm: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
+        replicate: z.ZodInt;
+        attempt: z.ZodInt;
+    }, z.core.$strict>;
+    kind: z.ZodEnum<{
+        heartbeat: "heartbeat";
+    }>;
+    calls: z.ZodInt;
+    throttled: z.ZodOptional<z.ZodObject<{
+        count: z.ZodInt;
+        ms: z.ZodNumber;
+        firstAcceptedAt: z.ZodOptional<z.ZodISODateTime>;
+    }, z.core.$strict>>;
+}, z.core.$strict>;
+
+// @public
+export type WorkerEvent = z.infer<typeof WorkerEvent>;
+
+// @public
+export const WorkerReady: z.ZodObject<{
+    schema: z.ZodLiteral<"ichnaea.workerReady/1">;
+    capacity: z.ZodInt;
+    protocol: z.ZodEnum<{
+        "ichnaea.scoreRequest/1": "ichnaea.scoreRequest/1";
+        "ichnaea.trialRequest/1": "ichnaea.trialRequest/1";
+    }>;
+}, z.core.$strict>;
+
+// @public
+export type WorkerReady = z.infer<typeof WorkerReady>;
 
 // (No @packageDocumentation comment for this package)
 

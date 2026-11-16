@@ -453,3 +453,53 @@ export const WorkerError = z.strictObject({
 });
 /** A worker error. */
 export type WorkerError = z.infer<typeof WorkerError>;
+
+/**
+ * What a worker process writes on its standard output once it can take requests. Ichnaea sends no
+ * request before it, and the time to start is never a trial's time. A scorer process writes the
+ * same line. After it, standard output carries protocol lines only.
+ */
+export const WorkerReady = z.strictObject({
+  schema: none(z.literal("ichnaea.workerReady/1")),
+  /** The most requests that the process serves at once. Ichnaea never sends more. */
+  capacity: none(z.int().min(1)),
+  /**
+   * The requests that the process reads, by their schema ID: trial requests for a worker, score
+   * requests for a scorer. Ichnaea refuses a process that reads another kind.
+   */
+  protocol: none(z.enum(["ichnaea.trialRequest/1", "ichnaea.scoreRequest/1"])),
+});
+/** A ready line. */
+export type WorkerReady = z.infer<typeof WorkerReady>;
+
+/**
+ * What a worker writes about a trial in flight, before its result. A `heartbeat` keeps the trial
+ * alive and reports the calls that the attempt has made so far. If Ichnaea kills an attempt, it
+ * counts the calls of the last heartbeat, or the full per-trial bound without one.
+ */
+export const WorkerEvent = z.strictObject({
+  schema: none(z.literal("ichnaea.workerEvent/1")),
+  /** The trial that the event is about. */
+  trial: TrialIdentity,
+  /** The kind of event. */
+  kind: none(z.enum(["heartbeat"])),
+  /** The accepted model calls of the attempt so far. */
+  calls: none(z.int().min(0)),
+  /** The calls that the provider rejected for its rate limit so far, and the waits. */
+  throttled: Throttling.optional(),
+});
+/** A worker event. */
+export type WorkerEvent = z.infer<typeof WorkerEvent>;
+
+/**
+ * What Ichnaea sends to stop one trial in flight, at its deadline or on an interrupt. The worker
+ * tears the trial down and answers with its result. Without a result in the grace period, Ichnaea
+ * stops the process group. The process's other trials are retried on a new process.
+ */
+export const Cancel = z.strictObject({
+  schema: none(z.literal("ichnaea.cancel/1")),
+  /** The trial to stop. */
+  trial: TrialIdentity,
+});
+/** A cancel line. */
+export type Cancel = z.infer<typeof Cancel>;

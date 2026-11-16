@@ -287,6 +287,33 @@ export const VALID: Record<string, Record<string, unknown>> = {
     },
   },
   workerError: { schema: "ichnaea.workerError/1", dataClass: "none", kind: "bad-json" },
+  workerReady: { schema: "ichnaea.workerReady/1", capacity: 2, protocol: "ichnaea.trialRequest/1" },
+  workerEvent: {
+    schema: "ichnaea.workerEvent/1",
+    trial: {
+      // An opaque arm name, as a plan assigns it: never base or candidate (REQ-22).
+      id: "refund-window-de/a/r1",
+      suite: "support-assistant",
+      case: "refund-window-de",
+      arm: "a",
+      replicate: 1,
+      attempt: 1,
+    },
+    kind: "heartbeat",
+    calls: 2,
+  },
+  cancel: {
+    schema: "ichnaea.cancel/1",
+    trial: {
+      // An opaque arm name, as a plan assigns it: never base or candidate (REQ-22).
+      id: "refund-window-de/a/r1",
+      suite: "support-assistant",
+      case: "refund-window-de",
+      arm: "a",
+      replicate: 1,
+      attempt: 2,
+    },
+  },
   run: {
     schema: "ichnaea.run/1",
     id: "run-2026-11-15-a",
@@ -689,6 +716,23 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
     "missing-kind": (r) => delete r["kind"],
     "empty-kind": (r) => (r["kind"] = ""),
   },
+  workerReady: {
+    "capacity-zero": (r) => (r["capacity"] = 0),
+    "fractional-capacity": (r) => (r["capacity"] = 1.5),
+    "missing-protocol": (r) => delete r["protocol"],
+    "missing-capacity": (r) => delete r["capacity"],
+  },
+  workerEvent: {
+    "missing-calls": (r) => delete r["calls"],
+    "negative-calls": (r) => (r["calls"] = -1),
+    "missing-trial": (r) => delete r["trial"],
+    "attempt-zero": (r) => ((r["trial"] as Record<string, unknown>)["attempt"] = 0),
+    "throttled-without-count": (r) => (r["throttled"] = { ms: 1200 }),
+  },
+  cancel: {
+    "missing-trial": (r) => delete r["trial"],
+    "trial-as-id": (r) => (r["trial"] = "refund-window-de/a/r1"),
+  },
   run: {
     "missing-ledger": (r) => delete r["ledger"],
     "missing-lineage": (r) => delete r["lineage"],
@@ -916,6 +960,15 @@ export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
   workerError: {
     "with-message": (r) => (r["message"] = "line 3 is not JSON: unexpected end of input"),
   },
+  workerReady: {
+    "one-at-a-time": (r) => (r["capacity"] = 1),
+    scorer: (r) => (r["protocol"] = "ichnaea.scoreRequest/1"),
+  },
+  workerEvent: {
+    // The shim reports each wait under the endpoint's budget in every heartbeat.
+    "throttled-heartbeat": (r) =>
+      (r["throttled"] = { count: 1, ms: 1200, firstAcceptedAt: "2026-11-15T10:01:01.300Z" }),
+  },
   label: { "rater-cannot-tell": (r) => (r["value"] = { type: "unknown" }) },
   configuration: {
     "model-version-route-and-informational": (r) => {
@@ -982,6 +1035,22 @@ export const READER_ONLY: Record<string, Record<string, Mutation>> = {
     // Ichnaea hashes artifacts itself: a reader ignores a digest that a worker sends.
     "artifact-with-digest": (r) =>
       (r["artifacts"] = [{ name: "a", path: "/tmp/a", mediaType: "text/plain", digest: d("a1") }]),
+  },
+  workerReady: {
+    // A later version may define another kind of request: a reader reads the line, and Ichnaea
+    // refuses a process that reads a kind it does not know.
+    "future-protocol": (r) => (r["protocol"] = "ichnaea.trialRequest/2"),
+  },
+  workerEvent: {
+    // A later minor version may add a kind of event, with members of its own.
+    "future-kind": (r) => {
+      r["kind"] = "progress";
+      r["share"] = 0.5;
+    },
+  },
+  cancel: {
+    // A worker needs no reason to stop a trial: a reader ignores one.
+    "with-reason": (r) => (r["reason"] = "deadline"),
   },
   workerError: {
     // A worker never guesses which trial an unreadable line was for: a writer refuses a trial
