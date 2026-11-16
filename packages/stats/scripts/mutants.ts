@@ -561,6 +561,66 @@ export const MUTANTS: readonly Mutant[] = [
     from: "(next() >>> 6)",
     to: "(next() >>> 5)",
   },
+  {
+    id: "S1 score permutation exact p without ties",
+    file: "src/score-permutation.ts",
+    from: "for (let x = 0; x <= observed; x++)",
+    to: "for (let x = 0; x < observed; x++)",
+  },
+  {
+    id: "S2 score permutation weight ignores the base count",
+    file: "src/score-permutation.ts",
+    from: "(c.candidate.length + c.base.length) / (c.candidate.length * c.base.length);",
+    to: "1 / c.candidate.length;",
+  },
+  {
+    id: "S3 score permutation Monte Carlo wrong tail",
+    file: "src/score-permutation.ts",
+    from: "if (t <= observed + MONTE_CARLO_TOLERANCE) extreme++;",
+    to: "if (t >= observed - MONTE_CARLO_TOLERANCE) extreme++;",
+  },
+  {
+    id: "S4 score permutation Monte Carlo p without +1",
+    file: "src/score-permutation.ts",
+    from: "const p = (1 + extreme) / (1 + resamples);",
+    to: "const p = Math.max(extreme, 1e-300) / resamples;",
+  },
+  {
+    id: "S5 score permutation draws with replacement",
+    file: "src/score-permutation.ts",
+    from: "const pick = j + Math.floor(rng.uniform() * (pool.length - j));",
+    to: "const pick = Math.floor(rng.uniform() * pool.length);",
+  },
+  {
+    id: "S6 score permutation accepts values above 1",
+    file: "src/score-permutation.ts",
+    from: "v >= 0 && v <= 1))",
+    to: "v >= 0))",
+  },
+  {
+    id: "S7 score permutation statistic over all cases",
+    file: "src/score-permutation.ts",
+    from: "    used.length;\n  const exact = exactP(used);",
+    to: "    cases.length;\n  const exact = exactP(used);",
+  },
+  {
+    id: "S8 score permutation never recomputes near a level",
+    file: "src/score-permutation.ts",
+    from: "Math.abs(first.p - level) <= 3 * se",
+    to: "Math.abs(first.p - level) <= 0 * se",
+  },
+  {
+    id: "S9 score permutation enumerates past the cap",
+    file: "src/score-permutation.ts",
+    from: "const MAX_ASSIGNMENTS = 100_000;",
+    to: "const MAX_ASSIGNMENTS = 1_000_000;",
+  },
+  {
+    id: "S10 score permutation off-lattice values rounded onto it",
+    file: "src/score-permutation.ts",
+    from: "const LATTICE_TOLERANCE = 1e-9;",
+    to: "const LATTICE_TOLERANCE = 0.5;",
+  },
 ];
 
 const root = join(import.meta.dirname, "..");
