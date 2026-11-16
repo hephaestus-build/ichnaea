@@ -22,6 +22,48 @@ export class AppendOnlyError extends Error {
 }
 
 // @public
+export function binary(options: BinaryOptions): BinaryMeasure;
+
+// @public
+export interface BinaryCardText {
+    readonly applicability?: string;
+    readonly construct?: string;
+    readonly errorModel?: string;
+    readonly establishes?: string;
+    readonly justification?: string;
+    readonly operationalDefinition?: string;
+}
+
+// @public
+export interface BinaryExample {
+    readonly case: SuiteCase;
+    readonly expected: boolean | "not-applicable";
+    readonly name: string;
+    readonly output: unknown;
+}
+
+// @public
+export interface BinaryMeasure extends BinaryOptions {
+    readonly valueType: "binary";
+}
+
+// @public
+export interface BinaryOptions {
+    // Warning: (ae-forgotten-export) The symbol "Case" needs to be exported by the entry point index.d.ts
+    readonly appliesTo?: (c: Case) => boolean;
+    readonly card?: BinaryCardText;
+    readonly examples?: {
+        readonly good: readonly BinaryExample[];
+        readonly bad: readonly BinaryExample[];
+    };
+    readonly score: BinaryScorer;
+    readonly version?: string;
+}
+
+// @public
+export type BinaryScorer = (output: unknown, c: Case) => boolean | undefined;
+
+// @public
 export class CallLedger {
     constructor(root: string);
     reserve(endpoint: string, cap: number, booking: LedgerBooking): Promise<{
@@ -146,6 +188,9 @@ export function defineMeasure<const Id extends `${string}/${string}`>(measure: M
 export function definePlugin<const Id extends string, const P extends Plugin<Id>>(plugin: P & {
     readonly id: Id;
 } & Plugin<NoInfer<Id>>): P;
+
+// @public
+export function defineSuite<const Measure extends string>(suite: SuiteDefinition<Measure>): SuiteDefinition<Measure>;
 
 // @public
 export function describeCounts(counts: readonly number[]): string;
@@ -330,6 +375,13 @@ export interface LedgerBooking {
 // @public
 export class LedgerError extends Error {
     readonly name = "LedgerError";
+}
+
+// @public
+export interface Limit {
+    readonly margin: number;
+    readonly reason: string;
+    readonly status?: "registered" | "placeholder";
 }
 
 // @public
@@ -630,6 +682,59 @@ export class StoreError extends Error {
 }
 
 // @public
+export interface SuiteCard {
+    readonly construct: string;
+    readonly decision: string;
+    readonly measureReviewDate?: string;
+    readonly nonCoverage: string;
+    readonly objective: string;
+    readonly scope: string;
+    readonly threats: readonly string[];
+}
+
+// @public
+export type SuiteCase = z.input<typeof Case>;
+
+// @public
+export interface SuiteDefinition<Measure extends string = string> {
+    readonly budget: {
+        readonly calls: number;
+        readonly callsPerTrial: number;
+    };
+    readonly card: SuiteCard;
+    readonly cases: readonly SuiteCase[];
+    readonly changes: (paths: readonly string[]) => readonly string[];
+    readonly configuration: (root: string) => Configuration | Promise<Configuration>;
+    readonly id: string;
+    readonly measures: {
+        readonly [K in Measure]: BinaryMeasure;
+    };
+    readonly policy: SuitePolicy<NoInfer<Measure>>;
+    readonly trials: {
+        readonly default: number;
+        readonly bySlice?: Readonly<Record<string, number>>;
+    };
+    readonly version: string;
+    readonly worker?: unknown;
+}
+
+// @public
+export class SuiteError extends Error {
+    readonly name = "SuiteError";
+}
+
+// @public
+export interface SuitePolicy<Measure extends string = string> {
+    readonly onEstimateOnly: "block" | "report";
+    readonly onInconclusive: "block" | "report";
+    readonly onRegression: "block" | "report";
+    readonly primary: {
+        readonly [K in Measure]?: Limit;
+    };
+    readonly secondary?: readonly Measure[];
+}
+
+// @public
 export interface TesterResult {
     readonly digest: string;
     readonly failures: readonly string[];
@@ -649,7 +754,6 @@ export const TRIGGER_VARIES: {
 // Warnings were encountered during analysis:
 //
 // src/core/planner.ts:36:5 - (ae-forgotten-export) The symbol "Configuration" needs to be exported by the entry point index.d.ts
-// src/core/plugin.ts:65:5 - (ae-forgotten-export) The symbol "Case" needs to be exported by the entry point index.d.ts
 
 // (No @packageDocumentation comment for this package)
 
