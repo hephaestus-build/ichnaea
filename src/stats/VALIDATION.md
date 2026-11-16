@@ -463,16 +463,23 @@ statistic.
 The reference values come from test-only oracles in the R image that CI pins. The inputs are
 synthetic (`scripts/stats/agreement-fixtures.ts` writes them).
 
-| Set                                                                                                                                               | Oracle                                                                                                                  | Size          | Tolerance                                                    |
-| ------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------- | ------------------------------------------------------------ |
-| Raw agreement, kappa and AC1 from tables of 2–7 categories, including the prevalence pair with equal raw agreement and a declared unused category | R irrCAC (`kappa2.table`, `gwet.ac1.table`); kappa also from irr (`kappa2`)                                             | 35 tables     | 1e-12                                                        |
-| Confusion tables from labels with missing values, and their kappa                                                                                 | R `table` and irr `kappa2`                                                                                              | 5 label pairs | exact, and 1e-12                                             |
-| Krippendorff's alpha, three metrics, 2–5 raters, missing values, including unequally spaced non-integer values                                    | R irr (`kripp.alpha`) and Krippendorff's published example; nominal and interval also from irrCAC (`krippen.alpha.raw`) | 12 matrices   | 1e-12 (irr); 6e-6 (irrCAC, which rounds alpha to 5 decimals) |
-| Krippendorff's published example (12 units, 4 raters): 0.743, 0.815, 0.849                                                                        | Krippendorff (2011)                                                                                                     | 1             | 3 decimals                                                   |
+| Set                                                                                                                                               | Oracle                                                                                                                                                                                                        | Size          | Tolerance                                                            |
+| ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | -------------------------------------------------------------------- |
+| Raw agreement, kappa and AC1 from tables of 2–7 categories, including the prevalence pair with equal raw agreement and a declared unused category | R irrCAC (`kappa2.table`, `gwet.ac1.table`); kappa also from irr (`kappa2`)                                                                                                                                   | 35 tables     | 1e-12                                                                |
+| Confusion tables from labels with missing values, and their kappa                                                                                 | R `table` and irr `kappa2`                                                                                                                                                                                    | 5 label pairs | exact, and 1e-12                                                     |
+| Krippendorff's alpha, three metrics, 2–5 raters, missing values, including unequally spaced non-integer values                                    | R irr (`kripp.alpha`), a base-R implementation written from Krippendorff's definition by a separate author, and Krippendorff's published example; nominal and interval also from irrCAC (`krippen.alpha.raw`) | 12 matrices   | 1e-12 (irr, base R); 6e-6 (irrCAC, which rounds alpha to 5 decimals) |
+| Krippendorff's published example (12 units, 4 raters): 0.743, 0.815, 0.849                                                                        | Krippendorff (2011)                                                                                                                                                                                           | 1             | 3 decimals                                                           |
 
-irrCAC's ordinal weights are not Krippendorff's frequency-based metric, so the ordinal metric has
-irr and the published example as its sources. The Python package `krippendorff` agreed with these
-values too. It is GPL-licensed, which is outside the repository's licence allowlist, so it is not a
+The ordinal alpha, the decision statistic for rating levels, uses Krippendorff's frequency-based
+distance. Its oracles are irr (`kripp.alpha`, method "ordinal"), the base-R implementation and the
+published example. irrCAC's ordinal weights are rank-based, not Krippendorff's metric, so irrCAC is
+never an oracle for ordinal alpha; it stays the oracle for AC1.
+
+`scripts/stats/reference-base-r-alpha.R` uses no package. Its author wrote it from Krippendorff's
+definition without seeing the TypeScript implementation, so it is an independent second source. It
+reads the matrices as one row per cell (`test/stats/reference-alpha-units.tsv`, written by the
+fixture script) and needs no network. The Python package `krippendorff` agreed with these values
+too, but it is GPL-licensed, which is outside the repository's licence allowlist, so it is not a
 committed oracle.
 
 Regenerate from `packages/ichnaea`, as CI does:
@@ -482,9 +489,13 @@ node scripts/stats/agreement-fixtures.ts
 docker run --rm -v "$PWD":/w -w /w \
   rocker/r-ver:4.5.2@sha256:fd4ccdd3a4a6f7ef805e2daeee2a0fe3bf126bc231f36351223baecf5a595a4c \
   Rscript scripts/stats/reference-agreement.R
+docker run --rm --network none -v "$PWD":/w -w /w \
+  rocker/r-ver:4.5.2@sha256:fd4ccdd3a4a6f7ef805e2daeee2a0fe3bf126bc231f36351223baecf5a595a4c \
+  Rscript scripts/stats/reference-base-r-alpha.R test/stats/reference-alpha-units.tsv test/stats/reference-base-r-alpha.tsv
 ```
 
-The R script installs irr, irrCAC and jsonlite from a dated CRAN snapshot, so it needs the network.
+`reference-agreement.R` installs irr, irrCAC and jsonlite from a dated CRAN snapshot, so it needs the
+network. The base-R script does not.
 
 ## Floors and the minimum detectable effect
 

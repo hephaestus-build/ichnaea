@@ -2,10 +2,10 @@
   "$schema": "http://cyclonedx.org/schema/bom-1.7.schema.json",
   "bomFormat": "CycloneDX",
   "specVersion": "1.7",
-  "serialNumber": "urn:uuid:a6061289-60d4-5bac-8280-70a52ca3c794",
+  "serialNumber": "urn:uuid:3ad701b3-0028-5f3a-92c0-621d05766ef1",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-11-16T16:08:36Z",
+    "timestamp": "2026-11-16T16:18:32Z",
     "lifecycles": [
       {
         "phase": "build"
@@ -46,7 +46,7 @@
         },
         {
           "type": "vcs",
-          "url": "git+https://github.com/hephaestus-build/ichnaea.git#13cad4a66572a0a311d50cef1b4433150576a8ed"
+          "url": "git+https://github.com/hephaestus-build/ichnaea.git#af2dc074d623e40c60bc7f92ab4bb126ebf06285"
         }
       ]
     }
