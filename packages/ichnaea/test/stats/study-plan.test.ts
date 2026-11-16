@@ -3,7 +3,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  DEFAULT_MAX_PARALLEL,
   jobsOf,
+  MAX_PARALLEL_CAP,
+  maxParallelOf,
   MAX_MATRIX_JOBS,
   pilotOf,
   plan,
@@ -87,5 +90,20 @@ describe("the plan of a study", () => {
   it("prepares nothing for a study without prepare commands, and refuses an unknown one", () => {
     expect(prepare("score-type-i", "/nonexistent")).toEqual([]);
     expect(() => prepare("score", "/nonexistent")).toThrow(/unknown study/);
+  });
+
+  it("runs 20 jobs of a matrix at once by default and refuses more than 30", () => {
+    expect([DEFAULT_MAX_PARALLEL, MAX_PARALLEL_CAP]).toEqual([20, 30]);
+    expect(maxParallelOf(undefined)).toBe(20);
+    expect(maxParallelOf("")).toBe(20);
+    expect(maxParallelOf("30")).toBe(30);
+    for (const bad of ["31", "0", "2.5", "all"])
+      expect(() => maxParallelOf(bad)).toThrow(
+        /from 1 to 30, so that other repositories keep runners/,
+      );
+    expect(plan({ study: "score-ni", jobs: 40, secondJobs: 40, pilot: [] }).maxParallel).toBe(20);
+    expect(
+      plan({ study: "score-ni", jobs: 40, secondJobs: 40, pilot: [], maxParallel: 12 }).maxParallel,
+    ).toBe(12);
   });
 });
