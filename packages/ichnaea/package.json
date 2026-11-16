@@ -40,6 +40,11 @@
       "types": "./dist/stats/index.d.ts",
       "default": "./dist/stats/index.js"
     },
+    "./node": {
+      "ichnaea-source": "./src/node/index.ts",
+      "types": "./dist/node/index.d.ts",
+      "default": "./dist/node/index.js"
+    },
     "./schemas/*.json": "./schemas/*.json",
     "./package.json": "./package.json"
   },

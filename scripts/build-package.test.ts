@@ -48,6 +48,7 @@ describe("the shipped manifest", () => {
       ".": { types: "./dist/index.d.ts", default: "./dist/index.js" },
       "./contracts": { types: "./dist/contracts/index.d.ts", default: "./dist/contracts/index.js" },
       "./stats": { types: "./dist/stats/index.d.ts", default: "./dist/stats/index.js" },
+      "./node": { types: "./dist/node/index.d.ts", default: "./dist/node/index.js" },
       "./schemas/*.json": "./schemas/*.json",
       "./package.json": "./package.json",
     });
@@ -98,6 +99,8 @@ describe("the manifest targets", () => {
       "./dist/contracts/index.js is missing",
       "./dist/stats/index.d.ts is missing",
       "./dist/stats/index.js is missing",
+      "./dist/node/index.d.ts is missing",
+      "./dist/node/index.js is missing",
       "./schemas/*.json matches no file",
       "./package.json is missing",
       "./dist/core/bin.js is missing",

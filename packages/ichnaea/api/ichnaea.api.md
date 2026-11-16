@@ -80,11 +80,6 @@ export class CallLedger {
     used(endpoint: string, at: string): Promise<number>;
 }
 
-// @public
-export class CasesError extends Error {
-    readonly name = "CasesError";
-}
-
 // @public @deprecated
 export interface CommandDefinition {
     readonly description: string;
@@ -442,9 +437,6 @@ export interface Limit {
 
 // @public
 export function lintReport(text: string): string[];
-
-// @public
-export function loadCases(file: URL | string): Case[];
 
 // @public
 export function loadConfig(path: string, load?: ModuleLoader): Promise<Config>;

@@ -5,7 +5,9 @@ import { pathToFileURL } from "node:url";
 
 import { afterAll, describe, expect, it } from "vitest";
 
-import { CasesError, loadCases } from "../../src/core/index.ts";
+import * as root from "../../src/index.ts";
+import { CasesError, loadCases } from "../../src/node/index.ts";
+import manifest from "../../package.json" with { type: "json" };
 import { caseOf } from "./support/library.ts";
 
 const dir = mkdtempSync(join(tmpdir(), "ichnaea-cases-"));
@@ -17,6 +19,18 @@ const file = (name: string, text: string): string => {
   return path;
 };
 const line = (value: unknown): string => JSON.stringify(value);
+
+describe("the ./node subpath", () => {
+  it("holds loadCases, and the package's main export does not", () => {
+    expect(root).not.toHaveProperty("loadCases");
+    expect(root).not.toHaveProperty("CasesError");
+    expect(manifest.exports["./node"]).toEqual({
+      "ichnaea-source": "./src/node/index.ts",
+      types: "./dist/node/index.d.ts",
+      default: "./dist/node/index.js",
+    });
+  });
+});
 
 describe("loadCases", () => {
   it("reads JSON Lines from a file URL, skipping blank lines", () => {

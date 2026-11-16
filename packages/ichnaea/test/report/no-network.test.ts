@@ -1,5 +1,6 @@
 // REQ-126: the library API moves no data across a boundary. With node:net, node:http, node:https,
-// fetch and WebSocket replaced by traps that throw, the whole flow from defineSuite to report runs,
+// node:http2, node:dns, node:tls, node:dgram, fetch, XMLHttpRequest and WebSocket replaced by traps
+// that throw, the whole flow from defineSuite to report runs,
 // and no trap is touched. A module that imported one of them would touch its trap on import.
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
@@ -20,6 +21,10 @@ const { touched, trap } = vi.hoisted(() => {
 vi.mock("node:net", () => trap("node:net"));
 vi.mock("node:http", () => trap("node:http"));
 vi.mock("node:https", () => trap("node:https"));
+vi.mock("node:http2", () => trap("node:http2"));
+vi.mock("node:dns", () => trap("node:dns"));
+vi.mock("node:tls", () => trap("node:tls"));
+vi.mock("node:dgram", () => trap("node:dgram"));
 
 import { importResults } from "../../src/core/results.ts";
 import { binary, defineSuite } from "../../src/core/suite.ts";
@@ -36,6 +41,7 @@ const refuse = (name: string) => (): never => {
 beforeAll(() => {
   vi.stubGlobal("fetch", refuse("fetch"));
   vi.stubGlobal("WebSocket", refuse("WebSocket"));
+  vi.stubGlobal("XMLHttpRequest", refuse("XMLHttpRequest"));
 });
 afterAll(() => vi.unstubAllGlobals());
 

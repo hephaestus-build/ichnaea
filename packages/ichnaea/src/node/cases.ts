@@ -1,5 +1,5 @@
-// Node only: reads a cases file. The browser-safe functions (defineSuite, createPlan,
-// importResults, compare and report) never import this module.
+// Node only: reads a cases file. It is exported from `./node`, never from the package's main
+// export, so the browser-safe functions never import it.
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 

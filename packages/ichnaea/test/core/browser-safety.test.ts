@@ -33,7 +33,7 @@ describe("the browser-safe library API", () => {
       ]),
     );
     // The Node-only modules stay outside it.
-    for (const node of ["core/cases.ts", "core/store.ts", "core/import.ts", "core/cli.ts"])
+    for (const node of ["node/cases.ts", "core/store.ts", "core/import.ts", "core/cli.ts"])
       expect(relative).not.toContain(node);
   });
 });
@@ -65,6 +65,23 @@ describe("the check", () => {
       "globalThis.process",
       "export const p = globalThis.process;",
       "the Node-only global 'process'",
+    ],
+    ["global", "export const g = global.x;", "the Node-only global 'global'"],
+    ["setImmediate", "setImmediate(() => undefined);", "the Node-only global 'setImmediate'"],
+    [
+      "import.meta.dirname",
+      "export const d = import.meta.dirname;",
+      "the Node-only import.meta.dirname",
+    ],
+    [
+      "import.meta.filename",
+      "export const f = import.meta.filename;",
+      "the Node-only import.meta.filename",
+    ],
+    [
+      "import.meta.resolve",
+      'export const r = import.meta.resolve("x");',
+      "the Node-only import.meta.resolve",
     ],
     ["a computed dynamic import", "export const m = import(name);", "a dynamic import of name"],
     [

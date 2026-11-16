@@ -169,10 +169,11 @@ export const used = [version, exit, decide, reportPlugin, Case, compareCounts, t
 const SUBPATHS = `import * as ichnaea from "${PACKAGE_NAME}";
 import * as contracts from "${PACKAGE_NAME}/contracts";
 import * as stats from "${PACKAGE_NAME}/stats";
+import * as node from "${PACKAGE_NAME}/node";
 import caseSchema from "${PACKAGE_NAME}/schemas/case.schema.json" with { type: "json" };
 import manifest from "${PACKAGE_NAME}/package.json" with { type: "json" };
 
-const counts = { ".": Object.keys(ichnaea).length, "./contracts": Object.keys(contracts).length, "./stats": Object.keys(stats).length };
+const counts = { ".": Object.keys(ichnaea).length, "./contracts": Object.keys(contracts).length, "./stats": Object.keys(stats).length, "./node": Object.keys(node).length };
 console.log(JSON.stringify({ counts, schema: caseSchema.$id, version: manifest.version, main: typeof ichnaea.main }));
 `;
 

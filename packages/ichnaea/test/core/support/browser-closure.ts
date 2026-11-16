@@ -1,7 +1,8 @@
 // The static import closure of a set of modules, and what in it would not run in a browser. It
 // starts from the walk of scripts/stats/provenance.ts (localImportClosure) and adds the checks:
 // a `node:` specifier, a bare Node built-in, a package other than zod, a dynamic import of a
-// specifier that is not a literal, and the Node-only globals.
+// specifier that is not a literal, the Node-only globals, and import.meta.dirname, filename and
+// resolve.
 import { readFileSync, realpathSync } from "node:fs";
 import { builtinModules } from "node:module";
 import path from "node:path";
@@ -11,7 +12,10 @@ const STATIC = /(?:\bfrom\s*|\bimport\s+)(?=["'])/g;
 /** A dynamic import, up to its argument. */
 const DYNAMIC = /\bimport\s*\(\s*/g;
 /** The Node-only globals, also as a member of globalThis. */
-const GLOBALS = /(?<![\w$])(process|Buffer|__dirname|__filename|require)(?![\w$])/g;
+const GLOBALS =
+  /(?<![\w$])(process|Buffer|__dirname|__filename|require|global|setImmediate)(?![\w$])/g;
+/** The members of import.meta that exist in Node only. */
+const IMPORT_META = /\bimport\s*\.\s*meta\s*\.\s*(dirname|filename|resolve)\b/g;
 const BUILTINS = new Set(builtinModules.map((m) => m.split("/")[0]));
 const PACKAGES = new Set(["zod"]);
 
@@ -123,6 +127,8 @@ export function browserProblems(entries: readonly string[]): {
     }
     for (const [, global] of code.matchAll(GLOBALS))
       problems.push({ file: real, problem: `the Node-only global '${global}'` });
+    for (const [, member] of code.matchAll(IMPORT_META))
+      problems.push({ file: real, problem: `the Node-only import.meta.${member}` });
     for (const spec of specifiers) {
       if (spec.startsWith(".")) visit(path.resolve(path.dirname(real), spec));
       else if (spec.startsWith("node:"))
