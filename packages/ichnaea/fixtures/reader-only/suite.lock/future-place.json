@@ -46,7 +46,7 @@
     "cites-page": "sha256:e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4e4",
     "correct": "sha256:e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5e5"
   },
-  "registration": {
+  "limits": {
     "grounded": {
       "limit": 0.05,
       "owner": "answers-owner",

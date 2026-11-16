@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:ichnaea:schema:config:1:reader",
-  "title": "ichnaea.config/1 (reader)",
+  "$id": "urn:ichnaea:schema:project:1",
+  "title": "ichnaea.project/1",
   "description": "The project config, as plain data: what several suites share, such as workers and datasets.",
   "x-ichnaea-stability": "alpha",
   "type": "object",
@@ -21,7 +21,7 @@
     },
     "schema": {
       "type": "string",
-      "const": "ichnaea.config/1",
+      "const": "ichnaea.project/1",
       "description": "The record type and its major version.",
       "x-ichnaea-data": {
         "class": "none",
@@ -75,7 +75,8 @@
             },
             "required": [
               "file"
-            ]
+            ],
+            "additionalProperties": false
           },
           {
             "type": "object",
@@ -85,7 +86,7 @@
                 "properties": {
                   "repo": {
                     "type": "string",
-                    "minLength": 1,
+                    "pattern": "^(?![\\s\\S]*(?:(?:^|[^A-Za-z0-9_])(?:gh[pousr]_[A-Za-z0-9]|github_pat_|glpat-|xox[abprs]-|hf_[A-Za-z0-9]{8}|sk-[A-Za-z0-9]|pk-lf-|AKIA[0-9A-Z]{16})|[Aa]uthorization:|[Bb]earer ))(?:https:\\/\\/[^\\s/?#@]+(?:\\/[^\\s?#]*)?|ssh:\\/\\/(?:[A-Za-z0-9._-]+@)?[^\\s/?#@:]+(?::[0-9]+)?(?:\\/[^\\s?#@]*)?|[A-Za-z0-9._-]+@[^\\s/?#@:]+:[^\\s?#@/][^\\s?#@]*)$",
                     "description": "The repository, as `git clone` takes it.",
                     "x-ichnaea-data": {
                       "class": "none",
@@ -127,12 +128,14 @@
                   "repo",
                   "commit"
                 ],
+                "additionalProperties": false,
                 "description": "A git repository at a full commit."
               }
             },
             "required": [
               "git"
-            ]
+            ],
+            "additionalProperties": false
           },
           {
             "type": "object",
@@ -158,7 +161,8 @@
                     },
                     "required": [
                       "url"
-                    ]
+                    ],
+                    "additionalProperties": false
                   },
                   {
                     "type": "object",
@@ -180,6 +184,7 @@
                     "required": [
                       "fromEnv"
                     ],
+                    "additionalProperties": false,
                     "description": "A URL that the environment holds, such as a presigned URL."
                   }
                 ],
@@ -202,7 +207,8 @@
             "required": [
               "https",
               "digest"
-            ]
+            ],
+            "additionalProperties": false
           },
           {
             "type": "object",
@@ -212,7 +218,7 @@
                 "type": "array",
                 "items": {
                   "type": "string",
-                  "minLength": 1
+                  "pattern": "^(?![\\s\\S]*(?:(?:^|[^A-Za-z0-9_])(?:gh[pousr]_[A-Za-z0-9]|github_pat_|glpat-|xox[abprs]-|hf_[A-Za-z0-9]{8}|sk-[A-Za-z0-9]|pk-lf-|AKIA[0-9A-Z]{16})|[Aa]uthorization:|[Bb]earer ))[\\s\\S]+$"
                 },
                 "description": "The command that fetches the files, run with the user's tools.",
                 "x-ichnaea-data": {
@@ -257,7 +263,8 @@
             "required": [
               "command",
               "output"
-            ]
+            ],
+            "additionalProperties": false
           }
         ]
       },
@@ -277,7 +284,7 @@
             "type": "array",
             "items": {
               "type": "string",
-              "minLength": 1
+              "pattern": "^(?![\\s\\S]*(?:(?:^|[^A-Za-z0-9_])(?:gh[pousr]_[A-Za-z0-9]|github_pat_|glpat-|xox[abprs]-|hf_[A-Za-z0-9]{8}|sk-[A-Za-z0-9]|pk-lf-|AKIA[0-9A-Z]{16})|[Aa]uthorization:|[Bb]earer ))[\\s\\S]+$"
             },
             "description": "The command that starts the worker, run in the arm's directory.",
             "x-ichnaea-data": {
@@ -294,7 +301,7 @@
             "type": "array",
             "items": {
               "type": "string",
-              "minLength": 1
+              "pattern": "^(?![\\s\\S]*(?:(?:^|[^A-Za-z0-9_])(?:gh[pousr]_[A-Za-z0-9]|github_pat_|glpat-|xox[abprs]-|hf_[A-Za-z0-9]{8}|sk-[A-Za-z0-9]|pk-lf-|AKIA[0-9A-Z]{16})|[Aa]uthorization:|[Bb]earer ))[\\s\\S]+$"
             },
             "description": "A command that each arm runs in its own directory before its worker starts.",
             "x-ichnaea-data": {
@@ -339,7 +346,8 @@
               },
               "required": [
                 "name"
-              ]
+              ],
+              "additionalProperties": false
             },
             "description": "The environment variables that the worker may read."
           },
@@ -416,7 +424,8 @@
         },
         "required": [
           "command"
-        ]
+        ],
+        "additionalProperties": false
       },
       "description": "Named workers that suites reference."
     },
@@ -497,7 +506,8 @@
               "retention": "record"
             }
           }
-        }
+        },
+        "additionalProperties": false
       },
       "description": "Named model endpoints and their budgets."
     },
@@ -518,6 +528,7 @@
           }
         }
       },
+      "additionalProperties": false,
       "description": "The local store of runs, records and artifacts."
     },
     "baselines": {
@@ -575,12 +586,14 @@
                     "workflow",
                     "branch"
                   ],
+                  "additionalProperties": false,
                   "description": "The artifacts of a successful push run of the workflow on the branch."
                 }
               },
               "required": [
                 "githubArtifact"
-              ]
+              ],
+              "additionalProperties": false
             }
           ],
           "description": "Where stored baselines come from. Default store."
@@ -643,9 +656,11 @@
               }
             }
           },
+          "additionalProperties": false,
           "description": "The sample of base cases that a fast run re-runs to detect drift."
         }
-      }
+      },
+      "additionalProperties": false
     },
     "defaults": {
       "type": "object",
@@ -666,6 +681,10 @@
         },
         "mode": {
           "type": "string",
+          "enum": [
+            "fast",
+            "confirm"
+          ],
           "description": "fast or confirm. Default fast.",
           "x-ichnaea-data": {
             "class": "none",
@@ -674,11 +693,7 @@
               "*"
             ],
             "retention": "record"
-          },
-          "x-ichnaea-known": [
-            "fast",
-            "confirm"
-          ]
+          }
         },
         "profile": {
           "type": "string",
@@ -777,9 +792,11 @@
                 "retention": "record"
               }
             }
-          }
+          },
+          "additionalProperties": false
         }
       },
+      "additionalProperties": false,
       "description": "Defaults that a suite, a profile or a flag overrides."
     },
     "delivery": {
@@ -792,36 +809,13 @@
             "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$"
           },
           "additionalProperties": {
-            "type": "object",
-            "properties": {
-              "kind": {
-                "type": "string",
-                "description": "The kind of sink.",
-                "x-ichnaea-data": {
-                  "class": "none",
-                  "identifier": "none",
-                  "egress": [
-                    "*"
-                  ],
-                  "retention": "record"
-                },
-                "x-ichnaea-known": [
-                  "console",
-                  "file",
-                  "github",
-                  "teams-workflow",
-                  "slack",
-                  "webhook",
-                  "otlp"
-                ]
-              },
-              "url": {
+            "oneOf": [
+              {
                 "type": "object",
                 "properties": {
-                  "fromEnv": {
+                  "kind": {
                     "type": "string",
-                    "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,199}$",
-                    "description": "The environment variable that holds the value.",
+                    "const": "console",
                     "x-ichnaea-data": {
                       "class": "none",
                       "identifier": "none",
@@ -833,17 +827,16 @@
                   }
                 },
                 "required": [
-                  "fromEnv"
+                  "kind"
                 ],
-                "description": "The sink's URL, which is a secret, from the environment."
+                "additionalProperties": false
               },
-              "secret": {
+              {
                 "type": "object",
                 "properties": {
-                  "fromEnv": {
+                  "kind": {
                     "type": "string",
-                    "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,199}$",
-                    "description": "The environment variable that holds the value.",
+                    "const": "file",
                     "x-ichnaea-data": {
                       "class": "none",
                       "identifier": "none",
@@ -855,16 +848,16 @@
                   }
                 },
                 "required": [
-                  "fromEnv"
+                  "kind"
                 ],
-                "description": "A secret that the sink needs beside its URL, such as a signing key, from the environment."
+                "additionalProperties": false
               },
-              "clearance": {
+              {
                 "type": "object",
                 "properties": {
-                  "maxExposure": {
+                  "kind": {
                     "type": "string",
-                    "description": "The highest exposure that the sink may receive.",
+                    "const": "github",
                     "x-ichnaea-data": {
                       "class": "none",
                       "identifier": "none",
@@ -872,50 +865,328 @@
                         "*"
                       ],
                       "retention": "record"
+                    }
+                  },
+                  "clearance": {
+                    "type": "object",
+                    "properties": {
+                      "maxExposure": {
+                        "type": "string",
+                        "enum": [
+                          "public",
+                          "private",
+                          "sealed"
+                        ],
+                        "description": "The highest exposure that the sink may receive.",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      },
+                      "purpose": {
+                        "type": "string",
+                        "pattern": "^PU-[1-9][0-9]{0,2}$",
+                        "description": "The purpose under which it receives it.",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      },
+                      "reason": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Why the sink needs it.",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      }
                     },
-                    "x-ichnaea-known": [
-                      "public",
-                      "private",
-                      "sealed"
-                    ]
-                  },
-                  "purpose": {
-                    "type": "string",
-                    "pattern": "^PU-[1-9][0-9]{0,2}$",
-                    "description": "The purpose under which it receives it.",
-                    "x-ichnaea-data": {
-                      "class": "none",
-                      "identifier": "none",
-                      "egress": [
-                        "*"
-                      ],
-                      "retention": "record"
-                    }
-                  },
-                  "reason": {
-                    "type": "string",
-                    "minLength": 1,
-                    "description": "Why the sink needs it.",
-                    "x-ichnaea-data": {
-                      "class": "none",
-                      "identifier": "none",
-                      "egress": [
-                        "*"
-                      ],
-                      "retention": "record"
-                    }
+                    "required": [
+                      "maxExposure",
+                      "purpose",
+                      "reason"
+                    ],
+                    "additionalProperties": false,
+                    "description": "A grant above the sink's default clearance."
                   }
                 },
                 "required": [
-                  "maxExposure",
-                  "purpose",
-                  "reason"
+                  "kind"
                 ],
-                "description": "A grant above the sink's default clearance."
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "teams-workflow",
+                    "x-ichnaea-data": {
+                      "class": "none",
+                      "identifier": "none",
+                      "egress": [
+                        "*"
+                      ],
+                      "retention": "record"
+                    }
+                  },
+                  "url": {
+                    "type": "object",
+                    "properties": {
+                      "fromEnv": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,199}$",
+                        "description": "The environment variable that holds the value.",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      }
+                    },
+                    "required": [
+                      "fromEnv"
+                    ],
+                    "additionalProperties": false,
+                    "description": "The sink's URL, a bearer secret, from the environment."
+                  }
+                },
+                "required": [
+                  "kind",
+                  "url"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "slack",
+                    "x-ichnaea-data": {
+                      "class": "none",
+                      "identifier": "none",
+                      "egress": [
+                        "*"
+                      ],
+                      "retention": "record"
+                    }
+                  },
+                  "url": {
+                    "type": "object",
+                    "properties": {
+                      "fromEnv": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,199}$",
+                        "description": "The environment variable that holds the value.",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      }
+                    },
+                    "required": [
+                      "fromEnv"
+                    ],
+                    "additionalProperties": false,
+                    "description": "The sink's URL, a bearer secret, from the environment."
+                  }
+                },
+                "required": [
+                  "kind",
+                  "url"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "webhook",
+                    "x-ichnaea-data": {
+                      "class": "none",
+                      "identifier": "none",
+                      "egress": [
+                        "*"
+                      ],
+                      "retention": "record"
+                    }
+                  },
+                  "url": {
+                    "type": "object",
+                    "properties": {
+                      "fromEnv": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,199}$",
+                        "description": "The environment variable that holds the value.",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      }
+                    },
+                    "required": [
+                      "fromEnv"
+                    ],
+                    "additionalProperties": false,
+                    "description": "The sink's URL, a bearer secret, from the environment."
+                  },
+                  "signingKey": {
+                    "type": "object",
+                    "properties": {
+                      "fromEnv": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,199}$",
+                        "description": "The environment variable that holds the value.",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      }
+                    },
+                    "required": [
+                      "fromEnv"
+                    ],
+                    "additionalProperties": false,
+                    "description": "The Standard Webhooks signing key, from the environment."
+                  },
+                  "clearance": {
+                    "type": "object",
+                    "properties": {
+                      "maxExposure": {
+                        "type": "string",
+                        "enum": [
+                          "public",
+                          "private",
+                          "sealed"
+                        ],
+                        "description": "The highest exposure that the sink may receive.",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      },
+                      "purpose": {
+                        "type": "string",
+                        "pattern": "^PU-[1-9][0-9]{0,2}$",
+                        "description": "The purpose under which it receives it.",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      },
+                      "reason": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "Why the sink needs it.",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      }
+                    },
+                    "required": [
+                      "maxExposure",
+                      "purpose",
+                      "reason"
+                    ],
+                    "additionalProperties": false,
+                    "description": "A grant above the sink's default clearance."
+                  }
+                },
+                "required": [
+                  "kind",
+                  "url",
+                  "signingKey"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "otlp",
+                    "x-ichnaea-data": {
+                      "class": "none",
+                      "identifier": "none",
+                      "egress": [
+                        "*"
+                      ],
+                      "retention": "record"
+                    }
+                  },
+                  "url": {
+                    "type": "object",
+                    "properties": {
+                      "fromEnv": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,199}$",
+                        "description": "The environment variable that holds the value.",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      }
+                    },
+                    "required": [
+                      "fromEnv"
+                    ],
+                    "additionalProperties": false,
+                    "description": "The sink's URL, a bearer secret, from the environment."
+                  }
+                },
+                "required": [
+                  "kind",
+                  "url"
+                ],
+                "additionalProperties": false
               }
-            },
-            "required": [
-              "kind"
             ]
           },
           "description": "Named sinks."
@@ -927,6 +1198,15 @@
             "properties": {
               "on": {
                 "type": "string",
+                "enum": [
+                  "estimate",
+                  "compare",
+                  "noise",
+                  "calibrate",
+                  "attribute",
+                  "monitor",
+                  "monitor.alert"
+                ],
                 "description": "The event.",
                 "x-ichnaea-data": {
                   "class": "none",
@@ -935,16 +1215,7 @@
                     "*"
                   ],
                   "retention": "record"
-                },
-                "x-ichnaea-known": [
-                  "estimate",
-                  "compare",
-                  "noise",
-                  "calibrate",
-                  "attribute",
-                  "monitor",
-                  "monitor.alert"
-                ]
+                }
               },
               "profile": {
                 "type": "string",
@@ -992,11 +1263,13 @@
             "required": [
               "on",
               "to"
-            ]
+            ],
+            "additionalProperties": false
           },
           "description": "Which sinks receive which events."
         }
       },
+      "additionalProperties": false,
       "description": "Where cards go. Default: the console and file sinks."
     },
     "history": {
@@ -1038,6 +1311,7 @@
           "required": [
             "fromEnv"
           ],
+          "additionalProperties": false,
           "description": "The owner's secret key for keyed aliases, from the environment."
         },
         "consent": {
@@ -1076,6 +1350,7 @@
               "required": [
                 "description"
               ],
+              "additionalProperties": false,
               "description": "The place inside the controller's trust boundary where runs on real data happen."
             },
             "purposes": {
@@ -1101,6 +1376,10 @@
                   },
                   "basis": {
                     "type": "string",
+                    "enum": [
+                      "consent",
+                      "public-task"
+                    ],
                     "description": "The legal basis, which decides who runs: consented, or also listed, subjects.",
                     "x-ichnaea-data": {
                       "class": "none",
@@ -1109,11 +1388,7 @@
                         "*"
                       ],
                       "retention": "record"
-                    },
-                    "x-ichnaea-known": [
-                      "consent",
-                      "public-task"
-                    ]
+                    }
                   },
                   "record": {
                     "type": "string",
@@ -1133,7 +1408,8 @@
                   "enabled",
                   "basis",
                   "record"
-                ]
+                ],
+                "additionalProperties": false
               },
               "description": "The enabled purposes."
             },
@@ -1205,7 +1481,8 @@
                   "provider",
                   "region",
                   "purposes"
-                ]
+                ],
+                "additionalProperties": false
               },
               "description": "The registered endpoints."
             },
@@ -1259,19 +1536,23 @@
                   }
                 }
               },
+              "additionalProperties": false,
               "description": "How long data above class none is kept."
             }
           },
           "required": [
             "home",
             "purposes"
-          ]
+          ],
+          "additionalProperties": false
         }
       },
+      "additionalProperties": false,
       "description": "Privacy settings."
     }
   },
   "required": [
     "schema"
-  ]
+  ],
+  "additionalProperties": false
 }

@@ -22,7 +22,7 @@
     "digest": {
       "type": "string",
       "pattern": "^sha256:[0-9a-f]{64}$",
-      "description": "The digest of the whole configuration file.",
+      "description": "SHA-256 over the RFC 8785 canonical JSON of the whole configuration file.",
       "x-ichnaea-data": {
         "class": "none",
         "identifier": "none",

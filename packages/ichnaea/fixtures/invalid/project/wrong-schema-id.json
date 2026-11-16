@@ -1,5 +1,5 @@
 {
-  "schema": "ichnaea.config/2",
+  "schema": "ichnaea.project/2",
   "suites": [
     "suites/*/suite.ts"
   ],

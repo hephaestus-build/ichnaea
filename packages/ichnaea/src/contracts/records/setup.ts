@@ -34,8 +34,28 @@ export const Duration = z.string().regex(new RegExp(`^P(?:${DATE}(?:${TIME})?|${
 /** A full git commit: 40 hexadecimal digits (SHA-1), or 64 (SHA-256). Never a branch or a tag. */
 export const CommitSha = z.string().regex(/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/);
 
-/** A command and its arguments, run without a shell. */
-export const Command = z.array(Text).min(1);
+/**
+ * Known token formats, each at the start of a word: GitHub (`ghp_`, `gho_`, `ghu_`, `ghs_`, `ghr_`,
+ * `github_pat_`), GitLab (`glpat-`), Slack (`xoxa-`, `xoxb-`, `xoxp-`, `xoxr-`, `xoxs-`), Hugging
+ * Face (`hf_`), OpenAI, Anthropic and Langfuse keys (`sk-`, `pk-lf-`), AWS access keys (`AKIA`), and
+ * an `Authorization:` or `Bearer ` header value.
+ */
+const TOKEN =
+  "(?:^|[^A-Za-z0-9_])(?:gh[pousr]_[A-Za-z0-9]|github_pat_|glpat-|xox[abprs]-|hf_[A-Za-z0-9]{8}|sk-[A-Za-z0-9]|pk-lf-|AKIA[0-9A-Z]{16})|[Aa]uthorization:|[Bb]earer ";
+
+/**
+ * One argument of a command: non-empty, and not in a known token format (GitHub, GitLab, Slack,
+ * Hugging Face, OpenAI, Anthropic, Langfuse and AWS keys, or an `Authorization:` or `Bearer `
+ * header value). A secret belongs in the environment allow-list (`env`), never in an argument.
+ */
+export const Argument = z.string().regex(new RegExp(`^(?![\\s\\S]*(?:${TOKEN}))[\\s\\S]+$`));
+
+/** A command and its arguments, run without a shell. No argument holds a token. */
+export const Command = z.array(Argument).min(1);
+
+/** A JSON scalar: a string, a finite number, a boolean or null. */
+// A union of primitives would become a JSON Schema type list, which strict validators refuse.
+export const JsonScalar = z.xor([z.string(), z.number(), z.boolean(), z.null()]);
 
 /** Who may see a content field: anyone, the project, or only the local store. */
 export const Exposure = z.enum(["public", "private", "sealed"]);
@@ -68,11 +88,24 @@ const commandSourceShape = {
   ).optional(),
 };
 
+/**
+ * A git repository that `git clone` takes: an HTTPS URL with no user information, query or
+ * fragment; an `ssh://` URL whose user has no password; or `user@host:path`. No part holds a known
+ * token format. The user's credentials come from git, never from the URL.
+ */
+export const GitRepo = z
+  .string()
+  .regex(
+    new RegExp(
+      `^(?![\\s\\S]*(?:${TOKEN}))(?:https://[^\\s/?#@]+(?:/[^\\s?#]*)?|ssh://(?:[A-Za-z0-9._-]+@)?[^\\s/?#@:]+(?::[0-9]+)?(?:/[^\\s?#@]*)?|[A-Za-z0-9._-]+@[^\\s/?#@:]+:[^\\s?#@/][^\\s?#@]*)$`,
+    ),
+  );
+
 /** A git repository at a full commit: fetched by the system `git`, with the user's credentials. */
 export const GitSource = z.strictObject({
   git: z
     .strictObject({
-      repo: none(Text.describe("The repository, as `git clone` takes it.")),
+      repo: none(GitRepo.describe("The repository, as `git clone` takes it.")),
       commit: none(CommitSha.describe("The full commit.")),
       path: none(Text.describe("A file or directory in the repository.")).optional(),
     })

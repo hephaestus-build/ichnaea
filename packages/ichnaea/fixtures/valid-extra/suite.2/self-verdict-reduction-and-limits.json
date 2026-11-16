@@ -28,8 +28,13 @@
       }
     ],
     "pools": {
-      "development": "dev",
-      "validation": "test"
+      "development": {
+        "label": "dev"
+      },
+      "validation": {
+        "label": "test",
+        "maxReads": 40
+      }
     }
   },
   "worker": "chatbot",
@@ -72,7 +77,9 @@
         "model": "provider/model-x@2026-10-01",
         "prompt": "judges/prompt.md",
         "rubric": "rubrics/quality.md",
-        "temperature": 0
+        "parameters": {
+          "temperature": 0
+        }
       },
       "env": [
         {
@@ -143,6 +150,26 @@
       "scorer": {
         "builtin": "wall-time"
       }
+    },
+    "completeness": {
+      "type": "level",
+      "levels": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "anchors": {
+        "0": "misses the question",
+        "3": "answers every part"
+      },
+      "spacing": {
+        "cut": 2
+      },
+      "scorer": {
+        "instrument": "quality-judge",
+        "dimension": "completeness"
+      }
     }
   },
   "policy": {
@@ -211,5 +238,10 @@
       "model",
       "temperature"
     ]
+  },
+  "attribute": {
+    "fidelityMargin": {
+      "grounded": 0.025
+    }
   }
 }

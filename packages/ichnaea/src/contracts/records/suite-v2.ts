@@ -18,6 +18,7 @@ import {
   Exposure,
   FromEnv,
   ConfigName,
+  JsonScalar,
   RunLimits,
   CompareMode,
   DataSource,
@@ -49,15 +50,33 @@ export const SamplingFrame = z.strictObject({
   date: none(CalendarDate.describe("When the cases were drawn.")),
 });
 
+const poolLabel = none(Text.describe("The label that marks the pool's cases, such as dev."));
+
+/**
+ * For each pool, the label that marks its cases. Only the validation pool takes a reuse budget:
+ * past `maxReads` registered reads since it was frozen, the card says it is over its budget.
+ */
+export const CasePools = z
+  .strictObject({
+    development: z.strictObject({ label: poolLabel }).optional(),
+    validation: z
+      .strictObject({
+        label: poolLabel,
+        maxReads: none(
+          z.int().min(1).describe("The registered reads after which the card warns."),
+        ).optional(),
+      })
+      .optional(),
+    sealed: z.strictObject({ label: poolLabel }).optional(),
+    promoted: z.strictObject({ label: poolLabel }).optional(),
+  })
+  .describe("The pools of the cases.");
+
 const casesShape = {
   exposure: none(
     Exposure.describe("Who may see the cases' content. A missing exposure counts as private."),
   ).optional(),
-  pools: none(
-    z
-      .partialRecord(Pool, Text)
-      .describe("For each pool, the label that marks its cases, for example development: dev."),
-  ).optional(),
+  pools: CasePools.optional(),
   frame: SamplingFrame.optional(),
 };
 
@@ -70,10 +89,21 @@ export const SuiteCases = z.xor([
   z.strictObject({ source: DataSource.describe("One source of the case files."), ...casesShape }),
 ]);
 
+/** A module reference: a relative path with no `.` or `..` segment to a JavaScript or TypeScript file. */
+export const ModulePath = z
+  .string()
+  .regex(
+    /^(?:[A-Za-z0-9_@+-][A-Za-z0-9._@+-]*\/)*[A-Za-z0-9_@+-][A-Za-z0-9._@+-]*\.(?:ts|mts|js|mjs)$/,
+  );
+
 /** Runs another runner and imports what it wrote: a command or a module that writes the batch. */
 export const SuiteImport = z.xor([
   z.strictObject({ command: none(Command.describe("A command that writes the import batch.")) }),
-  z.strictObject({ module: none(Text.describe("A module that writes the import batch.")) }),
+  z.strictObject({
+    module: none(
+      ModulePath.describe("A module that writes the import batch, in the suite's tree."),
+    ),
+  }),
 ]);
 
 const factorShape = {
@@ -101,12 +131,16 @@ export const EnvironmentFactor = z.xor([
   }),
 ]);
 
-/** The model identity of a judge instrument. */
+/** The model identity of a judge instrument. Its parameters are part of the judge identity. */
 export const JudgeSettings = z.strictObject({
   model: none(Text.describe("The model, with its revision.")),
   prompt: none(Text.describe("The prompt file.")),
   rubric: none(Text.describe("The rubric file.")),
-  temperature: none(z.number().min(0).describe("The sampling temperature.")).optional(),
+  parameters: none(
+    z
+      .record(Text, JsonScalar)
+      .describe("The sampling parameters, such as temperature, as JSON scalars."),
+  ).optional(),
 });
 
 /** A model that an instrument downloads at run time, pinned by revision. */
@@ -153,13 +187,6 @@ export const InstrumentSettings = z.strictObject({
     .optional(),
   deadline: none(Duration.describe("The time bound of one score request.")).optional(),
 });
-
-/** A module reference: a relative path with no `.` or `..` segment to a JavaScript or TypeScript file. */
-export const ModulePath = z
-  .string()
-  .regex(
-    /^(?:[A-Za-z0-9_@+-][A-Za-z0-9._@+-]*\/)*[A-Za-z0-9_@+-][A-Za-z0-9._@+-]*\.(?:ts|mts|js|mjs)$/,
-  );
 
 /**
  * What computes a measure: a built-in scorer, or an instrument of the suite. A TypeScript measure
@@ -233,11 +260,30 @@ const measureShape = {
   ).optional(),
 };
 
+/**
+ * How a level measure is tested: as a score when its levels are equally spaced, or as binary with
+ * success at or above a cut level registered before the run. With neither, it has no test.
+ */
+export const LevelSpacing = z.xor([
+  none(z.literal("equal").describe("The levels are equally spaced.")),
+  z.strictObject({ cut: none(z.number().describe("The lowest level that counts as success.")) }),
+]);
+
 /** A measure, by the type of its values. A quantity has a unit and is descriptive only. */
 export const MeasureDefinition = z.discriminatedUnion("type", [
   z.strictObject({ type: none(z.literal("binary")), ...measureShape }),
   z.strictObject({ type: none(z.literal("score")), ...measureShape }),
-  z.strictObject({ type: none(z.literal("level")), ...measureShape }),
+  z.strictObject({
+    type: none(z.literal("level")),
+    levels: none(
+      z.array(z.number()).min(2).describe("The levels in ascending order. lock checks the order."),
+    ),
+    anchors: none(
+      z.record(Text, Text).describe("For a level, the text that anchors it."),
+    ).optional(),
+    spacing: LevelSpacing.optional(),
+    ...measureShape,
+  }),
   z.strictObject({
     type: none(z.literal("quantity")),
     unit: none(Text.describe("The unit, such as ms.")),
@@ -367,7 +413,11 @@ export const SuiteV2 = z.strictObject({
   attribute: z
     .strictObject({
       fidelityMargin: none(
-        Probability.describe("The margin of the fidelity test when a stage is attributed."),
+        z
+          .record(ConfigName, z.number().gt(0).lt(1))
+          .describe(
+            "For each attributed measure, the largest replay-to-recording difference that still counts as a faithful replay. A measure without an entry uses half its registered limit; attribute applies that default.",
+          ),
       ).optional(),
     })
     .describe("Settings for attributing a change to a stage.")

@@ -5,6 +5,7 @@ export * from "./identity.ts";
 export * from "./json-schema.ts";
 export * from "./lint.ts";
 export * from "./pair-order.ts";
+export * from "./plain-data.ts";
 export * from "./primitives.ts";
 export * from "./reader.ts";
 export * from "./reasons.ts";

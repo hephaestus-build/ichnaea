@@ -11,6 +11,14 @@ export function schemaUri(
   return `urn:ichnaea:schema:${name}:${major}${variant === "reader" ? ":reader" : ""}`;
 }
 
+/** The file name of a record contract's writer or reader JSON Schema, such as `case.schema.json`. */
+export function schemaFileName(
+  contract: RecordContract,
+  variant: "writer" | "reader" = "writer",
+): string {
+  return `${contract.file ?? contract.name}${variant === "reader" ? ".reader" : ""}.schema.json`;
+}
+
 /**
  * Generates the normative writer JSON Schema 2020-12 of a record contract. Writers are strict: an
  * unknown member is an error, so a misspelt or misplaced member cannot pass unnoticed or leave an

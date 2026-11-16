@@ -60,19 +60,30 @@ export const Clearance = z.strictObject({
   reason: none(Text.describe("Why the sink needs it.")),
 });
 
-/** A destination for a run's card. Remote sinks stay at class none. */
-export const SinkSettings = z.strictObject({
-  kind: none(
-    z
-      .enum(["console", "file", "github", "teams-workflow", "slack", "webhook", "otlp"])
-      .describe("The kind of sink."),
-  ),
-  url: FromEnv.describe("The sink's URL, which is a secret, from the environment.").optional(),
-  secret: FromEnv.describe(
-    "A secret that the sink needs beside its URL, such as a signing key, from the environment.",
-  ).optional(),
-  clearance: Clearance.describe("A grant above the sink's default clearance.").optional(),
-});
+const sinkUrl = FromEnv.describe("The sink's URL, a bearer secret, from the environment.");
+const sinkClearance = Clearance.describe("A grant above the sink's default clearance.");
+
+/**
+ * A destination for a run's card, tagged by its kind. A local sink (`console`, `file`) and the
+ * `github` sink, which uses the job's token, take no URL. Every other remote sink reads its URL
+ * from the environment, and a `webhook` also signs with a key from the environment (Standard
+ * Webhooks). Only a `github` sink and a `webhook` sink may take a clearance grant above class none
+ * and exposure public; no grant raises a Teams, Slack or OTLP sink.
+ */
+export const SinkSettings = z.discriminatedUnion("kind", [
+  z.strictObject({ kind: none(z.literal("console")) }),
+  z.strictObject({ kind: none(z.literal("file")) }),
+  z.strictObject({ kind: none(z.literal("github")), clearance: sinkClearance.optional() }),
+  z.strictObject({ kind: none(z.literal("teams-workflow")), url: sinkUrl }),
+  z.strictObject({ kind: none(z.literal("slack")), url: sinkUrl }),
+  z.strictObject({
+    kind: none(z.literal("webhook")),
+    url: sinkUrl,
+    signingKey: FromEnv.describe("The Standard Webhooks signing key, from the environment."),
+    clearance: sinkClearance.optional(),
+  }),
+  z.strictObject({ kind: none(z.literal("otlp")), url: sinkUrl }),
+]);
 
 /** Which sinks receive the card of an event. */
 export const DeliveryRoute = z.strictObject({
@@ -132,14 +143,14 @@ export const Governance = z.strictObject({
 });
 
 /**
- * The project config (`ichnaea.config/1`): what several suites share, as plain JSON data. It is the
+ * The project config (`ichnaea.project/1`): what several suites share, as plain JSON data. It is the
  * canonical form of an `ichnaea.config.ts` or `ichnaea.config.jsonc` file.
  */
 export const ProjectConfig = z.strictObject({
   $schema: none(
     Text.describe("The JSON Schema of this file, for editors. A JSONC project file carries it."),
   ).optional(),
-  schema: none(z.literal("ichnaea.config/1").describe("The record type and its major version.")),
+  schema: none(z.literal("ichnaea.project/1").describe("The record type and its major version.")),
   suites: none(
     z
       .array(Text)

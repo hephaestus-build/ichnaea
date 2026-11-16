@@ -1,5 +1,5 @@
 {
-  "schema": "ichnaea.config/1",
+  "schema": "ichnaea.project/1",
   "suites": [
     "suites/*/suite.ts"
   ],
@@ -71,6 +71,20 @@
         "kind": "teams-workflow",
         "url": {
           "fromEnv": "IL3_TEAMS_WORKFLOW_URL"
+        }
+      },
+      "records": {
+        "kind": "webhook",
+        "url": {
+          "fromEnv": "RECORDS_WEBHOOK_URL"
+        },
+        "signingKey": {
+          "fromEnv": "RECORDS_WEBHOOK_SIGNING_KEY"
+        },
+        "clearance": {
+          "maxExposure": "private",
+          "purpose": "PU-6",
+          "reason": "the team's records service"
         }
       }
     },

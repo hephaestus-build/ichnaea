@@ -23,20 +23,30 @@ against the schema files in [`schemas/`](../../schemas).
 | `ichnaea.judge/1`, `label/1`, `calibration/1`, `monitor/1`, `finding/1` |                               | In development                                             |
 | `ichnaea.suite/2`                                                       | `suite.2.schema.json`         | One thing you evaluate, as plain data (alpha)              |
 | `ichnaea.configuration/2`                                               | `configuration.2.schema.json` | An arm's configuration file, by digest (alpha)             |
-| `ichnaea.config/1`                                                      | `project.schema.json`         | The project config that several suites share (alpha)       |
+| `ichnaea.project/1`                                                     | `project.1.schema.json`       | The project config that several suites share (alpha)       |
 | `ichnaea.suite.lock/1`                                                  | `suite.lock.schema.json`      | The digests that pin a suite, written by `lock` (alpha)    |
 
-`suite/2`, `configuration/2`, `ichnaea.config/1` and `suite.lock/1` are the records of the next
-framework. They are plain JSON data: a value that JSON cannot hold, or a function, is refused, and
-a TypeScript measure is a module reference (`{ instrument, module, export }`). A JSONC suite or
-project file points its editor at `suite.2.schema.json` or `project.schema.json` with `$schema`.
-`suite/1` and `configuration/1` stay registered beside them while the planner and the importer
-still read them. While two majors of one record are registered, the newer one's files carry its
-major, and it needs no migration until the older one leaves the registry (`majors.json`).
+`suite/2`, `configuration/2`, `ichnaea.project/1` and `suite.lock/1` are the records of the next
+framework. A suite or project file (`suite.ts` or `suite.jsonc`, `ichnaea.config.ts` or
+`ichnaea.config.jsonc`) loads into one of them. A TypeScript measure is a module reference
+(`{ instrument, module, export }`), never a function value.
+
+- **Plain data.** The schemas validate JSON values. zod drops an `undefined` member and reads a
+  class instance as an object, so a record alone cannot refuse a value that is not plain data.
+  The loader refuses it first: `plainDataProblems(value)` names every such field by its path.
+- **Editors.** A JSONC file points its editor at `suite.2.schema.json` or `project.1.schema.json`
+  with `$schema`. The file name carries the major, so the pointer never changes meaning.
+- **Digests.** `suiteDigest` and `projectDigest` hash the canonical JSON without `$schema`, so the
+  TypeScript and JSONC forms of one file share a digest. `configuration/2.digest` is over the
+  canonical JSON of the arm's configuration file, never its raw bytes.
+- **Two majors.** `suite/1` and `configuration/1` stay registered beside `suite/2` and
+  `configuration/2` while the planner and the importer still read them. The newer major needs no
+  migration until the older one leaves the registry (`majors.json`).
 
 ## Writer and reader schemas
 
-Each record has two schema files:
+Each record has two schema files, named by the contract's `file` stem when it has one (`project.1`)
+and by its name otherwise (`schemaFileName`):
 
 - `<name>.schema.json` is the **writer** schema. It is strict: an unknown member is an error, so a
   misspelt or misplaced member never passes unnoticed and never leaves an identity unchanged.

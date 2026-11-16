@@ -129,7 +129,7 @@
                     "properties": {
                       "repo": {
                         "type": "string",
-                        "minLength": 1,
+                        "pattern": "^(?![\\s\\S]*(?:(?:^|[^A-Za-z0-9_])(?:gh[pousr]_[A-Za-z0-9]|github_pat_|glpat-|xox[abprs]-|hf_[A-Za-z0-9]{8}|sk-[A-Za-z0-9]|pk-lf-|AKIA[0-9A-Z]{16})|[Aa]uthorization:|[Bb]earer ))(?:https:\\/\\/[^\\s/?#@]+(?:\\/[^\\s?#]*)?|ssh:\\/\\/(?:[A-Za-z0-9._-]+@)?[^\\s/?#@:]+(?::[0-9]+)?(?:\\/[^\\s?#@]*)?|[A-Za-z0-9._-]+@[^\\s/?#@:]+:[^\\s?#@/][^\\s?#@]*)$",
                         "description": "The repository.",
                         "x-ichnaea-data": {
                           "class": "none",
@@ -186,8 +186,8 @@
                     "properties": {
                       "host": {
                         "type": "string",
-                        "minLength": 1,
-                        "description": "The host.",
+                        "pattern": "^[^\\s/?#@]+$",
+                        "description": "The host, with no user information.",
                         "x-ichnaea-data": {
                           "class": "none",
                           "identifier": "none",
@@ -199,8 +199,8 @@
                       },
                       "path": {
                         "type": "string",
-                        "minLength": 1,
-                        "description": "The path.",
+                        "pattern": "^\\/[^\\s?#]*$",
+                        "description": "The path, with no query or fragment.",
                         "x-ichnaea-data": {
                           "class": "none",
                           "identifier": "none",
@@ -230,7 +230,7 @@
                     "type": "array",
                     "items": {
                       "type": "string",
-                      "minLength": 1
+                      "pattern": "^(?![\\s\\S]*(?:(?:^|[^A-Za-z0-9_])(?:gh[pousr]_[A-Za-z0-9]|github_pat_|glpat-|xox[abprs]-|hf_[A-Za-z0-9]{8}|sk-[A-Za-z0-9]|pk-lf-|AKIA[0-9A-Z]{16})|[Aa]uthorization:|[Bb]earer ))[\\s\\S]+$"
                     },
                     "description": "The command.",
                     "x-ichnaea-data": {
@@ -453,9 +453,22 @@
                   "minLength": 1
                 },
                 "additionalProperties": {
-                  "$ref": "#/$defs/JsonValue"
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
-                "description": "The sampling parameters.",
+                "description": "The sampling parameters, as JSON scalars.",
                 "x-ichnaea-data": {
                   "class": "none",
                   "identifier": "none",
@@ -574,7 +587,7 @@
         "retention": "record"
       }
     },
-    "registration": {
+    "limits": {
       "type": "object",
       "propertyNames": {
         "type": "string",
@@ -630,7 +643,7 @@
           "reason"
         ]
       },
-      "description": "A copy of the primary measures' limits, owners and reasons, derived from the suite."
+      "description": "A copy of the primary measures' limits, owners and reasons, derived from the suite. The plan's preregistration is a separate record field."
     }
   },
   "required": [
@@ -641,39 +654,6 @@
     "sources",
     "instruments",
     "measures",
-    "registration"
-  ],
-  "$defs": {
-    "JsonValue": {
-      "anyOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "number"
-        },
-        {
-          "type": "boolean"
-        },
-        {
-          "type": "null"
-        },
-        {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/JsonValue"
-          }
-        },
-        {
-          "type": "object",
-          "propertyNames": {
-            "type": "string"
-          },
-          "additionalProperties": {
-            "$ref": "#/$defs/JsonValue"
-          }
-        }
-      ]
-    }
-  }
+    "limits"
+  ]
 }

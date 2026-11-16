@@ -53,7 +53,7 @@ const COMMIT = "9e2c1f0a4b7d3e6c8a1f2b5d7e9c0a3b6d8f1e2c";
 
 /** A project config with two datasets, a shared worker, an endpoint, baselines and delivery. */
 const PROJECT = {
-  schema: "ichnaea.config/1",
+  schema: "ichnaea.project/1",
   suites: ["suites/*/suite.ts"],
   datasets: {
     "answers-public": { git: { repo: "https://github.com/example/answers-eval", commit: COMMIT } },
@@ -104,7 +104,7 @@ const SUITE_V2 = {
       { dataset: "answers-public", path: "answers/cases.jsonl" },
       { dataset: "answers-private", path: "answers/real.jsonl" },
     ],
-    pools: { development: "dev", validation: "test" },
+    pools: { development: { label: "dev" }, validation: { label: "test", maxReads: 40 } },
   },
   worker: "chatbot",
   stages: ["search", "rank", "answer"],
@@ -125,7 +125,7 @@ const SUITE_V2 = {
         model: "provider/model-x@2026-10-01",
         prompt: "judges/prompt.md",
         rubric: "rubrics/quality.md",
-        temperature: 0,
+        parameters: { temperature: 0 },
       },
       env: [{ name: "JUDGE_API_KEY", secret: true }],
       endpoints: ["eu-llm"],
@@ -687,7 +687,7 @@ export const VALID: Record<string, Record<string, unknown>> = {
       "ts-scorers": { files: d("d8") },
     },
     measures: { searched: d("e2"), grounded: d("e3"), "cites-page": d("e4"), correct: d("e5") },
-    registration: {
+    limits: {
       grounded: {
         limit: 0.05,
         owner: "answers-owner",
@@ -891,6 +891,22 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
         "grounded"
       ]!["owner"],
     "duration-in-words": (r) => (r["limits"] = { trialDeadline: "2 minutes" }),
+    "level-without-levels": (r) =>
+      ((r["measures"] as Record<string, unknown>)["completeness"] = {
+        type: "level",
+        spacing: "equal",
+      }),
+    "judge-parameter-as-an-object": (r) =>
+      ((
+        (r["instruments"] as Record<string, Record<string, unknown>>)["quality-judge"]![
+          "judge"
+        ] as Record<string, unknown>
+      )["parameters"] = { response: { type: "json" } }),
+    "import-module-outside-the-tree": (r) => {
+      delete r["worker"];
+      r["import"] = { module: "../importers/bench.ts" };
+    },
+    "fidelity-margin-of-one": (r) => (r["attribute"] = { fidelityMargin: { grounded: 1 } }),
     "self-verdict-without-class": (r) =>
       ((r["stopReasons"] as Record<string, unknown>)["REPAIR_BUDGET_EXHAUSTED"] = {
         selfVerdict: true,
@@ -914,11 +930,29 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
       ((r["baselines"] as Record<string, unknown>)["sentinel"] = { share: 0.1, min: 4 }),
     "route-to-no-sink": (r) =>
       ((r["delivery"] as Record<string, Array<Record<string, unknown>>>)["routes"]![0]!["to"] = []),
+    "webhook-without-signing-key": (r) =>
+      ((r["delivery"] as Record<string, Record<string, unknown>>)["sinks"]!["hook"] = {
+        kind: "webhook",
+        url: { fromEnv: "HOOK_URL" },
+      }),
+    "token-in-a-command": (r) =>
+      ((r["workers"] as Record<string, Record<string, unknown>>)["chatbot"]!["command"] = [
+        "worker",
+        "--token=ghp_abcdefghij0123456789",
+      ]),
+    "repository-with-credentials": (r) =>
+      ((r["datasets"] as Record<string, Record<string, Record<string, unknown>>>)[
+        "answers-public"
+      ]!["git"]!["repo"] = "https://x-access-token:ghp_abcdefghij0123456789@github.com/o/r.git"),
     "zero-capacity": (r) =>
       ((r["workers"] as Record<string, Record<string, unknown>>)["chatbot"]!["capacity"] = 0),
   },
   "suite.lock": {
     "missing-measurement-digest": (r) => delete r["measurementDigest"],
+    "https-origin-with-a-query": (r) =>
+      ((r["sources"] as Array<Record<string, unknown>>)[0]!["origin"] = {
+        https: { host: "example.com", path: "/cases.jsonl?sig=abc" },
+      }),
     "negative-bytes": (r) => ((r["sources"] as Array<Record<string, unknown>>)[0]!["bytes"] = -1),
   },
 };
@@ -1076,6 +1110,10 @@ export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
       delete r["worker"];
       r["import"] = { command: ["python", "-m", "bench.export"] };
     },
+    "import-from-a-module": (r) => {
+      delete r["worker"];
+      r["import"] = { module: "importers/bench.ts" };
+    },
     "self-verdict-reduction-and-limits": (r) => {
       (r["stopReasons"] as Record<string, unknown>)["REPAIR_BUDGET_EXHAUSTED"] = {
         class: "completed",
@@ -1087,6 +1125,14 @@ export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
       r["limits"] = { trialDeadline: "PT2M", missingMax: 0.2 };
       r["baselines"] = { freshness: "P3D" };
       r["configuration"] = { record: ["model", "temperature"] };
+      r["attribute"] = { fidelityMargin: { grounded: 0.025 } };
+      (r["measures"] as Record<string, unknown>)["completeness"] = {
+        type: "level",
+        levels: [0, 1, 2, 3],
+        anchors: { "0": "misses the question", "3": "answers every part" },
+        spacing: { cut: 2 },
+        scorer: { instrument: "quality-judge", dimension: "completeness" },
+      };
     },
   },
   project: {
@@ -1106,9 +1152,17 @@ export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
           retention: { pseudonymous: "P180D", personal: "P30D", labels: { study: "P3Y" } },
         },
       };
-      (r["delivery"] as Record<string, Record<string, unknown>>)["sinks"]!["il3"] = {
-        kind: "teams-workflow",
-        url: { fromEnv: "IL3_TEAMS_WORKFLOW_URL" },
+      const sinks = (r["delivery"] as Record<string, Record<string, unknown>>)["sinks"]!;
+      sinks["il3"] = { kind: "teams-workflow", url: { fromEnv: "IL3_TEAMS_WORKFLOW_URL" } };
+      sinks["records"] = {
+        kind: "webhook",
+        url: { fromEnv: "RECORDS_WEBHOOK_URL" },
+        signingKey: { fromEnv: "RECORDS_WEBHOOK_SIGNING_KEY" },
+        clearance: {
+          maxExposure: "private",
+          purpose: "PU-6",
+          reason: "the team's records service",
+        },
       };
     },
     "datasets-from-https-and-a-command": (r) => {

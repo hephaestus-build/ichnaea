@@ -1,10 +1,10 @@
 import * as z from "zod";
 
 import { none } from "../data-class.ts";
-import { Digest, Json, SuiteId, Text } from "../primitives.ts";
+import { Digest, SuiteId, Text } from "../primitives.ts";
 import { Pool } from "./case.ts";
 import { PrimaryRegistration } from "./suite-v2.ts";
-import { Command, CommitSha, Exposure, ConfigName } from "./setup.ts";
+import { Command, CommitSha, ConfigName, Exposure, GitRepo, JsonScalar } from "./setup.ts";
 
 /**
  * Where a locked source came from. An HTTPS source whose URL the environment holds is recorded by
@@ -19,7 +19,7 @@ export const LockedOrigin = z.xor([
   z.strictObject({
     git: z
       .strictObject({
-        repo: none(Text.describe("The repository.")),
+        repo: none(GitRepo.describe("The repository.")),
         commit: none(CommitSha.describe("The full commit.")),
         path: none(Text.describe("The path in the repository.")).optional(),
       })
@@ -28,8 +28,18 @@ export const LockedOrigin = z.xor([
   z.strictObject({
     https: z
       .strictObject({
-        host: none(Text.describe("The host.")),
-        path: none(Text.describe("The path.")),
+        host: none(
+          z
+            .string()
+            .regex(/^[^\s/?#@]+$/)
+            .describe("The host, with no user information."),
+        ),
+        path: none(
+          z
+            .string()
+            .regex(/^\/[^\s?#]*$/)
+            .describe("The path, with no query or fragment."),
+        ),
       })
       .describe("An HTTPS source, by host and path."),
   }),
@@ -60,7 +70,9 @@ export const LockedDataset = z.strictObject({
 /** A model judge's identity, as the lock pins it. */
 export const JudgeIdentity = z.strictObject({
   model: none(Text.describe("The model, with its revision.")),
-  parameters: none(z.record(Text, Json).describe("The sampling parameters.")),
+  parameters: none(
+    z.record(Text, JsonScalar).describe("The sampling parameters, as JSON scalars."),
+  ),
   prompt: none(Digest.describe("The prompt's digest.")),
   rubric: none(Digest.describe("The rubric's digest.")),
   inputsDigest: none(Digest.describe("The digest of what the judge is shown.")),
@@ -111,10 +123,10 @@ export const SuiteLock = z.strictObject({
     .record(ConfigName, InstrumentPin)
     .describe("Each instrument's pin. A built-in scorer has none."),
   measures: none(z.record(ConfigName, Digest).describe("Each measure definition's digest.")),
-  registration: z
+  limits: z
     .record(ConfigName, PrimaryRegistration)
     .describe(
-      "A copy of the primary measures' limits, owners and reasons, derived from the suite.",
+      "A copy of the primary measures' limits, owners and reasons, derived from the suite. The plan's preregistration is a separate record field.",
     ),
 });
 /** A suite lock. */

@@ -220,28 +220,107 @@
             },
             "pools": {
               "type": "object",
-              "propertyNames": {
-                "type": "string",
-                "x-ichnaea-known": [
-                  "development",
-                  "validation",
-                  "sealed",
-                  "promoted"
-                ]
+              "properties": {
+                "development": {
+                  "type": "object",
+                  "properties": {
+                    "label": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "The label that marks the pool's cases, such as dev.",
+                      "x-ichnaea-data": {
+                        "class": "none",
+                        "identifier": "none",
+                        "egress": [
+                          "*"
+                        ],
+                        "retention": "record"
+                      }
+                    }
+                  },
+                  "required": [
+                    "label"
+                  ]
+                },
+                "validation": {
+                  "type": "object",
+                  "properties": {
+                    "label": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "The label that marks the pool's cases, such as dev.",
+                      "x-ichnaea-data": {
+                        "class": "none",
+                        "identifier": "none",
+                        "egress": [
+                          "*"
+                        ],
+                        "retention": "record"
+                      }
+                    },
+                    "maxReads": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991,
+                      "description": "The registered reads after which the card warns.",
+                      "x-ichnaea-data": {
+                        "class": "none",
+                        "identifier": "none",
+                        "egress": [
+                          "*"
+                        ],
+                        "retention": "record"
+                      }
+                    }
+                  },
+                  "required": [
+                    "label"
+                  ]
+                },
+                "sealed": {
+                  "type": "object",
+                  "properties": {
+                    "label": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "The label that marks the pool's cases, such as dev.",
+                      "x-ichnaea-data": {
+                        "class": "none",
+                        "identifier": "none",
+                        "egress": [
+                          "*"
+                        ],
+                        "retention": "record"
+                      }
+                    }
+                  },
+                  "required": [
+                    "label"
+                  ]
+                },
+                "promoted": {
+                  "type": "object",
+                  "properties": {
+                    "label": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "The label that marks the pool's cases, such as dev.",
+                      "x-ichnaea-data": {
+                        "class": "none",
+                        "identifier": "none",
+                        "egress": [
+                          "*"
+                        ],
+                        "retention": "record"
+                      }
+                    }
+                  },
+                  "required": [
+                    "label"
+                  ]
+                }
               },
-              "additionalProperties": {
-                "type": "string",
-                "minLength": 1
-              },
-              "description": "For each pool, the label that marks its cases, for example development: dev.",
-              "x-ichnaea-data": {
-                "class": "none",
-                "identifier": "none",
-                "egress": [
-                  "*"
-                ],
-                "retention": "record"
-              }
+              "description": "The pools of the cases."
             },
             "frame": {
               "type": "object",
@@ -332,7 +411,7 @@
                       "properties": {
                         "repo": {
                           "type": "string",
-                          "minLength": 1,
+                          "pattern": "^(?![\\s\\S]*(?:(?:^|[^A-Za-z0-9_])(?:gh[pousr]_[A-Za-z0-9]|github_pat_|glpat-|xox[abprs]-|hf_[A-Za-z0-9]{8}|sk-[A-Za-z0-9]|pk-lf-|AKIA[0-9A-Z]{16})|[Aa]uthorization:|[Bb]earer ))(?:https:\\/\\/[^\\s/?#@]+(?:\\/[^\\s?#]*)?|ssh:\\/\\/(?:[A-Za-z0-9._-]+@)?[^\\s/?#@:]+(?::[0-9]+)?(?:\\/[^\\s?#@]*)?|[A-Za-z0-9._-]+@[^\\s/?#@:]+:[^\\s?#@/][^\\s?#@]*)$",
                           "description": "The repository, as `git clone` takes it.",
                           "x-ichnaea-data": {
                             "class": "none",
@@ -459,7 +538,7 @@
                       "type": "array",
                       "items": {
                         "type": "string",
-                        "minLength": 1
+                        "pattern": "^(?![\\s\\S]*(?:(?:^|[^A-Za-z0-9_])(?:gh[pousr]_[A-Za-z0-9]|github_pat_|glpat-|xox[abprs]-|hf_[A-Za-z0-9]{8}|sk-[A-Za-z0-9]|pk-lf-|AKIA[0-9A-Z]{16})|[Aa]uthorization:|[Bb]earer ))[\\s\\S]+$"
                       },
                       "description": "The command that fetches the files, run with the user's tools.",
                       "x-ichnaea-data": {
@@ -528,28 +607,107 @@
             },
             "pools": {
               "type": "object",
-              "propertyNames": {
-                "type": "string",
-                "x-ichnaea-known": [
-                  "development",
-                  "validation",
-                  "sealed",
-                  "promoted"
-                ]
+              "properties": {
+                "development": {
+                  "type": "object",
+                  "properties": {
+                    "label": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "The label that marks the pool's cases, such as dev.",
+                      "x-ichnaea-data": {
+                        "class": "none",
+                        "identifier": "none",
+                        "egress": [
+                          "*"
+                        ],
+                        "retention": "record"
+                      }
+                    }
+                  },
+                  "required": [
+                    "label"
+                  ]
+                },
+                "validation": {
+                  "type": "object",
+                  "properties": {
+                    "label": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "The label that marks the pool's cases, such as dev.",
+                      "x-ichnaea-data": {
+                        "class": "none",
+                        "identifier": "none",
+                        "egress": [
+                          "*"
+                        ],
+                        "retention": "record"
+                      }
+                    },
+                    "maxReads": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991,
+                      "description": "The registered reads after which the card warns.",
+                      "x-ichnaea-data": {
+                        "class": "none",
+                        "identifier": "none",
+                        "egress": [
+                          "*"
+                        ],
+                        "retention": "record"
+                      }
+                    }
+                  },
+                  "required": [
+                    "label"
+                  ]
+                },
+                "sealed": {
+                  "type": "object",
+                  "properties": {
+                    "label": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "The label that marks the pool's cases, such as dev.",
+                      "x-ichnaea-data": {
+                        "class": "none",
+                        "identifier": "none",
+                        "egress": [
+                          "*"
+                        ],
+                        "retention": "record"
+                      }
+                    }
+                  },
+                  "required": [
+                    "label"
+                  ]
+                },
+                "promoted": {
+                  "type": "object",
+                  "properties": {
+                    "label": {
+                      "type": "string",
+                      "minLength": 1,
+                      "description": "The label that marks the pool's cases, such as dev.",
+                      "x-ichnaea-data": {
+                        "class": "none",
+                        "identifier": "none",
+                        "egress": [
+                          "*"
+                        ],
+                        "retention": "record"
+                      }
+                    }
+                  },
+                  "required": [
+                    "label"
+                  ]
+                }
               },
-              "additionalProperties": {
-                "type": "string",
-                "minLength": 1
-              },
-              "description": "For each pool, the label that marks its cases, for example development: dev.",
-              "x-ichnaea-data": {
-                "class": "none",
-                "identifier": "none",
-                "egress": [
-                  "*"
-                ],
-                "retention": "record"
-              }
+              "description": "The pools of the cases."
             },
             "frame": {
               "type": "object",
@@ -632,7 +790,7 @@
               "type": "array",
               "items": {
                 "type": "string",
-                "minLength": 1
+                "pattern": "^(?![\\s\\S]*(?:(?:^|[^A-Za-z0-9_])(?:gh[pousr]_[A-Za-z0-9]|github_pat_|glpat-|xox[abprs]-|hf_[A-Za-z0-9]{8}|sk-[A-Za-z0-9]|pk-lf-|AKIA[0-9A-Z]{16})|[Aa]uthorization:|[Bb]earer ))[\\s\\S]+$"
               },
               "description": "The command that starts the worker, run in the arm's directory.",
               "x-ichnaea-data": {
@@ -649,7 +807,7 @@
               "type": "array",
               "items": {
                 "type": "string",
-                "minLength": 1
+                "pattern": "^(?![\\s\\S]*(?:(?:^|[^A-Za-z0-9_])(?:gh[pousr]_[A-Za-z0-9]|github_pat_|glpat-|xox[abprs]-|hf_[A-Za-z0-9]{8}|sk-[A-Za-z0-9]|pk-lf-|AKIA[0-9A-Z]{16})|[Aa]uthorization:|[Bb]earer ))[\\s\\S]+$"
               },
               "description": "A command that each arm runs in its own directory before its worker starts.",
               "x-ichnaea-data": {
@@ -786,7 +944,7 @@
               "type": "array",
               "items": {
                 "type": "string",
-                "minLength": 1
+                "pattern": "^(?![\\s\\S]*(?:(?:^|[^A-Za-z0-9_])(?:gh[pousr]_[A-Za-z0-9]|github_pat_|glpat-|xox[abprs]-|hf_[A-Za-z0-9]{8}|sk-[A-Za-z0-9]|pk-lf-|AKIA[0-9A-Z]{16})|[Aa]uthorization:|[Bb]earer ))[\\s\\S]+$"
               },
               "description": "A command that writes the import batch.",
               "x-ichnaea-data": {
@@ -808,8 +966,8 @@
           "properties": {
             "module": {
               "type": "string",
-              "minLength": 1,
-              "description": "A module that writes the import batch.",
+              "pattern": "^(?:[A-Za-z0-9_@+-][A-Za-z0-9._@+-]*\\/)*[A-Za-z0-9_@+-][A-Za-z0-9._@+-]*\\.(?:ts|mts|js|mjs)$",
+              "description": "A module that writes the import batch, in the suite's tree.",
               "x-ichnaea-data": {
                 "class": "none",
                 "identifier": "none",
@@ -1051,7 +1209,7 @@
             "type": "array",
             "items": {
               "type": "string",
-              "minLength": 1
+              "pattern": "^(?![\\s\\S]*(?:(?:^|[^A-Za-z0-9_])(?:gh[pousr]_[A-Za-z0-9]|github_pat_|glpat-|xox[abprs]-|hf_[A-Za-z0-9]{8}|sk-[A-Za-z0-9]|pk-lf-|AKIA[0-9A-Z]{16})|[Aa]uthorization:|[Bb]earer ))[\\s\\S]+$"
             },
             "description": "The command that starts the scorer.",
             "x-ichnaea-data": {
@@ -1068,7 +1226,7 @@
             "type": "array",
             "items": {
               "type": "string",
-              "minLength": 1
+              "pattern": "^(?![\\s\\S]*(?:(?:^|[^A-Za-z0-9_])(?:gh[pousr]_[A-Za-z0-9]|github_pat_|glpat-|xox[abprs]-|hf_[A-Za-z0-9]{8}|sk-[A-Za-z0-9]|pk-lf-|AKIA[0-9A-Z]{16})|[Aa]uthorization:|[Bb]earer ))[\\s\\S]+$"
             },
             "description": "A command that runs in the copy before the scorer starts.",
             "x-ichnaea-data": {
@@ -1167,10 +1325,29 @@
                   "retention": "record"
                 }
               },
-              "temperature": {
-                "type": "number",
-                "minimum": 0,
-                "description": "The sampling temperature.",
+              "parameters": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "additionalProperties": {
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "description": "The sampling parameters, such as temperature, as JSON scalars.",
                 "x-ichnaea-data": {
                   "class": "none",
                   "identifier": "none",
@@ -2068,6 +2245,79 @@
                   "retention": "record"
                 }
               },
+              "levels": {
+                "minItems": 2,
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "description": "The levels in ascending order. lock checks the order.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              },
+              "anchors": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "additionalProperties": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "description": "For a level, the text that anchors it.",
+                "x-ichnaea-data": {
+                  "class": "none",
+                  "identifier": "none",
+                  "egress": [
+                    "*"
+                  ],
+                  "retention": "record"
+                }
+              },
+              "spacing": {
+                "oneOf": [
+                  {
+                    "type": "string",
+                    "const": "equal",
+                    "description": "The levels are equally spaced.",
+                    "x-ichnaea-data": {
+                      "class": "none",
+                      "identifier": "none",
+                      "egress": [
+                        "*"
+                      ],
+                      "retention": "record"
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "cut": {
+                        "type": "number",
+                        "description": "The lowest level that counts as success.",
+                        "x-ichnaea-data": {
+                          "class": "none",
+                          "identifier": "none",
+                          "egress": [
+                            "*"
+                          ],
+                          "retention": "record"
+                        }
+                      }
+                    },
+                    "required": [
+                      "cut"
+                    ]
+                  }
+                ]
+              },
               "stage": {
                 "type": "string",
                 "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$",
@@ -2406,7 +2656,8 @@
               }
             },
             "required": [
-              "type"
+              "type",
+              "levels"
             ]
           },
           {
@@ -3315,10 +3566,17 @@
       "type": "object",
       "properties": {
         "fidelityMargin": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1,
-          "description": "The margin of the fidelity test when a stage is attributed.",
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$"
+          },
+          "additionalProperties": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "exclusiveMaximum": 1
+          },
+          "description": "For each attributed measure, the largest replay-to-recording difference that still counts as a faithful replay. A measure without an entry uses half its registered limit; attribute applies that default.",
           "x-ichnaea-data": {
             "class": "none",
             "identifier": "none",

@@ -78,7 +78,9 @@
         "model": "provider/model-x@2026-10-01",
         "prompt": "judges/prompt.md",
         "rubric": "rubrics/quality.md",
-        "temperature": 0
+        "parameters": {
+          "temperature": 0
+        }
       },
       "env": [
         {
