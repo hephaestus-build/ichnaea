@@ -4,9 +4,9 @@ TypeScript from a formula-only specification.
 Specification
 -------------
 Input: a table of k cases. Each table has an integer denominator D >= 1.
-Each case has two lists of integer units: `candidate` (length nC >= 1) and
-`base` (length nB >= 1), with 0 <= u <= D. A value is exactly u / D, so every
-value is in [0, 1]. The lengths vary by case.
+Each case has two lists of integer units: `candidate` (length nC) and `base`
+(length nB), with 0 <= u <= D. A case with nC = 0 or nB = 0 leaves the table.
+A value is exactly u / D, so every value is in [0, 1]. The lengths vary by case.
 
 Statistic: T = (1/k) * sum_i (mean(candidate_i) - mean(base_i)).
 
@@ -84,15 +84,17 @@ def parse_table(table):
         lists = []
         for key in ("candidate", "base"):
             units = case[key]
-            if len(units) < 1:
-                raise ValueError(f"table {table.get('id')!r}: {key} must not be empty")
             for u in units:
                 if isinstance(u, bool) or not isinstance(u, int) or not 0 <= u <= denominator:
                     raise ValueError(
                         f"table {table.get('id')!r}: {key} unit {u!r} is not an integer in [0, {denominator}]"
                     )
             lists.append([Fraction(u, denominator) for u in units])
-        parsed.append((lists[0], lists[1]))
+        # A case without a completed trial in an arm does not enter the test.
+        if lists[0] and lists[1]:
+            parsed.append((lists[0], lists[1]))
+    if not parsed:
+        raise ValueError(f"table {table.get('id')!r}: no case has a value in both arms")
     return parsed
 
 

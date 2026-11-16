@@ -185,6 +185,44 @@ for (const k of [2, 3, 4])
         draw(1_000_000, k, () => [2, 2], 300_000, shift),
       );
 
+// Scores rounded to 2 and 3 decimals: the exact path at fine lattices, D = 100 and D = 1,000.
+for (const k of [3, 5, 8, 12])
+  for (const r of [2, 3])
+    for (const shift of [0, -10])
+      add(
+        `decimal2-k${k}-r${r}-shift${shift}`,
+        100,
+        draw(100, k, () => [r, r], 30, shift),
+      );
+for (const k of [3, 5, 8, 12, 20])
+  for (const r of [2, 3])
+    for (const shift of [0, -50])
+      add(
+        `decimal3-k${k}-r${r}-shift${shift}`,
+        1000,
+        draw(1000, k, () => [r, r], 300, shift),
+      );
+for (const k of [12, 30])
+  for (const shift of [0, -50])
+    add(
+      `decimal3-r1-k${k}-shift${shift}`,
+      1000,
+      draw(1000, k, () => [1, 1], 300, shift),
+    );
+for (const [name, trials] of [
+  ["c3b2", () => [3, 2] as const],
+  ["c1b3", () => [1, 3] as const],
+] as const)
+  add(`decimal3-${name}-k8`, 1000, draw(1000, 8, trials, 300, -50));
+
+// A case with no completed trial in an arm does not enter the test.
+add("edge-empty-arm", 4, [
+  { candidate: [4, 3], base: [2, 3] },
+  { candidate: [], base: [1, 2] },
+  { candidate: [2, 3], base: [] },
+  { candidate: [1, 4], base: [3, 3] },
+]);
+
 function gcdOf(a: number, b: number): number {
   return b === 0 ? a : gcdOf(b, a % b);
 }
