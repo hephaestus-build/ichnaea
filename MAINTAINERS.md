@@ -34,40 +34,57 @@ comes from reproducibility. The verify job of the same workflow rebuilds the new
 
 ## Releases
 
-**Releases are paused until 1.0.** Consumers pin a commit of the `build` branch. At 1.0, the same
-build tree is packed and published to npm with provenance, as decision 0019 states. The release
-workflow fails in its first step. The procedure below is the paused design of
-[decision 0013](docs/decisions/0013-release-attested-tarballs.md): pre-releases `v0.<minor>.<patch>`
-as tarballs on a GitHub release, with build provenance and an SBOM attested by the release
-workflow. A new decision record replaces it before 1.0.
+A release is an immutable GitHub release `v0.<minor>.<patch>`. It holds the package's tarball,
+`hephaestus-build-ichnaea-<version>.tgz`, its SBOM `sbom.cdx.json` and `SHA256SUMS`, and the release
+workflow attests the tarball's build provenance and its SBOM.
+[Decision 0021](docs/decisions/0021-release-assets.md) gives the reasons. Nothing is published to
+npm before 1.0. The `build` branch keeps running until the consumers install release assets.
 
-The release deploy key and its secret are deleted. The release key returns at 1.0, and only
-together with a protection of `build` that does not rely on "deploy keys only": the `build`
-ruleset's bypass covers every write deploy key of the repository, so a second write key could
-write `build` too.
+A release needs no environment, no deploy key, no secret and no approval. The control is the
+attestation: only `.github/workflows/release.yml`, run on `main`, signs one that passes the
+consumers' `gh attestation verify`.
 
 ### Set up once
 
-[Repository settings](#repository-settings) has the settings that the release workflow relies on:
-the `release` environment, the tag rulesets and immutable releases. At 1.0 it also needs a release
-key, as step 9 says.
+Steps 8 and 9 of [Repository settings](#repository-settings): the `v*` tag rulesets and immutable
+releases. Without immutable releases, a release's tag and files could change after the verify job
+checked them.
 
 ### Cut a release
 
-1. On a branch, set the new version in `packages/ichnaea/package.json`. Open a pull request and
-   merge it into `main`. The conventional commit titles on `main` since the last release are its
-   change log.
-2. Start the release on `main` with the new version:
+1. **Pick the tag.** It is the next `v0.<minor>.<patch>` after the greatest `v*` tag:
+   `git fetch --tags origin && git tag --list 'v*' --sort=-v:refname | head -1`. A fix is a patch
+   release. `packages/ichnaea/package.json` on `main` keeps version `0.0.0`: the workflow stamps the
+   tag's version into the package, so a release needs no version commit. The conventional commit
+   titles on `main` since the previous release are its change log, and the release notes list them.
+2. **Start the release on `main`** with the tag:
 
    ```sh
    gh workflow run release.yml --ref main -f tag=v0.1.0
    ```
 
-3. The build job checks that the commit is on `main` and that the package has the tag's version.
-   It runs `pnpm check`, packs the tarball, and writes and checks the SBOM. When it passes, approve
-   the `release` environment in the run.
-4. The release job attests the tarball, creates the tag on the commit, and publishes the
-   pre-release.
+3. **The workflow runs to the end by itself.** The build job checks that the commit is on `main` and
+   that the tag is new and greater than every `v*` tag. It runs `pnpm run check`, builds the package
+   at the tag's version, runs publint, attw and the consumer test on it, packs it, and writes and
+   checks the SBOM. The release job attests the tarball and its SBOM, creates the tag on the
+   commit, and publishes the release. The verify job downloads the tarball from the release,
+   verifies its attestation, installs it with zod and runs `ichnaea --version`.
+4. **Check the release.** The verify job must be green. Copy the output of its step "The
+   attestation names this workflow on main", the `gh attestation verify` output, into the release
+   check.
+
+When a run fails:
+
+- **In the build job.** Nothing is attested, tagged or published. Fix the cause on `main` and start
+  the release again with the same tag.
+- **In the release job.** If the tag does not exist yet (`git ls-remote origin refs/tags/<tag>`
+  prints nothing), nothing is published. `gh release create` can leave a draft: delete it with
+  `gh release delete <tag> --yes`. An attestation of a tarball that no release publishes is
+  harmless. Fix the cause and start the release again with the same tag. A rule violation when the
+  tag is created means that the creation ruleset refuses the workflow: see step 8.
+- **In the verify job.** The release is published and immutable. Do not tell consumers to move to
+  it. Edit its notes to say that it failed verification and why, fix the cause on `main`, and
+  publish the next patch release.
 
 ## Repository settings
 
@@ -111,8 +128,8 @@ commands from a checkout of `main`.
    organisation, so it cannot be lowered for this repository alone. The maintainers keep that role.
    The protection is a rule, not a removal: the code owner ruleset of step 6 requires a code owner's
    approval for every change to `main`, and only the `maintainer` team may bypass it. The `v*` tag
-   rules below let nobody create a release tag while releases are paused, and the `build` rulesets
-   of step 13 let only the build workflow's deploy key write `build`.
+   rulesets of step 8 let nobody move or delete a release tag, and the `build` rulesets of step 12
+   let only the build workflow's deploy key write `build`.
 
    Remove a direct collaborator without a row with
    `gh api --method DELETE repos/hephaestus-build/ichnaea/collaborators/<login>`, then read the
@@ -125,8 +142,8 @@ commands from a checkout of `main`.
    own pull request cannot get a code owner's review, so it merges by the bypass of step 6. Before
    step 6 applies the variant for two or more maintainers, every path has two owners.
 
-3. **Public visibility, squash merges only, and no wiki or projects.** Attestations, the required
-   reviewer of the `release` environment and the free security features need a public repository.
+3. **Public visibility, squash merges only, and no wiki or projects.** Attestations and the free
+   security features need a public repository.
    A squash merge makes the pull request title and body the commit on `main`. CI lints the title
    and checks both for private records.
    The ruleset requires an up-to-date branch, so the button that updates a branch is on:
@@ -171,8 +188,8 @@ commands from a checkout of `main`.
    ruleset requires three checks, all from GitHub Actions (integration 15368), so no other app or
    commit status of the same name can satisfy them: `ok` from `ci.yml`, `pull request text` from
    `pull-request.yml` and `dependency review` from `dependency-review.yml`. `dependency review` is
-   the check of step 12: on a repository where it has not run yet, apply the files without it.
-   CodeQL is not a required check (step 12). Nothing bypasses the `main` ruleset. Two
+   the check of step 11: on a repository where it has not run yet, apply the files without it.
+   CodeQL is not a required check (step 11). Nothing bypasses the `main` ruleset. Two
    variants:
    - **One maintainer:** the `main` ruleset of `.github/rulesets/main-one-maintainer.json`, with no
      required approval, and the code owner ruleset of `.github/rulesets/main-code-owner.json`. The
@@ -211,12 +228,12 @@ commands from a checkout of `main`.
 
 7. **Signed commits.** Every commit pushed to a branch other than `build` must carry a verified
    signature. The build workflow's commits on `build` are not signed: the ruleset excludes
-   `refs/heads/build`, and step 13 protects that branch. Before you apply this ruleset, each maintainer sets up commit signing, as
+   `refs/heads/build`, and step 12 protects that branch. Before you apply this ruleset, each maintainer sets up commit signing, as
    [CONTRIBUTING.md](CONTRIBUTING.md#signed-commits) shows, and checks that GitHub shows their
    last commit as verified: the ruleset refuses a push of an unsigned commit to any other branch. GitHub
    signs the commits that it creates itself: the squash commit of a merged pull request, and the
-   commits of Renovate. Tags are not branches, so the release workflow's tag push is not affected.
-   The tag names a squash commit on `main`, which GitHub signed.
+   commits of Renovate. Tags are not branches, so the tag that the release workflow creates is not
+   affected. The tag names a squash commit on `main`, which GitHub signed.
 
    ```sh
    gh api --method POST repos/hephaestus-build/ichnaea/rulesets \
@@ -232,58 +249,67 @@ commands from a checkout of `main`.
      --input .github/rulesets/signed-commits.json
    ```
 
-8. **The `release` environment.** Only `main` may deploy to it, and a maintainer approves each run:
+8. **The `v*` tags.** Two tag rulesets protect the release tags. A bypass skips every rule of its
+   ruleset, so the rules with and without a bypass are in two rulesets:
+   - `release-tags-fixed.json` blocks the update and the deletion of a `v*` tag, for everyone.
+   - `release-tags-create.json` restricts the creation of a `v*` tag. The Maintain and Admin roles
+     (repository roles 2 and 5) and the GitHub Actions app (app 15368, the app of the workflow
+     token) bypass it. The release job creates the tag with the workflow token, so it needs that
+     bypass.
+
+   GitHub's docs list GitHub Apps among the actors that can bypass a ruleset, and the REST API names
+   one as an `Integration` actor by its app ID. The workflow token is an installation token of the
+   app that GitHub Actions installs on the repository. The docs do not name that app as a bypass
+   actor in so many words, so the first `PUT` below shows whether GitHub accepts it.
+
+   If GitHub refuses the GitHub Actions app as a bypass actor, delete the creation ruleset. Every
+   user with write access can then create a `v*` tag. That is acceptable: a tag alone is harmless.
+   No workflow starts on a pushed tag, and a release on a hand-made tag, or a file uploaded to a
+   release by hand, has no attestation that passes `--signer-workflow` and `--source-ref
+   refs/heads/main`. The attestation separates a real release. The cost is that a hand-made `v*`
+   tag, which nobody can move or delete, can block later releases: the tag check refuses a tag that
+   is not greater than it.
+
+   The bypass for the GitHub Actions app also covers every workflow on every branch, so the same
+   reasoning applies to a tag that a changed workflow on a branch creates.
+
+   Both rulesets exist already, the creation ruleset under its earlier name. Update them in place,
+   and create one that does not exist with `POST` instead:
 
    ```sh
-   gh api --method PUT repos/hephaestus-build/ichnaea/environments/release \
-     --input .github/environments/release.json
-   gh api --method POST repos/hephaestus-build/ichnaea/environments/release/deployment-branch-policies \
-     -f name=main -f type=branch
+   create="$(gh api repos/hephaestus-build/ichnaea/rulesets --jq '.[]
+     | select(.name == "release tags: nobody creates them while releases are paused"
+       or .name == "release tags: only maintainers and workflows create them") | .id')"
+   gh api --method PUT "repos/hephaestus-build/ichnaea/rulesets/$create" \
+     --input .github/rulesets/release-tags-create.json
+   fixed="$(gh api repos/hephaestus-build/ichnaea/rulesets \
+     --jq '.[] | select(.name == "release tags: nobody moves or deletes them") | .id')"
+   gh api --method PUT "repos/hephaestus-build/ichnaea/rulesets/$fixed" \
+     --input .github/rulesets/release-tags-fixed.json
    ```
 
-9. **The release deploy key, at 1.0 only.** The repository has no release key now: the old key and
-   its secret, `RELEASE_DEPLOY_KEY`, are deleted, and the release workflow is paused. The key
-   returns at 1.0 together with a protection of `build` that does not rely on "deploy keys only",
-   because the `build` ruleset's bypass covers every write deploy key. Then the private key exists
-   only as a secret of the `release` environment.
+   Each ruleset must equal its file. Each command prints nothing when it does:
 
-10. **The `v*` tags and the releases.** While releases are paused, nobody may create a release tag.
-    Nobody may move or delete one, and a published release cannot change. Apply the tag rules in two
-    parts, with a probe between them, so that a probe that creates a tag by mistake cannot leave a
-    tag that nobody can delete:
-    1. Apply the rule that nobody creates a release tag. Then list the tag rulesets: the list must
-       have only this ruleset.
+   ```sh
+   for file in release-tags-create release-tags-fixed; do
+     name="$(jq -r .name ".github/rulesets/$file.json")"
+     id="$(gh api repos/hephaestus-build/ichnaea/rulesets --jq ".[] | select(.name == \"$name\") | .id")"
+     diff <(jq -S . ".github/rulesets/$file.json") \
+       <(gh api "repos/hephaestus-build/ichnaea/rulesets/$id" \
+         | jq -S '{name, target, enforcement, conditions, rules, bypass_actors}')
+   done
+   ```
 
-    ```sh
-    gh api --method POST repos/hephaestus-build/ichnaea/rulesets \
-      --input .github/rulesets/release-tags-create.json
-    gh api repos/hephaestus-build/ichnaea/rulesets --jq '.[] | select(.target == "tag") | .name'
-    ```
+   The first release proves the workflow's bypass: its release job creates the tag.
 
-    2. Probe the rule. A person cannot create a release tag, so both commands must fail with a rule
-       violation:
+9. **Immutable releases.** A published release's tag and files cannot change, and its tag cannot be
+   reused:
 
-    ```sh
-    git push origin "$(git rev-parse origin/main):refs/tags/v0.0.0-probe"
-    gh api --method POST repos/hephaestus-build/ichnaea/git/refs \
-      -f ref=refs/tags/v0.0.0-probe -f sha="$(git rev-parse origin/main)"
-    ```
+   ```sh
+   gh api --method PUT repos/hephaestus-build/ichnaea/immutable-releases
+   ```
 
-    If a command creates the tag, the rule is wrong. No rule forbids the deletion of a tag yet,
-    so delete it with `git push origin :refs/tags/v0.0.0-probe`, correct the ruleset and probe
-    again. Go on only when `git ls-remote origin refs/tags/v0.0.0-probe` prints nothing.
-
-    3. Apply the rule that nobody moves or deletes a release tag, and immutable releases. Both tag
-       rulesets exist already; to apply a change of a file, `PUT` it to the ruleset's id, as step 7
-       shows for the signed commits ruleset.
-
-    ```sh
-    gh api --method POST repos/hephaestus-build/ichnaea/rulesets \
-      --input .github/rulesets/release-tags-fixed.json
-    gh api --method PUT repos/hephaestus-build/ichnaea/immutable-releases
-    ```
-
-11. **Read back.** Read the settings of steps 3 to 10, 13 and 14 back. Step 1 has its own read-back:
+10. **Read back.** Read the settings of steps 3 to 9, 12 and 13 back. Step 1 has its own read-back:
 
     ```sh
     gh api repos/hephaestus-build/ichnaea --jq '{visibility, has_wiki, has_projects,
@@ -294,19 +320,15 @@ commands from a checkout of `main`.
     gh api repos/hephaestus-build/ichnaea/actions/permissions/workflow
     gh api repos/hephaestus-build/ichnaea/actions/permissions/fork-pr-contributor-approval
     gh api repos/hephaestus-build/ichnaea/rulesets --jq '.[] | .name'
-    gh api repos/hephaestus-build/ichnaea/environments/release
-    gh api repos/hephaestus-build/ichnaea/environments/release/deployment-branch-policies \
-      --jq '.branch_policies[] | {name, type}' # only main, as a branch
     gh api repos/hephaestus-build/ichnaea/environments/build-branch
     gh api repos/hephaestus-build/ichnaea/environments/build-branch/deployment-branch-policies \
       --jq '.branch_policies[] | {name, type}' # only main, as a branch
     gh api repos/hephaestus-build/ichnaea/environments/build-branch/secrets --jq '.secrets[].name'
-    gh api repos/hephaestus-build/ichnaea/environments/release/secrets --jq '.secrets[].name' # none
-    gh api repos/hephaestus-build/ichnaea/immutable-releases
+    gh api repos/hephaestus-build/ichnaea/immutable-releases # enabled: true
     ```
 
     The repository has exactly one deploy key: the build branch's write key, titled
-    `build-branch writer`. A second write key could write `build` too (step 13). The command
+    `build-branch writer`. A second write key could write `build` too (step 12). The command
     prints nothing when the list is right:
 
     ```sh
@@ -324,7 +346,7 @@ commands from a checkout of `main`.
         | jq -S '{name, target, enforcement, conditions, rules, bypass_actors}')
     ```
 
-12. **Security scan checks.** CodeQL (the organisation's default setup), dependency review and
+11. **Security scan checks.** CodeQL (the organisation's default setup), dependency review and
     Scorecard run only on a public repository. After the flip, once dependency review has run on a
     pull request, make it a required check in the `main` ruleset. Do not do it before: a check that
     never runs blocks every pull request. Dependency review runs on every pull request, forks
@@ -347,7 +369,7 @@ commands from a checkout of `main`.
       | gh api --method PUT "repos/hephaestus-build/ichnaea/rulesets/$id" --input -
     ```
 
-13. **The `build` branch.** The `build-branch` environment lets only `main` deploy, has no required
+12. **The `build` branch.** The `build-branch` environment lets only `main` deploy, has no required
     reviewer, and holds one secret, `BUILD_BRANCH_DEPLOY_KEY`: the private key of the repository's
     only write deploy key, `build-branch writer`. Only the publish job of
     `.github/workflows/build-branch.yml` names the environment, and a test fails if another workflow
@@ -359,8 +381,7 @@ commands from a checkout of `main`.
     key could force-push.
 
     The bypass covers every write deploy key. Keep the build key the only deploy key, as the
-    read-back of step 11 checks. A release key at 1.0 needs a protection of `build` that does not
-    rely on "deploy keys only" first.
+    read-back of step 10 checks.
 
     Apply the environment and the rulesets:
 
@@ -393,7 +414,7 @@ commands from a checkout of `main`.
 
     The first run of the workflow on `main` creates `build`.
 
-14. **GitHub Pages.** The docs site deploys from `.github/workflows/docs.yml`, from `main` only. Pages
+13. **GitHub Pages.** The docs site deploys from `.github/workflows/docs.yml`, from `main` only. Pages
     builds from a workflow, not from a branch, and serves HTTPS only. The `github-pages` environment
     lets only `main` deploy and has no secret:
 

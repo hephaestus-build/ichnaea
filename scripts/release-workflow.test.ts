@@ -161,3 +161,38 @@ describe("release workflow", () => {
       expect(c.split("\n      - ")[0]).toContain("persist-credentials: false");
   });
 });
+
+const ruleset = (file: string): unknown =>
+  JSON.parse(
+    readFileSync(join(import.meta.dirname, "..", ".github", "rulesets", file), "utf8"),
+  ) as unknown;
+const tags = { ref_name: { include: ["refs/tags/v*"], exclude: [] } };
+
+describe("the release tag rulesets", () => {
+  it("let nobody move or delete a release tag", () => {
+    expect(ruleset("release-tags-fixed.json")).toEqual({
+      name: "release tags: nobody moves or deletes them",
+      target: "tag",
+      enforcement: "active",
+      conditions: tags,
+      rules: [{ type: "update" }, { type: "deletion" }],
+      bypass_actors: [],
+    });
+  });
+
+  it("let only the Maintain and Admin roles and the workflow token create one", () => {
+    expect(ruleset("release-tags-create.json")).toEqual({
+      name: "release tags: only maintainers and workflows create them",
+      target: "tag",
+      enforcement: "active",
+      conditions: tags,
+      rules: [{ type: "creation" }],
+      bypass_actors: [
+        // The repository roles Maintain and Admin, and the GitHub Actions app.
+        { actor_id: 2, actor_type: "RepositoryRole", bypass_mode: "always" },
+        { actor_id: 5, actor_type: "RepositoryRole", bypass_mode: "always" },
+        { actor_id: 15368, actor_type: "Integration", bypass_mode: "always" },
+      ],
+    });
+  });
+});

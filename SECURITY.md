@@ -23,7 +23,7 @@ Include as much as you can:
 - We follow **coordinated disclosure**: give us time to ship a fix before you disclose the
   vulnerability in public. If we cannot agree on a date, the default disclosure date is **90 days**
   after your report. It is earlier when the vulnerability is actively exploited.
-- We fix a confirmed vulnerability as soon as we can, in a new pre-release, and publish it as a
+- We fix a confirmed vulnerability as soon as we can, in a new patch release, and publish it as a
   [GitHub security advisory](https://github.com/hephaestus-build/ichnaea/security/advisories). We
   credit you unless you prefer to stay anonymous.
 
@@ -54,7 +54,7 @@ Ichnaea is a library and a CLI that run on your machine. In scope:
 - the code of the packages in this repository, the CLI included;
 - the build branch: the build workflow, the build tree, its manifest and its SBOM, and the
   reproducibility check;
-- the paused release process: the release workflow, the attestations, the SBOM and the checksums;
+- the release process: the release workflow, the attestations, the SBOM and the checksums;
 - the GitHub Actions workflows in this repository.
 
 Trust model: Ichnaea runs plugins and configuration files as trusted code and does not sandbox
@@ -99,7 +99,9 @@ Independent of this reporting channel, the repository has:
   writes the `build` branch, and nobody force-pushes it. Each build commit has an SBOM and a
   manifest without install scripts, and CI rebuilds it byte for byte from its source commit
   ([MAINTAINERS.md § The build branch](MAINTAINERS.md#the-build-branch)).
-- **Release integrity, at 1.0:** nobody creates a release tag while releases are paused, nobody
-  moves one, and releases are immutable
-  ([MAINTAINERS.md § Repository settings](MAINTAINERS.md#repository-settings)).
+- **Release integrity:** only the release workflow, run on `main`, signs an attestation that
+  passes `gh attestation verify --signer-workflow … --source-ref refs/heads/main`. Nobody moves or
+  deletes a release tag, and releases are immutable
+  ([decision 0021](docs/decisions/0021-release-assets.md),
+  [MAINTAINERS.md § Repository settings](MAINTAINERS.md#repository-settings)).
 - **Native alerts:** GitHub secret scanning with push protection, and Dependabot alerts.
