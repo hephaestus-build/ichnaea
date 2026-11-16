@@ -302,7 +302,7 @@ its structure. Its sidecar records the commit, the script hashes, the seeds and 
     favouring one arm. This study has no shocks, so it sets no shock bound.
   - **Both arms of a case ran adjacent in time.** Every trial that ran records `startedAt` and
     `endedAt`; otherwise the result is not validated, because "the records do not show when the arms
-    ran". c is the largest number of trials whose [startedAt, endedAt] intervals overlap, computed
+    ran". c is the largest number of trials whose half-open [startedAt, endedAt) intervals overlap, computed
     from the records. The trials are ranked by `startedAt`, ties broken by trial ID, and a case whose
     two trials' ranks differ by more than 2c − 1 is unpaired. There is no fixed time window.
   - **Unpaired cases and missing trials.** A case without its pair, unpaired or with a missing

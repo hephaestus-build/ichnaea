@@ -65,7 +65,9 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           # A build restores no cache, so that no other run's files can enter it.
           package-manager-cache: false
-      - run: pnpm install --frozen-lockfile
+      # Everything but the docs site: its build tree (Astro and friends) is not part of the package's
+      # build, and scripts/verify-build.ts installs the same set.
+      - run: pnpm install --frozen-lockfile --filter '!ichnaea-docs'
       - name: Assemble the build tree
         run: node scripts/build-package.ts "$RUNNER_TEMP/tree" --source-commit "$GITHUB_SHA"
       - name: The consumer test passes on exactly this tree
@@ -198,7 +200,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           package-manager-cache: false
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile --filter '!ichnaea-docs'
       - name: The build commit is byte for byte the build of its source commit
         env:
           COMMIT: ${{ needs.publish.outputs.commit }}
