@@ -32,9 +32,9 @@ on:
         type: boolean
         default: true
       max_parallel:
-        description: "Jobs of one matrix at once, at most 30 (the organisation shares 60, and other repositories keep 30 or more)"
+        description: "Jobs of one matrix at once, at most 14 (Ichnaea keeps within 20 runners of the shared pool, its pull request CI included)"
         type: string
-        default: "20"
+        default: "12"
       margins:
         description: "Margin indices 0-50, comma-separated, for a pre-check (A, B, C and E-large only); empty runs every margin"
         type: string
@@ -43,10 +43,12 @@ on:
 permissions:
   contents: read
 
-# A second dispatch waits for the running sweep and never cancels it. (A third one replaces the
-# second while it waits.)
+# Ichnaea's heavy workflows, every study and the confirmation sweep, share one concurrency group,
+# so at most one of them runs at a time: Ichnaea keeps within 20 runners of the organisation's
+# shared pool, with its own pull request CI included. A second dispatch waits for the running one
+# and never cancels it. (A third one replaces the second while it waits.)
 concurrency:
-  group: confirmation-sweep
+  group: heavy-runners
   cancel-in-progress: false
 
 # Every job runs on one runtime (REQ-83): the runner image label ubuntu-24.04 (x64 Linux, as the
@@ -179,8 +181,9 @@ jobs:
 
   large:
     name: ${{ matrix.artifact }}
-    needs: [plan, structures]
-    if: needs.plan.outputs.large_count != '0'
+    # After skips, so that only one matrix runs at a time. A skipped skips job does not skip this one.
+    needs: [plan, structures, skips]
+    if: ${{ !cancelled() && needs.structures.result == 'success' && needs.plan.outputs.large_count != '0' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 330
     strategy:
@@ -240,8 +243,9 @@ jobs:
 
   embedded:
     name: ${{ matrix.artifact }}
-    needs: [plan, embed]
-    if: needs.plan.outputs.embedded_count != '0'
+    # After large, so that only one matrix runs at a time. A skipped large job does not skip this one.
+    needs: [plan, embed, large]
+    if: ${{ !cancelled() && needs.embed.result == 'success' && needs.plan.outputs.embedded_count != '0' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 330
     strategy:
