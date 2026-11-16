@@ -1,0 +1,65 @@
+---
+title: Margins, and why you set them before any run
+description: A margin is the largest decrease you accept. You register it with a reason before a comparison uses it, and you never change it to make a run pass.
+sidebar:
+  order: 2
+---
+
+A margin is the largest decrease in a measure that you accept.
+For example, a margin of 15 points means: a candidate may answer up to 15 points worse than the base and still pass.
+
+The margin is a decision about your product, not about statistics.
+The owner of the measure sets it.
+
+## Register it before you compare
+
+You write the margin in the suite, with a reason, before any comparison uses it.
+The support example registers its margin like this:
+
+```json
+{
+  "measure": "support/facts-stated",
+  "margin": 0.15,
+  "marginStatus": "registered",
+  "marginReason": "Twelve cases cannot see smaller drops; the floor at three replicates is about 0.08."
+}
+```
+
+A margin that you choose after you see the results can always be made to pass.
+That is why a margin with the status `placeholder` gives no verdict. Ichnaea runs the plan as an estimate only.
+
+## The floor: the smallest margin your suite can clear
+
+Even when nothing changes and every trial passes, your suite has a limit.
+With K cases and r trials per case, the smallest margin that can pass is about
+
+> floor = z² / (K(r − ½) + z²), with z = 1.645
+
+| Cases | Floor with 2 trials | Floor with 3 trials |
+| ----- | ------------------- | ------------------- |
+| 17    | 9.6 points          | 6.0 points          |
+| 20    | 8.3 points          | 5.1 points          |
+| 60    | 2.9 points          | 1.8 points          |
+| 250   | 0.7 points          | 0.4 points          |
+
+If your margin is below the floor, your suite can never pass, even when nothing changes.
+The planner checks this before the first trial and says so.
+
+## Why no candidate can pass yet
+
+A non-inferiority result is validated only for margins from a smallest validated margin up to 30 points.
+That smallest margin is not set yet.
+The studies found case structures in which the lower bound is too optimistic.
+So until that smallest margin is set, Ichnaea gives no PASS. An unchanged candidate gets INCONCLUSIVE.
+A real decrease beyond run-to-run noise still gives REGRESSION.
+
+## Limits
+
+- A margin of 0 is not a non-inferiority test.
+- A claim that a candidate is better than the base is never validated.
+
+## Evidence
+
+- [Decision 0012](https://github.com/hephaestus-build/ichnaea/blob/main/docs/decisions/0012-margins.md): registered and placeholder margins, and the validated range.
+- [Decision 0015](https://github.com/hephaestus-build/ichnaea/blob/main/docs/decisions/0015-verdicts-from-two-results.md): why no run passes until the floor is set.
+- [Statistics validation, floors](https://github.com/hephaestus-build/ichnaea/blob/main/packages/ichnaea/src/stats/VALIDATION.md#floors-and-the-minimum-detectable-effect): the formula and the table.
