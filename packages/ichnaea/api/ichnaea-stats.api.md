@@ -5,6 +5,12 @@
 ```ts
 
 // @public
+export type AgreementTable = readonly (readonly number[])[];
+
+// @public
+export type AlphaMetric = "nominal" | "ordinal" | "interval";
+
+// @public
 export type ArmCounts = Count;
 
 // @public
@@ -88,6 +94,9 @@ export interface ClusterSchedule {
 }
 
 // @public
+export function cohenKappa(table: AgreementTable): number;
+
+// @public
 export function compareCounts(input: ComparisonInput): Comparison;
 
 // @public
@@ -113,6 +122,17 @@ export interface ComparisonInput {
     readonly rng?: Rng;
     readonly valueType: ValueType;
 }
+
+// @public
+export interface ConfusionTable {
+    readonly categories: readonly string[];
+    readonly pairs: number;
+    readonly skipped: number;
+    readonly table: number[][];
+}
+
+// @public
+export function confusionTable(first: readonly (string | null)[], second: readonly (string | null)[], categories: readonly string[]): ConfusionTable;
 
 // @public
 export interface Count {
@@ -172,6 +192,9 @@ export interface FixedCasesMdeInput {
 }
 
 // @public
+export function gwetAc1(table: AgreementTable): number;
+
+// @public
 export function holm(pValues: readonly number[]): number[];
 
 // @public
@@ -184,6 +207,9 @@ export interface Interval {
     readonly sided: Sided;
     readonly upper: number;
 }
+
+// @public
+export function krippendorffAlpha(units: readonly (readonly (number | null)[])[], metric: AlphaMetric): number;
 
 // @public
 export const MARGIN_FLOOR_NOT_SET = "the validated margin floor is not set yet";
@@ -213,6 +239,9 @@ export function pnorm(x: number): number;
 
 // @public
 export function qnorm(p: number): number;
+
+// @public
+export function rawAgreement(table: AgreementTable): number;
 
 // Warning: (ae-forgotten-export) The symbol "Restricted" needs to be exported by the entry point index.d.ts
 //

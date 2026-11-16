@@ -171,6 +171,18 @@ jobs:
                test/stats/reference-python-score-intervals.json"
           git diff --exit-code -- test/stats/reference-r-score-intervals.json \
             test/stats/reference-python-score-intervals.json
+      # Agreement between raters: irr and Gwet's irrCAC in R, and the Python krippendorff package as a
+      # second oracle for alpha.
+      - name: The agreement reference values are what their oracles write
+        working-directory: packages/ichnaea
+        run: |
+          node scripts/stats/agreement-fixtures.ts
+          docker run --rm -v "$PWD":/w -w /w "$R_IMAGE" Rscript scripts/stats/reference-agreement.R
+          docker run --rm -v "$PWD":/w -w /w "$PYTHON_IMAGE" sh -c \
+            "pip install --quiet --root-user-action=ignore --require-hashes -r scripts/stats/oracle-requirements.txt \
+            && python scripts/stats/reference-krippendorff.py"
+          git diff --exit-code -- test/stats/reference-agreement-inputs.json \
+            test/stats/reference-r-agreement.json test/stats/reference-python-krippendorff.json
 
   workflows:
     name: workflows

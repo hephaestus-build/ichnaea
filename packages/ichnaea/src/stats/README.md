@@ -73,3 +73,32 @@ refuses a schedule whose cluster IDs, dimensions, or indices do not match.
 For paired differences, keep paired outcomes in each row and the family or case as its cluster.
 For a planned-attempt denominator, supply the defined 0/1 operational outcome of every planned
 attempt. Do not drop a row because its quality verdict is unavailable.
+
+## Agreement between raters
+
+`rawAgreement`, `cohenKappa` and `gwetAc1` take a square table of counts, one row and one column per
+declared category. `confusionTable` builds that table from two raters' labels: a null label is
+missing, and a label outside the declared categories throws. `krippendorffAlpha` takes one row per
+item, with any number of raters and null for a missing value.
+
+```ts
+import { confusionTable, gwetAc1, krippendorffAlpha } from "@hephaestus-build/ichnaea/stats";
+
+const { table, skipped } = confusionTable(
+  ["yes", "no", null, "no"],
+  ["yes", "yes", "no", "no"],
+  ["yes", "no"],
+);
+const ac1 = gwetAc1(table); // skipped === 1: the third item has one label only
+const alpha = krippendorffAlpha(
+  [
+    [4, 5],
+    [2, 2],
+    [3, null],
+  ],
+  "ordinal",
+);
+```
+
+These are point estimates. Draw intervals by resampling whole cases. Undefined values are NaN.
+`VALIDATION.md` lists the oracles.

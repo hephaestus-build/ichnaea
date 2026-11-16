@@ -428,6 +428,49 @@ docker run --rm --network none -v "$PWD":/w -w /w \
   Rscript scripts/stats/reference-cluster-bootstrap.R
 ```
 
+## Agreement between raters
+
+`rawAgreement`, `cohenKappa`, `gwetAc1` and `krippendorffAlpha` (nominal, ordinal and interval
+metrics) are point estimates. They decide nothing on their own. A calibration that uses them
+draws its intervals by resampling whole cases, because the items of one case are not independent,
+and the analytic variances assume that they are.
+
+Two definitions to know:
+
+- **AC1 counts the declared categories.** Its chance term divides by q − 1, where q is the size of
+  the table, so a category that nobody chose still counts. Kappa does not depend on unused
+  categories.
+- **Only paired items count.** `confusionTable` leaves out an item that either rater did not label.
+  Gwet's general formula for raw ratings also estimates category shares from unpaired ratings; this
+  implementation does not, so it compares a judge and raters on exactly the same items.
+
+Undefined values are NaN, never a number that looks real: kappa when both raters put every item in
+one category, and alpha when no two values can be paired or no paired value differs.
+
+The reference values come from test-only oracles in the images that CI pins. The inputs are
+synthetic (`scripts/stats/agreement-fixtures.ts` writes them).
+
+| Set                                                                                                                                               | Oracle                                                         | Size          | Tolerance        |
+| ------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | ------------- | ---------------- |
+| Raw agreement, kappa and AC1 from tables of 2–7 categories, including the prevalence pair with equal raw agreement and a declared unused category | R irrCAC (`kappa2.table`, `gwet.ac1.table`) and irr (`kappa2`) | 35 tables     | 1e-12            |
+| Confusion tables from labels with missing values, and their kappa                                                                                 | R `table` and irr `kappa2`                                     | 5 label pairs | exact, and 1e-12 |
+| Krippendorff's alpha, three metrics, 2–5 raters, missing values                                                                                   | R irr (`kripp.alpha`) and Python `krippendorff` 0.9.0          | 11 matrices   | 1e-12            |
+| Krippendorff's published example (12 units, 4 raters): 0.743, 0.815, 0.849                                                                        | Krippendorff (2011)                                            | 1             | 3 decimals       |
+
+Regenerate from `packages/ichnaea`, as CI does:
+
+```sh
+node scripts/stats/agreement-fixtures.ts
+docker run --rm -v "$PWD":/w -w /w \
+  rocker/r-ver:4.5.2@sha256:fd4ccdd3a4a6f7ef805e2daeee2a0fe3bf126bc231f36351223baecf5a595a4c \
+  Rscript scripts/stats/reference-agreement.R
+docker run --rm -v "$PWD":/w -w /w \
+  python:3.13.18-slim@sha256:e48f59cdba69a3cbd9ed2cf0f348d90d45a8d350d98134cf1070bc106ee9ed90 sh -c \
+  "pip install --require-hashes -r scripts/stats/oracle-requirements.txt && python scripts/stats/reference-krippendorff.py"
+```
+
+The R script installs irr, irrCAC and jsonlite from a dated CRAN snapshot, so it needs the network.
+
 ## Floors and the minimum detectable effect
 
 The zero-noise floor, the smallest margin that can pass when every trial passes in both arms, is
