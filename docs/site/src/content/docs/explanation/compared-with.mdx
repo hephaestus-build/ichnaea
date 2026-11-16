@@ -27,7 +27,7 @@ Some show which cases improved or got worse, for example [Braintrust](https://do
 Ichnaea runs a paired test of the difference on the same cases, with a stated estimand. See [why paired comparisons](/ichnaea/explanation/paired/).
 
 **It can say "cannot tell".**
-A verdict is PASS, REGRESSION, INCONCLUSIVE or INVALID, with its reason in words and an exit code for CI.
+A verdict is Pass, Regression, Inconclusive or Invalid, with its reason in words and an exit code for CI.
 A fixed threshold always gives an answer, even when the suite is too small to decide.
 The [planning explorer](/ichnaea/planner/) shows how often such a threshold raises a false alarm.
 
@@ -39,6 +39,13 @@ Ichnaea goes one step further. It checks whether the missing trials could change
 **It publishes the evidence for its statistics.**
 The type-I error and coverage of each method are measured against a written bar, and the results are public. See [what "validated" means](/ichnaea/explanation/validated/).
 
+**It will run both versions side by side (planned).**
+The planned runner keeps one worker for the base and one for the candidate.
+It sends both the same case one after the other, in a random order for each case.
+A slow hour or a change at the model provider then hits both versions alike.
+A tool that runs one version and then the other also compares two different hours.
+Today you run both versions yourself. Interleave them case by case to keep this property.
+
 **It needs no account and no API key to decide.**
 Ichnaea decides from result files. It listens on no port and makes no network call of its own.
 
@@ -49,7 +56,7 @@ Ichnaea decides from result files. It listens on no port and makes no network ca
 - **TypeScript only.** Other languages write JSON records that match the [record schemas](/ichnaea/reference/schemas/).
 - **Only pass/fail measures decide.** Scores and model judges show estimates without a verdict.
 - **Judge calibration is planned.** Today only its schemas exist.
-- **No PASS yet.** Non-inferiority is not validated yet.
+- **No Pass yet.** Non-inferiority is not validated yet.
 - **Early.** Ichnaea is 0.x, with one maintainer and a few users.
 
 ## Use them together
