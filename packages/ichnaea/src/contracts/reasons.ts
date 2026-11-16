@@ -245,7 +245,7 @@ export const REASONS: { readonly [C in ReasonCode]: Reason } = {
     [
       always(
         "sensitivity",
-        "As recorded, the decrease is beyond run-to-run noise ({test}, {p}). If the {missing} missing trials of the {side} {arm} had {imputed}, it would not be ({imputedP}). No verdict holds.",
+        "As recorded, the decrease is beyond run-to-run noise ({test}, {p}). If the {missing} missing trials of the {side} ({arm}) had {imputed}, it would not be ({imputedP}). No verdict holds.",
       ),
       always(
         "missing",
@@ -265,7 +265,7 @@ export const REASONS: { readonly [C in ReasonCode]: Reason } = {
     [
       always(
         "coverage",
-        "Only {available} of {planned} trials of {measure} finished for the {side} {arm} ({share}). A decision needs {coverageFloor}.",
+        "Only {available} of {planned} trials of {measure} finished for the {side} ({arm}), which is {share}. A decision needs {coverageFloor}.",
       ),
       always(
         "missing",

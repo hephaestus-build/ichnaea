@@ -229,6 +229,6 @@ describe("REASONS", () => {
   it("never lets an opaque arm name stand for a side: the side comes from the decision", () => {
     for (const { code, key, text } of texts)
       for (const m of text.matchAll(/\{arm\}/g))
-        expect(text.slice(0, m.index), `${code}/${key}`).toMatch(/\{side\} $/);
+        expect(text.slice(0, m.index), `${code}/${key}`).toMatch(/\{side\} \($/);
   });
 });
