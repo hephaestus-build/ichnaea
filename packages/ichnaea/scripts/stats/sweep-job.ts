@@ -36,6 +36,7 @@ import { parseArgs } from "node:util";
 
 import { git, repoRoot, sha256 } from "./provenance.ts";
 import { readStructures, seedOf, shardOf } from "./simulate-structures.ts";
+import { maxParallelOf } from "./study-plan.ts";
 
 export const JOB_SCHEMA = "ichnaea.sweep-job/1";
 
@@ -444,11 +445,16 @@ async function main(): Promise<void> {
     const env = (phase: Phase): boolean =>
       process.env[`SWEEP_${phase.replace("-", "_").toUpperCase()}`] === "true";
     const p = plan(parsePhases(PHASES.filter(env).join(",")), margins, jobs);
-    const lines = Object.entries(p).flatMap(([k, v]) =>
-      typeof v === "string"
-        ? [`${k}=${v}`]
-        : [`${k}=${JSON.stringify(v)}`, `${k}_count=${v.include.length}`],
-    );
+    // The jobs of one matrix that run at once (scripts/stats/study-plan.ts, MAX_PARALLEL_CAP).
+    const maxParallel = maxParallelOf(process.env["MAX_PARALLEL"]);
+    const lines = [
+      ...Object.entries(p).flatMap(([k, v]) =>
+        typeof v === "string"
+          ? [`${k}=${v}`]
+          : [`${k}=${JSON.stringify(v)}`, `${k}_count=${v.include.length}`],
+      ),
+      `max_parallel=${maxParallel}`,
+    ];
     const output = process.env["GITHUB_OUTPUT"];
     if (output === undefined) console.log(lines.join("\n"));
     else appendFileSync(output, `${lines.join("\n")}\n`);
