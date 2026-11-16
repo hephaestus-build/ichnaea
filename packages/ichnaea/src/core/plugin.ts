@@ -73,7 +73,7 @@ export interface GateDefinition<Id extends string = string> {
 /**
  * What an importer reads and returns.
  *
- * @deprecated Map the files to ResultRow values and use importResults; removed in the next release.
+ * @deprecated Map the files to TrialResult values and use importResults; removed in the next release.
  */
 export interface ImportInput {
   /** The paths of the other runner's result files. */
@@ -88,7 +88,7 @@ export interface ImportInput {
 /**
  * Records an importer produces from another runner's files.
  *
- * @deprecated Map the files to ResultRow values and use importResults; removed in the next release.
+ * @deprecated Map the files to TrialResult values and use importResults; removed in the next release.
  */
 export interface ImportResult {
   /** The trial records, one for each planned trial that the files hold. */
@@ -105,7 +105,7 @@ export interface ImportResult {
  * import enforces this for a completed record with neither `output` nor `pointer`. A
  * `system_failure` or `budget_exceeded` trial never carries a passing value: import refuses one.
  *
- * @deprecated Map the files to ResultRow values and use importResults; removed in the next release.
+ * @deprecated Map the files to TrialResult values and use importResults; removed in the next release.
  */
 export interface Importer<Id extends string = string> {
   /** The importer's ID, namespaced as `<plugin id>/…`. */

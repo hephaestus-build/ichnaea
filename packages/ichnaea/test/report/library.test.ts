@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { importResults, type ResultRow } from "../../src/core/index.ts";
+import { importResults } from "../../src/core/index.ts";
 import { compare, createPlan } from "../../src/decide/index.ts";
 import { report, ReportError } from "../../src/report/index.ts";
-import { configuration, SUITE } from "../core/support/library.ts";
+import { answer, configuration, SUITE } from "../core/support/library.ts";
 
 const base = configuration("base prompt", 0.2);
 const candidate = configuration("candidate prompt", 0.2);
@@ -14,13 +14,8 @@ const plan = createPlan(SUITE, {
   intendedChanges: ["/prompts/composer"],
   createdAt: "2026-11-16T12:00:00Z",
 });
-const rows: ResultRow[] = plan.record.trials.map((t) => ({
-  case: t.case,
-  arm: t.arm,
-  replicate: t.replicate,
-  outcome: "completed",
-  configuration: plan.record.arms.find((a) => a.name === t.arm)?.identity ?? "",
-  output: { text: t.arm === "base" ? "answer" : "", declined: true },
+const rows = plan.record.trials.map((t) => ({
+  result: answer(t, { text: t.arm === "base" ? "answer" : "", declined: true }),
 }));
 const { records } = importResults(plan, rows);
 const decision = compare(plan, records, { decidedAt: "2026-11-16T13:00:00Z" });

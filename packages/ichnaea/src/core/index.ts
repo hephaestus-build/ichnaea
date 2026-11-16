@@ -9,14 +9,7 @@ export { MIN_DECISION_CASES, PlanError, TRIGGER_VARIES } from "./planner.ts";
 export * from "./package-version.ts";
 export * from "./plugin.ts";
 export * from "./records.ts";
-export {
-  type CompletedRow,
-  type FailedRow,
-  type ImportSummary,
-  importResults,
-  type ResultRow,
-  type ResultRowBase,
-} from "./results.ts";
+export { type ImportSummary, importResults, type TimedResult } from "./results.ts";
 export * from "./semver.ts";
 export * from "./store.ts";
 export * from "./version.ts";

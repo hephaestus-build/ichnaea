@@ -109,16 +109,6 @@ export function compare(plan: SuitePlan, records: RunRecords, options: {
     readonly aa?: readonly AaEvidence[];
 }): Decision;
 
-// @public
-export interface CompletedRow extends ResultRowBase {
-    // Warning: (ae-forgotten-export) The symbol "Configuration" needs to be exported by the entry point index.d.ts
-    readonly configuration: string | Configuration;
-    readonly outcome: "completed" | "abstained";
-    // Warning: (ae-forgotten-export) The symbol "Json" needs to be exported by the entry point index.d.ts
-    readonly output?: Json;
-    readonly pointer?: string;
-}
-
 // @public @deprecated
 export interface Config<Plugins extends readonly Plugin[] = readonly Plugin[]> {
     readonly allowStability?: readonly Exclude<Stability, "stable">[];
@@ -239,13 +229,6 @@ export interface EgressRequest {
 export function exitCode(decision: Decision, policy: Plan["policy"]): number;
 
 // @public
-export interface FailedRow extends ResultRowBase {
-    readonly configuration?: string | Configuration;
-    readonly outcome: "system_failure" | "infrastructure_failure" | "budget_exceeded" | "invalid_configuration";
-    readonly reason: string;
-}
-
-// @public
 export class FileStore {
     constructor(root: string);
     aaEvidence(plan: Plan): Promise<{
@@ -363,7 +346,7 @@ export interface ImportResult {
 }
 
 // @public
-export function importResults(plan: SuitePlan, rows: Iterable<ResultRow>, options?: {
+export function importResults(plan: SuitePlan, results: Iterable<TimedResult>, options?: {
     readonly runtime?: Runtime;
 }): {
     readonly records: RunRecords;
@@ -547,6 +530,7 @@ export type PlanAdditions = Partial<Pick<Plan, "power" | "modeReasons">> & {
 // @public
 export interface PlanComparison {
     readonly aa?: Plan["aa"];
+    // Warning: (ae-forgotten-export) The symbol "Configuration" needs to be exported by the entry point index.d.ts
     readonly base: Configuration;
     readonly candidate: Configuration;
     readonly createdAt?: string;
@@ -685,20 +669,6 @@ export interface ReportOptions {
 export function reportPlugin(): Plugin<"report">;
 
 // @public
-export type ResultRow = CompletedRow | FailedRow;
-
-// @public
-export interface ResultRowBase {
-    readonly arm: string;
-    readonly calls?: number;
-    readonly case: string;
-    readonly endedAt?: string;
-    readonly replicate: number;
-    readonly sourceId?: string;
-    readonly startedAt?: string;
-}
-
-// @public
 export interface RunIndexEntry {
     readonly decidedAt: string;
     readonly plan: string;
@@ -819,6 +789,14 @@ export interface TesterResult {
 // @public
 export function testMeasure(measure: MeasureDefinition): TesterResult;
 
+// @public
+export interface TimedResult {
+    readonly endedAt?: string;
+    // Warning: (ae-forgotten-export) The symbol "TrialResult" needs to be exported by the entry point index.d.ts
+    readonly result: TrialResult;
+    readonly startedAt?: string;
+}
+
 // Warning: (ae-forgotten-export) The symbol "FactorPart" needs to be exported by the entry point index.d.ts
 //
 // @public
@@ -828,7 +806,7 @@ export const TRIGGER_VARIES: {
 
 // Warnings were encountered during analysis:
 //
-// src/core/results.ts:168:5 - (ae-forgotten-export) The symbol "Runtime" needs to be exported by the entry point index.d.ts
+// src/core/results.ts:162:5 - (ae-forgotten-export) The symbol "Runtime" needs to be exported by the entry point index.d.ts
 
 // (No @packageDocumentation comment for this package)
 

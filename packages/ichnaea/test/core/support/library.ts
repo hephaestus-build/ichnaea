@@ -1,6 +1,11 @@
 // A small synthetic suite for the library API's tests: six cases, two binary measures that read
 // the raw output, and two trials per case and arm.
-import { type Configuration, sha256 } from "../../../src/contracts/index.ts";
+import {
+  type Configuration,
+  type Plan,
+  sha256,
+  TrialResult,
+} from "../../../src/contracts/index.ts";
 import {
   binary,
   defineSuite,
@@ -131,4 +136,40 @@ export function configuration(prompt: string, temperature: number): Configuratio
     prompts: [{ name: "composer", digest: sha256(prompt), status: "pinned" }],
     factors: {},
   };
+}
+
+/** The code every synthetic worker runs. */
+export const COMMIT = "a".repeat(40);
+
+/**
+ * A worker's answer for a planned trial of a plan of the composer suite: completed with `output`,
+ * on the synthetic configuration's model and the given temperature, unless `change` says otherwise.
+ */
+export function answer(
+  t: Pick<Plan["trials"][number], "id" | "case" | "arm" | "replicate">,
+  output: unknown,
+  change: Record<string, unknown> & { readonly temperature?: number } = {},
+): TrialResult {
+  const { temperature = 0.2, ...rest } = change;
+  return TrialResult.parse({
+    schema: "ichnaea.trialResult/1",
+    dataClass: "none",
+    trial: {
+      id: t.id,
+      suite: "composer",
+      case: t.case,
+      arm: t.arm,
+      replicate: t.replicate,
+      attempt: 1,
+    },
+    output,
+    calls: 1,
+    observed: {
+      code: { commit: COMMIT },
+      model: "example-model",
+      route: sha256("example-route"),
+      parameters: { temperature },
+    },
+    ...rest,
+  });
 }

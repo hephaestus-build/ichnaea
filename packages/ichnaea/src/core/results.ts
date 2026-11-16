@@ -3,144 +3,76 @@ import * as z from "zod";
 import {
   Case,
   caseDigest,
-  Configuration,
-  configurationIdentity,
+  canonicalize,
+  type Configuration,
+  contractFor,
   digest,
-  Json,
   type MeasureValue,
+  type ObservedConfiguration,
   type Outcome,
+  readRecord,
   Run,
   type Runtime,
-  Text,
+  sha256,
   Timestamp,
   Trial,
+  TrialResult,
 } from "../contracts/index.ts";
 
-import { checkCaptured, checkConfiguration, ImportError, NOT_CAPTURED } from "./import-rules.ts";
+import { checkCaptured, ImportError, NOT_CAPTURED } from "./import-rules.ts";
 import { scoreTrials } from "./measures.ts";
 import { recordProblems, type RunRecords } from "./records.ts";
 import { type SuitePlan, suiteMeasures } from "./suite.ts";
 
-/** The keys every result row has: which planned trial it is, and when and how it ran. */
-export interface ResultRowBase {
-  /** The case ID. */
-  readonly case: string;
-  /** The arm's name: `base` or `candidate`. */
-  readonly arm: string;
-  /** The trial's replicate, from 0. */
-  readonly replicate: number;
-  /** Where the row came from, for example the worker or the file that produced it. */
-  readonly sourceId?: string;
-  /** When the trial started, ISO 8601. One trial per case needs it to check each pair's order. */
+/**
+ * A worker's answer for one trial, `ichnaea.trialResult/1`, with the times of the trial when the
+ * importer knows them. The result itself carries no times: Ichnaea measures them when it runs the
+ * trial, and an importer of results that already exist passes them beside the result. A trial at
+ * one trial per case and arm needs both times to check its pair's order.
+ */
+export interface TimedResult {
+  /** The worker's answer, as the worker wrote it. */
+  readonly result: TrialResult;
+  /** When the trial started, ISO 8601. */
   readonly startedAt?: string;
   /** When the trial ended, ISO 8601. */
   readonly endedAt?: string;
-  /** The calls the trial made, if known. Absent means unknown, never zero. */
-  readonly calls?: number;
 }
-
-/**
- * A trial that ran and returned: `completed`, or `abstained` when the system declined to answer.
- * The measures score its raw output. A completed row with neither `output` nor `pointer` lost its
- * output on the way: it is recorded as an infrastructure failure (`not-captured`), never scored.
- */
-export interface CompletedRow extends ResultRowBase {
-  /** How the trial ended. */
-  readonly outcome: "completed" | "abstained";
-  /**
-   * The configuration the trial ran: its identity, or the configuration record. A trial that ran
-   * another configuration than its arm's is an invalid configuration and gives no value.
-   */
-  readonly configuration: string | Configuration;
-  /** The system's raw output, as JSON. */
-  readonly output?: Json;
-  /** Where the output is stored, when the row does not carry it. */
-  readonly pointer?: string;
-}
-
-/**
- * A trial that did not complete, with the reason. A system failure or a budget overrun counts as a
- * failed trial on every measure that applies; an infrastructure failure or an invalid
- * configuration counts as missing, never as a failure of the system.
- */
-export interface FailedRow extends ResultRowBase {
-  /** How the trial ended. */
-  readonly outcome:
-    | "system_failure"
-    | "infrastructure_failure"
-    | "budget_exceeded"
-    | "invalid_configuration";
-  /** Why the trial did not complete, in one sentence. */
-  readonly reason: string;
-  /** The configuration the trial ran, if known. Absent means its arm's. */
-  readonly configuration?: string | Configuration;
-}
-
-/**
- * One result of one planned trial, as a worker or a consumer's mapper writes it. A mapper of
- * another runner's files is a plain function that returns these rows.
- */
-export type ResultRow = CompletedRow | FailedRow;
 
 /** What `importResults` found, beside the records. */
 export interface ImportSummary {
-  /** The rows read. */
+  /** The results read. */
   readonly rows: number;
-  /** The trial records made, one per row. */
+  /** The trial records made, one per result. */
   readonly trials: number;
   /** The measure values scored. */
   readonly values: number;
   /** The trials by recorded outcome. */
   readonly outcomes: Readonly<Partial<Record<Outcome, number>>>;
-  /** The planned trials that no row reported: they are recorded as not run. */
+  /** The planned trials that no result answered: they are recorded as not run. */
   readonly notRun: number;
-  /** Warnings about the rows, such as completed rows that lost their output. */
+  /**
+   * Warnings about the results: completed results that lost their output, and results whose
+   * observed configuration is not the arm's, with the reason.
+   */
   readonly warnings: readonly string[];
-  /** The keys some row carried that no result row defines, sorted. They are not recorded. */
+  /** The members some result carried that no record defines, by path, sorted. They are ignored. */
   readonly unused: readonly string[];
 }
 
-const Configured = z.union([Text, Configuration]);
-
-const Base = {
-  case: Text,
-  arm: Text,
-  replicate: z.int().min(0),
-  sourceId: Text.optional(),
+const Timed = z.looseObject({
+  result: z.unknown(),
   startedAt: Timestamp.optional(),
   endedAt: Timestamp.optional(),
-  calls: z.int().min(0).optional(),
+});
+const TIMED_MEMBERS = new Set(["result", "startedAt", "endedAt"]);
+
+/** The outcome of a trial whose worker reported a failure, by the failure's class. */
+const OUTCOME_OF: Readonly<Record<string, Outcome>> = {
+  infrastructure: "infrastructure_failure",
+  system: "system_failure",
+  not_run: "not_run",
 };
-
-const Row = z.discriminatedUnion("outcome", [
-  z.looseObject({
-    ...Base,
-    outcome: z.enum(["completed", "abstained"]),
-    configuration: Configured,
-    output: Json.optional(),
-    pointer: Text.optional(),
-  }),
-  z.looseObject({
-    ...Base,
-    outcome: z.enum([
-      "system_failure",
-      "infrastructure_failure",
-      "budget_exceeded",
-      "invalid_configuration",
-    ]),
-    reason: Text,
-    configuration: Configured.optional(),
-  }),
-]);
-
-const KNOWN = new Set([
-  ...Object.keys(Base),
-  "outcome",
-  "configuration",
-  "output",
-  "pointer",
-  "reason",
-]);
 
 const UNKNOWN_RUNTIME: Runtime = {
   name: "unknown",
@@ -149,72 +81,175 @@ const UNKNOWN_RUNTIME: Runtime = {
   arch: "unknown",
 };
 
+const byCodeUnits = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
+
 /**
- * Turns result rows into the run's records: one trial record per row, the measure values that the
- * suite's scorers give each trial from its raw output, and the run with its ledger. It does no I/O
- * and never calls a model, so stored outputs can be scored again. It keeps the import rules: a
- * completed row with no captured output is an infrastructure failure (`not-captured`), never a
- * failure of the system; a failed trial never carries a passing value; a trial that ran another
- * configuration than its arm's is an invalid configuration and gives no value. A row the plan does
- * not list, a row without a required key, or a repeated trial throws an ImportError that names the
- * row. Keys that no row defines are reported as unused. Planned trials without a row are recorded
- * as not run.
+ * Why a worker's observed configuration is not the arm's planned one, or undefined when it is.
+ * Only what the configuration pins is compared:
+ * - the code, when the configuration has a `code.commit` or a `code.image` factor;
+ * - the model, which must be the ID of one of the arm's models;
+ * - the route, when one of the arm's models has one: the observed route is the digest of its
+ *   value, or the value itself when that is already a digest;
+ * - every observed parameter, which the arm's configuration must hold with the same value.
+ */
+function observedProblem(
+  observed: ObservedConfiguration,
+  config: Configuration,
+): string | undefined {
+  const code: { readonly commit?: string | undefined; readonly image?: string | undefined } =
+    observed.code;
+  for (const kind of ["commit", "image"] as const) {
+    const planned = config.factors[`code.${kind}`]?.value;
+    if (planned === undefined) continue;
+    const seen = code[kind];
+    if (seen !== planned)
+      return seen === undefined
+        ? `the worker named no ${kind}, but the arm pins ${kind} ${canonicalize(planned)}`
+        : `the worker ran ${kind} ${seen}, not the arm's ${canonicalize(planned)}`;
+  }
+  const models = config.models.map((m) => m.id.value);
+  if (!models.includes(observed.model))
+    return `the worker called model '${observed.model}', not the arm's ${models.map((m) => `'${m}'`).join(" or ")}`;
+  const routes = config.models.flatMap((m) =>
+    m.route === undefined
+      ? []
+      : [m.route.value.startsWith("sha256:") ? m.route.value : sha256(m.route.value)],
+  );
+  if (routes.length > 0 && !routes.includes(observed.route))
+    return `the worker called route ${observed.route}, which is not the arm's`;
+  const parameters = new Map(config.parameters.map((p) => [p.name, canonicalize(p.value)]));
+  for (const [name, value] of Object.entries(observed.parameters).toSorted(([a], [b]) =>
+    byCodeUnits(a, b),
+  )) {
+    const planned = parameters.get(name);
+    if (planned === undefined)
+      return `the worker used parameter '${name}', which the arm's configuration does not hold`;
+    if (planned !== canonicalize(value))
+      return `the worker used parameter '${name}' = ${canonicalize(value)}, not the arm's ${planned}`;
+  }
+  return undefined;
+}
+
+/** Removes the member at `path` from a JSON value, in place. */
+function remove(root: unknown, path: readonly PropertyKey[]): void {
+  let node = root;
+  for (const key of path.slice(0, -1)) node = (node as Record<PropertyKey, unknown>)[key];
+  delete (node as Record<PropertyKey, unknown>)[path.at(-1) as PropertyKey];
+}
+
+/**
+ * Turns workers' trial results into the run's records: one trial record per result, the measure
+ * values that the suite's scorers give each completed trial from its raw output, and the run with
+ * its ledger. It does no I/O and never calls a model, so stored outputs can be scored again.
+ *
+ * Each result must answer a trial the plan lists, with the plan's suite, case, arm and replicate.
+ * A failure's class gives the outcome: `infrastructure` an infrastructure failure, `system` a
+ * system failure (a failed trial, never a pass), `not_run` a trial not run. A `protocol` failure
+ * is a fault of the harness, never of the system, so the run cannot be decided: it throws. A result
+ * with no failure and neither `output` nor `pointer` is a capture failure (`not-captured`): it
+ * counts as missing, never as a failure of the system. A result whose observed configuration is not
+ * the arm's is an invalid configuration with the reason, and gives no value.
+ *
+ * Results are read tolerantly: members no record defines are ignored and reported as unused. A
+ * value this version does not know (a later failure class), a result of a trial the plan does not
+ * list, or a repeated trial throws an ImportError that names the result.
  */
 export function importResults(
   plan: SuitePlan,
-  rows: Iterable<ResultRow>,
+  results: Iterable<TimedResult>,
   options: {
     /** The runtime that imports the results, recorded in the run. Absent: recorded as unknown. */
     readonly runtime?: Runtime;
   } = {},
 ): { readonly records: RunRecords; readonly summary: ImportSummary } {
   const { record } = plan;
+  const registered = contractFor("ichnaea.trialResult/1");
+  if (!registered) throw new Error("ichnaea.trialResult/1 is not a registered contract");
+  const contract = { ...registered, schema: TrialResult };
   const planned = new Map(record.trials.map((t) => [t.id as string, t]));
-  const identities = new Map(record.arms.map((a) => [a.name as string, a.identity as string]));
+  const arms = new Map(record.arms.map((a) => [a.name as string, a]));
   const cases = new Map(plan.suite.cases.map((c) => [c.id, Case.parse(c)]));
   const unused = new Set<string>();
+  const mismatched: string[] = [];
   const trials: Trial[] = [];
   let index = 0;
-  for (const input of rows) {
+  for (const input of results) {
     index++;
-    const parsed = Row.safeParse(input);
-    if (!parsed.success)
+    const where = `result ${index}`;
+    const timed = Timed.safeParse(input);
+    if (!timed.success)
+      throw new ImportError(`${where} is not a timed result:\n${z.prettifyError(timed.error)}`);
+    for (const key of Object.keys(timed.data)) if (!TIMED_MEMBERS.has(key)) unused.add(key);
+    const read = readRecord(contract, timed.data.result);
+    if (!read.ok)
+      throw new ImportError(`${where} is not a trial result:\n${z.prettifyError(read.error)}`);
+    const [unknown] = read.unknownValues;
+    if (unknown)
       throw new ImportError(
-        `row ${index} is not a valid result row:\n${z.prettifyError(parsed.error)}`,
+        `${where}: result.${unknown.path.join(".")} is ${canonicalize(unknown.value ?? null)}, which this version does not know`,
       );
-    const row = parsed.data;
-    for (const key of Object.keys(row)) if (!KNOWN.has(key)) unused.add(key);
-    const id = `${row.case}/${row.arm}/r${row.replicate}`;
-    const p = planned.get(id);
-    const c = cases.get(row.case);
-    if (!p || !c) throw new ImportError(`row ${index}: trial '${id}' is not in the plan`);
-    const configuration =
-      row.configuration === undefined
-        ? identities.get(row.arm)
-        : typeof row.configuration === "string"
-          ? row.configuration
-          : configurationIdentity(row.configuration);
+    // A reader ignores unknown members: drop them, and what is left is a result of this version.
+    const raw = structuredClone(timed.data.result);
+    for (const path of read.unknownMembers) {
+      unused.add(["result", ...path].join("."));
+      remove(raw, path);
+    }
+    const result = TrialResult.parse(raw);
+    const { trial: id, failure } = result;
+    const p = planned.get(id.id);
+    const c = cases.get(id.case);
+    const arm = arms.get(id.arm);
+    if (!p || !c || !arm) throw new ImportError(`${where}: trial '${id.id}' is not in the plan`);
+    if (id.suite !== record.suite)
+      throw new ImportError(
+        `${where}: trial '${id.id}' belongs to suite '${id.suite}', not '${record.suite}'`,
+      );
+    if (p.case !== id.case || p.arm !== id.arm || p.replicate !== id.replicate)
+      throw new ImportError(
+        `${where}: trial '${id.id}' is planned as case '${p.case}', arm '${p.arm}', replicate ${p.replicate}`,
+      );
+    if (failure?.class === "protocol")
+      throw new ImportError(
+        `${where}: trial '${id.id}' failed the protocol (${failure.kind}); that is a fault of the harness, never of the system, so the run cannot be decided`,
+      );
+    const problem = observedProblem(result.observed, arm.configuration);
+    if (problem !== undefined) mismatched.push(`'${id.id}': ${problem}`);
+    const outcome: Outcome =
+      problem !== undefined
+        ? "invalid_configuration"
+        : failure === undefined
+          ? "completed"
+          : (OUTCOME_OF[failure.class] ?? "infrastructure_failure");
+    const error =
+      problem !== undefined
+        ? { kind: "configuration-mismatch", message: problem }
+        : failure === undefined
+          ? undefined
+          : {
+              kind: failure.kind,
+              ...(failure.message === undefined ? {} : { message: failure.message }),
+            };
     const trial = Trial.parse({
       schema: "ichnaea.trial/1",
-      id,
+      id: id.id,
       source: "offline",
       run: plan.run,
       case: c.id,
       caseDigest: caseDigest(c),
       unit: c.unit,
-      configuration,
-      arm: row.arm,
-      replicate: row.replicate,
-      outcome: row.outcome,
-      dataClass: c.dataClass,
-      ...("output" in row && row.output !== undefined ? { output: row.output } : {}),
-      ...("pointer" in row && row.pointer !== undefined ? { pointer: row.pointer } : {}),
-      ...("reason" in row ? { error: { kind: row.outcome, message: row.reason } } : {}),
-      ...(row.calls === undefined ? {} : { usage: { calls: row.calls } }),
-      ...(row.startedAt === undefined ? {} : { startedAt: row.startedAt }),
-      ...(row.endedAt === undefined ? {} : { endedAt: row.endedAt }),
+      configuration: arm.identity,
+      arm: id.arm,
+      replicate: id.replicate,
+      outcome,
+      dataClass: result.dataClass,
+      ...(result.output === undefined ? {} : { output: result.output }),
+      ...(result.pointer === undefined ? {} : { pointer: result.pointer }),
+      ...(error === undefined ? {} : { error }),
+      usage: { ...result.usage, calls: result.calls },
+      ...(timed.data.startedAt === undefined ? {} : { startedAt: timed.data.startedAt }),
+      ...(timed.data.endedAt === undefined ? {} : { endedAt: timed.data.endedAt }),
     });
-    trials.push(checkCaptured(checkConfiguration(trial, identities.get(row.arm))));
+    trials.push(checkCaptured(trial));
   }
 
   const problems = recordProblems({ trials, values: [], gates: [] });
@@ -268,12 +303,11 @@ export function importResults(
   const lost = trials.filter((t) => t.error?.kind === NOT_CAPTURED);
   if (lost.length > 0)
     warnings.push(
-      `${lost.length} completed row(s) had no captured output, for example '${lost[0]?.id}'; they count as missing trials, never as failures of the system`,
+      `${lost.length} completed result(s) had no captured output, for example '${lost[0]?.id}'; they count as missing trials, never as failures of the system`,
     );
-  const mismatched = trials.filter((t) => t.error?.kind === "configuration-mismatch");
   if (mismatched.length > 0)
     warnings.push(
-      `${mismatched.length} row(s) ran another configuration than their arm, for example '${mismatched[0]?.id}'; they give no value`,
+      `${mismatched.length} result(s) ran another configuration than their arm, so they give no value; for example ${mismatched[0]}`,
     );
   return {
     records: { plan: record, run, trials, values, gates: [] },

@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import { digest } from "../../src/contracts/index.ts";
-import { importResults, type ResultRow } from "../../src/core/index.ts";
+import { importResults, type TimedResult } from "../../src/core/index.ts";
 import { compare, createPlan } from "../../src/decide/index.ts";
-import { configuration, SUITE } from "../core/support/library.ts";
+import { answer, configuration, SUITE } from "../core/support/library.ts";
 
 const base = configuration("base prompt", 0.2);
 const candidate = configuration("candidate prompt", 0.2);
@@ -14,18 +14,11 @@ const plan = createPlan(SUITE, {
   intendedChanges: ["/prompts/composer"],
   createdAt: "2026-11-16T12:00:00Z",
 });
-const identity = (arm: string): string =>
-  plan.record.arms.find((a) => a.name === arm)?.identity ?? "";
 
 /** One completed row per planned trial; `answers` says whether the arm answers the case. */
-const rows = (answers: (arm: string, c: string) => boolean): ResultRow[] =>
+const rows = (answers: (arm: string, c: string) => boolean): TimedResult[] =>
   plan.record.trials.map((t) => ({
-    case: t.case,
-    arm: t.arm,
-    replicate: t.replicate,
-    outcome: "completed",
-    configuration: identity(t.arm),
-    output: { text: answers(t.arm, t.case) ? "answer" : "", declined: true },
+    result: answer(t, { text: answers(t.arm, t.case) ? "answer" : "", declined: true }),
   }));
 
 const decidedAt = "2026-11-16T13:00:00Z";
@@ -76,12 +69,11 @@ describe("compare", () => {
     const { records } = importResults(
       undeclared,
       undeclared.record.trials.map((t) => ({
-        case: t.case,
-        arm: t.arm,
-        replicate: t.replicate,
-        outcome: "completed",
-        configuration: t.arm === "base" ? base : hotter,
-        output: { text: "answer", declined: true },
+        result: answer(
+          t,
+          { text: "answer", declined: true },
+          { temperature: t.arm === "base" ? 0.2 : 0.9 },
+        ),
       })),
     );
     const decision = compare(undeclared, records, { decidedAt });

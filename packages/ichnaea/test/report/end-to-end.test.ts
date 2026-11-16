@@ -4,12 +4,12 @@
 import { describe, expect, it } from "vitest";
 
 import type { Configuration } from "../../src/contracts/index.ts";
-import { sha256 } from "../../src/contracts/index.ts";
+import { sha256, TrialResult } from "../../src/contracts/index.ts";
 import {
   binary,
   defineSuite,
   importResults,
-  type ResultRow,
+  type TimedResult,
   type SuiteCase,
 } from "../../src/core/index.ts";
 import { compare, createPlan } from "../../src/decide/index.ts";
@@ -135,18 +135,35 @@ function composer(prompt: string): Configuration {
   };
 }
 
-/** The rows a worker would return: each arm declines, and answers as `answers` says. */
+/**
+ * What a worker would answer, with the times an importer knows: each arm declines, and answers as
+ * `answers` says. This is a consumer's mapper: it writes `ichnaea.trialResult/1` records.
+ */
 function rowsFor(
   plan: ReturnType<typeof createPlan<typeof suite>>,
   answers: (arm: string) => boolean,
-): ResultRow[] {
+): TimedResult[] {
   return plan.record.trials.map((t, i) => ({
-    case: t.case,
-    arm: t.arm,
-    replicate: t.replicate,
-    outcome: "completed",
-    configuration: t.arm === "base" ? base : candidate,
-    output: { text: answers(t.arm) ? "a review" : "", declined: true },
+    result: TrialResult.parse({
+      schema: "ichnaea.trialResult/1",
+      dataClass: "none",
+      trial: {
+        id: t.id,
+        suite: suite.id,
+        case: t.case,
+        arm: t.arm,
+        replicate: t.replicate,
+        attempt: 1,
+      },
+      output: { text: answers(t.arm) ? "a review" : "", declined: true },
+      calls: 1,
+      observed: {
+        code: { commit: "c".repeat(40) },
+        model: "example-model",
+        route: sha256("https://models.example/v1"),
+        parameters: { temperature: 0 },
+      },
+    }),
     startedAt: new Date(Date.UTC(2026, 10, 16, 12, 0, i)).toISOString(),
     endedAt: new Date(Date.UTC(2026, 10, 16, 12, 0, i, 500)).toISOString(),
   }));
@@ -199,8 +216,16 @@ describe("the library API, end to end", () => {
       createdAt: "2026-11-16T12:00:00Z",
     });
     expect(plan.record.arms[0]?.identity).toBe(plan.record.arms[1]?.identity);
-    const rows = rowsFor(plan, () => true).map((r) => ({ ...r, configuration: base }));
-    const decision = compare(plan, importResults(plan, rows).records, { decidedAt });
+    const decision = compare(
+      plan,
+      importResults(
+        plan,
+        rowsFor(plan, () => true),
+      ).records,
+      {
+        decidedAt,
+      },
+    );
     expect(decision.verdict).not.toBe("INVALID");
     expect(decision.verdict).not.toBe("REGRESSION");
     expect(decision.invalidReasons).toEqual([]);
