@@ -3,6 +3,8 @@
 import type { APIRoute, GetStaticPaths } from "astro";
 import { getCollection, type CollectionEntry } from "astro:content";
 
+import { markdownTwin } from "../markdown-twin.ts";
+
 export const getStaticPaths = (async () => {
   const pages = await getCollection("docs");
   return pages.map((page) => ({
@@ -13,8 +15,7 @@ export const getStaticPaths = (async () => {
 
 export const GET: APIRoute<{ page: CollectionEntry<"docs"> }> = ({ props }) => {
   const { title, description } = props.page.data;
-  // MDX imports render nothing in Markdown, so the twin leaves them out.
-  const body = (props.page.body ?? "").replace(/^import\s.*$\n?/gm, "").trim();
+  const body = markdownTwin(props.page.body ?? "");
   const text = [`# ${title}`, description ?? "", body].filter(Boolean).join("\n\n");
   return new Response(`${text}\n`, { headers: { "Content-Type": "text/markdown; charset=utf-8" } });
 };

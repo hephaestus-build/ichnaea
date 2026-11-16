@@ -6,13 +6,17 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build",
+    "build": "astro build && node scripts/check-page-scripts.ts dist",
     "preview": "astro preview",
     "check": "astro check"
   },
   "dependencies": {
     "@astrojs/starlight": "0.42.8",
+    "@hephaestus-build/ichnaea": "workspace:*",
     "astro": "7.4.5",
+    "es-module-lexer": "3.0.4",
+    "hast-util-from-html": "2.1.0",
+    "hast-util-select": "6.0.4",
     "starlight-links-validator": "0.27.0",
     "starlight-llms-txt": "0.12.0"
   }

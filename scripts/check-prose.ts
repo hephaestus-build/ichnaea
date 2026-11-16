@@ -49,6 +49,8 @@ export function proseBlocks(source: string): ProseBlock[] {
   let paragraph: { line: number; parts: string[]; listItem: boolean } | undefined;
   let fence: string | undefined;
   let comment = false;
+  let mdxComment = false;
+  let esm = false;
   let frontMatter = lines[0]?.trim() === "---";
   const flush = (): void => {
     if (paragraph)
@@ -62,15 +64,37 @@ export function proseBlocks(source: string): ProseBlock[] {
   };
   lines.forEach((raw, index) => {
     const line = index + 1;
-    const trimmed = raw.trim();
+    let trimmed = raw.trim();
     if (frontMatter) {
       if (index > 0 && trimmed === "---") frontMatter = false;
       return;
     }
-    const fenceMark = /^(`{3,}|~{3,})/.exec(trimmed)?.[1];
     if (fence !== undefined) {
-      if (fenceMark !== undefined && fenceMark[0] === fence[0] && fenceMark.length >= fence.length)
+      // A closing fence is the opening character, at least as many times, and only whitespace.
+      const close = /^(`+|~+)$/.exec(trimmed)?.[1];
+      if (close !== undefined && close[0] === fence[0] && close.length >= fence.length)
         fence = undefined;
+      return;
+    }
+    // An MDX comment, `{/* … */}`, can span lines. The page does not render it, but it renders
+    // the text after the comment's end on the same line, so that text is read as prose.
+    if (mdxComment || trimmed.startsWith("{/*")) {
+      flush();
+      const end = trimmed.indexOf("*/}", mdxComment ? 0 : 3);
+      mdxComment = end < 0;
+      if (mdxComment) return;
+      trimmed = trimmed.slice(end + 3).trim();
+      if (trimmed === "") return;
+    }
+    // An import or export can span lines. It ends with a semicolon, with its `from "…"` clause or,
+    // as MDX ends it, at the next blank line: `export const meta = {}` needs no semicolon.
+    if (esm && trimmed === "") {
+      esm = false;
+      return;
+    }
+    if (esm || /^(import|export)\s/.test(trimmed)) {
+      flush();
+      esm = !/;\s*$|\bfrom\s*["'][^"']*["']\s*$/.test(trimmed);
       return;
     }
     // An HTML comment can span lines. It ends on the line that holds `-->`.
@@ -79,12 +103,13 @@ export function proseBlocks(source: string): ProseBlock[] {
       comment = !trimmed.includes("-->");
       return;
     }
+    const fenceMark = /^(`{3,}|~{3,})/.exec(trimmed)?.[1];
     if (fenceMark !== undefined) {
       flush();
       fence = fenceMark;
       return;
     }
-    if (trimmed === "" || /^(import|export)\s/.test(trimmed)) {
+    if (trimmed === "") {
       flush();
       return;
     }
@@ -116,6 +141,7 @@ export function proseBlocks(source: string): ProseBlock[] {
 /** Replaces code spans with one word, keeps link text and drops tags and emphasis marks. */
 function plain(text: string): string {
   return text
+    .replace(/\{\/\*.*?\*\/\}/g, " ")
     .replace(/`[^`]*`/g, "CODE")
     .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
     .replace(/<\/?[A-Za-z][^>]*>/g, " ")

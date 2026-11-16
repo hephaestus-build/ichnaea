@@ -154,9 +154,21 @@ importers:
       '@astrojs/starlight':
         specifier: 0.42.8
         version: 0.42.8(astro@7.4.5(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1))(supports-color@10.2.2)(typescript@7.0.2)
+      '@hephaestus-build/ichnaea':
+        specifier: workspace:*
+        version: link:../../packages/ichnaea
       astro:
         specifier: 7.4.5
         version: 7.4.5(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1)
+      es-module-lexer:
+        specifier: 3.0.4
+        version: 3.0.4
+      hast-util-from-html:
+        specifier: 2.1.0
+        version: 2.1.0
+      hast-util-select:
+        specifier: 6.0.4
+        version: 6.0.4
       starlight-links-validator:
         specifier: 0.27.0
         version: 0.27.0(@astrojs/starlight@0.42.8(astro@7.4.5(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1))(supports-color@10.2.2)(typescript@7.0.2))(astro@7.4.5(@types/node@26.6.6)(jiti@2.7.0)(yaml@2.9.1))(supports-color@10.2.2)

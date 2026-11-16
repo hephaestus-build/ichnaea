@@ -1,0 +1,61 @@
+---
+import StarlightPage from "@astrojs/starlight/components/StarlightPage.astro";
+
+import { loadSchemas, type RecordSchema } from "../../../reference/schemas.ts";
+
+export function getStaticPaths() {
+  return loadSchemas().map((schema) => ({ params: { record: schema.name }, props: { schema } }));
+}
+
+const { schema } = Astro.props as { schema: RecordSchema };
+const source = "https://github.com/hephaestus-build/ichnaea/blob/main/packages/ichnaea/schemas";
+const base = import.meta.env.BASE_URL.replace(/\/?$/, "/");
+---
+
+<StarlightPage frontmatter={{ title: schema.title, description: schema.description }}>
+  <p>{schema.description}</p>
+  <p>
+    Stability: <strong>{schema.stability}</strong>. Files:
+    <a href={`${source}/${schema.name}.schema.json`}>writer schema</a> and
+    <a href={`${source}/${schema.name}.reader.schema.json`}>reader schema</a>.
+    <a href={`${base}reference/schemas/`}>How to read this page</a>.
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th scope="col">Field</th>
+        <th scope="col">Type</th>
+        <th scope="col">Required</th>
+        <th scope="col">Data class</th>
+        <th scope="col">Identifier</th>
+        <th scope="col">Leaves for</th>
+        <th scope="col">Kept for</th>
+      </tr>
+    </thead>
+    <tbody>
+      {
+        schema.fields.map((field) => (
+          <tr>
+            <td>
+              <code>{field.path}</code>
+              {field.description && <p class="field-description">{field.description}</p>}
+            </td>
+            <td><code>{field.type}</code></td>
+            <td>{field.required ? "yes" : "no"}</td>
+            <td>{field.data?.class ?? "—"}</td>
+            <td>{field.data?.identifier ?? "—"}</td>
+            <td>{field.data ? field.data.egress.join(", ") || "no purpose" : "—"}</td>
+            <td>{field.data?.retention ?? "—"}</td>
+          </tr>
+        ))
+      }
+    </tbody>
+  </table>
+</StarlightPage>
+
+<style>
+  .field-description {
+    margin: 0.25rem 0 0;
+    font-size: var(--sl-text-sm);
+  }
+</style>
