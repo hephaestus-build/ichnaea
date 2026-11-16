@@ -1,0 +1,28 @@
+{
+  "schema": "ichnaea.trialRequest/1",
+  "dataClass": "none",
+  "plan": "sha256:f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1f1",
+  "trial": {
+    "id": "refund-window-de/candidate/r0",
+    "suite": "support-assistant",
+    "case": "refund-window-de",
+    "arm": "candidate",
+    "replicate": 0,
+    "attempt": 0
+  },
+  "case": {
+    "id": "refund-window-de",
+    "digest": "sha256:a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7",
+    "unit": "session",
+    "input": {
+      "question": "Kann ich nach 40 Tagen noch zurückgeben?"
+    }
+  },
+  "arm": {
+    "name": "candidate",
+    "role": "candidate"
+  },
+  "limits": {
+    "calls": 12
+  }
+}

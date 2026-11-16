@@ -211,6 +211,47 @@ export const VALID: Record<string, Record<string, unknown>> = {
     startedAt: "2026-11-15T10:01:00Z",
     endedAt: "2026-11-15T10:01:02Z",
   },
+  trialRequest: {
+    schema: "ichnaea.trialRequest/1",
+    dataClass: "none",
+    plan: d("f1"),
+    trial: {
+      id: "refund-window-de/candidate/r0",
+      suite: "support-assistant",
+      case: "refund-window-de",
+      arm: "candidate",
+      replicate: 0,
+      attempt: 1,
+    },
+    case: {
+      id: "refund-window-de",
+      digest: d("a7"),
+      unit: "session",
+      input: { question: "Kann ich nach 40 Tagen noch zurückgeben?" },
+    },
+    arm: { name: "candidate", role: "candidate" },
+    limits: { calls: 12 },
+  },
+  trialResult: {
+    schema: "ichnaea.trialResult/1",
+    dataClass: "none",
+    trial: {
+      id: "refund-window-de/candidate/r0",
+      suite: "support-assistant",
+      case: "refund-window-de",
+      arm: "candidate",
+      replicate: 0,
+      attempt: 1,
+    },
+    output: { text: "Nein, die Frist beträgt 30 Tage.", sources: ["policy.md"] },
+    calls: 3,
+    observed: {
+      commit: "0123456789abcdef0123456789abcdef01234567",
+      model: "example-model-2026-10",
+      route: d("e1"),
+      parameters: { temperature: 0 },
+    },
+  },
   run: {
     schema: "ichnaea.run/1",
     id: "run-2026-11-15-a",
@@ -555,6 +596,17 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
     "missing-data-class": (r) => delete r["dataClass"],
     "fractional-replicate": (r) => (r["replicate"] = 0.5),
   },
+  trialRequest: {
+    "attempt-zero": (r) => ((r["trial"] as Record<string, unknown>)["attempt"] = 0),
+    "missing-case-digest": (r) => delete (r["case"] as Record<string, unknown>)["digest"],
+  },
+  trialResult: {
+    "missing-calls": (r) => delete r["calls"],
+    "negative-calls": (r) => (r["calls"] = -1),
+    "route-as-url": (r) =>
+      ((r["observed"] as Record<string, unknown>)["route"] = "https://api.example.com/v1"),
+    "short-commit": (r) => ((r["observed"] as Record<string, unknown>)["commit"] = "0123456"),
+  },
   run: {
     "missing-ledger": (r) => delete r["ledger"],
     "missing-lineage": (r) => delete r["lineage"],
@@ -688,6 +740,26 @@ export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
   measureValue: {
     "non-finite-score": (r) => (r["value"] = { type: "score", value: { nonFinite: "-inf" } }),
   },
+  trialResult: {
+    "infrastructure-failure": (r) => {
+      delete r["output"];
+      r["failure"] = {
+        class: "infrastructure",
+        kind: "rate-limited",
+        message: "429 from the endpoint",
+      };
+      r["calls"] = 1;
+    },
+    "output-behind-pointer": (r) => {
+      delete r["output"];
+      r["pointer"] = "trace://composer/8f2c";
+    },
+    "bad-request": (r) => {
+      delete r["output"];
+      r["failure"] = { class: "system", kind: "bad-request" };
+      r["calls"] = 0;
+    },
+  },
   label: { "rater-cannot-tell": (r) => (r["value"] = { type: "unknown" }) },
   configuration: {
     "model-version-route-and-informational": (r) => {
@@ -731,6 +803,21 @@ export const READER_ONLY: Record<string, Record<string, Mutation>> = {
     "future-preference-value": (r) => (r["value"] = { type: "preference", preferred: "both" }),
   },
   trial: { "future-outcome": (r) => (r["outcome"] = "partial") },
+  trialRequest: {
+    // Scoring comes from the base suite: a writer never sends a case's references.
+    "case-with-references": (r) =>
+      ((r["case"] as Record<string, unknown>)["references"] = { answer: "30 Tage" }),
+    "future-arm-role": (r) => ((r["arm"] as Record<string, unknown>)["role"] = "reference"),
+  },
+  trialResult: {
+    // Ichnaea measures the times itself (REQ-25): a worker never sends them, and a reader ignores
+    // them as unknown members.
+    "worker-start-time": (r) => (r["startedAt"] = "2026-11-15T10:00:00Z"),
+    "worker-end-time": (r) => (r["endedAt"] = "2026-11-15T10:00:05Z"),
+    // The base suite scores the output: a worker sends no score, and a reader ignores one.
+    "worker-score": (r) => (r["values"] = { "support/facts-stated": true }),
+    "future-failure-class": (r) => (r["failure"] = { class: "quality", kind: "wrong-answer" }),
+  },
   run: {
     "future-ledger-state": (r) =>
       ((r["ledger"] as Array<Record<string, unknown>>)[0]!["state"] = "skipped"),
