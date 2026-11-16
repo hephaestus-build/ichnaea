@@ -44,9 +44,11 @@ A fix ships as a new version: a patch version, or a minor version when the fix b
 interface. Update to take it, and run `npm audit signatures`, as the
 [README](README.md#check-what-you-installed) shows.
 
-Every commit on `main` is signed, and a version is built only from a `v*` tag on `main`. Until the
-first version is on npm, consumers pin a commit of the `build` branch. A build commit names its
-`main` commit and is reproducible from it, as the
+Every commit on `main` is signed. The release workflow stages a version only from a `v*` tag whose
+commit is reachable from `main`, and a package owner approves each version on npm. The finish
+workflow, which runs only `main`'s code, gives a version a GitHub release only if its provenance
+names that tag and its commit on `main`. Until the first version is on npm, consumers pin a commit
+of the `build` branch. A build commit names its `main` commit and is reproducible from it, as the
 [README](README.md#before-the-first-npm-release) shows.
 
 ## Scope

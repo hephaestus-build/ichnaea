@@ -66,13 +66,20 @@ you add it by its version, for example `pnpm add @tumaet/ichnaea@0.2.0-rc.1`.
 
 ### Check what you installed
 
-`npm audit signatures` checks the registry's signature of every installed package, and the
-provenance attestation of each package that has one. Ichnaea's provenance names the run of
-`.github/workflows/release.yml` that built the version from its `v*` tag on `main`. No workflow can
-publish a version on its own: the workflow only stages it, and a package owner approves each
-staged version on npm with two-factor authentication.
-[Decision 0021](docs/decisions/0021-npm-staged-publishing.md) gives the chain. Each version also
-has a GitHub release with the same tarball, its SBOM, `sbom.cdx.json`, and `SHA256SUMS`.
+`npm audit signatures` checks that the registry signed every installed package, and that each
+provenance attestation is valid. It does not check who built a package or from which commit.
+
+No workflow can publish a version on its own: the release workflow only stages it, and a package
+owner approves each staged version on npm with two-factor authentication. After the approval,
+Ichnaea's finish workflow checks more before it creates the version's GitHub release: the
+provenance names `.github/workflows/release.yml` at the version's `v*` tag, and the tag's
+commit, which is reachable from `main`. A version that fails that check stays on npm, with no
+GitHub release, and is deprecated. So install a version that has a
+[GitHub release](https://github.com/hephaestus-build/ichnaea/releases), with the same tarball,
+its SBOM, `sbom.cdx.json`, and `SHA256SUMS`. To check the commit yourself, read it in the
+provenance, which the version's page on npmjs.com links, and run
+`git merge-base --is-ancestor <commit> origin/main` in a clone.
+[Decision 0021](docs/decisions/0021-npm-staged-publishing.md) gives the chain.
 
 Run `npm audit signatures` again after each update: `pnpm update @tumaet/ichnaea`.
 

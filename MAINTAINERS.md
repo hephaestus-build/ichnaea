@@ -71,23 +71,65 @@ one change log.
    moves.
 4. Approve the staged version on npmjs.com with two-factor authentication, or with
    `npm stage list @tumaet/ichnaea` and `npm stage approve <stage-id>`.
-   Before you approve, check three facts: the version is the tag's version, the integrity is the
-   `sha512-…` that the stage job prints, and the provenance links to the run of
-   `release.yml` for the tag. Approve within 90 days, while the run's artifact exists. If any fact
-   is wrong, reject the version with `npm stage reject <stage-id>`: nothing is published.
-5. `.github/workflows/release-finish.yml` runs every day and finishes each approved version. To
+   Before you approve, check four facts:
+   - the version is the tag's version;
+   - the integrity is the `sha512-…` that the stage job prints;
+   - the provenance links to the run of `release.yml` for the tag;
+   - the commit that the provenance names is the tag's commit and is reachable from `main`:
+
+     ```sh
+     git fetch origin main --tags
+     test "$(git rev-parse 'refs/tags/v0.1.0^{commit}')" = <commit in the provenance>
+     git merge-base --is-ancestor <commit in the provenance> origin/main && echo on main
+     ```
+
+   Approve within 90 days, while the run's artifact exists. If any fact is wrong, reject the
+   version with `npm stage reject <stage-id>`: nothing is published.
+
+5. `.github/workflows/release-finish.yml` runs every day and finishes each approved version, each
+   on its own: a version that fails its checks gets no GitHub release, and the others still do. To
    finish one at once, run it by hand:
 
    ```sh
    gh workflow run release-finish.yml --ref main -f tag=v0.1.0
    ```
 
+   It runs only `main`'s code, never the tag's. It picks the tag's release run by the tag's commit.
    It checks that npm serves the staged tarball, with valid signatures and a provenance by
-   `release.yml` at the tag. It checks that the bin prints the version and the README's example
-   runs, then creates the GitHub release with the notes, the tarball, the SBOM and `SHA256SUMS`.
+   `release.yml` at the tag, from the tag's commit on `main`. It checks that the bin prints the
+   version and the README's example runs. Then it hashes the tarball against npm's integrity and
+   creates the GitHub release with the notes, the tarball, the SBOM and `SHA256SUMS`.
    If a check fails, read its cause. A network failure needs only another run. Otherwise the
    version is on npm but wrong, and it gets no GitHub release: deprecate it with
    `npm deprecate @tumaet/ichnaea@<version> "<reason>"` and release the next version.
+
+### A wrong tag
+
+Nobody may move or delete a `v*` tag, so a wrong one stays.
+
+- **A tag outside the 0.x line,** a typo such as `vnext` or a version such as `v1.0.0`: the tag
+  check ignores it and names it in its log, so it blocks nothing. Its own release run fails at the
+  tag check and stages nothing.
+- **A 0.x version that is too high,** such as `v0.10.0` for `v0.1.0`: its run stages that version,
+  so reject it on npm. The tag then blocks every lower version. Either release above it, or remove
+  it. To remove it, an admin sets the ruleset `release tags: nobody moves or deletes them` to
+  disabled, deletes the tag, and sets the ruleset to active again. Then read it back, as step 10
+  of the repository settings shows:
+
+  ```sh
+  id="$(gh api repos/hephaestus-build/ichnaea/rulesets \
+    --jq '.[] | select(.name == "release tags: nobody moves or deletes them") | .id')"
+  gh api --method PUT "repos/hephaestus-build/ichnaea/rulesets/$id" -f enforcement=disabled
+  git push origin :refs/tags/v0.10.0
+  gh api --method PUT "repos/hephaestus-build/ichnaea/rulesets/$id" \
+    --input .github/rulesets/release-tags-fixed.json
+  ```
+
+### From 1.0
+
+Not built yet. From 1.0, a breaking change needs a major version, a released record shape never
+changes within a major, and OpenSSF Scorecard is published. A new decision record changes the tag
+check for 1.0.
 
 ## Repository settings
 
