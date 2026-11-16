@@ -1,20 +1,27 @@
-// The judge calibration rule as the design states it today: the agreement condition and the arm-bias
-// interval, from one case-cluster percentile bootstrap. It is the rule that the study
-// (calibration-rule-study.ts) receives as a parameter. When the calibration code exists, the study's
-// entry imports the rule from there instead, and this file goes.
+// The judge calibration rule as the design states it today, and the context shown beside it. It is
+// the rule that the study (calibration-rule-study.ts) receives as a parameter. When the calibration
+// code exists, the study's entry imports the rule from there instead, and this file goes.
 import { gwetAc1, krippendorffAlpha } from "../../src/stats/index.ts";
 
 import type { CalibrationRule, RatedStudy } from "./calibration-rule-study.ts";
 
 /** The rule's settings. */
 export interface RuleSettings {
-  /** The largest accepted shortfall of judge–rater against rater–rater agreement. */
+  /** The largest accepted shortfall of the judge against the raters, on each statistic. */
   readonly tolerance: number;
   /** Case resamples per study. */
   readonly resamples: number;
 }
 
 export const DEFAULT_SETTINGS: RuleSettings = { tolerance: 0.15, resamples: 2000 };
+
+/**
+ * The conditions this rule reports:
+ * - `sensitivity`, `specificity`: the status rule for yes/no judges;
+ * - `ac1`: AC1 agreement, shown as context for yes/no judges, never a status condition;
+ * - `alphaOrdinal`: the status rule for level judges.
+ */
+export const CONDITIONS = ["sensitivity", "specificity", "ac1", "alphaOrdinal"] as const;
 
 /** R's type-7 quantile of a sorted array. */
 function quantile(sorted: readonly number[], p: number): number {
@@ -24,19 +31,24 @@ function quantile(sorted: readonly number[], p: number): number {
   return sorted[low]! + (h - low) * (sorted[high]! - sorted[low]!);
 }
 
-/** The pre-declared agreement statistic: AC1 for binary labels, ordinal alpha for levels. */
-function agreement(
-  study: RatedStudy,
-  x: readonly number[],
-  y: readonly number[],
+/** The share of `reference`'s positives (or negatives) that `reader` also marks so. NaN if there are none. */
+function rate(
+  reader: readonly number[],
+  reference: readonly number[],
   items: readonly number[],
+  of: 0 | 1,
 ): number {
-  if (study.scale === "levels") {
-    return krippendorffAlpha(
-      items.map((i) => [x[i]!, y[i]!]),
-      "ordinal",
-    );
+  let base = 0;
+  let hit = 0;
+  for (const i of items) {
+    if (reference[i] !== of) continue;
+    base += 1;
+    if (reader[i] === of) hit += 1;
   }
+  return base === 0 ? Number.NaN : hit / base;
+}
+
+function ac1(x: readonly number[], y: readonly number[], items: readonly number[]): number {
   const table = [
     [0, 0],
     [0, 0],
@@ -45,25 +57,52 @@ function agreement(
   return gwetAc1(table);
 }
 
-/** Judge–rater agreement (the mean over the two raters) minus rater–rater agreement. */
-function gap(study: RatedStudy, items: readonly number[]): number {
-  const judgeRater =
-    (agreement(study, study.judge, study.first, items) +
-      agreement(study, study.judge, study.second, items)) /
-    2;
-  return judgeRater - agreement(study, study.first, study.second, items);
+function alpha(x: readonly number[], y: readonly number[], items: readonly number[]): number {
+  return krippendorffAlpha(
+    items.map((i) => [x[i]!, y[i]!]),
+    "ordinal",
+  );
+}
+
+type Pairwise = (x: readonly number[], y: readonly number[], items: readonly number[]) => number;
+
+/**
+ * Judge against each rater (their mean) minus each rater against the other (their mean). For a
+ * directional statistic such as sensitivity, the reference is the second argument, so the
+ * rater–rater value is the mean of rater 2 against rater 1 and rater 1 against rater 2.
+ */
+function gap(study: RatedStudy, statistic: Pairwise, items: readonly number[]): number {
+  const judge =
+    (statistic(study.judge, study.first, items) + statistic(study.judge, study.second, items)) / 2;
+  const raters =
+    (statistic(study.second, study.first, items) + statistic(study.first, study.second, items)) / 2;
+  return judge - raters;
+}
+
+/** Sensitivity and specificity of `x` against the reference `y`. */
+const sensitivity: Pairwise = (x, y, items) => rate(x, y, items, 1);
+const specificity: Pairwise = (x, y, items) => rate(x, y, items, 0);
+
+/** True when the one-sided 95 % lower bound of the gaps is at least −tolerance. */
+function holds(gaps: readonly number[], tolerance: number): boolean {
+  const sorted = gaps.filter((g) => !Number.isNaN(g)).toSorted((a, b) => a - b);
+  return sorted.length > 0 && quantile(sorted, 0.05) >= -tolerance;
 }
 
 /**
  * The rule:
- * - agreement passes when the one-sided 95 % lower bound of the gap is at least −tolerance;
+ * - yes/no judges pass when the one-sided 95 % lower bounds of the sensitivity gap and of the
+ *   specificity gap are both at least −tolerance. AC1's gap is computed the same way and reported
+ *   as context only;
+ * - level judges pass when the lower bound of the ordinal alpha gap is at least −tolerance;
  * - the arm bias is b_c = (J₂ − J₁) − (H̄₂ − H̄₁) per case, on [0, 1], and its shown bound is
  *   max(|lower|, |upper|) of the two-sided 90 % percentile interval of its mean.
- * Both come from the same resamples of whole cases. A resample whose gap is NaN (an undefined
- * alpha) is counted in `nanReplicates` and left out of the quantile.
+ * All come from the same resamples of whole cases. A resample in which a status statistic is
+ * undefined (no positive or no negative to condition on, or an undefined alpha) is counted in
+ * `nanReplicates` and left out of that statistic's quantile.
  */
 export function calibrationRule(settings: RuleSettings = DEFAULT_SETTINGS): CalibrationRule {
-  return (study, rng) => {
+  const evaluate: CalibrationRule["evaluate"] = (study, rng) => {
     const n = study.cases;
     const scale = study.scale === "levels" ? study.levels - 1 : 1;
     const value = (labels: readonly number[], i: number): number =>
@@ -78,7 +117,13 @@ export function calibrationRule(settings: RuleSettings = DEFAULT_SETTINGS): Cali
     });
     const armBias = caseBias.reduce((a, b) => a + b, 0) / n;
 
-    const gaps: number[] = [];
+    const statistics: Record<string, Pairwise> =
+      study.scale === "levels" ? { alphaOrdinal: alpha } : { sensitivity, specificity, ac1 };
+    const status = study.scale === "levels" ? ["alphaOrdinal"] : ["sensitivity", "specificity"];
+    const gaps: Record<string, number[]> = Object.fromEntries(
+      Object.keys(statistics).map((k) => [k, []]),
+    );
+
     const biases: number[] = [];
     let nanReplicates = 0;
     const items = Array.from<number>({ length: 2 * n });
@@ -91,20 +136,28 @@ export function calibrationRule(settings: RuleSettings = DEFAULT_SETTINGS): Cali
         sum += caseBias[c]!;
       }
       biases.push(sum / n);
-      const g = gap(study, items);
-      if (Number.isNaN(g)) nanReplicates += 1;
-      else gaps.push(g);
+      let undefinedStatus = false;
+      for (const [name, statistic] of Object.entries(statistics)) {
+        const g = gap(study, statistic, items);
+        gaps[name]!.push(g);
+        if (Number.isNaN(g) && status.includes(name)) undefinedStatus = true;
+      }
+      if (undefinedStatus) nanReplicates += 1;
     }
-    const sortedGaps = gaps.toSorted((a, b) => a - b);
+    const conditions = Object.fromEntries(
+      Object.entries(gaps).map(([name, values]) => [name, holds(values, settings.tolerance)]),
+    );
     const sortedBiases = biases.toSorted((a, b) => a - b);
     const lower = quantile(sortedBiases, 0.05);
     const upper = quantile(sortedBiases, 0.95);
     return {
-      agreementPass: sortedGaps.length > 0 && quantile(sortedGaps, 0.05) >= -settings.tolerance,
+      pass: status.every((name) => conditions[name] === true),
+      conditions,
       shownBound: Math.max(Math.abs(lower), Math.abs(upper)),
       armBias,
       nanReplicates,
       replicates: settings.resamples,
     };
   };
+  return { conditions: CONDITIONS, evaluate };
 }

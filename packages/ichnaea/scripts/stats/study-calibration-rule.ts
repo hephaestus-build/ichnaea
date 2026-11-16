@@ -10,7 +10,7 @@ import path from "node:path";
 import { parseArgs } from "node:util";
 
 import { createRng } from "../../src/stats/index.ts";
-import { calibrationRule } from "./calibration-rule.ts";
+import { CONDITIONS, calibrationRule } from "./calibration-rule.ts";
 import { CELLS, MARGINS, runCell, type CellResult } from "./calibration-rule-study.ts";
 import { provenance, writeMeta } from "./provenance.ts";
 
@@ -24,23 +24,25 @@ export const COLUMNS = [
   "cell",
   "studies",
   "resamples",
-  "agreementPass",
-  "agreementPassSe",
+  "pass",
+  "passSe",
+  ...CONDITIONS.map((name) => `${name}Holds`),
   "meanArmBias",
   "meanShownBound",
   ...MARGINS.map((m) => `withinMargin${m.toFixed(2)}`),
   "nanShare",
 ] as const;
 
-const format = (x: number): string => x.toPrecision(6);
+const format = (x: number): string => (Number.isNaN(x) ? "NA" : x.toPrecision(6));
 
 export function row(result: CellResult, resamples: number): string {
   return [
     result.cell,
     result.studies,
     resamples,
-    format(result.agreementPass),
-    format(result.agreementPassSe),
+    format(result.pass),
+    format(result.passSe),
+    ...result.conditions.map(format),
     format(result.meanArmBias),
     format(result.meanShownBound),
     ...result.withinMargin.map(format),

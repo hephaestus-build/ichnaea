@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { calibrationRule } from "../../scripts/stats/calibration-rule.ts";
+import { CONDITIONS, calibrationRule } from "../../scripts/stats/calibration-rule.ts";
 import {
   CELLS,
   MARGINS,
@@ -16,24 +16,34 @@ import { createRng } from "../../src/stats/index.ts";
 const STUDIES = 50;
 const rule = calibrationRule({ tolerance: 0.15, resamples: 200 });
 // A stub rule that always passes, with a fixed bound, to show that the study tabulates what it is given.
-const always: CalibrationRule = () => ({
-  agreementPass: true,
-  shownBound: 0.12,
-  armBias: 0,
-  nanReplicates: 0,
-  replicates: 1,
-});
-const smoke = new Map(
-  CELLS.map((cell, i) => [cell.id, () => runCell(cell, rule, createRng(seedOf(i)), STUDIES)]),
-);
+const always: CalibrationRule = {
+  conditions: ["only"],
+  evaluate: () => ({
+    pass: true,
+    conditions: { only: true },
+    shownBound: 0.12,
+    armBias: 0,
+    nanReplicates: 0,
+    replicates: 1,
+  }),
+};
+const results = new Map<string, ReturnType<typeof runCell>>();
+const smoke = (id: string): ReturnType<typeof runCell> => {
+  const index = CELLS.findIndex((cell) => cell.id === id);
+  if (!results.has(id))
+    results.set(id, runCell(CELLS[index]!, rule, createRng(seedOf(index)), STUDIES));
+  return results.get(id)!;
+};
+const holds = (id: string, condition: (typeof CONDITIONS)[number]): number =>
+  smoke(id).conditions[CONDITIONS.indexOf(condition)]!;
 
 describe("the judge calibration rule study, smoke run", () => {
   it.each(CELLS.map((cell, i) => [cell.id, i] as const))(
     "%s gives rates in [0, 1], the same on a rerun, and a row with every column",
     (id, i) => {
-      const result = smoke.get(id)!();
+      const result = smoke(id);
       expect(result).toEqual(runCell(CELLS[i]!, rule, createRng(seedOf(i)), STUDIES));
-      for (const rate of [result.agreementPass, ...result.withinMargin]) {
+      for (const rate of [result.pass, ...result.withinMargin]) {
         expect(rate).toBeGreaterThanOrEqual(0);
         expect(rate).toBeLessThanOrEqual(1);
       }
@@ -43,33 +53,49 @@ describe("the judge calibration rule study, smoke run", () => {
   );
 
   it("passes a judge as good as a rater far more often than a clearly worse one", () => {
-    expect(smoke.get("binary-equal")!().agreementPass).toBeGreaterThan(
-      smoke.get("binary-worse")!().agreementPass + 0.4,
-    );
-    expect(smoke.get("levels-equal")!().agreementPass).toBeGreaterThan(
-      smoke.get("levels-much-noisier")!().agreementPass + 0.5,
-    );
+    expect(smoke("binary-equal").pass).toBeGreaterThan(smoke("binary-worse").pass + 0.3);
+    expect(smoke("levels-equal").pass).toBeGreaterThan(smoke("levels-much-noisier").pass + 0.5);
+  });
+
+  it("refuses uninformative yes/no judges that AC1 admits at low prevalence", () => {
+    for (const id of [
+      "binary-always-no-rare",
+      "binary-always-no-very-rare",
+      "binary-chance-very-rare",
+    ]) {
+      expect(smoke(id).pass).toBe(0);
+      expect(holds(id, "ac1")).toBeGreaterThan(0.8);
+    }
+    expect(smoke("binary-chance-oversampled").pass).toBe(0);
+  });
+
+  it("reports each scale's own conditions, and NA for the other's", () => {
+    expect(holds("levels-equal", "sensitivity")).toBeNaN();
+    expect(holds("binary-equal", "alphaOrdinal")).toBeNaN();
+    expect(smoke("levels-equal").pass).toBe(holds("levels-equal", "alphaOrdinal"));
   });
 
   it("sees the bias between the two configurations in its direction and size", () => {
-    expect(Math.abs(smoke.get("binary-equal")!().meanArmBias)).toBeLessThan(0.03);
-    expect(smoke.get("binary-bias-0.15")!().meanArmBias).toBeLessThan(-0.12);
-    expect(smoke.get("levels-shift-0.50")!().meanArmBias).toBeGreaterThan(0.08);
+    expect(Math.abs(smoke("binary-equal").meanArmBias)).toBeLessThan(0.03);
+    expect(smoke("binary-bias-0.15").meanArmBias).toBeLessThan(-0.12);
+    expect(smoke("levels-shift-0.50").meanArmBias).toBeGreaterThan(0.08);
   });
 });
 
 describe("the rule is a parameter of the study", () => {
   it("tabulates whatever rule it is given", () => {
     const result = runCell(CELLS[0]!, always, createRng(1), 10);
-    expect(result.agreementPass).toBe(1);
+    expect(result.pass).toBe(1);
+    expect(result.conditions).toEqual([1]);
     expect(result.withinMargin).toEqual(MARGINS.map((m) => (0.12 <= m ? 1 : 0)));
   });
 
   it("passes a judge that copies the raters, with no bias", () => {
     const study = drawStudy(CELLS[0]!, createRng(7));
     const copy = { ...study, second: study.first, judge: study.first };
-    const outcome = rule(copy, createRng(8));
-    expect(outcome.agreementPass).toBe(true);
+    const outcome = rule.evaluate(copy, createRng(8));
+    expect(outcome.pass).toBe(true);
+    expect(outcome.conditions).toMatchObject({ sensitivity: true, specificity: true, ac1: true });
     expect(outcome.shownBound).toBe(0);
     expect(outcome.armBias).toBe(0);
   });

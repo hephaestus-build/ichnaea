@@ -1,13 +1,13 @@
 // The operating characteristics of a judge calibration rule: how often a judge that is as good as a
-// rater, worse than a rater, or biased between the two configurations passes it, on synthetic
-// raters and 60 cases × the two configurations a plan names. The rule is a parameter: this module
-// never imports one, so the rule can live wherever the calibration code does, and a changed rule
-// only needs a rerun (VALIDATION.md, "The judge calibration rule").
+// rater, worse than a rater, uninformative or biased between the two configurations passes it, on
+// synthetic raters and 60 cases × the two configurations a plan names. The rule is a parameter: this
+// module never imports one, so the rule can live wherever the calibration code does, and a changed
+// rule only needs a rerun (VALIDATION.md, "The judge calibration rule").
 import type { Rng } from "../../src/stats/index.ts";
 
 /** One simulated calibration study: three label vectors on the same items. */
 export interface RatedStudy {
-  /** `binary` labels are 0 or 1; `levels` labels are 1 to `levels`. */
+  /** `binary` labels are 0 or 1 (1 is a positive, a defect); `levels` labels are 1 to `levels`. */
   readonly scale: "binary" | "levels";
   /** The number of levels, for the `levels` scale. */
   readonly levels: number;
@@ -20,29 +20,49 @@ export interface RatedStudy {
 
 /** What a rule decides about one study, and the bias bound that its equivalence check uses. */
 export interface RuleOutcome {
-  /** Whether the agreement condition holds (the judge agrees with each rater about as well as they agree). */
-  readonly agreementPass: boolean;
+  /** Whether the rule's agreement part admits the judge. */
+  readonly pass: boolean;
+  /** Each condition the rule reports, by name: its status conditions and any context shown beside them. */
+  readonly conditions: Readonly<Record<string, boolean>>;
   /** max(|lower|, |upper|) of the interval of the bias between the two configurations, on [0, 1]. */
   readonly shownBound: number;
   /** The mean of the per-case bias, on [0, 1]. */
   readonly armBias: number;
-  /** Resamples whose agreement statistic was undefined; counted, never dropped silently. */
+  /** Resamples in which a status statistic was undefined; counted, never dropped silently. */
   readonly nanReplicates: number;
   /** All resamples. */
   readonly replicates: number;
 }
 
-/** A calibration rule: it reads one study and draws its resamples from `rng`. */
-export type CalibrationRule = (study: RatedStudy, rng: Rng) => RuleOutcome;
+/** A calibration rule: the conditions it reports, and its evaluation of one study. */
+export interface CalibrationRule {
+  /** Every condition name the rule can report, in the study's column order. */
+  readonly conditions: readonly string[];
+  /** Reads one study and draws its resamples from `rng`. */
+  readonly evaluate: (study: RatedStudy, rng: Rng) => RuleOutcome;
+}
+
+/**
+ * How a yes/no judge reads an item: like a rater with its own accuracy; at chance, saying yes with
+ * the cell's prevalence whatever the item is; or always no.
+ */
+export type BinaryJudge = "reads" | "chance" | "always-no";
 
 /** A cell of the study: one synthetic scenario. */
 export type Cell =
   | {
       readonly id: string;
       readonly scale: "binary";
-      /** The share of positive (defect) items before case effects. */
+      /**
+       * The share of positive items in the calibration sample, before case effects. An oversampled
+       * cell models stratified sampling that raises this share above the population's.
+       */
       readonly prevalence: number;
+      /** True when `prevalence` comes from oversampling positives by stratification. */
+      readonly oversampled: boolean;
       readonly raterAccuracy: number;
+      readonly judge: BinaryJudge;
+      /** For a judge that `reads`: its accuracy. */
       readonly judgeAccuracy: number;
       /** How much more often the judge misses a positive under the second configuration. */
       readonly armBias: number;
@@ -57,72 +77,43 @@ export type Cell =
       readonly armShift: number;
     };
 
-/** The cells of the published study (VALIDATION.md): the scenarios of the design's planning runs. */
+const binary = (
+  id: string,
+  prevalence: number,
+  judge: BinaryJudge,
+  judgeAccuracy: number,
+  { armBias = 0, oversampled = false } = {},
+): Cell => ({
+  id,
+  scale: "binary",
+  prevalence,
+  oversampled,
+  raterAccuracy: 0.9,
+  judge,
+  judgeAccuracy,
+  armBias,
+});
+
+/** The cells of the published study (VALIDATION.md). */
 export const CELLS: readonly Cell[] = [
-  {
-    id: "binary-equal",
-    scale: "binary",
-    prevalence: 0.2,
-    raterAccuracy: 0.9,
-    judgeAccuracy: 0.9,
-    armBias: 0,
-  },
-  {
-    id: "binary-slightly-worse",
-    scale: "binary",
-    prevalence: 0.2,
-    raterAccuracy: 0.9,
-    judgeAccuracy: 0.85,
-    armBias: 0,
-  },
-  {
-    id: "binary-worse",
-    scale: "binary",
-    prevalence: 0.2,
-    raterAccuracy: 0.9,
-    judgeAccuracy: 0.8,
-    armBias: 0,
-  },
-  {
-    id: "binary-equal-rare",
-    scale: "binary",
-    prevalence: 0.1,
-    raterAccuracy: 0.9,
-    judgeAccuracy: 0.9,
-    armBias: 0,
-  },
-  {
-    id: "binary-worse-rare",
-    scale: "binary",
-    prevalence: 0.1,
-    raterAccuracy: 0.9,
-    judgeAccuracy: 0.8,
-    armBias: 0,
-  },
-  {
-    id: "binary-bias-0.05",
-    scale: "binary",
-    prevalence: 0.2,
-    raterAccuracy: 0.9,
-    judgeAccuracy: 0.9,
-    armBias: 0.05,
-  },
-  {
-    id: "binary-bias-0.10",
-    scale: "binary",
-    prevalence: 0.2,
-    raterAccuracy: 0.9,
-    judgeAccuracy: 0.9,
-    armBias: 0.1,
-  },
-  {
-    id: "binary-bias-0.15",
-    scale: "binary",
-    prevalence: 0.2,
-    raterAccuracy: 0.9,
-    judgeAccuracy: 0.9,
-    armBias: 0.15,
-  },
+  binary("binary-equal", 0.2, "reads", 0.9),
+  binary("binary-slightly-worse", 0.2, "reads", 0.85),
+  binary("binary-worse", 0.2, "reads", 0.8),
+  binary("binary-equal-rare", 0.1, "reads", 0.9),
+  binary("binary-worse-rare", 0.1, "reads", 0.8),
+  binary("binary-bias-0.05", 0.2, "reads", 0.9, { armBias: 0.05 }),
+  binary("binary-bias-0.10", 0.2, "reads", 0.9, { armBias: 0.1 }),
+  binary("binary-bias-0.15", 0.2, "reads", 0.9, { armBias: 0.15 }),
+  // Uninformative judges at low prevalence, where AC1 can admit them.
+  binary("binary-chance-rare", 0.1, "chance", 0),
+  binary("binary-always-no-rare", 0.1, "always-no", 0),
+  binary("binary-chance-very-rare", 0.05, "chance", 0),
+  binary("binary-always-no-very-rare", 0.05, "always-no", 0),
+  // The same at prevalence 0.1 in the population, with positives oversampled to 0.35 of the sample.
+  binary("binary-equal-oversampled", 0.35, "reads", 0.9, { oversampled: true }),
+  binary("binary-worse-oversampled", 0.35, "reads", 0.8, { oversampled: true }),
+  binary("binary-chance-oversampled", 0.35, "chance", 0, { oversampled: true }),
+  binary("binary-always-no-oversampled", 0.35, "always-no", 0, { oversampled: true }),
   { id: "levels-equal", scale: "levels", raterNoise: 0.6, judgeNoise: 0.6, armShift: 0 },
   { id: "levels-noisier", scale: "levels", raterNoise: 0.6, judgeNoise: 0.9, armShift: 0 },
   { id: "levels-much-noisier", scale: "levels", raterNoise: 0.6, judgeNoise: 1.2, armShift: 0 },
@@ -169,7 +160,10 @@ export function drawStudy(cell: Cell, rng: Rng, cases = CASES): RatedStudy {
         const read = (accuracy: number): number => (rng.uniform() < accuracy ? truth : 1 - truth);
         first.push(read(cell.raterAccuracy));
         second.push(read(cell.raterAccuracy));
-        let j = read(cell.judgeAccuracy);
+        let j: number;
+        if (cell.judge === "always-no") j = 0;
+        else if (cell.judge === "chance") j = rng.uniform() < cell.prevalence ? 1 : 0;
+        else j = read(cell.judgeAccuracy);
         // Under the second configuration the judge misses positives more often.
         if (configuration === 1 && j === 1 && rng.uniform() < cell.armBias / cell.prevalence) j = 0;
         judge.push(j);
@@ -183,8 +177,10 @@ export function drawStudy(cell: Cell, rng: Rng, cases = CASES): RatedStudy {
 export interface CellResult {
   readonly cell: string;
   readonly studies: number;
-  readonly agreementPass: number;
-  readonly agreementPassSe: number;
+  readonly pass: number;
+  readonly passSe: number;
+  /** P(condition holds) for each of the rule's conditions, NaN where the cell's scale has none. */
+  readonly conditions: readonly number[];
   readonly meanArmBias: number;
   readonly meanShownBound: number;
   /** P(shown bound ≤ m) for each m of MARGINS: the equivalence check at tolerance m, or a limit of m. */
@@ -199,10 +195,18 @@ export function runCell(cell: Cell, rule: CalibrationRule, rng: Rng, studies: nu
   let bound = 0;
   let nan = 0;
   let replicates = 0;
+  const holds = rule.conditions.map(() => 0);
+  const reported = rule.conditions.map(() => 0);
   const within = MARGINS.map(() => 0);
   for (let s = 0; s < studies; s++) {
-    const outcome = rule(drawStudy(cell, rng), rng);
-    if (outcome.agreementPass) passes += 1;
+    const outcome = rule.evaluate(drawStudy(cell, rng), rng);
+    if (outcome.pass) passes += 1;
+    rule.conditions.forEach((name, i) => {
+      const value = outcome.conditions[name];
+      if (value === undefined) return;
+      reported[i]! += 1;
+      if (value) holds[i]! += 1;
+    });
     bias += outcome.armBias;
     bound += outcome.shownBound;
     nan += outcome.nanReplicates;
@@ -215,8 +219,9 @@ export function runCell(cell: Cell, rule: CalibrationRule, rng: Rng, studies: nu
   return {
     cell: cell.id,
     studies,
-    agreementPass: rate,
-    agreementPassSe: Math.sqrt((rate * (1 - rate)) / studies),
+    pass: rate,
+    passSe: Math.sqrt((rate * (1 - rate)) / studies),
+    conditions: holds.map((h, i) => (reported[i] === 0 ? Number.NaN : h / reported[i]!)),
     meanArmBias: bias / studies,
     meanShownBound: bound / studies,
     withinMargin: within.map((count) => count / studies),
