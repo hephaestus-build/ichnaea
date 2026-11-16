@@ -107,6 +107,35 @@ describe("reports", () => {
     expect(row).toMatch(/\| [+−]?\d+\.\d pts \| ≥ [+−]?\d+\.\d pts \(not validated\) \| – \|$/);
   });
 
+  it("renders a measure without a bound as 'no bound' with the reason, and never refuses", async () => {
+    // A measure that applies to no case, and one whose candidate arm has no value: neither has a
+    // bound, and the report must still render and pass its own lint (REQ-129).
+    for (const over of [
+      { measures: ["app/correct", "app/extra"], applies: (m: string) => m !== "app/extra" },
+      {
+        measures: ["app/correct", "app/extra"],
+        value: (t: { arm: string }) => (t.arm === "candidate" ? null : undefined),
+      },
+    ]) {
+      const { decision } = await decided({ base: () => 0.9, candidate: () => 0.9, ...over });
+      const view = decisionView(decision, "synthetic");
+      const extra = view.measures.find((m) => m.measure === "app/extra");
+      expect(extra?.difference?.bound).toBe("no bound (an arm has no value to compare)");
+      expect(extra?.difference?.estimate).toBe("–");
+      const neutral = neutralView(view);
+      expect(lintReport(renderMarkdown(neutral))).toEqual([]);
+      expect(lintReport(renderHtml(neutral))).toEqual([]);
+    }
+  });
+
+  it("the lint still refuses a shown difference whose bound is missing without a reason", () => {
+    const md =
+      "| measure | difference | bound |\n| --- | --- | --- |\n| app/x | +1.2 pts | – |\n\nLineage";
+    expect(lintReport(md)).toEqual([
+      "an estimate without its interval: a difference (+1.2 pts) without its bound",
+    ]);
+  });
+
   it("the lint finds a rate or a difference without its interval, in Markdown and HTML", async () => {
     const md =
       "| Measure | Verdict | Arm | Rate | 95% interval | n | Missing | Difference | Bound | Margin |\n|---|---|---|---|---|---|---|---|---|---|\n| m | PASS | base | 97.0% |  | 3 of 3 | 0 | +1.0 pts |  | −10.0 pts |\n<details><summary>Lineage</summary>";
