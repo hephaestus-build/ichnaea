@@ -33,7 +33,10 @@ resolves to its real path, outside `node_modules`, so Node runs it.
    approved `release` environment, the tag created by a deploy key, the tag rulesets and immutable
    releases. They are not removed, so that a release can resume from a reviewed design.
 
-This record supersedes decision 0013.
+This record supersedes decision 0013. It implements REQ-26 (the CLI runs from a pinned source
+commit), REQ-110 (the source distribution and its acceptance) and REQ-113 (supply chain: SHA-pinned
+actions, the pnpm policy and signed pinned commits now; provenance, staged two-factor publishing,
+the SBOM and Scorecard when releases resume).
 
 ## Evidence
 
