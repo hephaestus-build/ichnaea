@@ -88,24 +88,24 @@ function latticeDenominator(values: readonly number[]): number | undefined {
  * The number of ways to pick `picks` of the non-negative integers `values`, for each sum from the
  * smallest possible sum to the largest: a dynamic programme over the values.
  */
-function subsetSums(values: readonly number[], picks: number): number[] {
+function subsetSums(values: readonly number[], picks: number): Float64Array {
   const sorted = values.toSorted((a, b) => a - b);
   const min = sum(sorted.slice(0, picks));
   const max = sum(sorted.slice(sorted.length - picks));
   // ways[c][s]: the ways to pick c values with sum s.
-  const ways = Array.from({ length: picks + 1 }, () => new Array<number>(max + 1).fill(0));
-  (ways[0] as number[])[0] = 1;
+  const ways = Array.from({ length: picks + 1 }, () => new Float64Array(max + 1));
+  (ways[0] as Float64Array)[0] = 1;
   for (const v of sorted) {
     for (let c = picks - 1; c >= 0; c--) {
-      const from = ways[c] as number[];
-      const to = ways[c + 1] as number[];
+      const from = ways[c] as Float64Array;
+      const to = ways[c + 1] as Float64Array;
       for (let s = max - v; s >= 0; s--) {
         const n = from[s] as number;
         if (n !== 0) to[s + v] = (to[s + v] as number) + n;
       }
     }
   }
-  return (ways[picks] as number[]).slice(min);
+  return (ways[picks] as Float64Array).slice(min);
 }
 
 interface UsedCase {
@@ -148,7 +148,7 @@ function exactP(cases: readonly UsedCase[]): number | undefined {
 
   // The observed statistic and the distribution, both shifted so that the smallest sum is 0.
   let observed = 0;
-  let distribution = [1];
+  let distribution = Float64Array.of(1);
   for (const [i, u] of units.entries()) {
     const w = weights[i] as number;
     const ways = subsetSums(u.pooled, u.candidate.length);
@@ -156,7 +156,7 @@ function exactP(cases: readonly UsedCase[]): number | undefined {
     observed += w * (sum(u.candidate) - lowest);
     if (ways.length === 1) continue; // Every labelling gives this case the same contribution.
     const total = sizes[i] as number;
-    const next = new Array<number>(distribution.length + (ways.length - 1) * w).fill(0);
+    const next = new Float64Array(distribution.length + (ways.length - 1) * w);
     for (let x = 0; x < distribution.length; x++) {
       const px = distribution[x] as number;
       if (px === 0) continue;

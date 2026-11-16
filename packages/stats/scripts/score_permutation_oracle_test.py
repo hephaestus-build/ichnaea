@@ -5,7 +5,8 @@
 3. Monte Carlo with 200,000 resamples is within 4 SE of the exact p.
 4. The DP and skip paths and the JSON round trip of main.
 
-Run: python self_test.py   (see the oracle's docstring for the container line)
+Run from packages/stats: python scripts/score_permutation_oracle_test.py (in the container that the
+oracle's docstring names). Test-only.
 """
 
 import json

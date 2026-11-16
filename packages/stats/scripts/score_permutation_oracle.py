@@ -1,4 +1,5 @@
-"""Independent test oracle for the stratified score permutation test.
+"""Test-only oracle for the stratified score permutation test, written independently of the
+TypeScript from a formula-only specification.
 
 Specification
 -------------
@@ -40,10 +41,13 @@ results.json:
      "results": [{"id": ..., "p": float | null, "pExact": "num/den" | null,
                   "method": "exact-bruteforce" | "exact-dp" | "skipped"}]}
 
-Run in the pinned container (from this directory):
-    docker run --rm --platform linux/amd64 -v "$PWD":/w -w /w \\
-      python:3.13.18-slim@sha256:e48f59cdba69a3cbd9ed2cf0f348d90d45a8d350d98134cf1070bc106ee9ed90 \\
-      sh -c "pip install -q --require-hashes -r oracle-requirements.txt && python self_test.py"
+Writes test/reference-python-score-permutation.json in CI. Run from packages/stats in the pinned
+container (the image is the PYTHON_IMAGE of .github/workflows/ci.yml):
+    docker run --rm --platform linux/amd64 -v "$PWD":/w -w /w python:3.13-slim sh -c \\
+      "pip install -q --require-hashes -r scripts/oracle-requirements.txt \\
+      && python scripts/score_permutation_oracle_test.py \\
+      && python scripts/score_permutation_oracle.py test/reference-score-permutation-tables.json \\
+         test/reference-python-score-permutation.json"
 """
 
 import itertools

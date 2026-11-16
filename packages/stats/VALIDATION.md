@@ -311,7 +311,79 @@ observed per-case rates.
 | ----------------------------------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
 | Tango paired score interval, skewness-corrected | `sampled-cases`, one trial per case and arm, one case per family, 300+ cases | Agrees with ratesci on every table with n = 10 and 25 (and n = 6 and 12 in a second check). `validation/tango.tsv` is a study from before the fix of its skewness root; it must be rerun under the validation rule before the method gives a verdict. | Experimental: results are never validated, so no verdict.        |
 | `sampled-cases` below 300 cases                 | —                                                                            | The sign-flip tests once used here reject far too often: non-inferiority up to 59%, and "no drop" 27.5% under a skewed null with mean 0. They were removed.                                                                                           | No method: `compareCounts` throws, the measure is estimate-only. |
-| Proportion, score and ordinal measures          | —                                                                            | See above (decision 0008).                                                                                                                                                                                                                            | No method yet: estimate-only.                                    |
+| Proportion, score and ordinal measures          | —                                                                            | See above (decision 0008). The regression test for them exists and matches its oracles; its type-I study has not run (see below).                                                                                                                     | No method yet: estimate-only.                                    |
 | Wilson interval for one proportion              | Per-arm rates in reports, never in a decision                                | Exact two-sided coverage at n = 20 is 0.9245 at p = 0.95, minimum 0.838 near p = 0.009 (`scripts/exact-wilson.ts`)                                                                                                                                    | Descriptive only.                                                |
 
 The false-alarm part of REQ-58 (monitor statistics) belongs to the drift canary (step 7).
+
+## Score measures: the regression test
+
+`scorePermutationTest` is the regression test for measures with one value in [0, 1] per trial:
+scores, proportions reduced to one value per trial (never their items as trials), and ratings whose
+levels are equally spaced. **Nothing decides with it yet.** Its type-I study has not run, so score,
+proportion and ordinal measures stay estimate-only (decision 0008).
+
+- **Statistic:** T = (1/k) Σᵢ (mean candidate value − mean base value) over the k cases with a
+  completed trial in each arm. Every case has equal weight, as in the fixed-cases estimand. A value
+  outside [0, 1], or one that is not finite, is refused.
+- **Permutation:** within each case, the pooled trials are reassigned to the arms, keeping each
+  arm's completed count. Cases are permuted independently. The null is "no difference in any case".
+- **p-value:** one-sided toward a drop, P(T* ≤ T), with ties counted as at most T. It is exact when
+  every value is a multiple of 1/D for some D ≤ 1,000 (a 1–5 rating normalised as (s − 1)/4 has
+  D = 4), every case has at most 100,000 labellings, and the support times the number of cases is
+  at most 5·10⁷. T is then a weighted sum of within-case candidate sums on an integer lattice, and
+  its null distribution is their convolution. Otherwise it is seeded Monte Carlo with 10,000
+  resamples, p = (1 + count) / (1 + B), reported with its standard error and seed. A Monte Carlo p
+  within 3 standard errors of a level it is compared with is computed again with 100,000 resamples
+  and a new seed.
+
+### Reference values
+
+`test/reference-score-permutation-tables.json` holds 205 tables (`scripts/score-permutation-tables.ts`,
+seed 20261116): 1–5 ratings with k from 1 to 146 and 1 to 3 trials, mixed counts, arm-unequal and
+one-trial cells, proportions with 3 to 20 items and with different item counts in one table, a
+bimodal judge (0, 0.5 or 1), and edge tables (every value equal within a case, every case equal,
+values exactly 0 and 1, ties across cases, k = 5 with one noisy case). Every value is an integer
+number of units over the table's denominator, so each oracle reads exact rationals. Two oracles,
+both test-only, rerun in the `stats oracle` CI job, which fails if a file changes:
+
+| Oracle                                                                                      | Result                                                                             | Agreement                                                                   |
+| ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| R coin 1.4.6, `independence_test(y ~ arm \| case)`, exact (`reference-score-permutation.R`) | 189 tables exact, 4 constant, 12 by 10⁶ resamples (values off every small lattice) | exact: within 2e-15 (bar 1e-9); resampled: within 1.8 SE of the exact value |
+| Exact enumeration in Python with rational arithmetic (`score_permutation_oracle.py`)        | All 205 tables: brute force (119) or convolution (86)                              | within 4e-16 (bar 1e-12)                                                    |
+
+coin's statistic is the plain candidate sum, so the R script first multiplies each case's values
+by an integer multiple of (nC + nB)/(nC·nB); scaling inside a stratum commutes with permutation
+inside it. The Python oracle was written from a formula-only specification, without the TypeScript,
+and checks itself first: brute force equals its convolution on 200 random tables, and its own Monte
+Carlo is within 4 SE on 13. Ichnaea enumerates 193 tables exactly. The other 12 run Monte Carlo
+and are within 2.0 SE of the exact value (bar 4 SE). `scripts/mutants.ts` changes the test in 10
+ways (ties, weights, tails, the +1, sampling with replacement, the range check, the case count,
+the recomputation near a level, the enumeration cap, the lattice tolerance), and the unit suite
+detects every one.
+
+### The type-I study (fixed before it runs)
+
+The study judges the test on the two-stage rule above, at one-sided α = 0.05, at a true difference
+of 0, with 99 resamples inside the simulation ((B + 1)·α is a whole number, so the Monte Carlo test
+keeps its level) and every confirmed or failing point re-checked with the shipped test. Seeds are
+MT19937, 2,000,000 + 1,000·g + c for generator g and cell c when screening, and base 3,000,000 when
+confirming. Every output records its commit, script sha256, seeds and arguments.
+
+- **Generators:** per-case beta scores; heterogeneous per-case effects with mean 0 (most cases near
+  the top and dropping, a few noisy cases offsetting them, and symmetric ±d); unequal variances in
+  the two arms at the same mean; run-level shocks per replicate and arm, with SD 0, 0.01, 0.02,
+  0.05 and 0.10, shared across arms (interleaved) or not; proportions from a beta-binomial with 3
+  to 20 items and intra-output correlation 0 to 0.5; a bimodal judge; 1–5 ratings from a latent
+  normal with even or skewed thresholds.
+- **Grid:** k ∈ {5, 8, 10, 12, 17, 20, 30, 60, 146}, 2 or 3 trials per case and arm, equal or
+  mixed across cases, up to 10% of cells with one trial.
+- **What decides:** the validated domain will need equal completed counts in the two arms of every
+  case. A variant fills missing trials as the sensitivity analysis does against a drop (a missing
+  candidate trial scores 1, a missing base trial 0), tested with up to 10% of trials missing at
+  random and tied to the outcome; if it fails, any missing trial leaves the domain. The domain will
+  need interleaved arms, and states the largest run-level shock SD that passes. A failing
+  structure class leaves the domain and is named here.
+- **Must fail:** a proportion's items run through the binary exact test as independent trials; the
+  test under a run-level shock of SD 0.15 without interleaving; and a permutation across cases under
+  heterogeneous effects with mean 0. Each must fail, so the harness is shown to catch them.
