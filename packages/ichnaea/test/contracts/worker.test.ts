@@ -40,7 +40,7 @@ describe("the worker protocol", () => {
       "protocol",
     ]);
     const bad = TrialResult.parse(fixture("valid-extra", "trialResult/bad-request.json"));
-    expect(bad.failure).toEqual({ class: "protocol", kind: "bad-request" });
+    expect("failure" in bad && bad.failure).toEqual({ class: "protocol", kind: "bad-request" });
   });
 
   it("does not tell the worker whether its arm is the base or the candidate", () => {
@@ -164,7 +164,7 @@ describe("the worker protocol", () => {
   it("keeps the system's raw stop reason apart from a failure class", () => {
     const result = TrialResult.parse(fixture("valid", "trialResult.json"));
     expect(result.stop).toEqual({ reason: "end_turn" });
-    expect(result.failure).toBeUndefined();
+    expect("failure" in result).toBe(false);
     // The stop reason is the system's words; the base maps it to a class, so none is sent.
     const classed = {
       ...fixture("valid", "trialResult.json"),
@@ -205,11 +205,30 @@ describe("the worker protocol", () => {
     );
   });
 
-  it("marks an output that the worker knows it truncated", () => {
+  it("marks an output that the worker knows it truncated, only on a delivered result", () => {
     const result = TrialResult.parse(fixture("valid-extra", "trialResult/truncated.json"));
-    expect(result.truncated).toBe(true);
+    expect("truncated" in result && result.truncated).toBe(true);
     const record = fixture("valid", "trialResult.json");
     expect(TrialResult.safeParse({ ...record, truncated: "yes" }).success).toBe(false);
+    // `false` says the same as no member.
+    expect(TrialResult.safeParse({ ...record, truncated: false }).success).toBe(true);
+    // A failed trial delivered nothing to truncate: writers and readers refuse both members.
+    const failed = fixture("valid-extra", "trialResult/bad-request.json");
+    const contract = contractFor("ichnaea.trialResult/1")!;
+    for (const truncated of [true, false]) {
+      expect(TrialResult.safeParse({ ...failed, truncated }).success).toBe(false);
+      expect(readRecord(contract, { ...failed, truncated }).ok).toBe(false);
+    }
+  });
+
+  it("reports an unknown member of a failed result as unknown, as of a delivered one", () => {
+    const contract = contractFor("ichnaea.trialResult/1")!;
+    for (const name of ["valid/trialResult.json", "valid-extra/trialResult/bad-request.json"]) {
+      const [kind, ...rest] = name.split("/");
+      const read = readRecord(contract, { ...fixture(kind!, rest.join("/")), later: 1 });
+      expect(read.ok && read.unknownMembers, name).toEqual([["later"]]);
+      expect(read.ok && read.unknownValues, name).toEqual([]);
+    }
   });
 
   it("reports what the process read: the configuration's digest, its keys and the factors", () => {
@@ -249,7 +268,11 @@ describe("the worker protocol", () => {
       ["properties", "observed", "properties", "environment"],
       ["properties", "observed", "properties", "modules"],
     ])
-      expect(at("trialResult", path), path.join(".")).toMatchObject(inherits);
+      // A delivered result and a failed one class the same members alike.
+      for (const option of ["0", "1"])
+        expect(at("trialResult", ["oneOf", option, ...path]), path.join(".")).toMatchObject(
+          inherits,
+        );
     const copy = ["properties", "units", "items", "properties", "artifacts", "items", "properties"];
     for (const key of ["name", "path"])
       expect(at("scoreRequest", [...copy, key]), key).toMatchObject(inherits);

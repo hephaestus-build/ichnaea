@@ -389,20 +389,8 @@ export const TrialTrace = z.strictObject({
 /** A trial's traces. */
 export type TrialTrace = z.infer<typeof TrialTrace>;
 
-/**
- * What a worker answers for one trial request: one JSON line on its standard output. A process
- * with a capacity above 1 answers out of order, so Ichnaea matches the result to its request by
- * `trial`, never by position. For a request line it cannot read, the worker writes an
- * `ichnaea.workerError/1` line instead, and Ichnaea stops the run there, so that line needs no
- * trial identity. It carries the raw output, never a score or a verdict, because the base suite's
- * scorers read the output later (REQ-22). Ichnaea measures `startedAt` and `endedAt` itself: a
- * writer never sends them at the top level, and a reader ignores them as unknown members. The
- * worker's own times are in `timing`. The rule for whoever reads a result: one without `failure`
- * and with none of `output`, `pointer` and `artifacts`, or with `truncated`, counts as an
- * infrastructure failure of kind `NOT_CAPTURED`, never as a failure of the system: a capture
- * failure is never a quality verdict.
- */
-export const TrialResult = z.strictObject({
+/** The members of every trial result, delivered or failed. */
+const resultMembers = {
   schema: none(z.literal("ichnaea.trialResult/1")),
   /** The data class of the result's content: at least the case's. */
   dataClass: none(RecordDataClass),
@@ -412,17 +400,10 @@ export const TrialResult = z.strictObject({
   output: content(Json).optional(),
   /** A trace or object ID where the output can be fetched, for outputs too large or private to inline. */
   pointer: quasi(Text).optional(),
-  /**
-   * True when the worker knows that it truncated the output. The output is then not captured:
-   * it counts as missing and is never scored.
-   */
-  truncated: none(z.boolean()).optional(),
   /** Files and directories that the trial produced, inside the request's `workdir`. */
   artifacts: z.array(Artifact).optional(),
   /** The raw events of the system's stages, in the order they happened. */
   events: z.array(StageEvent).optional(),
-  /** Why the trial produced no usable output. Absent when the trial completed. */
-  failure: TrialFailure.optional(),
   /**
    * Why the system stopped, on a delivered result. It is apart from `failure`: the base suite's
    * map gives the reason its class.
@@ -440,7 +421,42 @@ export const TrialResult = z.strictObject({
   observed: ObservedConfiguration,
   /** The traces that the trial produced. */
   trace: TrialTrace.optional(),
-});
+};
+
+/**
+ * What a worker answers for one trial request: one JSON line on its standard output. A process
+ * with a capacity above 1 answers out of order, so Ichnaea matches the result to its request by
+ * `trial`, never by position. For a request line it cannot read, the worker writes an
+ * `ichnaea.workerError/1` line instead, and Ichnaea stops the run there, so that line needs no
+ * trial identity. It carries the raw output, never a score or a verdict, because the base suite's
+ * scorers read the output later (REQ-22). Ichnaea measures `startedAt` and `endedAt` itself: a
+ * writer never sends them at the top level, and a reader ignores them as unknown members. The
+ * worker's own times are in `timing`.
+ *
+ * A result is delivered, without `failure`, or failed, with it. `truncated` belongs to a delivered
+ * result only, so a writer and a reader refuse it beside `failure`. The rules for whoever reads a
+ * result, which the runner applies:
+ * - a delivered result with none of `output`, `pointer` and `artifacts` counts as an
+ *   infrastructure failure of kind `NOT_CAPTURED`, never as a failure of the system: a capture
+ *   failure is never a quality verdict;
+ * - a delivered result with `truncated: true` counts as missing with reason `NOT_CAPTURED`. It is
+ *   never scored and never retried, because a retry would truncate again.
+ */
+export const TrialResult = z.xor([
+  z.strictObject({
+    ...resultMembers,
+    /**
+     * True when the worker knows that it truncated the output. `false` says the same as no
+     * member. A truncated output counts as missing, and is never scored and never retried.
+     */
+    truncated: none(z.boolean()).optional(),
+  }),
+  z.strictObject({
+    ...resultMembers,
+    /** Why the trial produced no usable output. */
+    failure: TrialFailure,
+  }),
+]);
 /** A trial result. */
 export type TrialResult = z.infer<typeof TrialResult>;
 

@@ -3651,7 +3651,7 @@ export const TrialRequest: z.ZodObject<{
 export type TrialRequest = z.infer<typeof TrialRequest>;
 
 // @public
-export const TrialResult: z.ZodObject<{
+export const TrialResult: z.ZodXor<readonly [z.ZodObject<{
     schema: z.ZodLiteral<"ichnaea.trialResult/1">;
     dataClass: z.ZodEnum<{
         none: "none";
@@ -3669,7 +3669,6 @@ export const TrialResult: z.ZodObject<{
     }, z.core.$strict>;
     output: z.ZodOptional<z.ZodJSONSchema>;
     pointer: z.ZodOptional<z.ZodString>;
-    truncated: z.ZodOptional<z.ZodBoolean>;
     artifacts: z.ZodOptional<z.ZodArray<z.ZodObject<{
         name: z.ZodString;
         path: z.ZodString;
@@ -3694,16 +3693,6 @@ export const TrialResult: z.ZodObject<{
             reason: z.ZodString;
         }, z.core.$strict>>;
     }, z.core.$strict>>>;
-    failure: z.ZodOptional<z.ZodObject<{
-        class: z.ZodEnum<{
-            infrastructure: "infrastructure";
-            not_run: "not_run";
-            protocol: "protocol";
-            system: "system";
-        }>;
-        kind: z.ZodString;
-        message: z.ZodOptional<z.ZodString>;
-    }, z.core.$strict>>;
     stop: z.ZodOptional<z.ZodObject<{
         reason: z.ZodString;
     }, z.core.$strict>>;
@@ -3748,7 +3737,104 @@ export const TrialResult: z.ZodObject<{
         spans: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodInt>>;
         complete: z.ZodBoolean;
     }, z.core.$strict>>;
-}, z.core.$strict>;
+    truncated: z.ZodOptional<z.ZodBoolean>;
+}, z.core.$strict>, z.ZodObject<{
+    schema: z.ZodLiteral<"ichnaea.trialResult/1">;
+    dataClass: z.ZodEnum<{
+        none: "none";
+        personal: "personal";
+        pseudonymous: "pseudonymous";
+        special: "special";
+    }>;
+    trial: z.ZodObject<{
+        id: z.core.$ZodBranded<z.ZodString, "TrialId", "out">;
+        suite: z.core.$ZodBranded<z.ZodString, "SuiteId", "out">;
+        case: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
+        arm: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
+        replicate: z.ZodInt;
+        attempt: z.ZodInt;
+    }, z.core.$strict>;
+    output: z.ZodOptional<z.ZodJSONSchema>;
+    pointer: z.ZodOptional<z.ZodString>;
+    artifacts: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        name: z.ZodString;
+        path: z.ZodString;
+        mediaType: z.ZodString;
+        class: z.ZodOptional<z.ZodEnum<{
+            none: "none";
+            personal: "personal";
+            pseudonymous: "pseudonymous";
+            special: "special";
+        }>>;
+    }, z.core.$strict>>>;
+    events: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        stage: z.ZodString;
+        iteration: z.ZodInt;
+        ran: z.ZodBoolean;
+        output: z.ZodOptional<z.ZodJSONSchema>;
+        artifact: z.ZodOptional<z.ZodString>;
+        replayed: z.ZodOptional<z.ZodString>;
+        startedAt: z.ZodOptional<z.ZodISODateTime>;
+        endedAt: z.ZodOptional<z.ZodISODateTime>;
+        stop: z.ZodOptional<z.ZodObject<{
+            reason: z.ZodString;
+        }, z.core.$strict>>;
+    }, z.core.$strict>>>;
+    stop: z.ZodOptional<z.ZodObject<{
+        reason: z.ZodString;
+    }, z.core.$strict>>;
+    usage: z.ZodObject<{
+        calls: z.ZodInt;
+        inputTokens: z.ZodOptional<z.ZodInt>;
+        outputTokens: z.ZodOptional<z.ZodInt>;
+        cacheReadTokens: z.ZodOptional<z.ZodInt>;
+        reasoningTokens: z.ZodOptional<z.ZodInt>;
+        costMicros: z.ZodOptional<z.ZodInt>;
+        responseIds: z.ZodArray<z.ZodString>;
+        throttled: z.ZodOptional<z.ZodObject<{
+            count: z.ZodInt;
+            ms: z.ZodNumber;
+            firstAcceptedAt: z.ZodOptional<z.ZodISODateTime>;
+        }, z.core.$strict>>;
+    }, z.core.$strict>;
+    timing: z.ZodOptional<z.ZodObject<{
+        startedAt: z.ZodISODateTime;
+        firstChunkAt: z.ZodOptional<z.ZodISODateTime>;
+        endedAt: z.ZodISODateTime;
+        waitedMs: z.ZodNumber;
+    }, z.core.$strict>>;
+    observed: z.ZodObject<{
+        code: z.ZodUnion<readonly [z.ZodObject<{
+            commit: z.ZodString;
+            image: z.ZodOptional<z.ZodString>;
+        }, z.core.$strict>, z.ZodObject<{
+            image: z.ZodString;
+            commit: z.ZodOptional<z.ZodString>;
+        }, z.core.$strict>]>;
+        model: z.ZodString;
+        route: z.ZodString;
+        parameters: z.ZodRecord<z.ZodString, z.ZodJSONSchema>;
+        configuration: z.ZodString;
+        configurationRead: z.ZodArray<z.ZodString>;
+        environment: z.ZodRecord<z.ZodString, z.ZodString>;
+        modules: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    }, z.core.$strict>;
+    trace: z.ZodOptional<z.ZodObject<{
+        ids: z.ZodArray<z.ZodString>;
+        spans: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodInt>>;
+        complete: z.ZodBoolean;
+    }, z.core.$strict>>;
+    failure: z.ZodObject<{
+        class: z.ZodEnum<{
+            infrastructure: "infrastructure";
+            not_run: "not_run";
+            protocol: "protocol";
+            system: "system";
+        }>;
+        kind: z.ZodString;
+        message: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>;
+}, z.core.$strict>]>;
 
 // @public
 export type TrialResult = z.infer<typeof TrialResult>;

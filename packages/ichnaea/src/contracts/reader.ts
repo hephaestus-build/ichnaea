@@ -136,10 +136,16 @@ export function readRecord<T>(
   return { ok: true, record: structuredClone(value) as Lenient<T>, unknownValues, unknownMembers };
 }
 
+/** How many unknown members a union option's issues name. */
+function unknownCount(option: readonly z.core.$ZodIssue[]): number {
+  return option.reduce((n, i) => n + (i.code === "unrecognized_keys" ? i.keys.length : 0), 0);
+}
+
 /**
- * The issues of the option that a value meant, inside an untagged union. When exactly one option
- * fails only on unknown members, that option is the one meant, so its unknown members are reported
- * as such, with the union's path in front. Otherwise the union stays one issue: an unknown value.
+ * The issues of the option that a value meant, inside an untagged union. Of the options that fail
+ * only on unknown members, the one that leaves the fewest members unknown is the one meant, when
+ * exactly one does. Its unknown members are reported as such, with the union's path in front.
+ * Otherwise the union stays one issue: an unknown value.
  */
 function meantIssues(issues: readonly z.core.$ZodIssue[]): z.core.$ZodIssue[] {
   return issues.flatMap((issue) => {
@@ -147,9 +153,11 @@ function meantIssues(issues: readonly z.core.$ZodIssue[]): z.core.$ZodIssue[] {
     const near = issue.errors.filter((option) =>
       option.every((i) => i.code === "unrecognized_keys"),
     );
-    if (near.length !== 1) return [issue];
+    const fewest = Math.min(...near.map(unknownCount));
+    const meant = near.filter((option) => unknownCount(option) === fewest);
+    if (meant.length !== 1) return [issue];
     return meantIssues(
-      (near[0] as z.core.$ZodIssue[]).map((i) => ({ ...i, path: [...issue.path, ...i.path] })),
+      (meant[0] as z.core.$ZodIssue[]).map((i) => ({ ...i, path: [...issue.path, ...i.path] })),
     );
   });
 }
