@@ -2583,6 +2583,7 @@ export interface ReasonParams {
     ARM_BIAS_NOT_SHOWN_SMALL: {
         readonly shownBound: number;
         readonly limit: number;
+        readonly casesNeeded: number | "not reachable";
     };
     ATTENTION_FAILED: {
         readonly pseudonym: string;

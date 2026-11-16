@@ -463,8 +463,18 @@ export const REASONS: { readonly [C in ReasonCode]: Reason } = {
         "condition",
         "The judge’s bias between arms is not shown to be small: it may reach {shownBound} points, beyond the {limit}-point limit.",
       ),
+      {
+        key: "reachable",
+        when: "the calibration record plans a number of cases that could show the bias small",
+        text: "About {casesNeeded} cases could show it small.",
+      },
+      {
+        key: "not-reachable",
+        when: "the estimated bias itself exceeds the limit",
+        text: "The estimated bias itself exceeds the limit, so more cases will not show it small.",
+      },
     ],
-    action: "Label more cases. The full report gives the size of study that can show it.",
+    action: "Label more cases, or change the judge if more cases cannot show it.",
   },
   ATTENTION_FAILED: {
     scope: "judge",
@@ -702,7 +712,11 @@ export interface ReasonParams {
   /** The parameters of `JUDGE_BELOW_RATERS`. */
   JUDGE_BELOW_RATERS: { readonly gap: number; readonly tolerance: number };
   /** The parameters of `ARM_BIAS_NOT_SHOWN_SMALL`. */
-  ARM_BIAS_NOT_SHOWN_SMALL: { readonly shownBound: number; readonly limit: number };
+  ARM_BIAS_NOT_SHOWN_SMALL: {
+    readonly shownBound: number;
+    readonly limit: number;
+    readonly casesNeeded: number | "not reachable";
+  };
   /** The parameters of `ATTENTION_FAILED`. */
   ATTENTION_FAILED: { readonly pseudonym: string };
   /** The parameters of `PROBE_FAILED`. */
@@ -771,7 +785,7 @@ export const REASON_PARAMS: {
   JUDGE_DIAGNOSTIC: [],
   RATERS_BELOW_FLOOR: ["humanHuman", "minimum"],
   JUDGE_BELOW_RATERS: ["gap", "tolerance"],
-  ARM_BIAS_NOT_SHOWN_SMALL: ["shownBound", "limit"],
+  ARM_BIAS_NOT_SHOWN_SMALL: ["shownBound", "limit", "casesNeeded"],
   ATTENTION_FAILED: ["pseudonym"],
   PROBE_FAILED: ["probes"],
   JUDGE_NOT_COVERED: [],
