@@ -22,6 +22,13 @@ export default defineConfig({
   // site needs no package build and always shows the statistics of its own commit.
   vite: {
     resolve: { conditions: ["ichnaea-source", "module", "browser", "development|production"] },
+    // Pages that render at build time (Astro's prerender environment) import the library too, so
+    // they resolve to its sources as well. Without it they read a stale or missing dist/.
+    environments: {
+      prerender: {
+        resolve: { conditions: ["ichnaea-source", "module", "node", "development|production"] },
+      },
+    },
     plugins: [browserOnly()],
     worker: { plugins: () => [browserOnly()] },
   },
@@ -42,6 +49,7 @@ export default defineConfig({
           label: "Reference",
           items: [
             { label: "Record schemas", link: "/reference/schemas/" },
+            { label: "Reason codes", link: "/reference/reason-codes/" },
             {
               label: "Records",
               collapsed: true,
@@ -59,7 +67,11 @@ export default defineConfig({
           errorOnLocalLinks: true,
           // The record pages are generated routes, which the validator cannot see, so links to
           // them are not checked.
-          exclude: ["/ichnaea/reference/schemas/", "/ichnaea/reference/schemas/*/"],
+          exclude: [
+            "/ichnaea/reference/schemas/",
+            "/ichnaea/reference/schemas/*/",
+            "/ichnaea/reference/reason-codes/",
+          ],
         }),
         starlightLlmsTxt(),
       ],
