@@ -545,6 +545,8 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
     "date-without-time": (r) => (r["createdAt"] = "2026-11-15"),
     "arm-without-configuration": (r) =>
       delete (r["arms"] as Array<Record<string, unknown>>)[0]!["configuration"],
+    "schedule-without-concurrency": (r) => (r["schedule"] = { concurrency: 0, endpoint: "e" }),
+    "aa-citation-without-digest": (r) => (r["aa"] = { decisions: [{ run: "aa-1" }] }),
   },
   trial: {
     "outcome-not-a-string": (r) => (r["outcome"] = 3),
@@ -641,6 +643,17 @@ const REFUSED_PLANNING = {
 
 /** Further valid records: shapes the main valid fixture does not show. */
 export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
+  plan: {
+    "one-trial-schedule-and-aa": (r) => {
+      r["schedule"] = { concurrency: 4, endpoint: "example-endpoint" };
+      r["aa"] = {
+        decisions: [
+          { run: "aa-1", digest: d("31") },
+          { run: "aa-2", digest: d("32") },
+        ],
+      };
+    },
+  },
   decision: {
     "planning-margin-refused": (r) => {
       (r["power"] as { planning: unknown[] }).planning = [REFUSED_PLANNING];

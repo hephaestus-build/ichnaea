@@ -7,11 +7,15 @@ The core of Ichnaea: the plugin host, the planner, import mode, the record store
   load time.
 - **Planner.** `createPlan` resolves a suite into a locked plan. It lists every trial before the
   first call and computes the worst-case calls. It runs a plan estimate-only, and says why, when no
-  validated method can decide it. Examples: one trial per case, a placeholder margin, a primary
-  measure whose values are not binary.
+  validated method can decide it. Examples: a placeholder margin, a primary measure whose values
+  are not binary, one trial in some cases and more in others. At one trial per case and arm, it
+  lists each case's two trials together, in the order `candidateRunsFirst` chooses from the plan
+  seed, so the plan's order is the run order (decision 0020).
 - **Import mode.** `ichnaea import` turns another runner's result files into trial records and
   measure values. It makes no model call. A completed record without captured output becomes an
   infrastructure failure (`NOT_CAPTURED`). A failed trial that carries a passing value is refused.
+  `--concurrency` and `--endpoint` state the schedule the trials ran on, and `--aa <run>` cites a
+  decided A/A run of the store, for a suite at one trial per case.
 - **Triggers.** `TRIGGER_VARIES` says what each trigger may vary between the arms. Anything else a
   change varies is declared with `--vary <factor key>`.
 - **Store and ledger.** `FileStore` keeps every record as a canonical JSON line, append-only.
