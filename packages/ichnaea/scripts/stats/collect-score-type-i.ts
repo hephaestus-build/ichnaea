@@ -68,7 +68,7 @@ export function readTsv(file: string, columns: readonly string[]): Row[] {
 /** Reads every shard of a phase and checks it. Returns the rows and the commit they ran. */
 export function readPhase(
   dir: string,
-  phase: "screen" | "recheck",
+  phase: "screen" | "recheck" | "confirm",
   columns: readonly string[],
   reps: number,
   smoke: boolean,
