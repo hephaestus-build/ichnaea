@@ -75,6 +75,7 @@ export const MeasureValue = z.strictObject({
    * in the diff". It explains the value to a reader; no statistic reads it.
    */
   why: content(z.string()).optional(),
+  /** The data class of the note and the why: the case's content they may quote. */
   dataClass: none(RecordDataClass),
 });
 /** A measure value. */

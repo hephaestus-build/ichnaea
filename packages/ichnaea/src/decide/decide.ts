@@ -15,6 +15,7 @@ import {
   type Trial,
   verifyArms,
 } from "../contracts/index.ts";
+import { FAILED_OUTCOMES, passing } from "../core/import-rules.ts";
 import { TRIGGER_VARIES } from "../core/planner.ts";
 import { recordProblems } from "../core/records.ts";
 import {
@@ -92,11 +93,6 @@ const MISSING = new Set([
   // The run is INVALID; the trial gives no value, and it is never a failure or a pass.
   "protocol_failure",
 ]);
-/**
- * Outcomes that score as a failed trial on a binary measure whatever value a record carries
- * (REQ-20): the system failed, so the trial cannot pass.
- */
-const FAILED = new Set(["system_failure", "budget_exceeded"]);
 const DEFAULT_COVERAGE_FLOOR = 0.9;
 
 /**
@@ -388,14 +384,6 @@ const emptyAvailability = (): Availability => ({
   trials: 0,
 });
 
-/** Whether a value says that its trial passed: a binary pass, or a proportion with a success. */
-function passing(value: MeasureValue["value"]): boolean {
-  return (
-    (value?.type === "binary" && value.pass) ||
-    (value?.type === "proportion" && value.successes > 0)
-  );
-}
-
 /**
  * Collects one measure's counts. A system failure or a budget overrun is a failed trial. A missing
  * trial (an infrastructure failure, including a capture failure, a trial not run, an invalid
@@ -439,7 +427,7 @@ function tally(
       continue;
     }
     let pass: boolean;
-    if (FAILED.has(outcome)) {
+    if (FAILED_OUTCOMES.has(outcome)) {
       pass = false;
       av.available++;
     } else if (
@@ -659,7 +647,7 @@ function recordChecks(input: DecideInput): string[] {
   // A failed trial that carries a passing value contradicts itself: the importer is wrong.
   const outcomes = new Map(input.trials.map((t) => [t.id as string, t.outcome]));
   const contradicting = input.values.filter(
-    (v) => v.applicable && FAILED.has(outcomes.get(v.trial) ?? "") && passing(v.value),
+    (v) => v.applicable && FAILED_OUTCOMES.has(outcomes.get(v.trial) ?? "") && passing(v.value),
   );
   const first = contradicting[0];
   if (first)

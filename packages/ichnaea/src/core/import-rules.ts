@@ -12,7 +12,10 @@ export class ImportError extends Error {
  */
 export const NOT_CAPTURED = "not-captured";
 
-/** Outcomes that score as a failed trial, whatever value a record carries (REQ-20). */
+/**
+ * Outcomes that score as a failed trial, whatever value a record carries (REQ-20): the system
+ * failed, so the trial cannot pass. Import, scoring and decide all read this one set.
+ */
 export const FAILED_OUTCOMES: ReadonlySet<string> = new Set(["system_failure", "budget_exceeded"]);
 
 /**

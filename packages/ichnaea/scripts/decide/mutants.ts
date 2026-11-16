@@ -298,7 +298,7 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "system failure scored by its value",
     file: D,
-    from: "    if (FAILED.has(outcome)) {",
+    from: "    if (FAILED_OUTCOMES.has(outcome)) {",
     to: "    if (false) {",
   },
   {

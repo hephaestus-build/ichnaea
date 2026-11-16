@@ -7,12 +7,11 @@ import {
   type Trial,
 } from "../contracts/index.ts";
 
+import { FAILED_OUTCOMES } from "./import-rules.ts";
 import type { ExplainedValue, MeasureDefinition } from "./plugin.ts";
 
 /** Outcomes that a measure scores (REQ-20). */
 const SCORED = new Set(["completed", "abstained"]);
-/** Outcomes that count as a failure on a measure. */
-const FAILED = new Set(["system_failure", "budget_exceeded"]);
 
 /**
  * Scores trials with the measures Ichnaea computes. A measure that does not apply to a case
@@ -45,7 +44,7 @@ export function scoreTrials(
         values.push({ ...base, applicable: false } as MeasureValue);
         continue;
       }
-      if (FAILED.has(trial.outcome)) {
+      if (FAILED_OUTCOMES.has(trial.outcome)) {
         const value = failureValue(measure, c);
         if (value) values.push({ ...base, applicable: true, value } as MeasureValue);
         continue;
