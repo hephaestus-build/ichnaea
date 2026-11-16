@@ -76,10 +76,11 @@ describe("the README's install", () => {
     );
   });
 
-  it("runs, in the consumer test, the package's tarball in place of its name and no audit", () => {
+  it("runs, in the consumer test, the package's tarball in place of its name, then the audit", () => {
     expect(installCommands(install, "file:/tmp/tumaet-ichnaea-0.0.0.tgz")).toEqual([
       "pnpm pkg set type=module",
       `pnpm add 'file:/tmp/tumaet-ichnaea-0.0.0.tgz' zod@${workspaceZod()}`,
+      AUDIT,
     ]);
   });
 

@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 
 import { describe, expect, it } from "vitest";
 
-import { provenanceProblems, sha512Hex } from "./verify-published.ts";
+import { hasProvenance, provenanceProblems, sha512Hex } from "./verify-published.ts";
 
 const tarball = Buffer.from("a tarball");
 const hex = createHash("sha512").update(tarball).digest("hex");
@@ -117,5 +117,16 @@ describe("the SHA-512 of an integrity", () => {
   it("is the hex digest of an npm sha512 integrity, and nothing else is one", () => {
     expect(sha512Hex(integrity)).toBe(hex);
     expect(() => sha512Hex("sha1-abc")).toThrow("sha1-abc is not a sha512 integrity");
+  });
+});
+
+describe("the provenance that a consumer's audit shows", () => {
+  it("is there when the audit lists the version with an SLSA provenance, in any layout", () => {
+    expect(hasProvenance(audit(), "0.2.0")).toBe(true);
+    expect(hasProvenance(audit(), "0.2.1")).toBe(false);
+    const none = audit();
+    none.verified[1] = { name: "@tumaet/ichnaea", version: "0.2.0" };
+    expect(hasProvenance(none, "0.2.0")).toBe(false);
+    expect(hasProvenance("not an audit", "0.2.0")).toBe(false);
   });
 });

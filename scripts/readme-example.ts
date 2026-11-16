@@ -16,7 +16,9 @@ export const PACKAGE_NAME = "@tumaet/ichnaea";
 
 /**
  * The install block's last command: it checks the registry signatures and the provenance of what
- * was installed, so it needs packages from the registry, and the consumer test leaves it out.
+ * was installed. The consumer test runs it in pnpm's layout. With a packed tarball it checks only
+ * zod, because npm skips a package that is not from the registry; with a published version it
+ * also checks the package's own provenance.
  */
 export const AUDIT = "npm audit signatures";
 
@@ -150,7 +152,7 @@ export function readmeInstall(readme: string): Install {
 
 /**
  * The commands that the consumer test runs: the install block with `spec`, quoted, in place of the
- * package's name in its `pnpm add`, and without {@link AUDIT}.
+ * package's name in its `pnpm add`.
  */
 export function installCommands(install: Install, spec: string): string[] {
   const add = install.add
@@ -158,7 +160,7 @@ export function installCommands(install: Install, spec: string): string[] {
     .map((arg) => (arg === PACKAGE_NAME ? `'${spec}'` : arg))
     .join(" ");
   if (add === install.add) throw new Error(`the README's pnpm add does not add ${PACKAGE_NAME}`);
-  return install.commands.filter((c) => c !== AUDIT).map((c) => (c === install.add ? add : c));
+  return install.commands.map((c) => (c === install.add ? add : c));
 }
 
 /** The files of the example that its block copies into the project: the `$example/<file>.ts`. */

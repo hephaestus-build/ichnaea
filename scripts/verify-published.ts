@@ -41,6 +41,30 @@ const at = (value: unknown, ...path: string[]): unknown =>
 /** A package that npm audit signatures lists, by name and version. */
 const named = (p: unknown): string => `${String(at(p, "name"))}@${String(at(p, "version"))}`;
 
+/** The SLSA provenance statement of the package's `version` among an audit's verified packages. */
+function slsaStatement(verified: readonly unknown[], version: string): unknown {
+  const own = verified.find((p) => named(p) === `${PACKAGE_NAME}@${version}`);
+  const bundles = at(own, "attestationBundles");
+  return (Array.isArray(bundles) ? bundles : [])
+    .filter((b) => at(b, "predicateType") === SLSA)
+    .map((b) => {
+      const payload = at(b, "bundle", "dsseEnvelope", "payload");
+      return typeof payload === "string"
+        ? (JSON.parse(Buffer.from(payload, "base64").toString("utf8")) as unknown)
+        : undefined;
+    })
+    .find((s) => at(s, "predicateType") === SLSA);
+}
+
+/**
+ * Whether the output of `npm audit signatures --json --include-attestations` lists the package's
+ * `version` as verified with an SLSA provenance. The consumer test checks it in pnpm's layout.
+ */
+export function hasProvenance(audit: unknown, version: string): boolean {
+  const verified = at(audit, "verified");
+  return Array.isArray(verified) && slsaStatement(verified, version) !== undefined;
+}
+
 /**
  * Returns one problem per way in which the output of `npm audit signatures --json
  * --include-attestations` does not show the release's provenance. npm has checked the signatures;
@@ -64,17 +88,7 @@ export function provenanceProblems(
   const verified = at(audit, "verified");
   if (!Array.isArray(verified)) return ["npm audit signatures gave no list of verified packages"];
   if (problems.length > 0) return problems;
-  const own = verified.find((p) => named(p) === `${PACKAGE_NAME}@${version}`);
-  const bundles = at(own, "attestationBundles");
-  const statement = (Array.isArray(bundles) ? bundles : [])
-    .filter((b) => at(b, "predicateType") === SLSA)
-    .map((b) => {
-      const payload = at(b, "bundle", "dsseEnvelope", "payload");
-      return typeof payload === "string"
-        ? (JSON.parse(Buffer.from(payload, "base64").toString("utf8")) as unknown)
-        : undefined;
-    })
-    .find((s) => at(s, "predicateType") === SLSA);
+  const statement = slsaStatement(verified, version);
   if (statement === undefined)
     return [`npm audit signatures shows no provenance for ${PACKAGE_NAME}@${version}`];
   const subject = at(statement, "subject");

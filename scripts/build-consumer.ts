@@ -5,8 +5,9 @@
 // one from a clone of the working tree at another path, and fails unless the two are byte-identical.
 // It checks the tree's manifest and SBOM, packs exactly that tree, and installs the tarball into a
 // new pnpm project outside the repository, with the README's install block: its `pnpm add` adds the
-// tarball in place of the package's name, and its `npm audit signatures`, which needs packages from
-// the registry, does not run. Then it fails unless:
+// tarball in place of the package's name, and its `npm audit signatures` runs in pnpm's layout.
+// For a published version (`--spec @tumaet/ichnaea@<version>`), the audit must also show the
+// package's own provenance. Then it fails unless:
 // - installing runs no script, and one zod is installed;
 // - each subpath (`.`, `./contracts`, `./stats`, `./calibration`, `./schemas/<record>.schema.json`)
 //   loads in Node;
@@ -55,6 +56,7 @@ import {
   type Scenario,
 } from "./readme-example.ts";
 import { RELEASE_VERSION } from "./release-version.ts";
+import { hasProvenance } from "./verify-published.ts";
 
 const readme = readFileSync(join(REPOSITORY, "README.md"), "utf8");
 const install = readmeInstall(readme);
@@ -243,6 +245,16 @@ function consume(spec: string, work: string): void {
   });
   process.stdout.write(installed.stdout + installed.stderr);
   if (installed.status !== 0) throw new Error("the README's install failed");
+  const published = `${PACKAGE_NAME}@`;
+  if (spec.startsWith(published)) {
+    const audit = spawnSync("npm", ["audit", "signatures", "--json", "--include-attestations"], {
+      cwd: project,
+      encoding: "utf8",
+    });
+    if (!hasProvenance(JSON.parse(audit.stdout) as unknown, spec.slice(published.length)))
+      throw new Error(`npm audit signatures in pnpm's layout shows no provenance for ${spec}`);
+    console.log(`consumer: npm audit signatures shows the provenance of ${spec} in pnpm's layout`);
+  }
 
   // Installing runs no script: the manifest has none, and pnpm reports no lifecycle script.
   const pkg = join(project, "node_modules", ...PACKAGE_NAME.split("/"));
