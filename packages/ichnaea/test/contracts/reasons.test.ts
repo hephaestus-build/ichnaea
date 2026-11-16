@@ -77,14 +77,14 @@ describe("REASONS", () => {
     const labels = new Set<string>(CARD_LABELS.map((l) => l.label));
     for (const [code, r] of entries) {
       for (const label of r.labels) expect(labels, code).toContain(label);
-      if (code.startsWith("INVALID_")) expect(r.labels, code).toEqual(["INVALID"]);
-      if (code.startsWith("ESTIMATE_ONLY_")) expect(r.labels, code).toEqual(["ESTIMATE ONLY"]);
+      if (code.startsWith("INVALID_")) expect(r.labels, code).toEqual(["Invalid"]);
+      if (code.startsWith("ESTIMATE_ONLY_")) expect(r.labels, code).toEqual(["Estimate only"]);
       if (r.scope === "judge") expect(r.labels, code).toEqual([]);
     }
   });
 
   it("gives ✓ to PASS alone", () => {
-    expect(CARD_LABELS.filter((l) => l.symbol === "✓").map((l) => l.label)).toEqual(["PASS"]);
+    expect(CARD_LABELS.filter((l) => l.symbol === "✓").map((l) => l.label)).toEqual(["Pass"]);
   });
 
   it("points each detailed reason to a judge status that has no parent itself", () => {
@@ -104,7 +104,7 @@ describe("REASONS", () => {
   it("names the next step for every INVALID and ESTIMATE ONLY reason", () => {
     for (const [code, r] of entries)
       if (
-        r.labels.includes("INVALID") ||
+        r.labels.includes("Invalid") ||
         (code.startsWith("ESTIMATE_ONLY_") && code !== "ESTIMATE_ONLY_NO_METHOD")
       )
         expect(r.action, code).toBeDefined();
@@ -163,14 +163,16 @@ describe("REASONS", () => {
     for (const { code, key, text } of texts) {
       if (code === "PASS") continue;
       expect(text, `${code}/${key}`).not.toMatch(/With 95% confidence|is non-inferior/);
-      for (const m of text.matchAll(/\bPASS\b/g))
-        expect(text.slice(0, m.index), `${code}/${key}`).toMatch(/(not a statistical|of|make)\s*$/);
+      for (const m of text.matchAll(/\bPass\b/g))
+        expect(text.slice(0, m.index), `${code}/${key}`).toMatch(
+          /(not a statistical|of a|make a|reach a)\s*$/,
+        );
     }
   });
 
-  it("says that a regression does not establish a loss beyond the margin", () => {
+  it("says that a regression does not establish a loss beyond the limit", () => {
     expect(REASONS.REGRESSION_DETECTED.sentences.find((s) => s.when === "always")?.text).toBe(
-      "This does not establish that the loss exceeds the {margin}-point margin.",
+      "This does not establish that the loss exceeds the {margin}-point limit.",
     );
   });
 
@@ -193,5 +195,40 @@ describe("REASONS", () => {
       REASONS.INTERVAL_UNAVAILABLE_NO_METHOD.sentences[0]?.text.replace("{valueType}", "score"),
     ).toBe("No interval yet: no validated method for score measures.");
     for (const { code, text } of texts) expect(text, code).not.toMatch(/\bno bound\b/i);
+  });
+
+  it("uses the user-facing vocabulary: limit, noise check, base and candidate, and sentence-case labels", () => {
+    const facing = [
+      ...CARD_LABELS.map((l) => ({ code: "label", text: l.label })),
+      ...entries.map(([code, r]) => ({ code, text: r.meaning })),
+      ...texts,
+    ];
+    for (const { code, text } of facing) {
+      const prose = text.replaceAll("{margin}", "");
+      expect(prose, code).not.toMatch(/\bmargins?\b/i);
+      expect(prose, code).not.toMatch(/A\/A/);
+      expect(prose.replaceAll("{arm}", ""), code).not.toMatch(/\barms?\b|arm’s/i);
+      expect(prose, code).not.toMatch(/\b(PASS|REGRESSION|INCONCLUSIVE|INVALID)\b/);
+    }
+  });
+
+  it("never labels the absence of a detected decrease as its own verdict", () => {
+    expect(CARD_LABELS.map((l) => l.label)).toEqual([
+      "Regression",
+      "Pass",
+      "Inconclusive",
+      "Invalid",
+      "Estimate only",
+    ]);
+    expect(REASONS.NO_DECREASE_DETECTED.labels).toEqual(["Inconclusive"]);
+    expect(REASONS.NO_DECREASE_DETECTED.sentences[0]?.text).toBe(
+      "No decrease detected. The data cannot rule out a decrease larger than your limit of {margin} points.",
+    );
+  });
+
+  it("never lets an opaque arm name stand for a side: the side comes from the decision", () => {
+    for (const { code, key, text } of texts)
+      for (const m of text.matchAll(/\{arm\}/g))
+        expect(text.slice(0, m.index), `${code}/${key}`).toMatch(/\{side\} \($/);
   });
 });
