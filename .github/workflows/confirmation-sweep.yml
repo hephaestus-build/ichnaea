@@ -45,6 +45,8 @@ concurrency:
   group: confirmation-sweep
   cancel-in-progress: false
 
+# Every job runs on one runtime (REQ-83): the runner image label ubuntu-24.04 (x64 Linux, as the
+# server's runs) and one Node version.
 # The confirmation run on the server ran on this Node version, and every job here runs on it too.
 env:
   NODE_VERSION: 24.22.2
@@ -52,7 +54,7 @@ env:
 jobs:
   plan:
     name: plan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     outputs:
       phases: ${{ steps.plan.outputs.phases }}
@@ -88,7 +90,7 @@ jobs:
     name: ${{ matrix.artifact }}
     needs: plan
     if: needs.plan.outputs.exact_count != '0'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 330
     strategy:
       fail-fast: false
@@ -117,7 +119,7 @@ jobs:
     name: ${{ matrix.artifact }}
     needs: [plan, exact]
     if: needs.plan.outputs.skips_count != '0'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 330
     strategy:
       fail-fast: false
@@ -150,7 +152,7 @@ jobs:
     name: structures
     needs: plan
     if: needs.plan.outputs.large_count != '0'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -171,7 +173,7 @@ jobs:
     name: ${{ matrix.artifact }}
     needs: [plan, structures]
     if: needs.plan.outputs.large_count != '0'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 330
     strategy:
       fail-fast: false
@@ -204,7 +206,7 @@ jobs:
     name: embed
     needs: [plan, exact]
     if: needs.plan.outputs.embedded_count != '0'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -231,7 +233,7 @@ jobs:
     name: ${{ matrix.artifact }}
     needs: [plan, embed]
     if: needs.plan.outputs.embedded_count != '0'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 330
     strategy:
       fail-fast: false
@@ -265,7 +267,7 @@ jobs:
     name: collect
     needs: [plan, exact, skips, structures, large, embed, embedded]
     if: ${{ !cancelled() && needs.plan.result == 'success' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

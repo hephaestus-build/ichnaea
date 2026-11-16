@@ -33,6 +33,8 @@ concurrency:
   group: stats-study-${{ inputs.study }}
   cancel-in-progress: false
 
+# One runtime for every shard of a study (REQ-83): the same runner image label, x64 Linux, and the
+# same Node version. Results are compared byte for byte only within one runtime.
 # The study scripts record this version in every sidecar.
 env:
   NODE_VERSION: 24.22.2
@@ -40,7 +42,7 @@ env:
 jobs:
   plan:
     name: plan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     outputs:
       script: ${{ steps.plan.outputs.script }}
@@ -82,7 +84,7 @@ jobs:
     name: prepare
     needs: plan
     if: needs.plan.outputs.prepared == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -109,7 +111,7 @@ jobs:
     name: ${{ matrix.artifact }}
     needs: [plan, prepare]
     if: ${{ !cancelled() && needs.plan.result == 'success' && needs.prepare.result != 'failure' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 330
     strategy:
       fail-fast: false
@@ -149,7 +151,7 @@ jobs:
     name: select
     needs: [plan, screen]
     if: needs.plan.outputs.pilot == 'false'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -180,7 +182,7 @@ jobs:
     name: ${{ matrix.artifact }}
     needs: [plan, select]
     if: needs.plan.outputs.second_count != '0'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 330
     strategy:
       fail-fast: false
@@ -227,7 +229,7 @@ jobs:
     name: verdict
     needs: [plan, screen, select, second]
     if: ${{ !cancelled() && needs.plan.result == 'success' && needs.plan.outputs.pilot == 'false' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
