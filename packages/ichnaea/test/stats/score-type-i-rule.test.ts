@@ -90,6 +90,12 @@ const recheck = (id: string, n10: number, n01: number, exact: number): Row => ({
   fails: "false",
 });
 
+/** The paired z of n10 discordant repetitions against none, at 20,000. */
+function pairedZ(n10: number): number {
+  const p = pairedDifference(n10, 0, 20_000);
+  return p.mean / Math.sqrt(p.variance);
+}
+
 describe("the type-I rule at each level", () => {
   it("confirms a point at each level's boundary, and not one count below it", () => {
     const n = 6_000;
@@ -109,8 +115,18 @@ describe("the type-I rule at each level", () => {
     expect(failingLevels(hits, n)).toEqual([0.0125]);
     const p = 2_900 / n;
     expect(p - 3 * se(p, n)).toBeGreaterThan(0.0125);
-    // At exactly 3 SE above a level it does not fail yet.
-    expect(failingLevels([9_000, 4_400, 2_400, 2_400], n)).toEqual([]);
+  });
+
+  it("puts the fail bar at exactly 3 SE: 3.4 SE above a level fails, 2.4 SE does not", () => {
+    const n = 200_000;
+    const z = (h: number): number => (h / n - 0.0125) / se(h / n, n);
+    // Fixtures between the bars, so a bar of 4 SE or of 2 SE changes a verdict.
+    expect(z(2_674)).toBeGreaterThan(3.3);
+    expect(z(2_674)).toBeLessThan(3.5);
+    expect(z(2_624)).toBeGreaterThan(2.4);
+    expect(z(2_624)).toBeLessThan(2.5);
+    expect(failingLevels([9_000, 4_400, 2_674, 2_674], n)).toEqual([0.0125]);
+    expect(failingLevels([9_000, 4_400, 2_624, 2_624], n)).toEqual([]);
   });
 
   it("stops a confirmation only at the minimum repetitions and SE ≤ 0.0005 at every level", () => {
@@ -213,6 +229,16 @@ describe("the verdict", () => {
     const up = pooledCheck([d, d, d, d]);
     expect(up.pooledSe).toBeCloseTo(Math.sqrt(4 * d.variance) / 4, 15);
     expect(up.passes).toBe(d.mean <= 3 * up.pooledSe);
+    // The bar is exactly 3 pooled SE: 3.5 SE above 0 fails, 2.4 SE passes, so a bar of 4 SE or of
+    // 2 SE changes a verdict. With n01 = 0 the paired z is n10/√(n10 − n10²/n).
+    expect(pairedZ(12)).toBeGreaterThan(3.4);
+    expect(pairedZ(12)).toBeLessThan(3.5);
+    expect(pairedZ(6)).toBeGreaterThan(2.4);
+    expect(pairedZ(6)).toBeLessThan(2.5);
+    expect(pooledCheck([pairedDifference(12, 0, 20_000)]).passes).toBe(false);
+    expect(pooledCheck([pairedDifference(6, 0, 20_000)]).passes).toBe(true);
+    expect(judge(clean(), [recheck("G1/a", 12, 0, 0)], false).passes).toBe(false);
+    expect(judge(clean(), [recheck("G1/a", 6, 0, 0)], false).passes).toBe(true);
     // A negative mean, the shipped test more conservative, passes however large.
     expect(pooledCheck([pairedDifference(0, 400, 20_000)]).passes).toBe(true);
     expect(pooledCheck([pairedDifference(400, 0, 20_000)]).passes).toBe(false);

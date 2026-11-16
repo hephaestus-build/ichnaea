@@ -18,7 +18,17 @@ import {
   shardOf,
   structurePoint,
 } from "../../scripts/stats/score-type-i-points.ts";
-import { LEVELS, STUDY_RESAMPLES } from "../../scripts/stats/score-type-i-rule.ts";
+import {
+  failsAtAnyLevel,
+  LEVELS,
+  parseCounts,
+  STUDY_RESAMPLES,
+} from "../../scripts/stats/score-type-i-rule.ts";
+import {
+  RECHECK_COLUMNS,
+  recheckRow,
+  shardOfList,
+} from "../../scripts/stats/study-score-type-i.ts";
 
 const all = cells();
 const points = all.flatMap((c) => c.points);
@@ -166,6 +176,75 @@ describe("score type-I study: points and seeds", () => {
       return Array.from({ length: 3 }, () => pt.draw(rng));
     };
     expect(drawn(rebuilt)).toEqual(drawn(step));
+  });
+
+  it("refuses to rebuild a refinement step from a structure that is not the screen's", () => {
+    const cell = all.find((c) => c.refine !== undefined) as (typeof all)[number];
+    let step: (typeof points)[number] | undefined;
+    for (let s = G2_STRUCTURES; step === undefined; s++)
+      step = cell.refine?.(cell.points[4] as (typeof points)[number], s);
+    const byCell = new Map(all.map((c) => [c.id, c]));
+    const stored = step.params["structure"] as string;
+    const means = JSON.parse(stored) as [number, number][];
+    // One mean moved by 1e-6: the true difference is no longer 0.
+    const moved = JSON.stringify(
+      means.map(([b, c], i) => (i === 0 ? [b, c + 1e-6] : [b, c]) as [number, number]),
+    );
+    expect(() => pointById(byCell, step.id, moved)).toThrow(/mean difference/);
+    // The same values written differently: not the doubles the screen wrote.
+    const rewritten = stored.replace(/(\d\.\d+)/, "$10");
+    expect(rewritten).not.toBe(stored);
+    expect(() => pointById(byCell, step.id, rewritten)).toThrow(/exact means/);
+    expect(() => pointById(byCell, step.id, "[[0.5]]")).toThrow(/not a list/);
+    // The re-check runs the same checks, and refuses a listed structure that is not the point's.
+    expect(() => recheckRow(byCell, { id: step.id, structure: moved }, 1)).toThrow(
+      /mean difference/,
+    );
+    const grid = cell.points[0] as (typeof points)[number];
+    expect(() => recheckRow(byCell, { id: grid.id, structure: stored }, 1)).toThrow(
+      /listed structure/,
+    );
+  });
+
+  it("re-checks symmetric G2 points end to end through the runner's re-check", () => {
+    const byCell = new Map(all.map((c) => [c.id, c]));
+    const ids = ["G2/symmetric-d0.05-nu10/k12-r2/s0", "G2/symmetric-d0.2-nu10/k17-r1/s0"];
+    const listText = `${JSON.stringify(
+      {
+        points: ids.map((id) => ({
+          id,
+          structure: points.find((p) => p.id === id)?.params["structure"],
+        })),
+      },
+      null,
+      1,
+    )}\n`;
+    for (const [index, id] of ids.entries()) {
+      const [entry] = shardOfList(listText, index, 2);
+      expect(entry?.id).toBe(id);
+      const { row, seed } = recheckRow(byCell, entry as { id: string; structure?: string }, 20);
+      expect(recheckRow(byCell, entry as { id: string }, 20).row).toBe(row);
+      const values = row.split("\t");
+      expect(values).toHaveLength(RECHECK_COLUMNS.length);
+      const r = Object.fromEntries(RECHECK_COLUMNS.map((c, i) => [c, values[i] as string]));
+      const point = points.find((p) => p.id === id) as (typeof points)[number];
+      expect(r["id"]).toBe(id);
+      expect(Number(r["seed"])).toBe(point.recheckSeed);
+      expect(seed).toBe(point.recheckSeed);
+      expect(r["reps"]).toBe("20");
+      const shipped = parseCounts(r["shipped_hits"]);
+      const study = parseCounts(r["study_hits"]);
+      const n10 = parseCounts(r["n10"]);
+      const n01 = parseCounts(r["n01"]);
+      LEVELS.forEach((_level, l) => {
+        expect((shipped[l] as number) - (study[l] as number)).toBe(
+          (n10[l] as number) - (n01[l] as number),
+        );
+        if (l > 0) expect(shipped[l]).toBeLessThanOrEqual(shipped[l - 1] as number);
+      });
+      expect(Number(r["exact"])).toBeGreaterThanOrEqual(0);
+      expect(r["fails"]).toBe(String(failsAtAnyLevel(shipped, 20)));
+    }
   });
 
   it("finds every G2 point by its ID, a symmetric one too", () => {

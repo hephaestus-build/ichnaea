@@ -142,28 +142,89 @@ export function readPhase(
 }
 
 /** Every point appears once: the grid's points, and each G2 cell's refinement steps after it. */
-function checkPoints(rows: readonly Row[], problems: string[]): void {
+function checkPoints(
+  rows: readonly Row[],
+  skips: Readonly<Record<string, readonly number[]>>,
+  problems: string[],
+): void {
   const all = cells();
   const expected = new Set(all.flatMap((c) => c.points.map((p) => p.id)));
   const refinable = new Set(all.filter((c) => c.refine !== undefined).map((c) => c.id));
   const seen = new Set<string>();
-  const last = G2_STRUCTURES + G2_REFINE_WORST * G2_REFINE_STEPS;
   for (const r of rows) {
     const id = r["id"] as string;
     if (seen.has(id)) problems.push(`${id}: more than once`);
     seen.add(id);
     if (expected.has(id)) continue;
     const m = /^(G2\/[^/]+\/[^/]+)\/s(\d+)$/.exec(id);
-    // A refinement step's structure index is fixed by its chain and step: 500 to 599.
-    if (m && refinable.has(m[1] as string)) {
-      const s = Number(m[2]);
-      if (s < G2_STRUCTURES || s >= last)
-        problems.push(`${id}: refinement step outside ${G2_STRUCTURES}–${last - 1}`);
-      continue;
-    }
+    if (m && refinable.has(m[1] as string)) continue;
     problems.push(`${id}: not a point of the study`);
   }
   for (const id of expected) if (!seen.has(id)) problems.push(`${id}: missing`);
+  problems.push(...refinementProblems(rows, skips, refinable));
+}
+
+/**
+ * Every refined cell accounts for each refinement step s from 500 to 599 exactly once: as a screen
+ * row, or as a step the screen recorded as skipped because its perturbation left [0.01, 0.99].
+ * Returns the problems, naming the cell and the step.
+ */
+export function refinementProblems(
+  rows: readonly Row[],
+  skips: Readonly<Record<string, readonly number[]>>,
+  refinable: ReadonlySet<string>,
+): string[] {
+  const problems: string[] = [];
+  const first = G2_STRUCTURES;
+  const last = G2_STRUCTURES + G2_REFINE_WORST * G2_REFINE_STEPS;
+  const steps = new Map<string, number[]>([...refinable].map((cell) => [cell, []]));
+  for (const r of rows) {
+    const m = /^(G2\/[^/]+\/[^/]+)\/s(\d+)$/.exec(r["id"] as string);
+    const s = Number(m?.[2]);
+    if (m && refinable.has(m[1] as string) && s >= first) steps.get(m[1] as string)?.push(s);
+  }
+  for (const [cell, skipped] of Object.entries(skips)) {
+    if (!refinable.has(cell)) {
+      problems.push(`${cell}: skipped refinement steps recorded for a cell that is not refined`);
+      continue;
+    }
+    for (const s of skipped) {
+      if ((steps.get(cell) as number[]).includes(s))
+        problems.push(`${cell}: refinement step ${s} is both a row and a recorded skip`);
+      (steps.get(cell) as number[]).push(s);
+    }
+  }
+  for (const [cell, found] of steps) {
+    for (const s of found)
+      if (!Number.isInteger(s) || s < first || s >= last)
+        problems.push(`${cell}: refinement step ${s} is outside ${first}–${last - 1}`);
+    const counted = new Map<number, number>();
+    for (const s of found) counted.set(s, (counted.get(s) ?? 0) + 1);
+    for (let s = first; s < last; s++) {
+      const n = counted.get(s) ?? 0;
+      if (n === 0)
+        problems.push(`${cell}: refinement step ${s} is neither a row nor a recorded skip`);
+      else if (n > 1) problems.push(`${cell}: refinement step ${s} appears ${n} times`);
+    }
+  }
+  return problems;
+}
+
+/** The refinement steps that the screen shards recorded as skipped, by cell, from their sidecars. */
+function readSkips(dir: string, problems: string[]): Record<string, number[]> {
+  const out: Record<string, number[]> = {};
+  for (const f of readdirSync(dir).filter((x) => /^screen-\d+-of-\d+\.tsv\.meta\.json$/.test(x))) {
+    const meta = JSON.parse(readFileSync(path.join(dir, f), "utf8")) as {
+      refinementSkips?: Record<string, number[]>;
+    };
+    if (meta.refinementSkips === undefined) {
+      problems.push(`${f}: the sidecar records no refinement skips`);
+      continue;
+    }
+    for (const [cell, steps] of Object.entries(meta.refinementSkips))
+      out[cell] = [...(out[cell] ?? []), ...steps];
+  }
+  return out;
 }
 
 const num = (r: Row, column: string): number => Number(r[column]);
@@ -489,7 +550,7 @@ export function judge(
 function select(dir: string, smoke: boolean): void {
   const problems: string[] = [];
   const { rows } = readPhase(dir, "screen", SCREEN_COLUMNS, 6000, smoke, problems);
-  checkPoints(rows, problems);
+  checkPoints(rows, readSkips(dir, problems), problems);
   if (problems.length > 0)
     throw new Error(`the screen outputs fail their checks:\n${problems.join("\n")}`);
   const points = recheckSelection(rows);
@@ -503,7 +564,7 @@ const levelName = (level: number): string => (level === LEVELS[2] ? "0.05/3" : S
 function verdict(dir: string, smoke: boolean): void {
   const problems: string[] = [];
   const screen = readPhase(dir, "screen", SCREEN_COLUMNS, 6000, smoke, problems);
-  checkPoints(screen.rows, problems);
+  checkPoints(screen.rows, readSkips(dir, problems), problems);
   const recheck = readPhase(dir, "recheck", RECHECK_COLUMNS, 20_000, smoke, problems);
   // Both phases ran scripts identical to this checkout (readPhase checks every hash), so their
   // commits may differ only in files that compute nothing, such as this collector. They must share

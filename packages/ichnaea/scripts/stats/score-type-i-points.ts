@@ -1012,6 +1012,7 @@ export function pointById(
   const known = cell.points.find((x) => x.id === id);
   if (known !== undefined) return known;
   if (!s || structure === undefined) throw new Error(`no point ${id}`);
+  const means = storedStructure(id, structure);
   const first = cell.points[0] as Point;
   const cPrime = (first.seed - 10_000_000) / 1_000;
   const family = first.family.replace(/-nu[\d.]+$/, "");
@@ -1021,7 +1022,33 @@ export function pointById(
     family,
     first.shape,
     first.params["nu"] as number,
-    JSON.parse(structure) as [number, number][],
+    means,
     first.role,
   );
+}
+
+/**
+ * The means of a refinement step from the structure the screen stored, checked before a rebuild:
+ * pairs of finite means, a true mean difference Σ(cᵢ − bᵢ) of 0 to 1e-12, and the very doubles the
+ * screen wrote (serialising them again gives the stored text). Throws otherwise.
+ */
+export function storedStructure(id: string, structure: string): Structure {
+  const means = JSON.parse(structure) as unknown;
+  if (
+    !Array.isArray(means) ||
+    !means.every(
+      (m) =>
+        Array.isArray(m) &&
+        m.length === 2 &&
+        m.every((x) => typeof x === "number" && Number.isFinite(x)),
+    )
+  )
+    throw new Error(`${id}: the stored structure is not a list of [base, candidate] means`);
+  const pairs = means as [number, number][];
+  if (JSON.stringify(pairs) !== structure)
+    throw new Error(`${id}: the stored structure is not the screen's exact means`);
+  const difference = pairs.reduce((a, [b, c]) => a + (c - b), 0);
+  if (!(Math.abs(difference) <= 1e-12))
+    throw new Error(`${id}: the stored structure's mean difference is ${difference}, not 0`);
+  return pairs;
 }

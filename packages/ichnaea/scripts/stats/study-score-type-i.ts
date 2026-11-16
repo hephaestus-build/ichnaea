@@ -215,8 +215,12 @@ function screen(args: readonly string[]): void {
   const meta = provenance(local("./study-score-type-i.ts"), SCRIPTS, 2_000_000, [...args]);
   const mine: Cell[] = shardOf(cells(), index, count);
   const seeds: number[] = [];
+  // Refinement steps whose perturbation left [0.01, 0.99]: no row, recorded here, so the collector
+  // can account for every step of every refined cell.
+  const refinementSkips: Record<string, number[]> = {};
   const extra = (): Record<string, unknown> => ({
     phase: "screen",
+    refinementSkips,
     shard: { index, count },
     cells: mine.length,
     reps: SCREEN_REPS,
@@ -248,7 +252,10 @@ function screen(args: readonly string[]): void {
             const s =
               G2_STRUCTURES + G2_REFINE_STEPS * chain + G2_REFINE_STEPS_PER_ROUND * round + step;
             const next = cell.refine?.(current.point, s);
-            if (next === undefined) continue;
+            if (next === undefined) {
+              (refinementSkips[cell.id] ??= []).push(s);
+              continue;
+            }
             const scored = screenPoint(next);
             screened.push(scored);
             if (bad(scored) > bad(current)) current = scored;
@@ -336,9 +343,7 @@ function recheck(args: readonly string[]): void {
   const output = path.join(dir, `recheck-${index}-of-${count}.tsv`);
   const meta = provenance(local("./study-score-type-i.ts"), SCRIPTS, 4_000_000, [...args]);
   const listText = readFileSync(list, "utf8");
-  const selected = (
-    JSON.parse(listText) as { points: { id: string; structure?: string }[] }
-  ).points.filter((_point, i) => i % count === index);
+  const selected = shardOfList(listText, index, count);
   // The collector checks that every shard ran the list it rebuilds from the screen outputs.
   const pointsSha256 = createHash("sha256").update(listText).digest("hex");
   const byCell = new Map(cells().map((cell) => [cell.id, cell]));
@@ -358,29 +363,53 @@ function recheck(args: readonly string[]): void {
   writeFileSync(output, `${RECHECK_COLUMNS.join("\t")}\n`);
   writeMeta(output, meta, false, extra());
   for (const s of selected) {
-    const point = pointById(byCell, s.id, s.structure);
-    if (!point.recheck) throw new Error(`${point.id} does not run the permutation test`);
-    seeds.push(point.recheckSeed);
-    const r = paired(point, RECHECK_REPS);
-    appendFileSync(
-      output,
-      `${[
-        point.id,
-        point.recheckSeed,
-        RECHECK_REPS,
-        r.exact,
-        formatCounts(r.shipped),
-        formatCounts(r.study),
-        formatCounts(r.n10),
-        formatCounts(r.n01),
-        failsAtAnyLevel(r.shipped, RECHECK_REPS),
-      ].join("\t")}\n`,
-    );
-    console.log(
-      `${point.id}: study ${(r.study[0] as number) / RECHECK_REPS}, shipped ${(r.shipped[0] as number) / RECHECK_REPS}`,
-    );
+    const { row, seed } = recheckRow(byCell, s, RECHECK_REPS);
+    seeds.push(seed);
+    appendFileSync(output, `${row}\n`);
+    console.log(row);
   }
   writeMeta(output, meta, true, extra());
+}
+
+/** One entry of the re-check list: a point's ID, and its stored structure for a refinement step. */
+export interface RecheckEntry {
+  readonly id: string;
+  readonly structure?: string;
+}
+
+/** The entries of the re-check list that shard \`index\` of \`count\` runs. */
+export const shardOfList = (listText: string, index: number, count: number): RecheckEntry[] =>
+  (JSON.parse(listText) as { points: RecheckEntry[] }).points.filter(
+    (_p, i) => i % count === index,
+  );
+
+/**
+ * The re-check of one entry at \`reps\` repetitions, as its output row (RECHECK_COLUMNS, tab
+ * separated) and its seed. The point is the grid's, or a refinement step rebuilt and checked from
+ * its stored structure; a stored structure must be the point's exactly.
+ */
+export function recheckRow(
+  byCell: ReadonlyMap<string, Cell>,
+  entry: RecheckEntry,
+  reps: number,
+): { row: string; seed: number } {
+  const point = pointById(byCell, entry.id, entry.structure);
+  if (!point.recheck) throw new Error(`${point.id} does not run the permutation test`);
+  if (entry.structure !== undefined && point.params["structure"] !== entry.structure)
+    throw new Error(`${point.id}: the listed structure is not the point's`);
+  const r = paired(point, reps);
+  const row = [
+    point.id,
+    point.recheckSeed,
+    reps,
+    r.exact,
+    formatCounts(r.shipped),
+    formatCounts(r.study),
+    formatCounts(r.n10),
+    formatCounts(r.n01),
+    failsAtAnyLevel(r.shipped, reps),
+  ].join("\t");
+  return { row, seed: point.recheckSeed };
 }
 
 if (import.meta.main) {
