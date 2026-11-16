@@ -296,13 +296,14 @@ describe("the structure generator", () => {
   });
 });
 
-describe("the provenance of a study", () => {
-  const scripts = path.join(import.meta.dirname, "../scripts");
-  const rel = (files: readonly string[]): string[] =>
-    files.map((f) => path.relative(path.join(import.meta.dirname, ".."), f));
+const scripts = path.join(import.meta.dirname, "../scripts");
+/** Paths relative to the stats package. */
+const relative = (files: readonly string[]): string[] =>
+  files.map((f) => path.relative(path.join(import.meta.dirname, ".."), f));
 
+describe("the provenance of a study", () => {
   it("records every local module a script imports, through the statistics it calls", () => {
-    const files = rel(localImportClosure([path.join(scripts, "simulate-structures.ts")]));
+    const files = relative(localImportClosure([path.join(scripts, "simulate-structures.ts")]));
     expect(files).toEqual(
       expect.arrayContaining([
         "scripts/simulate-structures.ts",
