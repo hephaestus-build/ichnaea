@@ -1,3 +1,4 @@
+export * from "./cluster-bootstrap.js";
 export * from "./compare.js";
 export * from "./exact-conditional.js";
 export * from "./multiplicity.js";
