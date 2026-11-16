@@ -1072,6 +1072,44 @@ export const MUTANTS: readonly Mutant[] = [
     from: "const target = input.target ?? 0.8;",
     to: "const target = input.target ?? 0.75;",
   },
+  // The score non-inferiority bounds S-A, S-B and S-C: each is caught by the reference values of
+  // R, Python and ratesci (test/stats/score-interval.test.ts) at their stated tolerances.
+  {
+    id: "S20 S-A without the N/(N-1) factor",
+    file: "src/stats/score-interval.ts",
+    from: "const factor = (c.n + b.n) / (c.n + b.n - 1);",
+    to: "const factor = 1;",
+  },
+  {
+    id: "S21 S-B with the uncorrected dispersion",
+    file: "src/stats/score-interval.ts",
+    from: "scoreBound(cases, level, Math.max(pooledDispersion(cases), phiMin));",
+    to: "scoreBound(cases, level, Math.max(pooledDispersionUncorrected(cases), phiMin));",
+  },
+  {
+    id: "S22 S-B with the dispersion in place of its floor",
+    file: "src/stats/score-interval.ts",
+    from: "scoreBound(cases, level, Math.max(pooledDispersion(cases), phiMin));",
+    to: "scoreBound(cases, level, pooledDispersion(cases));",
+  },
+  {
+    id: "S23 S-B dispersion over cases with 2 or more values in both arms",
+    file: "src/stats/score-interval.ts",
+    from: "      if (cell.n < 2) continue;",
+    to: "      if (c.candidate.n < 2 || c.base.n < 2) continue;",
+  },
+  {
+    id: "S24 S-C with the normal quantile",
+    file: "src/stats/score-interval.ts",
+    from: "return estimateOf(cells) - studentQuantile(level, df) * se;",
+    to: 'return estimateOf(cells) - critical(level, "lower") * se;',
+  },
+  {
+    id: "S25 S-C with df the sum of the counts",
+    file: "src/stats/score-interval.ts",
+    from: "return estimateOf(cells) - studentQuantile(level, df) * se;",
+    to: "return estimateOf(cells) - studentQuantile(level, df + 2 * k) * se;",
+  },
 ];
 
 /**

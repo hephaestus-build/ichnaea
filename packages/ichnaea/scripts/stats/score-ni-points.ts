@@ -43,7 +43,11 @@ export const NI_SHAPES: readonly Shape[] = DOMAIN_SHAPES.filter((s) => s.k >= 12
 
 // --- Method settings -------------------------------------------------------------------------------
 
-/** What a setting's result means for the choice of method. */
+/**
+ * What a setting's result means for the choice of method. `candidate`: selectable, and its
+ * coverage decides. `must-fail`: a control that must fail where it is named, never selectable.
+ * `reported`: shown, never chosen.
+ */
 export type SettingRole = "candidate" | "must-fail" | "reported";
 
 export interface Setting {
@@ -66,7 +70,9 @@ export const SETTINGS: readonly Setting[] = [
     role: "reported",
     phi: (cases) => Math.max(pooledDispersionUncorrected(cases), f),
   })),
-  { name: "S-C", role: "candidate", phi: "t" },
+  // A control: the stratified t bound must fail under strong heteroscedasticity, so it is never
+  // selectable. If it ever met the eligibility rule, its must-fail check would have failed.
+  { name: "S-C", role: "must-fail", phi: "t" },
 ];
 
 /**
@@ -204,6 +210,11 @@ export interface NiPoint {
   readonly margin: number;
   /** "margin": truth −margin, where coverage decides; "zero": truth 0, π₀, reported. */
   readonly truth: "margin" | "zero";
+  /**
+   * A reported point never enters a decision, the grid mean or the choice: G4 with separate shocks,
+   * and G2 at truth 0.
+   */
+  readonly reported: boolean;
   readonly params: Readonly<Record<string, number | string>>;
   readonly seed: number;
   readonly confirmSeed: number;
@@ -232,6 +243,8 @@ const marginId = (m: number): string => m.toFixed(3);
  */
 interface MeanGenerator {
   readonly family: string;
+  /** Reported only: a variant outside the domain. */
+  readonly reported?: boolean;
   readonly params: Record<string, number | string>;
   readonly base: (i: number) => number;
   readonly lo: number;
@@ -290,21 +303,44 @@ function meanGenerators(): { g: number; gens: MeanGenerator[] }[] {
     },
     {
       g: 4,
-      gens: [0, 0.01, 0.02, 0.05, 0.1].map((sigma) => ({
-        family: `sigma${sigma}-shared`,
-        params: { sigma, shared: "true" },
-        base: meanOf,
-        lo: 0.01,
-        // The trial's Beta mean is the clipped, shocked case mean, so its exact mean is this.
-        expect: (theta: number) => clippedShockMean(theta, sigma),
-        draw: (rng: Rng, shape: Shape, cand: readonly number[], base: readonly number[]) => {
-          const shock = Array.from({ length: 3 }, () => sigma * normal(rng));
-          return dataset(rng, shape, (r, i, arm, j) => {
-            const mu = arm === "base" ? (base[i] as number) : (cand[i] as number);
-            return beta(r, clip(mu + (shock[j] as number), 0.01, 0.99), 10);
-          });
-        },
-      })),
+      gens: [
+        ...[0, 0.01, 0.02, 0.05, 0.1].map((sigma) => ({
+          family: `sigma${sigma}-shared`,
+          params: { sigma, shared: "true" },
+          base: meanOf,
+          lo: 0.01,
+          // The trial's Beta mean is the clipped, shocked case mean, so its exact mean is this.
+          expect: (theta: number) => clippedShockMean(theta, sigma),
+          draw: (rng: Rng, shape: Shape, cand: readonly number[], base: readonly number[]) => {
+            const shock = Array.from({ length: 3 }, () => sigma * normal(rng));
+            return dataset(rng, shape, (r, i, arm, j) => {
+              const mu = arm === "base" ? (base[i] as number) : (cand[i] as number);
+              return beta(r, clip(mu + (shock[j] as number), 0.01, 0.99), 10);
+            });
+          },
+        })),
+        // Reported only: one shock per replicate and arm, outside the domain, which requires
+        // interleaving. Each arm's shock has the same distribution, so the exact mean is the same.
+        ...[0.01, 0.02, 0.05, 0.1].map((sigma) => ({
+          family: `sigma${sigma}-separate`,
+          reported: true,
+          params: { sigma, shared: "false" },
+          base: meanOf,
+          lo: 0.01,
+          expect: (theta: number) => clippedShockMean(theta, sigma),
+          draw: (rng: Rng, shape: Shape, cand: readonly number[], base: readonly number[]) => {
+            const shock = Array.from({ length: 3 }, () => ({
+              candidate: sigma * normal(rng),
+              base: sigma * normal(rng),
+            }));
+            return dataset(rng, shape, (r, i, arm, j) => {
+              const mu = arm === "base" ? (base[i] as number) : (cand[i] as number);
+              const u = (shock[j] as { candidate: number; base: number })[arm];
+              return beta(r, clip(mu + u, 0.01, 0.99), 10);
+            });
+          },
+        })),
+      ],
     },
     {
       g: 5,
@@ -442,6 +478,7 @@ function g2Point(
     shape,
     margin,
     truth: "margin",
+    reported: false,
     // The mean-0 shape too: refinement perturbs it, then moves it to the margin again.
     params: {
       nu: variant.nu,
@@ -548,6 +585,7 @@ function concentratedPoint(
     shape,
     margin,
     truth: "margin",
+    reported: false,
     params: {
       nu: "50 and 2",
       structure: JSON.stringify(rows),
@@ -561,6 +599,50 @@ function concentratedPoint(
       dataset(rng, shape, (r, i, arm) => {
         const [b, c, nu] = rows[i] as readonly [number, number, number];
         return beta(r, arm === "base" ? b : c, nu);
+      }),
+  };
+}
+
+/** G2 at truth 0, reported only: the margin at which its π₀ is computed. */
+export const G2_ZERO_MARGIN = 0.1;
+/**
+ * Seeds of G2 at truth 0: 38,000,000 + 1,000·z + s, with z the (variant, shape) index below 1,000
+ * and s below 1,000. No other stage 1 stream reaches 38,000,000: non-G2 screening ends below
+ * 30,800,000 (g ≤ 7) and the G2 structure streams below 30,210,000. Its confirmation base,
+ * 48,000,000, is never run: truth 0 is not confirmed.
+ */
+export const G2_ZERO_BASE = 38_000_000;
+export const G2_ZERO_CONFIRM_BASE = 48_000_000;
+
+function zeroPoint(
+  z: number,
+  s: number,
+  family: string,
+  shape: Shape,
+  rows: readonly (readonly number[])[],
+  nu: number | undefined,
+  params: Record<string, number | string>,
+): NiPoint {
+  if (s >= 1000) throw new RangeError("a G2 cell has more than 1,000 structures");
+  if (z >= 1000) throw new RangeError("more than 1,000 G2 cells at truth 0");
+  const truth = rows.reduce((a, r) => a + (r[1] as number) - (r[0] as number), 0) / rows.length;
+  if (Math.abs(truth) > TRUTH_TOLERANCE)
+    throw new Error(`G2 truth ${truth} is not 0 within ${TRUTH_TOLERANCE}`);
+  return {
+    id: `G2/${family}/${shapeId(shape)}/m${marginId(G2_ZERO_MARGIN)}/zero/s${s}`,
+    generator: 2,
+    family,
+    shape,
+    margin: G2_ZERO_MARGIN,
+    truth: "zero",
+    reported: true,
+    params: { ...params, structure: JSON.stringify(rows) },
+    seed: G2_ZERO_BASE + 1_000 * z + s,
+    confirmSeed: G2_ZERO_CONFIRM_BASE + 1_000 * z + s,
+    draw: (rng) =>
+      dataset(rng, shape, (r, i, arm) => {
+        const row = rows[i] as readonly number[];
+        return beta(r, (arm === "base" ? row[0] : row[1]) as number, (row[2] ?? nu) as number);
       }),
   };
 }
@@ -598,6 +680,7 @@ export function niCells(): NiCell[] {
               shape,
               margin,
               truth,
+              reported: gen.reported === true,
               params: gen.params,
               seed: 30_000_000 + STRIDE * g + index,
               confirmSeed: 40_000_000 + STRIDE * g + index,
@@ -609,11 +692,25 @@ export function niCells(): NiCell[] {
       }
   }
   let cPrime = 0;
+  // The cell index at G2_ZERO_MARGIN of each (variant, shape): truth 0 draws that cell's structures.
+  const atZeroMargin: {
+    family: string;
+    shape: Shape;
+    cPrime: number;
+    variant?: { family: "top" | "floor"; nu: number };
+  }[] = [];
   for (const family of ["top", "floor"] as const)
     for (const nu of [2, 10])
       for (const shape of NI_SHAPES)
         for (const margin of MARGINS) {
           const index = cPrime++;
+          if (margin === G2_ZERO_MARGIN)
+            atZeroMargin.push({
+              family: `${family}-nu${nu}`,
+              shape,
+              cPrime: index,
+              variant: { family, nu },
+            });
           const stream = structureStream(index);
           const points: NiPoint[] = [];
           let skipped = 0;
@@ -652,6 +749,8 @@ export function niCells(): NiCell[] {
   for (const shape of NI_SHAPES)
     for (const margin of MARGINS) {
       const index = cPrime++;
+      if (margin === G2_ZERO_MARGIN)
+        atZeroMargin.push({ family: "concentrated", shape, cPrime: index });
       const stream = structureStream(index);
       const points: NiPoint[] = [];
       let skipped = 0;
@@ -683,6 +782,37 @@ export function niCells(): NiCell[] {
         },
       });
     }
+  // Reported only: G2 at truth 0, on the first G2_NI_STRUCTURES mean-0 structures of each
+  // (variant, shape) cell at G2_ZERO_MARGIN, with no refinement. A fresh generator from the cell's
+  // structure seed draws the same structures as that cell. A concentrated shape whose majority would
+  // need |c| > 1 to reach truth 0 is skipped and counted.
+  for (const [z, cell] of atZeroMargin.entries()) {
+    const stream = structureStream(cell.cPrime);
+    const points: NiPoint[] = [];
+    let skipped = 0;
+    for (let s = 0; s < G2_NI_STRUCTURES; s++) {
+      if (cell.variant !== undefined) {
+        const meanZero = g2Structure(stream, cell.shape.k, cell.variant.family);
+        points.push(
+          zeroPoint(z, s, cell.family, cell.shape, meanZero, cell.variant.nu, {
+            nu: cell.variant.nu,
+          }),
+        );
+        continue;
+      }
+      const at = concentratedAtMargin(concentratedShape(stream, cell.shape.k), 0);
+      if (at === undefined) skipped++;
+      else
+        points.push(
+          zeroPoint(z, s, cell.family, cell.shape, at.rows, undefined, { nu: "50 and 2" }),
+        );
+    }
+    out.push({
+      id: `G2/${cell.family}/${shapeId(cell.shape)}/m${marginId(G2_ZERO_MARGIN)}/zero`,
+      points,
+      skipped,
+    });
+  }
   return out;
 }
 

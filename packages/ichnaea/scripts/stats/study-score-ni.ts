@@ -9,8 +9,10 @@
 //
 //   node --import ./scripts/stats/record-loads.ts scripts/stats/study-score-ni.ts \
 //     confirm --points results/confirm.json --shard 3/20 --out results/
-//     Runs the points that the collector selected from their confirmation seeds until the standard
-//     error is at most 0.0005 at 0.95 (190,000 repetitions). Writes confirm-3-of-20.tsv.
+//     Runs the points that the collector selected from their confirmation seeds, in blocks of
+//     50,000 repetitions, until every selectable setting's standard error at its own estimate is at
+//     most 0.0005, or at most 1,000,000 repetitions, where the row records that it was capped.
+//     Writes confirm-3-of-20.tsv.
 //
 // In both phases, every hundredth repetition is also computed with the full bounds (the shipped
 // root-finder for the score settings), and a disagreement with the study's decision stops the run.
@@ -20,7 +22,7 @@ import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { createRng } from "../../src/stats/rng.ts";
+import { createRng, type Rng } from "../../src/stats/rng.ts";
 import { boundSC, scoreBound } from "../../src/stats/score-interval.ts";
 import type { CaseScores } from "../../src/stats/score-permutation-core.ts";
 import { provenance, writeMeta } from "./provenance.ts";
@@ -40,8 +42,15 @@ import {
 
 /** Screening repetitions: 6,000 in the study; a smaller value is a smoke run, which the collector refuses. */
 export const SCREEN_REPS: number = Number(process.env["ICHNAEA_SIM_REPS"] ?? 6000);
-/** A confirmation runs until its standard error at the bar is at most this: 0.0005 in the study. */
+/**
+ * A confirmation runs until every selectable setting's standard error at its own estimate is at
+ * most this: 0.0005 in the study.
+ */
 export const CONFIRM_SE: number = Number(process.env["ICHNAEA_CONFIRM_SE"] ?? 0.0005);
+/** Repetitions per confirmation block: 50,000 in the study; a smaller value is a smoke run. */
+export const CONFIRM_BLOCK: number = Number(process.env["ICHNAEA_CONFIRM_BLOCK"] ?? 50_000);
+/** The most repetitions a confirmation runs: 1,000,000 in the study. A point that reaches it is capped. */
+export const CONFIRM_CAP: number = Number(process.env["ICHNAEA_CONFIRM_CAP"] ?? 1_000_000);
 /** One repetition in this many is also computed with the full bounds. */
 export const GUARD_EVERY = 100;
 
@@ -54,13 +63,14 @@ export const SCREEN_COLUMNS = [
   "margin",
   "truth",
   "seed",
+  "reported",
   "reps",
   "events",
   "c",
   "noisy_share",
   "structure",
 ] as const;
-export const CONFIRM_COLUMNS = ["id", "confirm_seed", "reps", "events"] as const;
+export const CONFIRM_COLUMNS = ["id", "confirm_seed", "reps", "events", "capped"] as const;
 
 /** The settings whose bound is at most −margin on one data set, checked against the full bounds every GUARD_EVERY-th time. */
 function evaluate(point: NiPoint, data: CaseScores[], guarded: boolean): boolean[] {
@@ -79,17 +89,62 @@ function evaluate(point: NiPoint, data: CaseScores[], guarded: boolean): boolean
   return ev;
 }
 
-/** Counts of the event per setting over `reps` repetitions from `seed`. */
-function count(point: NiPoint, seed: number, reps: number): number[] {
-  const rng = createRng(seed);
-  const counts = SETTINGS.map(() => 0);
-  for (let r = 0; r < reps; r++) {
+/**
+ * Adds the event counts of `reps` more repetitions from `rng` to `counts`; `done` repetitions
+ * ran before, so the guard keeps its every-GUARD_EVERY-th stride across blocks.
+ */
+function addCounts(point: NiPoint, rng: Rng, reps: number, done: number, counts: number[]): void {
+  for (let r = done; r < done + reps; r++) {
     const ev = evaluate(point, point.draw(rng), r % GUARD_EVERY === 0);
     ev.forEach((e, i) => {
       if (e) counts[i] = (counts[i] as number) + 1;
     });
   }
+}
+
+/** Counts of the event per setting over `reps` repetitions from `seed`. */
+function count(point: NiPoint, seed: number, reps: number): number[] {
+  const counts = SETTINGS.map(() => 0);
+  addCounts(point, createRng(seed), reps, 0, counts);
   return counts;
+}
+
+/** The settings whose standard error drives the confirmation's stop: the selectable ones. */
+const SELECTABLE = SETTINGS.flatMap((s, i) => (s.role === "candidate" ? [i] : []));
+
+/** Whether every selectable setting's standard error at its own estimate is at most `target`. */
+export const selectableSeWithin = (
+  counts: readonly number[],
+  reps: number,
+  target: number,
+): boolean =>
+  SELECTABLE.every((i) => {
+    const p = (counts[i] as number) / reps;
+    return Math.sqrt((p * (1 - p)) / reps) <= target;
+  });
+
+/**
+ * The confirmation's stopping rule: blocks of `block` repetitions, from `runBlock` (which adds a
+ * block's counts), until every selectable setting's standard error at its own estimate is at most
+ * `target`, or `cap` repetitions have run: then the point is capped. Must-fail and reported
+ * settings never drive the stop; their standard errors are reported as they are. At 1,000,000
+ * repetitions the binomial standard error is at most 0.0005 at any estimate, so a capped point is
+ * one whose selectable coverage lies near 0.5 (about 0.39 to 0.61), far below the bar.
+ */
+export function confirmUntil(
+  runBlock: (counts: number[], done: number, reps: number) => void,
+  block: number,
+  cap: number,
+  target: number,
+): { counts: number[]; reps: number; capped: boolean } {
+  const counts = SETTINGS.map(() => 0);
+  let reps = 0;
+  do {
+    const n = Math.min(block, cap - reps);
+    runBlock(counts, reps, n);
+    reps += n;
+  } while (reps < cap && !selectableSeWithin(counts, reps, target));
+  return { counts, reps, capped: reps >= cap };
 }
 
 /** The coverage of the worst candidate-role setting, from event counts at truth −margin. */
@@ -137,6 +192,7 @@ function row(point: NiPoint, reps: number, counts: readonly number[]): string {
     point.margin,
     point.truth,
     point.seed,
+    point.reported,
     reps,
     counts.join(","),
     point.params["c"] ?? "",
@@ -207,15 +263,15 @@ function confirm(args: readonly string[]): void {
   // The collector checks that every shard ran the list it rebuilds from the screen outputs.
   const pointsSha256 = createHash("sha256").update(listText).digest("hex");
   const byCell = new Map(niCells().map((cell) => [cell.id, cell]));
-  // At least the repetitions whose standard error at 0.95 is CONFIRM_SE (190,000 at 0.0005).
-  const reps = Math.ceil((0.95 * 0.05) / CONFIRM_SE ** 2 / 10_000) * 10_000;
   const extra = (): Record<string, unknown> => ({
     phase: "confirm",
     shard: { index, count: shards },
     points: selected.length,
     pointsSha256,
-    reps,
+    // The block: each row records its own repetitions, a multiple of it.
+    reps: CONFIRM_BLOCK,
     confirmSe: CONFIRM_SE,
+    confirmCap: CONFIRM_CAP,
     guardEvery: GUARD_EVERY,
     settings: SETTINGS.map((s) => s.name),
     runtime: runtime(),
@@ -225,9 +281,18 @@ function confirm(args: readonly string[]): void {
   writeMeta(output, meta, false, extra());
   for (const s of selected) {
     const point = niPointById(byCell, s.id, s.structure);
-    const counts = count(point, point.confirmSeed, reps);
-    appendFileSync(output, `${[point.id, point.confirmSeed, reps, counts.join(",")].join("\t")}\n`);
-    console.log(`${point.id}: confirmed`);
+    const rng = createRng(point.confirmSeed);
+    const { counts, reps, capped } = confirmUntil(
+      (c, done, n) => addCounts(point, rng, n, done, c),
+      CONFIRM_BLOCK,
+      CONFIRM_CAP,
+      CONFIRM_SE,
+    );
+    appendFileSync(
+      output,
+      `${[point.id, point.confirmSeed, reps, counts.join(","), capped].join("\t")}\n`,
+    );
+    console.log(`${point.id}: confirmed at ${reps} repetitions${capped ? " (capped)" : ""}`);
   }
   writeMeta(output, meta, true, extra());
 }

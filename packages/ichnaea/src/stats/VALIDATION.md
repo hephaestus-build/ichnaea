@@ -1233,5 +1233,70 @@ two arms are both all 1 (or all 0) adds no variance at δ = 0 and some next to i
 boundaries, and none on tables drawn from the study's generators. The root-finder takes the first
 crossing from −1, so the shipped bound is well defined, and the binary claim covers that bound. The
 study's decision follows the same path, so it needs no monotonicity; its equivalence test
-(`test/stats/score-ni-equivalence.sim.test.ts`) counts the non-monotone tables per kind and compares
-every setting with a full `lowerRoot` on 10,000 tables.
+(`test/stats/score-ni-equivalence.sim.test.ts`, seeds from 90,000,001) compares every setting with a
+full `lowerRoot` on 10,000 tables, half from the study's generators, and on the 8 non-monotone
+tables of the first scan for them, explicitly. It requires at least one non-monotone table of each
+boundary kind where Z can rise (0/1 values, an arm always 1, unequal counts), so the hard case is
+always tested. S-C has a closed form, so its comparison is trivial.
+
+**S-B reduces to S-A on binary data, tested as a property:** on 1,000 seeded random binary tables
+(1 to 40 cases, 1 to 4 trials per arm, unequal counts and one-trial cells), φ̂ is exactly 1, S-B at
+every φ_min equals S-A bit for bit, and S-A is within 1e-12 of the shipped binary interval (they
+compute Z separately).
+
+**Mutants.** `scripts/stats/mutants.ts` changes the bounds in six ways, and the reference values
+catch each one at their tolerances: S-A without N/(N−1); S-B with the uncorrected φ̂; S-B with φ̂ in
+place of max(φ̂, φ_min); S-B with φ̂ over cells with 2 or more values in both arms (6 reference
+tables pair such a cell with a one-value cell); S-C with the normal quantile; S-C with df = Σ n.
+
+### Stage 1 (fixed before it runs; it has not run)
+
+`scripts/stats/study-score-ni.ts` screens and confirms; `scripts/stats/collect-score-ni.ts` checks the
+outputs and applies the rule; `scripts/stats/score-ni-points.ts` holds every point.
+
+- **Grid:** k ∈ {12, 17, 20, 30, 60, 146}, 2 or 3 trials per arm, mixed, and up to 10% one-trial cells,
+  equal counts in both arms; effective margins 0.05 to 0.30 in steps of 0.005. Every point is drawn
+  at truth −margin, where coverage decides, and at truth 0, where π₀ is reported. The truth is the
+  exact estimand, to 1e-9.
+- **Settings and their roles.** Selectable: S-A, and S-B with φ_min ∈ {0.01, 0.02, 0.05, 0.1}.
+  Controls that must fail and are never selectable: S-B with φ_min = 0, and S-C. Reported: S-B with
+  the uncorrected φ̂ at every φ_min. If S-C ever met the eligibility rule, its must-fail check would
+  have failed, and the harness would be broken.
+- **The must-fail checks**, each a confirmed point at truth −margin with coverage + 3·SE below 0.94 on
+  the family it is named for (a failure elsewhere does not count): S-C on G3 (ν 2 against 50, either
+  arm); S-C on the G2 top family; S-B with φ_min = 0 on the G2 top or floor family. S-B with
+  φ_min = 0 on the concentrated family is reported on its own line. The 10 worst screened points of
+  each check, on its family, are confirmed. The harness passes only when every named check fails.
+- **Reported points, deciding nothing:** G4 with separate shocks (σ 0.01 to 0.1), at both truths,
+  outside the domain, which requires interleaving; and G2 at truth 0, at margin 0.10, on the first 100
+  mean-0 structures of each (family, shape), with no refinement. They are never confirmed and never
+  enter a failure, the grid mean or the choice.
+- **The rule:** screening at 6,000 repetitions. A deciding point at truth −margin where a selectable
+  setting is below 0.94 + 2·SE is confirmed from its own seed, in blocks of 50,000, until every
+  selectable setting's standard error at its own estimate is at most 0.0005, and at most 1,000,000
+  repetitions. A point that reaches 1,000,000 stops, its row says it was capped, and the summary lists
+  it for review; only there does the collector accept an SE above 0.0005. At 1,000,000 the binomial
+  SE is at most 0.0005 at any estimate, so a capped point has a selectable coverage near 0.5 (about
+  0.39 to 0.61). The SEs of the controls and the reported settings are reported as they are and never
+  drive the stop. Repetitions needed at a coverage of 0.94, 0.90 and 0.80: 225,600, 360,000 and
+  640,000 (5, 8 and 13 blocks). A confirmed point fails at estimate + 3·SE below 0.94; the grid mean
+  over the designed non-G2 grid fails at mean + 3·SE below 0.95.
+- **The choice:** among the selectable settings with no failing point and a passing grid mean, the
+  highest median π₀ at an effective margin of 0.10 over the deciding truth-0 points; on a tie S-A,
+  then S-B with the larger φ_min. If no S-B setting is eligible but S-A is, S-A. If none is eligible,
+  non-inferiority on scores stays estimate-only.
+- **Reported with the verdict:** the G2 structures kept at every margin for each G2 family
+  (`collect-score-ni.ts structures`), the kept and skipped count of every cell and margin, every
+  family (`skips.tsv`), and the skip totals per family in the summary.
+- **Seeds:** non-G2 screening 30,000,000 + 100,000·g + c with c < 100,000, confirmation + 10,000,000;
+  G2 structure streams 30,200,000 + c′; G2 simulation 50,000,000 + 1,000·c′ + s and confirmation
+  60,000,000 + 1,000·c′ + s, with c′ < 10,000 and s < 1,000; G2 at truth 0 38,000,000 + 1,000·z + s,
+  with z < 1,000 (its confirmation base 48,000,000 is reserved and never runs). Stage 2 keeps
+  70,000,000 and 80,000,000. `scripts/stats/score-ni-seeds.ts` enumerates all 1,169,494 seeds,
+  asserts that none repeats, that none lies in an earlier study (the score type-I study, the binary
+  one-trial study and the binary floor sweep's exact phases at 1, 1,000,000 and 2,000,000 and
+  simulation sets at 10, 11, 12, 20 and 21 million), and that none reaches 70,000,000, and writes the
+  manifest with the runtime that enumerated it, committed with the results. Seeds are unique within
+  a study, because each study's claim stands on its own; reuse across studies is allowed.
+- **One runtime:** every shard of both phases records its runtime, and the collector refuses shards
+  of different runtimes.
