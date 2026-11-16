@@ -3,7 +3,8 @@
 // build that anyone can reproduce, and the build commit (decision 0019).
 //
 // It reads the build commit's `Source-Commit:` trailer and checks that the commit is on main
-// (origin/main). It checks out the source commit into a temporary worktree, installs with the
+// (origin/main) and that GitHub verified its signature. The GitHub API answers without a token for
+// this public repository; GH_TOKEN or GITHUB_TOKEN, when set, raises its rate limit. It checks out the source commit into a temporary worktree, installs with the
 // frozen lockfile, and assembles the tree with that commit's own scripts/build-package.ts and this
 // Node. Then it compares the rebuilt tree with the build commit's tree: the same paths, the same
 // bytes and the same modes. On a difference it refuses and names the first differing path in path
@@ -71,6 +72,31 @@ export function commitFiles(commit: string, cwd = REPOSITORY): TreeFile[] {
     .toSorted((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
 }
 
+/** The repository whose commits the build branch holds. */
+export const GITHUB_REPOSITORY = "hephaestus-build/ichnaea";
+
+/** Returns why GitHub does not show a commit's signature as verified, or nothing. */
+export async function signatureProblem(commit: string): Promise<string | undefined> {
+  const token = process.env["GH_TOKEN"] ?? process.env["GITHUB_TOKEN"];
+  const response = await fetch(
+    `https://api.github.com/repos/${GITHUB_REPOSITORY}/commits/${commit}`,
+    {
+      headers: {
+        accept: "application/vnd.github+json",
+        ...(token ? { authorization: `Bearer ${token}` } : {}),
+      },
+    },
+  );
+  if (!response.ok) return `GitHub did not return ${commit}: HTTP ${response.status}`;
+  const body = (await response.json()) as {
+    commit?: { verification?: { verified?: unknown; reason?: unknown } };
+  };
+  const verification = body.commit?.verification;
+  return verification?.verified === true
+    ? undefined
+    : `Source-Commit ${commit} is not a signed commit: GitHub gives ${String(verification?.reason ?? "no verification")}`;
+}
+
 /** Fetches a commit from origin unless the repository has it already. */
 function ensureCommit(commit: string): void {
   try {
@@ -81,7 +107,7 @@ function ensureCommit(commit: string): void {
 }
 
 /** Rebuilds a build commit and returns every problem, the first differing path first. */
-export function verifyBuild(build: string): string[] {
+export async function verifyBuild(build: string): Promise<string[]> {
   ensureCommit(build);
   const commit = git(REPOSITORY, "rev-parse", "--verify", `${build}^{commit}`).trim();
   const source = sourceCommitOf(git(REPOSITORY, "log", "-1", "--format=%B", commit));
@@ -92,6 +118,8 @@ export function verifyBuild(build: string): string[] {
   } catch {
     return [`Source-Commit ${source} is not on origin/main`];
   }
+  const unsigned = await signatureProblem(source);
+  if (unsigned) return [unsigned];
 
   const expected = commitFiles(commit);
   const info = expected.find((f) => f.path === BUILD_INFO);
@@ -140,7 +168,7 @@ export function verifyBuild(build: string): string[] {
 if (import.meta.main) {
   const [build, ...rest] = process.argv.slice(2);
   if (!build || rest.length > 0) throw new Error("usage: verify-build.ts <build commit>");
-  const problems = verifyBuild(build);
+  const problems = await verifyBuild(build);
   if (problems.length > 0) {
     console.error(
       `verify-build: ${build} is not the build of its source commit. First difference: ${problems[0]}`,

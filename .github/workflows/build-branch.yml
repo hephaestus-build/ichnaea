@@ -198,4 +198,6 @@ jobs:
       - name: The build commit is byte for byte the build of its source commit
         env:
           COMMIT: ${{ needs.publish.outputs.commit }}
+          # Read-only, for the GitHub API's verification of the source commit's signature.
+          GH_TOKEN: ${{ github.token }}
         run: node scripts/verify-build.ts "$COMMIT"
