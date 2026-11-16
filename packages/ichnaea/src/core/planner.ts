@@ -322,8 +322,18 @@ export async function createPlan(input: PlanInput): Promise<Plan> {
   if (new Set(trials.map((t) => t.id)).size !== trials.length)
     throw new PlanError("two planned trials share an ID; case IDs and arm names collide");
   const running = new Set(input.armsToRun ?? arms.map((a) => a.name));
-  const worstCaseCalls =
-    trials.filter((t) => running.has(t.arm)).length * suite.budget.callsPerTrial;
+  const runTrials = trials.filter((t) => running.has(t.arm)).length;
+  // A plan that runs arms always carries its bound, so a missing one never switches the bounds
+  // off. An import plan runs no arm and spends no call, so it needs none.
+  // The suite record requires the bound, but a caller may hand over a suite it never parsed.
+  const callsPerTrial: number | undefined = suite.budget.callsPerTrial;
+  const bounded =
+    typeof callsPerTrial === "number" && Number.isInteger(callsPerTrial) && callsPerTrial >= 1;
+  if (runTrials > 0 && !bounded)
+    throw new PlanError(
+      `suite '${suite.id}' has no budget.callsPerTrial, the bound of calls per trial that a plan running arms needs`,
+    );
+  const worstCaseCalls = runTrials * (callsPerTrial ?? 0);
 
   const measures = await Promise.all(
     [...suite.primary.map((p) => p.measure), ...(suite.secondary ?? [])].map(async (id) => {
@@ -356,7 +366,7 @@ export async function createPlan(input: PlanInput): Promise<Plan> {
     budget: {
       worstCaseCalls,
       maxCalls: suite.budget.maxCalls,
-      callsPerTrial: suite.budget.callsPerTrial,
+      ...(callsPerTrial === undefined ? {} : { callsPerTrial }),
       ...(input.monthlyRemaining === undefined ? {} : { monthlyRemaining: input.monthlyRemaining }),
     },
     trials,
