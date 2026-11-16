@@ -115,6 +115,19 @@ sha256sum --check --ignore-missing SHA256SUMS
 `--repo` alone is not enough: it accepts an attestation from any workflow on any branch of the
 repository. `--signer-workflow` and `--source-ref` accept only the release workflow on `main`.
 
+### From a checkout, without a build
+
+A TypeScript project can pin Ichnaea to a commit instead, for example as a git submodule, and
+link the packages as workspace packages. Every package exports its sources under the
+`@hephaestus-build/source` condition, so the project runs them with no build step:
+
+- Node 22.18 or later: `node --conditions=@hephaestus-build/source …`
+- Bun: `bun --conditions=@hephaestus-build/source …`
+- TypeScript: `"customConditions": ["@hephaestus-build/source"]` in `tsconfig.json`
+
+The pinned commit is the version. Review a change of the pin as you would review a dependency
+upgrade.
+
 ## Five-minute example
 
 [`examples/support-assistant`](examples/support-assistant/README.md) is a synthetic support
