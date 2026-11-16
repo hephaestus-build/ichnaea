@@ -24,7 +24,10 @@ export default defineConfig({
       editLink: { baseUrl: `${repository}/edit/main/docs/site/` },
       lastUpdated: true,
       components: { Banner: "./src/components/StatusBanner.astro" },
-      sidebar: [{ label: "Explanation", items: [{ autogenerate: { directory: "explanation" } }] }],
+      sidebar: [
+        { label: "Explanation", items: [{ autogenerate: { directory: "explanation" } }] },
+        { label: "Glossary", link: "/glossary/" },
+      ],
       plugins: [starlightLinksValidator({ errorOnLocalLinks: true }), starlightLlmsTxt()],
     }),
   ],

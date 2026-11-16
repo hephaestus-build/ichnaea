@@ -1,0 +1,82 @@
+---
+title: Limits, and why you set them before any run
+description: A limit is the largest decrease you accept. You register it with a reason before a comparison uses it, and you never change it to make a run pass.
+sidebar:
+  order: 2
+---
+
+A limit is the largest decrease in a measure that you accept.
+For example, a limit of 15 points means: a candidate may answer up to 15 points worse than the base and still pass.
+
+The limit is a decision about your product, not about statistics.
+The owner of the measure sets it.
+Statisticians call it a non-inferiority margin, and the suite file and the records store it as `margin`.
+
+## Register it before you compare
+
+You write the limit in the suite, with a reason, before any comparison uses it.
+The support example registers its limit like this:
+
+```json
+{
+  "measure": "support/facts-stated",
+  "margin": 0.15,
+  "marginStatus": "registered",
+  "marginReason": "Twelve cases cannot see smaller drops; the floor at three replicates is about 0.08."
+}
+```
+
+A limit that you choose after you see the results can always be made to pass.
+That is why a limit with the status `placeholder` gives no verdict. Ichnaea runs the plan as an estimate only.
+
+## The floor: the smallest limit your suite can clear
+
+Even when nothing changes and every trial passes, your suite cannot clear every limit.
+With K cases and r trials per case, the smallest limit that can pass is about
+
+> floor = z² / (K(r − ½) + z²), with z = 1.645
+
+| Cases | Floor with 2 trials | Floor with 3 trials |
+| ----- | ------------------- | ------------------- |
+| 17    | 9.6 points          | 6.0 points          |
+| 20    | 8.3 points          | 5.1 points          |
+| 60    | 2.9 points          | 1.8 points          |
+| 250   | 0.7 points          | 0.4 points          |
+
+If your limit is below the floor, your suite can never pass, even when nothing changes.
+The planner checks this before the first trial and says so.
+
+## Why no candidate can pass yet
+
+A non-inferiority result is validated only for limits from a smallest validated limit up to 30 points.
+That smallest limit is not set yet.
+The studies found case structures in which the lower bound is too optimistic.
+So until that smallest limit is set, Ichnaea gives no Pass. An unchanged candidate gets Inconclusive.
+A real decrease beyond run-to-run noise still gives Regression.
+
+## What the bound tells you, once Pass is validated
+
+Ichnaea computes a one-sided 95% lower bound for the change.
+Read it against the limit and against 0:
+
+| The bound             | The regression test | Verdict                                                 |
+| --------------------- | ------------------- | ------------------------------------------------------- |
+| Above minus the limit | Any result          | Pass: the candidate is not worse by more than the limit |
+| Below minus the limit | Rejects             | Regression: the decrease is beyond run-to-run noise     |
+| Below minus the limit | Does not reject     | Inconclusive: no decrease detected, and none ruled out  |
+
+The last row is the one that surprises people.
+The bound crosses the limit, so a decrease larger than the limit is still possible.
+The test found no decrease, so nothing is proven bad either. The verdict says so, and says that this is not a Pass.
+More cases or more trials move the bound closer to the estimate.
+
+## What it does not cover
+
+- A limit of 0 is not a non-inferiority test.
+- A claim that a candidate is better than the base is never validated.
+
+## Evidence
+
+- [Decision 0012](https://github.com/hephaestus-build/ichnaea/blob/main/docs/decisions/0012-margins.md): registered and placeholder limits, and the validated range.
+- [Decision 0015](https://github.com/hephaestus-build/ichnaea/blob/main/docs/decisions/0015-verdicts-from-two-results.md): why no run passes until the floor is set.
+- [Statistics validation, floors](https://github.com/hephaestus-build/ichnaea/blob/main/packages/ichnaea/src/stats/VALIDATION.md#floors-and-the-minimum-detectable-effect): the formula and the table.
