@@ -2135,6 +2135,35 @@ export const Observation: z.ZodObject<{
 }, z.core.$strict>;
 
 // @public
+export const ObservedCode: z.ZodUnion<readonly [z.ZodObject<{
+    commit: z.ZodString;
+    image: z.ZodOptional<z.ZodString>;
+}, z.core.$strict>, z.ZodObject<{
+    image: z.ZodString;
+    commit: z.ZodOptional<z.ZodString>;
+}, z.core.$strict>]>;
+
+// @public
+export type ObservedCode = z.infer<typeof ObservedCode>;
+
+// @public
+export const ObservedConfiguration: z.ZodObject<{
+    code: z.ZodUnion<readonly [z.ZodObject<{
+        commit: z.ZodString;
+        image: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>, z.ZodObject<{
+        image: z.ZodString;
+        commit: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>]>;
+    model: z.ZodString;
+    route: z.ZodString;
+    parameters: z.ZodRecord<z.ZodString, z.ZodJSONSchema>;
+}, z.core.$strict>;
+
+// @public
+export type ObservedConfiguration = z.infer<typeof ObservedConfiguration>;
+
+// @public
 export const Outcome: z.ZodEnum<{
     abstained: "abstained";
     budget_exceeded: "budget_exceeded";
@@ -3235,10 +3264,144 @@ export const Trial: z.ZodObject<{
 export type Trial = z.infer<typeof Trial>;
 
 // @public
+export const TrialFailure: z.ZodObject<{
+    class: z.ZodEnum<{
+        infrastructure: "infrastructure";
+        not_run: "not_run";
+        protocol: "protocol";
+        system: "system";
+    }>;
+    kind: z.ZodString;
+    message: z.ZodOptional<z.ZodString>;
+}, z.core.$strict>;
+
+// @public
+export type TrialFailure = z.infer<typeof TrialFailure>;
+
+// @public
 export const TrialId: z.core.$ZodBranded<z.ZodString, "TrialId", "out">;
 
 // @public
 export type TrialId = z.infer<typeof TrialId>;
+
+// @public
+export const TrialIdentity: z.ZodObject<{
+    id: z.core.$ZodBranded<z.ZodString, "TrialId", "out">;
+    suite: z.core.$ZodBranded<z.ZodString, "SuiteId", "out">;
+    case: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
+    arm: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
+    replicate: z.ZodInt;
+    attempt: z.ZodInt;
+}, z.core.$strict>;
+
+// @public
+export type TrialIdentity = z.infer<typeof TrialIdentity>;
+
+// @public
+export const TrialRequest: z.ZodObject<{
+    schema: z.ZodLiteral<"ichnaea.trialRequest/1">;
+    dataClass: z.ZodEnum<{
+        none: "none";
+        personal: "personal";
+        pseudonymous: "pseudonymous";
+        special: "special";
+    }>;
+    plan: z.core.$ZodBranded<z.ZodString, "PlanDigest", "out">;
+    trial: z.ZodObject<{
+        id: z.core.$ZodBranded<z.ZodString, "TrialId", "out">;
+        suite: z.core.$ZodBranded<z.ZodString, "SuiteId", "out">;
+        case: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
+        arm: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
+        replicate: z.ZodInt;
+        attempt: z.ZodInt;
+    }, z.core.$strict>;
+    case: z.ZodObject<{
+        id: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
+        digest: z.ZodString;
+        unit: z.ZodEnum<{
+            episode: "episode";
+            session: "session";
+            trace: "trace";
+            turn: "turn";
+        }>;
+        input: z.ZodRecord<z.ZodString, z.ZodJSONSchema>;
+        turns: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            role: z.ZodEnum<{
+                assistant: "assistant";
+                system: "system";
+                tool: "tool";
+                user: "user";
+            }>;
+            content: z.ZodJSONSchema;
+        }, z.core.$strict>>>;
+        fixtures: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            name: z.ZodString;
+            digest: z.ZodString;
+            uri: z.ZodOptional<z.ZodString>;
+        }, z.core.$strict>>>;
+    }, z.core.$strict>;
+    limits: z.ZodObject<{
+        calls: z.ZodOptional<z.ZodInt>;
+    }, z.core.$strict>;
+}, z.core.$strict>;
+
+// @public
+export type TrialRequest = z.infer<typeof TrialRequest>;
+
+// @public
+export const TrialResult: z.ZodObject<{
+    schema: z.ZodLiteral<"ichnaea.trialResult/1">;
+    dataClass: z.ZodEnum<{
+        none: "none";
+        personal: "personal";
+        pseudonymous: "pseudonymous";
+        special: "special";
+    }>;
+    trial: z.ZodObject<{
+        id: z.core.$ZodBranded<z.ZodString, "TrialId", "out">;
+        suite: z.core.$ZodBranded<z.ZodString, "SuiteId", "out">;
+        case: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
+        arm: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
+        replicate: z.ZodInt;
+        attempt: z.ZodInt;
+    }, z.core.$strict>;
+    output: z.ZodOptional<z.ZodJSONSchema>;
+    pointer: z.ZodOptional<z.ZodString>;
+    failure: z.ZodOptional<z.ZodObject<{
+        class: z.ZodEnum<{
+            infrastructure: "infrastructure";
+            not_run: "not_run";
+            protocol: "protocol";
+            system: "system";
+        }>;
+        kind: z.ZodString;
+        message: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>>;
+    calls: z.ZodInt;
+    usage: z.ZodOptional<z.ZodObject<{
+        calls: z.ZodOptional<z.ZodInt>;
+        inputTokens: z.ZodOptional<z.ZodInt>;
+        outputTokens: z.ZodOptional<z.ZodInt>;
+        cost: z.ZodOptional<z.ZodNumber>;
+        costUnit: z.ZodOptional<z.ZodString>;
+        wallMs: z.ZodOptional<z.ZodNumber>;
+    }, z.core.$strict>>;
+    observed: z.ZodObject<{
+        code: z.ZodUnion<readonly [z.ZodObject<{
+            commit: z.ZodString;
+            image: z.ZodOptional<z.ZodString>;
+        }, z.core.$strict>, z.ZodObject<{
+            image: z.ZodString;
+            commit: z.ZodOptional<z.ZodString>;
+        }, z.core.$strict>]>;
+        model: z.ZodString;
+        route: z.ZodString;
+        parameters: z.ZodRecord<z.ZodString, z.ZodJSONSchema>;
+    }, z.core.$strict>;
+}, z.core.$strict>;
+
+// @public
+export type TrialResult = z.infer<typeof TrialResult>;
 
 // @public
 export const TriggerKind: z.ZodEnum<{
@@ -3318,6 +3481,17 @@ export function verifyArms(arms: ReadonlyArray<{
 
 // @public
 export function verifyConfiguration(input: unknown, at?: string): Promise<LinkError[]>;
+
+// @public
+export const WorkerError: z.ZodObject<{
+    schema: z.ZodLiteral<"ichnaea.workerError/1">;
+    dataClass: z.ZodLiteral<"none">;
+    kind: z.ZodString;
+    message: z.ZodOptional<z.ZodString>;
+}, z.core.$strict>;
+
+// @public
+export type WorkerError = z.infer<typeof WorkerError>;
 
 // (No @packageDocumentation comment for this package)
 

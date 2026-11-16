@@ -1,0 +1,6 @@
+{
+  "schema": "ichnaea.workerError/1",
+  "dataClass": "none",
+  "kind": "bad-json",
+  "message": "line 3 is not JSON: unexpected end of input"
+}
