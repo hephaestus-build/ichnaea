@@ -132,5 +132,6 @@ describe("binary regression test at one trial per case", () => {
       expect(p.toPrecision(10)).toBe(worst);
       expect(String(p <= Number(level))).toBe(passes);
     }
-  });
+    // 192 exact computations, some at 300 cases.
+  }, 120_000);
 });

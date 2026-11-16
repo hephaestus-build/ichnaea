@@ -249,36 +249,51 @@ test checks the dynamic programme against enumeration of all 4^k outcome pairs t
   (4 rounds of 5 steps). Family "top": most cases pass the base always or nearly always and drop
   under the candidate by unequal amounts; one to three noisy cases rise to offset the drops, the
   shape that made the interval undercover. Family "floor" mirrors it, so the long tail of the
-  per-case differences lies on the drop side, the side the test looks at. 108,037 structures in all.
+  per-case differences lies on the drop side, the side the test looks at.
 - **Grid and seeds:** k from 5 to 20, and 25, 30, 40, 60, 100, 146, 200 and 300. MT19937, seed
-  5,000,000 + 1,000·f + the index of k, with f = 1 for "top" and 2 for "floor".
-- **Rule:** an exactly computed point fails above 0.05.
-- **Result: no point fails.** The worst type-I error per k:
+  5,000,000 + 1,000·f + the index of k, with f = 1 for "top" and 2 for "floor". Each (family, k)
+  keeps its seed at every level, so every level searches the same random structures.
+- **Levels:** α = 0.05, and the Holm levels α/m for m = 2, 3 and 4 (0.025, 0.0167 and 0.0125). A
+  REGRESSION verdict compares Holm-adjusted p-values across the primary measures, so the test must
+  hold at α/m as well. The rejection region at each level is checked against the exact McNemar
+  test's in integer arithmetic. 431,983 structures over the four levels.
+- **Rule:** an exactly computed point fails above its level.
+- **Result: no point fails at any level, from 5 to 300 cases.** The worst type-I error per k, with
+  "e" for a structure with an effect somewhere and "n" for one with no effect in any case:
 
-| Cases     | 5      | 8      | 10     | 12     | 14     | 17     | 20     | 30     | 60     | 100    | 146    | 300    |
-| --------- | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ | ------ |
-| Worst     | 0.0006 | 0.0039 | 0.0059 | 0.0067 | 0.0091 | 0.0114 | 0.0155 | 0.0207 | 0.0312 | 0.0344 | 0.0369 | 0.0392 |
-| Structure | effect | effect | effect | effect | effect | none   | none   | none   | none   | none   | none   | none   |
+| Level  | 5 cases | 8       | 10      | 12      | 14      | 17      | 20      | 30      | 60      | 100     | 146     | 300     |
+| ------ | ------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- | ------- |
+| 0.05   | 0.0006e | 0.0039e | 0.0059e | 0.0067e | 0.0091e | 0.0114n | 0.0155n | 0.0207n | 0.0312n | 0.0344n | 0.0369n | 0.0392n |
+| 0.025  | 0.0000n | 0.0006e | 0.0013e | 0.0017e | 0.0027e | 0.0035n | 0.0060n | 0.0100n | 0.0144n | 0.0150n | 0.0172n | 0.0190n |
+| 0.0167 | 0.0000n | 0.0006e | 0.0013e | 0.0016e | 0.0025e | 0.0033n | 0.0051n | 0.0063n | 0.0084n | 0.0098n | 0.0108n | 0.0127n |
+| 0.0125 | 0.0000n | 0.0001e | 0.0002e | 0.0003e | 0.0007e | 0.0010e | 0.0020n | 0.0046n | 0.0067n | 0.0078n | 0.0085n | 0.0094n |
 
-"Effect" means a heterogeneous structure; "none" means the worst structure has no effect in any
-case. From 15 cases up, no heterogeneous structure was worse than the sharp null: effects that
-average 0 make the test more conservative. The count of candidate-only cases then varies less than
-the Binomial(n, 1/2) that the test conditions on, because a sum of unequal chances varies less than
-a sum of equal ones. Below 15 cases, the test is so discrete that every error
-stays under 0.01. `validation/binary-one-trial.tsv` lists the worst structure of each k and
-family in full, and a unit test recomputes each listed value from its structure. Its sidecar
-records the commit, the script hashes, the seeds and the Node version.
+From about 15 cases up, the worst structure has no effect in any case: no heterogeneous structure
+was worse than the sharp null. Hoeffding (1956) gives the reason. Given the discordant cases, the
+count of candidate-only cases is a sum of independent chances that differ between cases (a
+Poisson-binomial). A Poisson-binomial with the same mean as the Binomial(n, 1/2) that the test
+conditions on has lower-tail probabilities no larger than the binomial's. **The study, not the
+theorem, is the evidence:** effects whose rates average 0 do not by themselves fix that conditional
+mean at n/2, so the theorem alone does not cover every structure here. Below 15 cases the test is
+so discrete that every error stays under 0.01. `validation/binary-one-trial.tsv` lists the worst
+structure of each level, k and family in full, and a unit test recomputes each listed value from
+its structure. Its sidecar records the commit, the script hashes, the seeds and the Node version.
 
 - **Claim:** no failure found in this space, which is a search, not a proof. A structure outside it
   may still fail.
 - **Conditions for a validated result at one trial per case**, which the change that widens the
-  domain must enforce: the arms ran interleaved, as the trial records show, because a run-level
-  shock between two single runs cannot be told apart from an effect; the suite's A/A runs, with at
-  least two runs per arm, show a run-level shock within the bound that the studies validate; a case
-  with a missing trial has no pair, so it is excluded and counts against coverage, and the
-  sensitivity analysis covers it. Non-inferiority at one trial per case needs its own floor sweep:
-  with one trial per arm most pairs agree, the zero-variance mechanism that sets the margin floor.
-  Until then, one trial per case can give REGRESSION but never PASS.
+  domain to one trial per case and at least 5 cases must enforce:
+  - **Interleaving:** both arms of a case ran adjacent in time, as the trial records show. The
+    stated assumption is that a run-level shock is shared by both arms of a case. With one trial
+    per arm, a shock between the arms cannot be told apart from an effect. This study has no
+    shocks, so it sets no shock bound.
+  - **A/A runs:** the suite's A/A runs at one trial per case, with at least two runs per arm, give
+    no REGRESSION.
+  - **Missing trials:** a case with a missing trial has no pair, so it is excluded and counts
+    against coverage. The sensitivity analysis covers it.
+  - Non-inferiority at one trial per case needs its own floor sweep: with one trial per arm most
+    pairs agree, the zero-variance mechanism that sets the margin floor. Until then, one trial per
+    case can give REGRESSION but never PASS.
 
 ## Results of the CI gate
 
