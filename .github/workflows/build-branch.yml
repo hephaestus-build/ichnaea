@@ -1,0 +1,201 @@
+name: Build branch
+
+# Writes the built package of each commit on main to the `build` branch, which consumers pin
+# (README § Use Ichnaea from a TypeScript project, decision 0019).
+#
+# - The build job has read access only. It builds the commit, assembles the build tree
+#   (scripts/build-package.ts), runs the consumer test on exactly that tree and uploads it.
+# - The publish job runs in the `build-branch` environment, which only main may deploy to and which
+#   alone holds the deploy key that the `build` ruleset lets write. It checks out no code and runs
+#   none from the repository. It makes one commit whose tree is exactly the uploaded tree, with the
+#   current head of `build` as its parent, or no parent when `build` does not exist yet, so that
+#   main's history never enters `build`. It pushes over SSH, never with force.
+# - The verify job rebuilds the build commit from its Source-Commit and refuses any difference
+#   (scripts/verify-build.ts).
+#
+# Runs share one concurrency group and a running one is never cancelled, so build commits land in
+# the order of their runs. GitHub keeps one pending run per group: a newer push replaces a run that
+# still waits, so a main commit can get no build commit of its own. Each build commit's
+# Source-Commit trailer names the main commit that it holds, and the publish job refuses a source
+# that does not descend from the current build's source, so `build` never moves back.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: build-branch
+  cancel-in-progress: false
+
+env:
+  # The build and its verification pin one Node version, because tsc's output must not depend on
+  # it. build.json records it, and scripts/verify-build.ts refuses another.
+  NODE_VERSION: "24.22.2"
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    outputs:
+      title: ${{ steps.source.outputs.title }}
+      sha256: ${{ steps.pack.outputs.sha256 }}
+    steps:
+      # A dispatch can name another branch. Only main is built.
+      - name: The run is on main
+        env:
+          REF: ${{ github.ref }}
+        run: |
+          if [ "$REF" != refs/heads/main ]; then
+            echo "::error::The build branch is written from main only, not from $REF."
+            exit 1
+          fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          # A build restores no cache, so that no other run's files can enter it.
+          package-manager-cache: false
+      - run: pnpm install --frozen-lockfile
+      - name: Assemble the build tree
+        run: node scripts/build-package.ts "$RUNNER_TEMP/tree" --source-commit "$GITHUB_SHA"
+      - name: The consumer test passes on exactly this tree
+        run: node scripts/build-consumer.ts --tree "$RUNNER_TEMP/tree"
+      # An artifact does not keep file modes, a tar file does: the bin stays executable.
+      - name: Pack the tree with its modes
+        id: pack
+        run: |
+          tar -C "$RUNNER_TEMP/tree" -cf "$RUNNER_TEMP/build-tree.tar" .
+          echo "sha256=$(sha256sum "$RUNNER_TEMP/build-tree.tar" | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
+      - name: The source commit's title
+        id: source
+        run: echo "title=$(git log -1 --format=%s "$GITHUB_SHA")" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: build-tree
+          path: ${{ runner.temp }}/build-tree.tar
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: publish
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Only main may deploy to this environment. It holds BUILD_BRANCH_DEPLOY_KEY, the private key
+    # of the repository's only write deploy key: the only actor that the `build` ruleset lets write.
+    environment: build-branch
+    permissions: {}
+    outputs:
+      commit: ${{ steps.commit.outputs.commit }}
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: build-tree
+          path: ${{ runner.temp }}/artifact
+      - name: The tree is the one that the build job checked
+        env:
+          SHA256: ${{ needs.build.outputs.sha256 }}
+        run: echo "$SHA256  $RUNNER_TEMP/artifact/build-tree.tar" | sha256sum --check --strict
+      - name: Commit the tree to build and push it
+        id: commit
+        env:
+          DEPLOY_KEY: ${{ secrets.BUILD_BRANCH_DEPLOY_KEY }}
+          TITLE: ${{ needs.build.outputs.title }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if [ -z "$DEPLOY_KEY" ]; then
+            echo "::error::The build-branch environment has no BUILD_BRANCH_DEPLOY_KEY secret. See MAINTAINERS.md § Repository settings."
+            exit 1
+          fi
+          # GitHub's SSH host keys, as GitHub publishes them in https://api.github.com/meta
+          # (ssh_keys) and with these fingerprints in
+          # https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints:
+          # SHA256:+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU (Ed25519),
+          # SHA256:p2QAMXNIC1TJYWeIOttrVc98/R1BUFWu3/LiyKgUfQM (ECDSA),
+          # SHA256:uNiVztksCsDhcc0u9e8BujQXVUpKZIDTMczCvj3tD2s (RSA).
+          known_hosts="$RUNNER_TEMP/known_hosts"
+          cat > "$known_hosts" <<'KEYS'
+          github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl
+          github.com ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBEmKSENjQEezOmxkZMy7opKgwFB9nkt5YRrYMjNuG5N87uRgg6CLrbo5wAdT/y6v0mKV0U2w0WZ2YB/++Tpockg=
+          github.com ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCj7ndNxQowgcQnjshcLrqPEiiphnt+VTTvDP6mHBL9j1aNUkY4Ue1gvwnGLVlOhGeYrnZaMgRK6+PKCUXaDbC7qtbW8gIkhL7aGCsOr/C56SJMy/BCZfxd1nWzAOxSDPgVsmerOBYfNqltV9/hWCqBywINIR+5dIg6JTJ72pcEpEjcYgXkE2YEFXV1JHnsKgbLWNlhScqb2UmyRkQyytRLtL+38TGxkxCflmO+5Z8CSSNY7GidjMIZ7Q4zMjA2n1nGrlTDkzwDCsw+wqFPGQA179cnfGWOWRVruj16z6XyvxvjJwbz0wQZ75XK5tKSb7FNyeIEs4TT4jk+S4dhPeAUC5y+bDYirYgM4GC7uEnztnZyaVWQ7B381AK4Qdrwt51ZqExKbQpTUNn+EjqoTwvqNj4kqx5QUCI0ThS/YkOxJCXmPUWZbhjpCg56i+2aB6CmK2JGhn57K5mj0MNdBXA4/WnwH6XoPWJzK5Nyu2zB3nAZp+S5hpQs+p1vN1/wsjk=
+          KEYS
+          # The key goes into an agent from the environment, never into a file.
+          eval "$(ssh-agent -s)" > /dev/null
+          trap 'ssh-agent -k > /dev/null' EXIT
+          printf '%s\n' "$DEPLOY_KEY" | ssh-add - 2> /dev/null
+          unset DEPLOY_KEY
+          export GIT_SSH_COMMAND="ssh -o UserKnownHostsFile=$known_hosts -o StrictHostKeyChecking=yes -o BatchMode=yes"
+
+          work="$RUNNER_TEMP/build"
+          git init --quiet "$work"
+          tar -C "$work" -xf "$RUNNER_TEMP/artifact/build-tree.tar"
+          cd "$work"
+          git remote add origin "git@github.com:$REPOSITORY.git"
+          git add --all
+          tree="$(git write-tree)"
+
+          # ls-remote exits with 2 when build does not exist, and with another code when it fails.
+          parents=()
+          status=0
+          git ls-remote --exit-code origin refs/heads/build > "$RUNNER_TEMP/head" || status=$?
+          if [ "$status" -ne 0 ] && [ "$status" -ne 2 ]; then
+            echo "::error::git ls-remote failed with $status."
+            exit 1
+          fi
+          if [ "$status" -eq 0 ]; then
+            head="$(cut -f 1 "$RUNNER_TEMP/head")"
+            git fetch --quiet origin refs/heads/build refs/heads/main
+            if [ "$(git rev-parse "$head^{tree}")" = "$tree" ]; then
+              echo "::notice::The build tree of $GITHUB_SHA equals the tree of build at $head. Nothing to commit."
+              echo "commit=$head" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            previous="$(git log -1 --format='%(trailers:key=Source-Commit,valueonly)' "$head")"
+            if ! git merge-base --is-ancestor "$previous" "$GITHUB_SHA"; then
+              echo "::error::build holds $previous, which $GITHUB_SHA does not descend from. build never moves back."
+              exit 1
+            fi
+            parents=(-p "$head")
+          else
+            echo "::notice::build does not exist yet. Its first commit has no parent."
+          fi
+          printf 'build: %s\n\nSource-Commit: %s\n' "$TITLE" "$GITHUB_SHA" > "$RUNNER_TEMP/message"
+          commit="$(GIT_AUTHOR_NAME=ichnaea-build GIT_AUTHOR_EMAIL=ichnaea-build@users.noreply.github.com \
+            GIT_COMMITTER_NAME=ichnaea-build GIT_COMMITTER_EMAIL=ichnaea-build@users.noreply.github.com \
+            git commit-tree "$tree" "${parents[@]}" -F "$RUNNER_TEMP/message")"
+          git push --quiet origin "$commit:refs/heads/build"
+          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+          echo "::notice::build is at $commit, the build of $GITHUB_SHA."
+
+  verify:
+    name: verify
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          package-manager-cache: false
+      - run: pnpm install --frozen-lockfile
+      - name: The build commit is byte for byte the build of its source commit
+        env:
+          COMMIT: ${{ needs.publish.outputs.commit }}
+        run: node scripts/verify-build.ts "$COMMIT"

@@ -14,6 +14,7 @@ import {
   PACKAGE,
   REPOSITORY,
   shippedManifest,
+  treeDifferences,
   treeDigest,
   treeFiles,
 } from "./build-package.ts";
@@ -176,5 +177,32 @@ describe("the assembled tree", () => {
       const { sources } = JSON.parse(map.bytes.toString("utf8")) as { sources: string[] };
       for (const source of sources) expect(source, map.path).toMatch(/^\.\.\/(\.\.\/)*src\//);
     }
+  });
+});
+
+const file = (path: string, text: string, mode: "100644" | "100755" = "100644") => ({
+  path,
+  mode,
+  bytes: Buffer.from(text),
+});
+
+describe("the tree differences", () => {
+  it("are none for equal trees", () => {
+    expect(treeDifferences([file("a", "1")], [file("a", "1")])).toEqual([]);
+  });
+
+  it("name the first differing path in path order first, then the rest", () => {
+    const expected = [
+      file("README.md", "r"),
+      file("dist/b.js", "b"),
+      file("src/c.ts", "c", "100755"),
+    ];
+    const actual = [file("dist/a.js", "a"), file("dist/b.js", "B"), file("src/c.ts", "c")];
+    expect(treeDifferences(expected, actual)).toEqual([
+      "README.md: missing from the rebuilt tree",
+      "dist/a.js: only in the rebuilt tree",
+      "dist/b.js: the bytes differ",
+      "src/c.ts: mode 100644, expected 100755",
+    ]);
   });
 });
