@@ -1,17 +1,26 @@
-// Fails unless the release SBOM describes what is shipped: its top-level component is the release
+// Checks an SBOM against what is shipped.
+//
+// The build SBOM of a build tree (`--build <tree>`): it is CycloneDX, its top-level component is
+// the package at its version, it names the source commit, its timestamp is the source commit's
+// committer date and its serial number derives from the source commit, it lists every peer
+// dependency, its lists are sorted, and it holds no path on the build machine.
+//
+// The release SBOM (the paused design of decision 0013): its top-level component is the release
 // project in the release's npm scope, every tarball is a component at its version with its
 // SHA-512 and its download URL for the tag, and every runtime and peer dependency of every tarball
 // is listed.
-// Usage: node scripts/check-sbom.ts <sbom.cdx.json> <directory with .tgz files> [<tag>]
+// Usage: node scripts/check-sbom.ts --build <build tree>
+//        node scripts/check-sbom.ts <sbom.cdx.json> <directory with .tgz files> [<tag>]
 // Without a tag, the download URLs must name the placeholder tag of release-sbom.ts.
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { basename } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { basename, join } from "node:path";
 
+import { BUILD_INFO, commitDate, SBOM, type BuildInfo } from "./build-package.ts";
 import { PROJECT, tarballsIn } from "./tarball-project.ts";
 import { downloadUrl } from "./release-notes.ts";
-import { tagArgument, UNTAGGED } from "./release-sbom.ts";
+import { buildSerialNumber, tagArgument, UNTAGGED } from "./release-sbom.ts";
 
 export interface Shipped {
   /** The tarball's file name, as on the release. */
@@ -126,7 +135,98 @@ export function shippedIn(dir: string): Shipped[] {
   });
 }
 
-if (import.meta.main) {
+/** An SBOM item's `bom-ref`, or a dependency's `ref`. */
+const refOf = (item: object): string => {
+  const { "bom-ref": bomRef, ref } = item as { "bom-ref"?: unknown; ref?: unknown };
+  return String(bomRef ?? ref);
+};
+
+/** Whether a list is sorted by its items' `bom-ref` or `ref`. */
+const sortedByRef = (items: readonly object[]): boolean =>
+  items.every((item, i) => i === 0 || refOf(items[i - 1]!) <= refOf(item));
+
+/** The string values of a JSON value. */
+const strings = (value: unknown): string[] =>
+  typeof value === "string"
+    ? [value]
+    : typeof value === "object" && value !== null
+      ? Object.values(value).flatMap(strings)
+      : [];
+
+/**
+ * Returns one finding per way in which a build SBOM does not describe the build of `pkg` from the
+ * source commit, whose committer date is `date`.
+ */
+export function checkBuildSbom(
+  bom: unknown,
+  pkg: { name: string; version: string; peerDependencies?: Readonly<Record<string, string>> },
+  sourceCommit: string,
+  date: string,
+): string[] {
+  const { bomFormat, serialNumber, metadata, components, dependencies } = (bom ?? {}) as {
+    bomFormat?: unknown;
+    serialNumber?: unknown;
+    metadata?: { timestamp?: unknown; component?: unknown };
+    components?: unknown;
+    dependencies?: unknown;
+  };
+  if (bomFormat !== "CycloneDX") return ["the SBOM is not CycloneDX"];
+  const findings: string[] = [];
+  const serial = buildSerialNumber(sourceCommit);
+  if (serialNumber !== serial) findings.push(`the SBOM's serial number is not ${serial}`);
+  if (metadata?.timestamp !== date) findings.push(`the SBOM's timestamp is not ${date}`);
+  const root = metadata?.component;
+  const purl = npmPurl(pkg.name, pkg.version);
+  if (
+    !isComponent(root) ||
+    fullName(root) !== pkg.name ||
+    root.version !== pkg.version ||
+    root.purl !== purl
+  )
+    findings.push(`the SBOM's top-level component is not ${purl}`);
+  else if (
+    !(root.externalReferences ?? []).some(
+      (r) => r.type === "vcs" && r.url?.endsWith(`#${sourceCommit}`),
+    )
+  )
+    findings.push(`the SBOM's top-level component does not name the source commit ${sourceCommit}`);
+  if (!Array.isArray(components) || !components.every(isComponent))
+    return [...findings, "the SBOM has no valid component list"];
+  const names = new Set(components.map(fullName));
+  for (const d of Object.keys(pkg.peerDependencies ?? {}))
+    if (!names.has(d)) findings.push(`the SBOM misses ${d}, a peer dependency of ${pkg.name}`);
+  if (!sortedByRef(components)) findings.push("the SBOM's components are not sorted");
+  if (!Array.isArray(dependencies) || !sortedByRef(dependencies as object[]))
+    findings.push("the SBOM's dependencies are not sorted");
+  for (const s of strings(bom))
+    if (s.startsWith("file:") || /^\/(?!\/)/.test(s))
+      findings.push(`the SBOM has a path on the build machine: ${s}`);
+  return findings;
+}
+
+/** Checks the SBOM of a build tree against the tree's manifest and build.json. */
+export function checkBuildTree(tree: string): string[] {
+  if (!existsSync(join(tree, SBOM))) return [`the build tree has no ${SBOM}`];
+  const bom: unknown = JSON.parse(readFileSync(join(tree, SBOM), "utf8"));
+  const pkg = JSON.parse(readFileSync(join(tree, "package.json"), "utf8")) as {
+    name: string;
+    version: string;
+    peerDependencies?: Record<string, string>;
+  };
+  const { sourceCommit } = JSON.parse(readFileSync(join(tree, BUILD_INFO), "utf8")) as BuildInfo;
+  return checkBuildSbom(bom, pkg, sourceCommit, commitDate(sourceCommit));
+}
+
+if (import.meta.main && process.argv[2] === "--build") {
+  const tree = process.argv[3];
+  if (!tree) throw new Error("usage: check-sbom.ts --build <build tree>");
+  const findings = checkBuildTree(tree);
+  if (findings.length > 0) {
+    console.error(`SBOM check failed (${findings.length}):\n${findings.join("\n")}`);
+    process.exit(1);
+  }
+  console.log(`sbom: ${join(tree, SBOM)} describes the build of its source commit`);
+} else if (import.meta.main) {
   const [sbom, dir, tagArg] = process.argv.slice(2);
   if (!sbom || !dir)
     throw new Error("usage: check-sbom.ts <sbom.cdx.json> <tarball directory> [<tag>]");

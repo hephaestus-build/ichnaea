@@ -40,13 +40,12 @@ jobs:
       - run: pnpm run check:generated
       - name: The contracts' API report is current
         run: pnpm run check:api
-      # Releases are paused (release.yml); the SBOM of the packed tarballs stays checked. With no
-      # tag, the SBOM's download URLs name the placeholder tag `untagged`, and the check expects it.
-      - name: The release SBOM of the packed tarballs lists what they ship
+      # The tree that the build branch would hold for this commit: its manifest runs nothing on
+      # install, and its SBOM describes what it ships.
+      - name: The build tree has a manifest without scripts and an SBOM of what it ships
         run: |
-          pnpm -r --filter './packages/*' exec pnpm pack --pack-destination "$RUNNER_TEMP/tarballs"
-          node scripts/release-sbom.ts "$RUNNER_TEMP/tarballs" "$RUNNER_TEMP/sbom.cdx.json"
-          node scripts/check-sbom.ts "$RUNNER_TEMP/sbom.cdx.json" "$RUNNER_TEMP/tarballs"
+          node scripts/build-package.ts "$RUNNER_TEMP/tree"
+          node scripts/check-sbom.ts --build "$RUNNER_TEMP/tree"
 
   # The packages ship TypeScript sources, which Node 24 runs with its type stripping: no build, no
   # loader.
