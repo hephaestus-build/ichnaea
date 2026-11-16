@@ -20,6 +20,7 @@
     },
     "dataClass": {
       "type": "string",
+      "const": "none",
       "x-ichnaea-data": {
         "class": "none",
         "identifier": "none",
@@ -27,13 +28,7 @@
           "*"
         ],
         "retention": "record"
-      },
-      "x-ichnaea-known": [
-        "none",
-        "pseudonymous",
-        "personal",
-        "special"
-      ]
+      }
     },
     "kind": {
       "type": "string",
@@ -49,13 +44,14 @@
     },
     "message": {
       "type": "string",
+      "minLength": 1,
       "x-ichnaea-data": {
-        "class": "inherit",
-        "identifier": "content",
+        "class": "none",
+        "identifier": "none",
         "egress": [
           "*"
         ],
-        "retention": "subject"
+        "retention": "record"
       }
     }
   },

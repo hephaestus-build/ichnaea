@@ -57,6 +57,20 @@ describe("the worker protocol", () => {
     expect(WorkerError.safeParse(guessed).success).toBe(false);
   });
 
+  it("carries no content in a worker error, so the worker never guesses a data class", () => {
+    const valid = fixture("valid", "workerError.json");
+    // A worker that cannot read a line cannot know its class, so the record is always class none.
+    expect(WorkerError.safeParse({ ...valid, dataClass: "personal" }).success).toBe(false);
+    // The message is classed none in the published schema, so it can never carry the line's content.
+    const schema = JSON.parse(
+      readFileSync(
+        join(import.meta.dirname, "..", "..", "schemas", "workerError.schema.json"),
+        "utf8",
+      ),
+    ) as { properties: { message: { "x-ichnaea-data": { class: string } } } };
+    expect(schema.properties.message["x-ichnaea-data"].class).toBe("none");
+  });
+
   it("still needs the request's identity on a protocol failure", () => {
     const anonymous = fixture("valid-extra", "trialResult/bad-request.json");
     delete anonymous["trial"];

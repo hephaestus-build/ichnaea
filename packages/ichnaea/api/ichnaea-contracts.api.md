@@ -3485,12 +3485,7 @@ export function verifyConfiguration(input: unknown, at?: string): Promise<LinkEr
 // @public
 export const WorkerError: z.ZodObject<{
     schema: z.ZodLiteral<"ichnaea.workerError/1">;
-    dataClass: z.ZodEnum<{
-        none: "none";
-        personal: "personal";
-        pseudonymous: "pseudonymous";
-        special: "special";
-    }>;
+    dataClass: z.ZodLiteral<"none">;
     kind: z.ZodString;
     message: z.ZodOptional<z.ZodString>;
 }, z.core.$strict>;

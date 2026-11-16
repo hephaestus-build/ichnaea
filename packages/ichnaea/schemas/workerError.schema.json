@@ -20,12 +20,7 @@
     },
     "dataClass": {
       "type": "string",
-      "enum": [
-        "none",
-        "pseudonymous",
-        "personal",
-        "special"
-      ],
+      "const": "none",
       "x-ichnaea-data": {
         "class": "none",
         "identifier": "none",
@@ -49,13 +44,14 @@
     },
     "message": {
       "type": "string",
+      "minLength": 1,
       "x-ichnaea-data": {
-        "class": "inherit",
-        "identifier": "content",
+        "class": "none",
+        "identifier": "none",
         "egress": [
           "*"
         ],
-        "retention": "subject"
+        "retention": "record"
       }
     }
   },
