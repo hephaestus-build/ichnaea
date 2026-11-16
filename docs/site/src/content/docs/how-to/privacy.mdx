@@ -47,8 +47,8 @@ Every field of every record carries a data policy:
 
 - **Class:** `none`, `pseudonymous`, `personal` or `special`. A content field, such as a case's `input`, takes the class that the record declares in its own `dataClass` field.
 - **Identifier:** whether the field can identify a person, or holds content.
-- **Purposes:** what the field may leave for. `*` means any purpose.
-- **Retention:** whether it is kept as long as the record or as long as the data subject allows.
+- **Purposes:** what the field may leave for. `*` means any purpose, within the field's class. A destination also caps the class it accepts.
+- **Retention:** `record` keeps the field as long as its record. `subject` marks a field to erase when its person is erased.
 
 The [record schemas](/ichnaea/reference/schemas/) list the policy of every field.
 
@@ -71,7 +71,7 @@ dataClass, family, id, pool, provenance, schema, unit
 
 - **It is not a sandbox.** Ichnaea does not stop your code, or a person, from copying a file. Only your code that calls `projectForEgress` applies the policy.
 - **It is only as right as the record.** If a record declares `dataClass: "none"` for content that is personal, the projection lets it through.
-- **It does not delete data.** Retention describes how long a field may be kept. Deleting it is your job.
+- **It does not delete data.** Retention says which fields go with a person. Ichnaea has no erase command, so deleting is your job.
 
 ## Check that it worked
 
