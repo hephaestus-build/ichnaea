@@ -209,6 +209,7 @@
                   "system",
                   "tool"
                 ],
+                "description": "Who speaks the turn.",
                 "x-ichnaea-data": {
                   "class": "none",
                   "identifier": "none",
