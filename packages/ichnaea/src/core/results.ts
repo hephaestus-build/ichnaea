@@ -60,6 +60,8 @@ export interface EarlierAttempt {
   readonly attempt: number;
   /** Its failure: an infrastructure failure or a trial not run. */
   readonly failure: { readonly class: "infrastructure" | "not_run"; readonly kind: string };
+  /** The calls it made. They count against the per-trial bound and the run's budget. */
+  readonly calls: number;
 }
 
 /** What `importResults` found, beside the records. */
@@ -202,6 +204,11 @@ function remove(root: unknown, path: readonly PropertyKey[]): void {
  * The plan's suite must be the one the plan was made from: a suite whose digest or case set digest
  * differs from the plan's throws, so a result is never scored by another suite's cases or limits.
  *
+ * Each trial's attempts are numbered 1 to k with no gap, and the highest counts. Every earlier
+ * attempt must be an infrastructure failure or a trial not run, and the trial record keeps them in
+ * `attempts` with their calls: an attempt over the per-trial call bound makes the trial over
+ * budget, and decide sums every attempt's calls against the run's budget.
+ *
  * Results are read tolerantly: members no record defines are ignored and reported as unused. A
  * value this version does not know (a later failure class), a result of a trial the plan does not
  * list, or a repeated trial throws an ImportError that names the result.
@@ -289,9 +296,15 @@ export function importResults(
     attempts.set(r.result.trial.id, list);
   }
   const earlierAttempts: EarlierAttempt[] = [];
+  const earlierOf = new Map<string, EarlierAttempt[]>();
   const finals: Accepted[] = [];
   for (const [id, list] of attempts) {
     const sorted = list.toSorted((x, y) => x.result.trial.attempt - y.result.trial.attempt);
+    const numbers = sorted.map((e) => e.result.trial.attempt);
+    if (numbers.some((n, i) => n !== i + 1))
+      throw new ImportError(
+        `trial '${id}' has attempts ${numbers.join(", ")}; the attempts of a trial are numbered 1 to k with no gap`,
+      );
     for (const [i, e] of sorted.slice(0, -1).entries()) {
       const failure = e.result.failure;
       if (failure?.class !== "infrastructure" && failure?.class !== "not_run")
@@ -300,11 +313,14 @@ export function importResults(
             failure === undefined ? "a completed attempt" : `a ${failure.class} failure`
           } at attempt ${e.result.trial.attempt}; only an infrastructure failure or a trial not run is retried`,
         );
-      earlierAttempts.push({
+      const earlier: EarlierAttempt = {
         trial: id,
         attempt: e.result.trial.attempt,
         failure: { class: failure.class, kind: failure.kind },
-      });
+        calls: e.result.calls,
+      };
+      earlierAttempts.push(earlier);
+      earlierOf.set(id, [...(earlierOf.get(id) ?? []), earlier]);
     }
     finals.push(sorted.at(-1) as Accepted);
   }
@@ -315,12 +331,19 @@ export function importResults(
     const protocol = failure?.class === "protocol";
     const problem = protocol ? undefined : observedProblem(result.observed, arm.configuration);
     if (problem !== undefined) mismatched.push(`'${id.id}': ${problem}`);
-    // The per-trial call bound holds whatever the trial's outcome: a trial over it is over budget.
+    // The per-trial call bound holds for every attempt, whatever the trial's outcome: a trial with
+    // any attempt over it is over budget, so a retry cannot hide an overrun.
     const bound = plan.suite.budget.callsPerTrial;
+    const earlier = earlierOf.get(id.id) ?? [];
+    const overEarlier = earlier.find((e) => e.calls > bound);
     const overBound =
-      !protocol && problem === undefined && result.calls > bound
-        ? `the trial made ${result.calls} calls, over the bound of ${bound} per trial`
-        : undefined;
+      protocol || problem !== undefined
+        ? undefined
+        : overEarlier !== undefined
+          ? `attempt ${overEarlier.attempt} made ${overEarlier.calls} calls, over the bound of ${bound} per trial`
+          : result.calls > bound
+            ? `the trial made ${result.calls} calls, over the bound of ${bound} per trial`
+            : undefined;
     if (overBound !== undefined) overCalls.push(id.id);
     const outcome: Outcome = protocol
       ? "protocol_failure"
@@ -359,6 +382,15 @@ export function importResults(
       ...(result.pointer === undefined ? {} : { pointer: result.pointer }),
       ...(error === undefined ? {} : { error }),
       usage: { ...result.usage, calls: result.calls },
+      ...(earlier.length === 0
+        ? {}
+        : {
+            attempts: earlier.map((e) => ({
+              attempt: e.attempt,
+              failure: e.failure,
+              calls: e.calls,
+            })),
+          }),
       ...(timed.startedAt === undefined ? {} : { startedAt: timed.startedAt }),
       ...(timed.endedAt === undefined ? {} : { endedAt: timed.endedAt }),
     });

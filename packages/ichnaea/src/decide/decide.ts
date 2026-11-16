@@ -672,6 +672,15 @@ function recordChecks(input: DecideInput): string[] {
     );
   if (input.trials.some((t) => t.outcome === "budget_exceeded"))
     invalid.push("the run exhausted its budget");
+  // Every attempt's calls count, so a retry cannot hide what the run spent.
+  const calls = input.trials.reduce(
+    (sum, t) => sum + (t.usage?.calls ?? 0) + (t.attempts ?? []).reduce((n, a) => n + a.calls, 0),
+    0,
+  );
+  if (calls > plan.budget.maxCalls)
+    invalid.push(
+      `the run made ${calls} calls, over the budget of ${plan.budget.maxCalls}, counting every attempt`,
+    );
   for (const p of plan.primary) {
     if (!(p.margin < 1 && (p.safetyMargin ?? 0) <= p.margin))
       invalid.push(

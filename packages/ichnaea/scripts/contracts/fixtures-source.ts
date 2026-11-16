@@ -733,6 +733,12 @@ export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
     },
   },
   trial: {
+    "after-two-retries": (r) => {
+      r["attempts"] = [
+        { attempt: 1, failure: { class: "infrastructure", kind: "timeout" }, calls: 1 },
+        { attempt: 2, failure: { class: "not_run", kind: "never-reached" }, calls: 0 },
+      ];
+    },
     "protocol-failure": (r) => {
       r["outcome"] = "protocol_failure";
       delete r["output"];

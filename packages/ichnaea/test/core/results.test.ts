@@ -331,10 +331,44 @@ describe("importResults", () => {
       );
       expect(records.trials.find((t) => t.id === FIRST)?.outcome).toBe("completed");
       expect(records.trials).toHaveLength(24);
-      expect(summary.earlierAttempts).toEqual([
-        { trial: FIRST, attempt: 1, failure: { class: "infrastructure", kind: "timeout" } },
-        { trial: FIRST, attempt: 2, failure: { class: "not_run", kind: "never-reached" } },
-      ]);
+      const earlier = [
+        { attempt: 1, failure: { class: "infrastructure", kind: "timeout" }, calls: 1 },
+        { attempt: 2, failure: { class: "not_run", kind: "never-reached" }, calls: 1 },
+      ];
+      expect(summary.earlierAttempts).toEqual(earlier.map((e) => ({ trial: FIRST, ...e })));
+      expect(records.trials.find((t) => t.id === FIRST)?.attempts).toEqual(earlier);
+    });
+
+    it("makes a trial over budget when any attempt, an earlier one too, was over the call bound", () => {
+      const rows = withAttempts({ result: attempt(1, { ...infra, calls: 5 }, undefined) }).map(
+        (r, i) => (i === 1 ? { result: attempt(2) } : r),
+      );
+      const { records } = importResults(plan, rows);
+      expect(records.trials.find((t) => t.id === FIRST)).toMatchObject({
+        outcome: "budget_exceeded",
+        error: {
+          kind: "over-call-bound",
+          message: "attempt 1 made 5 calls, over the bound of 1 per trial",
+        },
+        attempts: [{ attempt: 1, failure: { class: "infrastructure", kind: "timeout" }, calls: 5 }],
+      });
+    });
+
+    it.each([
+      ["a gap", [1, 3], "has attempts 1, 3"],
+      ["a lone later attempt", [5], "has attempts 5"],
+    ])("refuses %s in the attempt numbers", (_n, numbers, has) => {
+      const rows = [
+        ...numbers.map((n, i) =>
+          i < numbers.length - 1
+            ? { result: attempt(n, infra, undefined) }
+            : { result: attempt(n) },
+        ),
+        ...results().slice(1),
+      ];
+      expect(() => importResults(plan, rows)).toThrow(
+        `trial '${FIRST}' ${has}; the attempts of a trial are numbered 1 to k with no gap`,
+      );
     });
 
     it("refuses a repeated attempt", () => {

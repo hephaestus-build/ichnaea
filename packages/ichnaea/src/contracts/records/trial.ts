@@ -97,6 +97,23 @@ export const Trial = z.strictObject({
   startedAt: none(Timestamp).optional(),
   endedAt: none(Timestamp).optional(),
   inputDigest: none(Digest).optional(),
+  /**
+   * The earlier attempts at this trial that a later one replaced, in order: each an infrastructure
+   * failure or a trial not run, with the calls it made. The record is the last attempt; the calls of
+   * every attempt count against the per-trial bound and the run's budget.
+   */
+  attempts: z
+    .array(
+      z.strictObject({
+        attempt: none(z.int().min(1)),
+        failure: z.strictObject({
+          class: none(z.enum(["infrastructure", "not_run"])),
+          kind: none(Text),
+        }),
+        calls: none(z.int().min(0)),
+      }),
+    )
+    .optional(),
 });
 /** A trial record. */
 export type Trial = z.infer<typeof Trial>;

@@ -23,6 +23,7 @@ const rows = (answers: (arm: string, c: string) => boolean): TimedResult[] =>
   }));
 
 const decidedAt = "2026-11-16T13:00:00Z";
+const OK = { text: "answer", declined: true };
 
 describe("compare", () => {
   it("is synchronous and gives the same decision for the same records", () => {
@@ -116,6 +117,39 @@ describe("compare", () => {
     const decision = compare(plan, importResults(plan, all).records, { decidedAt });
     expect(decision.verdict).toBe("INVALID");
     expect(decision.invalidReasons).toContain("the run exhausted its budget");
+  });
+
+  it("is INVALID when a retried attempt went over the call bound, though the last did not", () => {
+    const first = plan.record.trials[0]!;
+    const at = (n: number, change: Record<string, unknown>, output: unknown) =>
+      answer(first, output, { ...change, trial: { ...answer(first, OK).trial, attempt: n } });
+    const all = rows(() => true);
+    all[0] = {
+      result: at(1, { failure: { class: "infrastructure", kind: "timeout" }, calls: 5 }, undefined),
+    };
+    all.push({ result: at(2, {}, OK) });
+    const decision = compare(plan, importResults(plan, all).records, { decidedAt });
+    expect(decision.verdict).toBe("INVALID");
+    expect(decision.invalidReasons).toContain("the run exhausted its budget");
+  });
+
+  it("is INVALID when the calls of every attempt together exceed the run's budget", () => {
+    const first = plan.record.trials[0]!;
+    const retries = Array.from({ length: 78 }, (_, i) => ({
+      result: answer(first, undefined, {
+        failure: { class: "infrastructure", kind: "timeout" },
+        trial: { ...answer(first, OK).trial, attempt: i + 1 },
+      }),
+    }));
+    const all = rows(() => true);
+    all[0] = { result: answer(first, OK, { trial: { ...answer(first, OK).trial, attempt: 79 } }) };
+    const decision = compare(plan, importResults(plan, [...retries, ...all]).records, {
+      decidedAt,
+    });
+    expect(decision.verdict).toBe("INVALID");
+    expect(decision.invalidReasons).toContain(
+      "the run made 102 calls, over the budget of 100, counting every attempt",
+    );
   });
 
   it("is INVALID when the records belong to another plan", () => {
