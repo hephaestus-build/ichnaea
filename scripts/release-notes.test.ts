@@ -5,14 +5,7 @@ import { join } from "node:path";
 
 import { afterAll, describe, expect, it } from "vitest";
 
-import {
-  changes,
-  commitTitles,
-  registryUrl,
-  releaseNotes,
-  tarballName,
-  VERIFY,
-} from "./release-notes.ts";
+import { changes, commitTitles, releaseNotes, tarballName, VERIFY } from "./release-notes.ts";
 
 const titles = [
   "fix(report): a measure without a bound shows 'no bound' (#40)",
@@ -45,11 +38,8 @@ describe("release notes", () => {
     expect(notes).toContain("hephaestus-build/ichnaea/.github/workflows/release.yml");
   });
 
-  it("name the tarball as pnpm packs it and as npm serves it", () => {
+  it("name the tarball as pnpm packs it", () => {
     expect(tarballName("0.2.0")).toBe("tumaet-ichnaea-0.2.0.tgz");
-    expect(registryUrl("0.2.0")).toBe(
-      "https://registry.npmjs.org/@tumaet/ichnaea/-/ichnaea-0.2.0.tgz",
-    );
   });
 
   it("list the conventional commits since the previous release, features and fixes first", () => {

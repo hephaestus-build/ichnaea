@@ -10,14 +10,6 @@ import { PACKAGE_NAME, workspaceZod } from "./readme-example.ts";
 /** The file that `pnpm pack` writes for a version of the package, and the release's asset name. */
 export const tarballName = (version: string): string => `tumaet-ichnaea-${version}.tgz`;
 
-/** The URL that npm serves a published version's tarball from. */
-export const registryUrl = (version: string): string =>
-  `https://registry.npmjs.org/${PACKAGE_NAME}/-/ichnaea-${version}.tgz`;
-
-/** The URL that a consumer downloads a file of a GitHub release from. */
-export const downloadUrl = (tag: string, file: string): string =>
-  `https://github.com/hephaestus-build/ichnaea/releases/download/${tag}/${file}`;
-
 /**
  * How a consumer verifies what it installed. `npm audit signatures` checks the registry's
  * signature of every installed package and the provenance attestation of each package that has

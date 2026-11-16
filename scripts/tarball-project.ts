@@ -1,7 +1,6 @@
 // Installs packed tarballs into a new, empty project: pnpm overrides map every package to its
 // tarball, so that the dependencies between them resolve without a registry, and `pnpm add` adds
-// each tarball and zod. The release SBOM lists what this project installs. Releases are paused
-// (.github/workflows/release.yml), so no consumer installs a tarball.
+// each tarball and zod. The release SBOM lists what this project installs.
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -16,6 +15,10 @@ import { workspaceZod } from "./readme-example.ts";
 export const PROJECT = "@tumaet/ichnaea-release";
 
 const TARBALL = /^tumaet-(.+)-(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)\.tgz$/;
+
+/** The URL that the npm registry serves the tarball of a published version from. */
+export const registryUrl = (name: string, version: string): string =>
+  `https://registry.npmjs.org/${name}/-/${name.split("/").at(-1)}-${version}.tgz`;
 
 export interface Tarball {
   readonly file: string;
