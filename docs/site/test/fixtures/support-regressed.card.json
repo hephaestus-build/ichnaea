@@ -1,0 +1,244 @@
+{
+  "schema": "ichnaea.card/1",
+  "suite": {
+    "id": "support-answers",
+    "label": "Support answers"
+  },
+  "trigger": "pull-request",
+  "links": {
+    "report": "report.html",
+    "decision": "decision.json"
+  },
+  "_fixture": "Hand-written in the draft card shape, with the measured numbers of examples/support-assistant (candidate-regressed.json). report() replaces it once it writes card.json.",
+  "verdict": "REGRESSION",
+  "label": "REGRESSION",
+  "symbol": "✗",
+  "title": "✗ Support answers · REGRESSION",
+  "reasons": ["REGRESSION_DETECTED"],
+  "evidence": {
+    "sentence": "Facts stated decreased by 25 points (100% → 75%) on these 12 cases, 3 trials per arm.",
+    "scope": "on these 12 cases, 3 trials per arm",
+    "caseChanges": {
+      "text": "Observed case changes: support-03, support-06, support-09 (each 3/3 → 0/3).",
+      "shown": [
+        {
+          "case": "support-03",
+          "base": {
+            "successes": 3,
+            "trials": 3
+          },
+          "candidate": {
+            "successes": 0,
+            "trials": 3
+          }
+        },
+        {
+          "case": "support-06",
+          "base": {
+            "successes": 3,
+            "trials": 3
+          },
+          "candidate": {
+            "successes": 0,
+            "trials": 3
+          }
+        },
+        {
+          "case": "support-09",
+          "base": {
+            "successes": 3,
+            "trials": 3
+          },
+          "candidate": {
+            "successes": 0,
+            "trials": 3
+          }
+        }
+      ],
+      "more": 0
+    }
+  },
+  "measures": [
+    {
+      "id": "support/facts-stated",
+      "label": "Facts stated",
+      "tier": "primary",
+      "result": "regression",
+      "reasons": ["REGRESSION_DETECTED"],
+      "base": {
+        "mean": 1.0,
+        "shown": "100%"
+      },
+      "candidate": {
+        "mean": 0.75,
+        "shown": "75%"
+      },
+      "change": {
+        "estimate": -0.25,
+        "shown": "−25 points",
+        "bound": {
+          "value": -0.4104404553234418,
+          "level": 0.95,
+          "sided": "lower",
+          "validity": "descriptive",
+          "shown": "−41 points"
+        }
+      },
+      "margin": {
+        "value": 0.15,
+        "shown": "15 points"
+      },
+      "cases": [
+        {
+          "case": "support-01",
+          "base": {
+            "successes": 3,
+            "trials": 3
+          },
+          "candidate": {
+            "successes": 3,
+            "trials": 3
+          }
+        },
+        {
+          "case": "support-02",
+          "base": {
+            "successes": 3,
+            "trials": 3
+          },
+          "candidate": {
+            "successes": 3,
+            "trials": 3
+          }
+        },
+        {
+          "case": "support-03",
+          "base": {
+            "successes": 3,
+            "trials": 3
+          },
+          "candidate": {
+            "successes": 0,
+            "trials": 3
+          }
+        },
+        {
+          "case": "support-04",
+          "base": {
+            "successes": 3,
+            "trials": 3
+          },
+          "candidate": {
+            "successes": 3,
+            "trials": 3
+          }
+        },
+        {
+          "case": "support-05",
+          "base": {
+            "successes": 3,
+            "trials": 3
+          },
+          "candidate": {
+            "successes": 3,
+            "trials": 3
+          }
+        },
+        {
+          "case": "support-06",
+          "base": {
+            "successes": 3,
+            "trials": 3
+          },
+          "candidate": {
+            "successes": 0,
+            "trials": 3
+          }
+        },
+        {
+          "case": "support-07",
+          "base": {
+            "successes": 3,
+            "trials": 3
+          },
+          "candidate": {
+            "successes": 3,
+            "trials": 3
+          }
+        },
+        {
+          "case": "support-08",
+          "base": {
+            "successes": 3,
+            "trials": 3
+          },
+          "candidate": {
+            "successes": 3,
+            "trials": 3
+          }
+        },
+        {
+          "case": "support-09",
+          "base": {
+            "successes": 3,
+            "trials": 3
+          },
+          "candidate": {
+            "successes": 0,
+            "trials": 3
+          }
+        },
+        {
+          "case": "support-10",
+          "base": {
+            "successes": 3,
+            "trials": 3
+          },
+          "candidate": {
+            "successes": 3,
+            "trials": 3
+          }
+        },
+        {
+          "case": "support-11",
+          "base": {
+            "successes": 3,
+            "trials": 3
+          },
+          "candidate": {
+            "successes": 3,
+            "trials": 3
+          }
+        },
+        {
+          "case": "support-12",
+          "base": {
+            "successes": 3,
+            "trials": 3
+          },
+          "candidate": {
+            "successes": 3,
+            "trials": 3
+          }
+        }
+      ]
+    }
+  ],
+  "statistical": [
+    "The paired decrease is beyond run-to-run noise (exact test, p < 0.001).",
+    "This does not establish that the loss exceeds the 15-point margin. Until the margin check is validated, any decrease beyond run-to-run noise counts as worse."
+  ],
+  "policy": {
+    "outcome": "block",
+    "line": "CI policy: block.",
+    "action": "Inspect the 3 changed cases before merging."
+  },
+  "details": [
+    "Descriptive one-sided 95% bound: −41 points (not validated). Margin: 15 points.",
+    "Hard check \"answers present\": passed · Missing trials: 0 of 72 · Changed: model, prompt.answer"
+  ],
+  "lineage": {
+    "ichnaea": "0.1.0",
+    "plan": "8ed13a75"
+  }
+}
