@@ -16,6 +16,8 @@ Ichnaea runs in your CI or on your machine. It:
 - labels every field with a data class
 - does not enforce where data goes
 
+No built-in command moves data. The code holds an egress gate that denies by default, but nothing calls it today.
+
 Your runner calls your system and your model judge. Ichnaea reads and writes files.
 
 ## Where your data is written
@@ -43,7 +45,7 @@ Pass `--store <directory>` to each command to write somewhere else.
 
 ## What a data class does
 
-Every field of every record carries a data policy:
+Every leaf field of every record carries a data policy:
 
 - **Class:** `none`, `pseudonymous`, `personal` or `special`. A content field, such as a case's `input`, takes the class that the record declares in its own `dataClass` field.
 - **Identifier:** whether the field can identify a person, or holds content.
