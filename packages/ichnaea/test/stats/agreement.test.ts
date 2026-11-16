@@ -86,13 +86,13 @@ describe("agreement against R (irr, irrCAC)", () => {
 
   it.each(inputs.reliability.map((u, i) => [u.id, u.units, r.reliability[i]!] as const))(
     "reliability %s: alpha with each metric",
-    (_id, units, fromR) => {
+    (id, units, fromR) => {
       for (const metric of metrics) {
         const alpha = krippendorffAlpha(units, metric);
         expect(Math.abs(alpha - fromR[metric])).toBeLessThan(TOLERANCE);
       }
       // The base-R implementation from the specification, an independent second author.
-      const independent = baseR.get(_id)!;
+      const independent = baseR.get(id)!;
       for (const metric of metrics) {
         expect(Math.abs(krippendorffAlpha(units, metric) - independent[metric])).toBeLessThan(
           TOLERANCE,
