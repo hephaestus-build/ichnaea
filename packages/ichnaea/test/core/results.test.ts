@@ -171,10 +171,18 @@ describe("importResults", () => {
     ]);
   });
 
-  it("keeps a pointer in place of the output", () => {
+  it("records a result with only a pointer as not captured, never scored, and warns", () => {
     const pointed = answer(first, undefined, { pointer: "trace-1" });
-    const { records } = importResults(plan, replace(0, { result: pointed }));
-    expect(records.trials[0]).toMatchObject({ outcome: "completed", pointer: "trace-1" });
+    const { records, summary } = importResults(plan, replace(0, { result: pointed }));
+    expect(records.trials[0]).toMatchObject({
+      outcome: "infrastructure_failure",
+      pointer: "trace-1",
+      error: { kind: NOT_CAPTURED },
+    });
+    expect(records.values.filter((v) => v.trial === FIRST && v.applicable)).toEqual([]);
+    expect(summary.warnings).toEqual([
+      `1 completed result(s) carry only a pointer to their output, for example '${FIRST}'; resolve pointers to outputs before import, because a pointer is never scored, so they count as missing trials`,
+    ]);
   });
 
   it.each([

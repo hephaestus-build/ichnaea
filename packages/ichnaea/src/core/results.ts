@@ -133,6 +133,24 @@ function observedProblem(
   return undefined;
 }
 
+/**
+ * A completed trial whose output is only behind a pointer was not captured here: a scorer would
+ * read no output, so it is an infrastructure failure (`not-captured`), counted as missing. An
+ * importer resolves pointers to outputs before import.
+ */
+function pointerOnly(trial: Trial): Trial {
+  if (trial.outcome !== "completed" || trial.output !== undefined || trial.pointer === undefined)
+    return trial;
+  return {
+    ...trial,
+    outcome: "infrastructure_failure",
+    error: {
+      kind: NOT_CAPTURED,
+      message: "the output is behind a pointer; resolve it before import",
+    },
+  };
+}
+
 /** Removes the member at `path` from a JSON value, in place. */
 function remove(root: unknown, path: readonly PropertyKey[]): void {
   let node = root;
@@ -150,8 +168,9 @@ function remove(root: unknown, path: readonly PropertyKey[]): void {
  * system failure (a failed trial, never a pass), `not_run` a trial not run. A `protocol` failure
  * is a fault of the harness, never of the system: the run records it in `protocolFailures` and is
  * INVALID, and the trial is recorded neither as a failure nor as missing, and never retried. A result
- * with no failure and neither `output` nor `pointer` is a capture failure (`not-captured`): it
- * counts as missing, never as a failure of the system. A result whose observed configuration is not
+ * with no failure and no `output` is a capture failure (`not-captured`): it counts as missing,
+ * never as a failure of the system. That includes a result with only a `pointer`, because a scorer
+ * reads the output itself: resolve pointers to outputs before import. A result whose observed configuration is not
  * the arm's is an invalid configuration with the reason, and gives no value.
  *
  * Results are read tolerantly: members no record defines are ignored and reported as unused. A
@@ -256,7 +275,7 @@ export function importResults(
       ...(timed.data.startedAt === undefined ? {} : { startedAt: timed.data.startedAt }),
       ...(timed.data.endedAt === undefined ? {} : { endedAt: timed.data.endedAt }),
     });
-    trials.push(checkCaptured(trial));
+    trials.push(checkCaptured(pointerOnly(trial)));
   }
 
   const problems = recordProblems({ trials, values: [], gates: [] });
@@ -308,7 +327,12 @@ export function importResults(
   const outcomes: Partial<Record<Outcome, number>> = {};
   for (const t of trials) outcomes[t.outcome] = (outcomes[t.outcome] ?? 0) + 1;
   const warnings: string[] = [];
-  const lost = trials.filter((t) => t.error?.kind === NOT_CAPTURED);
+  const lost = trials.filter((t) => t.error?.kind === NOT_CAPTURED && t.pointer === undefined);
+  const pointed = trials.filter((t) => t.error?.kind === NOT_CAPTURED && t.pointer !== undefined);
+  if (pointed.length > 0)
+    warnings.push(
+      `${pointed.length} completed result(s) carry only a pointer to their output, for example '${pointed[0]?.id}'; resolve pointers to outputs before import, because a pointer is never scored, so they count as missing trials`,
+    );
   if (lost.length > 0)
     warnings.push(
       `${lost.length} completed result(s) had no captured output, for example '${lost[0]?.id}'; they count as missing trials, never as failures of the system`,

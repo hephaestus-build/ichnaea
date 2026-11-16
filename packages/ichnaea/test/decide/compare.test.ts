@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { digest } from "../../src/contracts/index.ts";
-import { importResults, type TimedResult } from "../../src/core/index.ts";
+import { binary, importResults, type TimedResult } from "../../src/core/index.ts";
 import { compare, createPlan } from "../../src/decide/index.ts";
 import { answer, configuration, roleOf, SUITE } from "../core/support/library.ts";
 
@@ -76,6 +76,36 @@ describe("compare", () => {
     expect(decision.invalidReasons).toContain(
       "a worker reported a protocol failure (bad-request): the harness, not the system, failed",
     );
+  });
+
+  it("never reads a pointer as a failed output: pointer-only trials are missing", () => {
+    // A scorer that reads a missing output as a fail would see the candidate fail every case.
+    const naive = binary({
+      ...SUITE.measures.answered,
+      score: (o) => ({ value: String((o as { text?: string } | undefined)?.text ?? "") !== "" }),
+    });
+    const strict = { ...SUITE, measures: { ...SUITE.measures, answered: naive } };
+    const p = createPlan(strict, {
+      run: "pointers",
+      seed: 1,
+      createdAt: "2026-11-16T12:00:00Z",
+      base,
+      candidate,
+      intendedChanges: ["/prompts/composer"],
+    });
+    const { records } = importResults(
+      p,
+      p.record.trials.map((t) => ({
+        result:
+          roleOf(p, t.arm) === "candidate"
+            ? answer(t, undefined, { pointer: "trace-1" })
+            : answer(t, { text: "answer", declined: true }),
+      })),
+    );
+    const decision = compare(p, records, { decidedAt });
+    expect(decision.verdict).not.toBe("REGRESSION");
+    const candidateArm = p.record.arms.find((a) => a.role === "candidate")!.name;
+    expect(decision.missingness.byArm.find((a) => a.arm === candidateArm)?.missing).toBe(12);
   });
 
   it("is INVALID when the records belong to another plan", () => {
