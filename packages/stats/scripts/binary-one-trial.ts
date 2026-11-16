@@ -5,6 +5,11 @@
 import { type CaseCounts, compareCounts, type Rng } from "../src/index.ts";
 
 export const ALPHA = 0.05;
+/**
+ * The levels a REGRESSION verdict compares a p-value with: alpha, and alpha / m for Holm across m = 2,
+ * 3 and 4 primary measures (the smallest p is compared with alpha / m).
+ */
+export const LEVELS: readonly number[] = [ALPHA, ALPHA / 2, ALPHA / 3, ALPHA / 4];
 
 /** Per-case pass probabilities under the base and the candidate. */
 export type Structure = readonly (readonly [base: number, candidate: number])[];
@@ -39,18 +44,18 @@ export function regressionP(n: number, c: number): number {
  * Found by bisection, since the p-value rises with c; both neighbours of each threshold are
  * checked, so a non-monotone p-value would throw.
  */
-export function rejectionThresholds(maxN: number): Int32Array {
+export function rejectionThresholds(maxN: number, level: number = ALPHA): Int32Array {
   const out = new Int32Array(maxN + 1);
   for (let n = 0; n <= maxN; n++) {
     let lo = -1;
     let hi = n + 1;
     while (hi - lo > 1) {
       const mid = (lo + hi) >> 1;
-      if (regressionP(n, mid) <= ALPHA) lo = mid;
+      if (regressionP(n, mid) <= level) lo = mid;
       else hi = mid;
     }
-    if (lo >= 0 && regressionP(n, lo) > ALPHA) throw new Error(`n=${n}: not monotone at ${lo}`);
-    if (lo + 1 <= n && regressionP(n, lo + 1) <= ALPHA)
+    if (lo >= 0 && regressionP(n, lo) > level) throw new Error(`n=${n}: not monotone at ${lo}`);
+    if (lo + 1 <= n && regressionP(n, lo + 1) <= level)
       throw new Error(`n=${n}: not monotone at ${lo + 1}`);
     out[n] = lo;
   }
@@ -94,7 +99,7 @@ export function exactTypeI(structure: Structure, thresholds: Int32Array): number
 }
 
 /** The rejection probability by enumerating all 4^k outcome pairs through `compareCounts` itself. */
-export function bruteForceTypeI(structure: Structure): number {
+export function bruteForceTypeI(structure: Structure, level: number = ALPHA): number {
   const k = structure.length;
   let p = 0;
   for (let code = 0; code < 4 ** k; code++) {
@@ -118,7 +123,7 @@ export function bruteForceTypeI(structure: Structure): number {
       alpha: ALPHA,
       margin: 0.1,
     });
-    if (q <= ALPHA) p += probability;
+    if (q <= level) p += probability;
   }
   return p;
 }

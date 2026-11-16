@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 
 import { createRng } from "../src/index.ts";
 import {
-  ALPHA,
+  LEVELS,
   bruteForceTypeI,
   exactTypeI,
   noisyCount,
@@ -20,24 +20,35 @@ import {
 } from "../scripts/binary-one-trial.ts";
 
 const thresholds = rejectionThresholds(300);
+/** Each level as 1 / denominator: 0.05, 0.025, 0.05 / 3 and 0.0125. */
+const DENOMINATORS = [20n, 40n, 60n, 80n] as const;
+const byLevel = new Map(
+  LEVELS.map((level) => [level.toPrecision(10), rejectionThresholds(300, level)]),
+);
 
-/** The largest c with P(Binomial(n, 1/2) ≤ c) ≤ 0.05, in exact integer arithmetic. */
-function mcnemarThreshold(n: number): number {
+/** The largest c with P(Binomial(n, 1/2) ≤ c) ≤ 1 / denominator, in exact integer arithmetic. */
+function mcnemarThreshold(n: number, denominator: bigint): number {
   let choose = 1n;
   let cumulative = 0n;
   let last = -1;
   for (let c = 0; c <= n; c++) {
     if (c > 0) choose = (choose * BigInt(n - c + 1)) / BigInt(c);
     cumulative += choose;
-    if (20n * cumulative <= 2n ** BigInt(n)) last = c;
+    if (denominator * cumulative <= 2n ** BigInt(n)) last = c;
     else break;
   }
   return last;
 }
 
 describe("binary regression test at one trial per case", () => {
-  it("rejects exactly where the exact McNemar test does, for every n up to 300", () => {
-    for (let n = 0; n <= 300; n++) expect(thresholds[n], `n=${n}`).toBe(mcnemarThreshold(n));
+  it("rejects exactly where the exact McNemar test does, at every level and every n up to 300", () => {
+    for (const [i, level] of LEVELS.entries()) {
+      const table = byLevel.get(level.toPrecision(10)) as Int32Array;
+      for (let n = 0; n <= 300; n++)
+        expect(table[n], `level ${level}, n=${n}`).toBe(
+          mcnemarThreshold(n, DENOMINATORS[i] as bigint),
+        );
+    }
   });
 
   it("the dynamic programme equals brute-force enumeration through compareCounts, k ≤ 8", () => {
@@ -64,6 +75,13 @@ describe("binary regression test at one trial per case", () => {
     const p = bruteForceTypeI(drop);
     expect(p).toBeGreaterThan(0.3);
     expect(Math.abs(exactTypeI(drop, thresholds) - p)).toBeLessThan(1e-15);
+    // At the smallest Holm level too, where the rejection region is narrower.
+    const holm = LEVELS[3] as number;
+    const q = bruteForceTypeI(drop, holm);
+    expect(q).toBeLessThan(p);
+    expect(
+      Math.abs(exactTypeI(drop, byLevel.get(holm.toPrecision(10)) as Int32Array) - q),
+    ).toBeLessThan(1e-15);
     // Enumeration at k = 8 runs 65,536 comparisons per structure.
   }, 120_000);
 
@@ -73,7 +91,10 @@ describe("binary regression test at one trial per case", () => {
         0.1 + 0.8 * (i / k),
         0.1 + 0.8 * (i / k),
       ]);
-      expect(exactTypeI(sharp, thresholds)).toBeLessThanOrEqual(ALPHA);
+      for (const level of LEVELS)
+        expect(
+          exactTypeI(sharp, byLevel.get(level.toPrecision(10)) as Int32Array),
+        ).toBeLessThanOrEqual(level);
     }
   });
 
@@ -102,12 +123,14 @@ describe("binary regression test at one trial per case", () => {
       .slice(1)
       .map((line) => line.split("\t"));
     expect(rows.length).toBeGreaterThan(0);
-    for (const [k, family, , , worst, passes, structure] of rows) {
+    expect(new Set(rows.map((r) => r[0]))).toEqual(new Set(LEVELS.map((l) => l.toPrecision(10))));
+    for (const [level, k, family, , , worst, passes, structure] of rows) {
       const s = JSON.parse(structure as string) as Structure;
       expect(s, `${k} ${family}`).toHaveLength(Number(k));
-      const p = exactTypeI(s, thresholds);
+      const table = byLevel.get(level as string) as Int32Array;
+      const p = exactTypeI(s, table);
       expect(p.toPrecision(10)).toBe(worst);
-      expect(String(p <= ALPHA)).toBe(passes);
+      expect(String(p <= Number(level))).toBe(passes);
     }
   });
 });
