@@ -8,8 +8,9 @@ Ichnaea evaluates GenAI features whenever their configuration changes: code, pro
 its parameters or the application's settings. It gives each change a clear verdict from paired
 statistics, and says plainly when the cases cannot decide.
 
-> **Status: early development.** There are no releases yet: you pin a commit of the `build` branch.
-> Interfaces can change in any commit.
+> **Status: early development.** Ichnaea is 0.x on npm as `@tumaet/ichnaea`, and interfaces can
+> change in any minor version. The first release, 0.1.0, is not published yet: until then, pin a
+> commit of the `build` branch, as [below](#before-the-first-npm-release).
 
 ## What it is built to do
 
@@ -47,36 +48,48 @@ other dependency.
 
 ## Use Ichnaea from a TypeScript project
 
-Install a commit of the `build` branch. Each commit there holds the built package of one commit
-on `main`, and nothing else. Its message names that commit in a `Source-Commit:` trailer. Releases
-to npm come at 1.0.
-
-Pick the newest build commit:
-
-```sh
-gh api repos/hephaestus-build/ichnaea/commits/build --jq .sha
-```
-
-Then, at the root of your project, add zod and Ichnaea at that commit. The CLI loads
-`ichnaea.config.ts` as an ES module:
+At the root of your project, add Ichnaea and zod from npm, then check what you installed. The CLI
+loads `ichnaea.config.ts` as an ES module:
 
 <!-- The build consumer test runs this install. -->
 
 ```sh
 pnpm pkg set type=module
+pnpm add @tumaet/ichnaea zod@4.6.7
+npm audit signatures
+```
+
+zod 4.6.7 is the version that each release is tested with, and the copy at the root is the one
+that Ichnaea uses. Run the CLI with Node 24.3 or later: `pnpm exec ichnaea <command>`. Installing
+the package runs no script: its `package.json` has none. A pre-release has the dist-tag `next`, so
+you add it by its version, for example `pnpm add @tumaet/ichnaea@0.2.0-rc.1`.
+
+### Check what you installed
+
+`npm audit signatures` checks the registry's signature of every installed package, and the
+provenance attestation of each package that has one. Ichnaea's provenance names the run of
+`.github/workflows/release.yml` that built the version from its `v*` tag on `main`. No workflow can
+publish a version on its own: the workflow only stages it, and a package owner approves each
+staged version on npm with two-factor authentication.
+[Decision 0021](docs/decisions/0021-npm-staged-publishing.md) gives the chain. Each version also
+has a GitHub release with the same tarball, its SBOM, `sbom.cdx.json`, and `SHA256SUMS`.
+
+Run `npm audit signatures` again after each update: `pnpm update @tumaet/ichnaea`.
+
+### Before the first npm release
+
+Until 0.1.0 is on npm, pin a commit of the `build` branch. Each commit there holds the built package
+of one commit on `main`, and its message names that commit in a `Source-Commit:` trailer. Pick the
+newest build commit, then add it with zod:
+
+```sh
+gh api repos/hephaestus-build/ichnaea/commits/build --jq .sha
 pnpm add zod@4.6.7 'github:hephaestus-build/ichnaea#<build-commit>'
 ```
 
-Your `package.json` then has
-`"@tumaet/ichnaea": "github:hephaestus-build/ichnaea#<build-commit>"`, and your lockfile
-pins it. zod at the root is the one copy that Ichnaea uses. Run the CLI with Node 24.3 or later:
-`pnpm exec ichnaea <command>`. Installing the package runs no script: its `package.json` has none.
-
-### Check a build commit
-
-Integrity comes from reproducibility. A build commit names a signed, reviewed commit on `main`,
-and anyone can build that commit again and get the same bytes. Before you pin or update, rebuild
-the build commit in an Ichnaea checkout:
+A build commit is not signed: anyone can build its source commit again and get the same bytes.
+Before you pin or update, rebuild it in an Ichnaea checkout, with the Node version that its
+`build.json` records:
 
 ```sh
 git clone https://github.com/hephaestus-build/ichnaea && cd ichnaea
@@ -84,22 +97,10 @@ pnpm install --frozen-lockfile
 node scripts/verify-build.ts <build-commit>
 ```
 
-`verify-build.ts` reads the `Source-Commit` trailer and checks that the commit is on `main` and
-that GitHub shows its signature as verified. It
-builds that commit in a temporary worktree, with the Node and pnpm versions that the build
-commit's `build.json` records, and compares the result with the build commit byte for byte: the
-same paths, bytes and modes. It refuses on the first difference and names the file. It also checks
-the build commit's SBOM, `sbom.cdx.json`, which lists what the package ships and its peer
-dependency. Run it with the Node version that `build.json` names (24.22.2 today); it refuses
-another.
-
-Only the build workflow writes `build`, with a deploy key that only a main-only environment
-holds. [Decision 0019](docs/decisions/0019-built-package-on-a-build-branch.md) gives the chain.
-
-### Update the pin
-
-Run `pnpm add 'github:hephaestus-build/ichnaea#<newer build commit>'` after you checked the newer
-commit.
+`verify-build.ts` checks that the source commit is on `main` and signed, builds it in a temporary
+worktree, and refuses the first path whose bytes or mode differ.
+[Decision 0019](docs/decisions/0019-built-package-on-a-build-branch.md) describes the build branch.
+It stays until the consumers that pin it move to npm.
 
 ### Develop Ichnaea and your project together
 
@@ -109,14 +110,14 @@ In the Ichnaea checkout, build on every change:
 pnpm --filter @tumaet/ichnaea build --watch
 ```
 
-In your project, link the package of that checkout instead of the build commit:
+In your project, link the package of that checkout instead of the installed version:
 
 ```sh
 pnpm link <path to the Ichnaea checkout>/packages/ichnaea
 ```
 
 To undo it, run `pnpm unlink @tumaet/ichnaea` and then `pnpm install`, so that your
-lockfile's build commit is installed again. Stop the watch with Ctrl-C. Never commit the link: it
+lockfile's version is installed again. Stop the watch with Ctrl-C. Never commit the link: it
 changes your `package.json` and lockfile to a path on your machine.
 
 ## Five-minute example
@@ -188,8 +189,8 @@ sources. The CLI and the example run the build.
 ```sh
 pnpm install
 pnpm check                                    # format, lint, type check, tests, generated files current
-pnpm --filter @tumaet/ichnaea build # dist/, for the CLI and the example
-node scripts/build-package.ts <directory>     # the tree that the build branch holds for this commit
+pnpm --filter @tumaet/ichnaea build           # dist/, for the CLI and the example
+node scripts/build-package.ts <directory>     # the tree that a release packs, and the build branch holds
 node scripts/build-consumer.ts                # that tree, built twice, installed and run as the README says
 ```
 

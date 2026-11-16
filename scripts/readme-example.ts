@@ -11,9 +11,14 @@ export const BLOCK_MARKER = "<!-- The build consumer test runs this example. -->
 export const TABLE_MARKER =
   "<!-- The build consumer test checks these verdict lines and exit codes. -->";
 
-/** The package, and the specifier of a build commit that the README's install adds it by. */
+/** The package, by its name on npm. */
 export const PACKAGE_NAME = "@tumaet/ichnaea";
-export const BUILD_SPEC = "github:hephaestus-build/ichnaea#<build-commit>";
+
+/**
+ * The install block's last command: it checks the registry signatures and the provenance of what
+ * was installed, so it needs packages from the registry, and the consumer test leaves it out.
+ */
+export const AUDIT = "npm audit signatures";
 
 /**
  * The zod version that the workspace builds and tests with: the package's development dependency.
@@ -114,23 +119,46 @@ export function decides(command: string, run: string): boolean {
 export interface Install {
   /** The commands of the install block, as written. */
   readonly commands: readonly string[];
-  /** The packages that the `pnpm add` commands add, by name, without a version or protocol. */
+  /** The block's one `pnpm add` command, which adds the package and zod. */
+  readonly add: string;
+  /** The packages that the `pnpm add` command adds, by name, without a version. */
   readonly added: readonly string[];
 }
+
+/** The arguments of a command that are not options. */
+const operands = (command: string): string[] =>
+  command
+    .replace(/\\\n/g, " ")
+    .split(/\s+/)
+    .slice(2)
+    .filter((arg) => arg !== "" && !arg.startsWith("-"));
 
 /** Reads the install from the text of README.md. */
 export function readmeInstall(readme: string): Install {
   const lines = readme.split("\n");
   const commands = commandsOf(blockAfter(lines, INSTALL_MARKER, "sh"));
-  const added = commands
-    .filter((c) => /^pnpm add\b/.test(c))
-    .flatMap((c) => c.replace(/\\\n/g, " ").split(/\s+/).slice(2))
-    .filter((arg) => arg !== "" && !arg.startsWith("-"))
-    // A package with its version, quoted where a shell would expand it: `zod@4.6.7`, or the build
-    // commit of this package, `'github:hephaestus-build/ichnaea#<build-commit>'`.
-    .map((arg) => arg.replace(/^'(.*)'$/, "$1"))
-    .map((arg) => (arg === BUILD_SPEC ? PACKAGE_NAME : arg.replace(/(.)@[^@]*$/, "$1")));
-  return { commands, added };
+  const adds = commands.filter((c) => /^pnpm add\b/.test(c));
+  const [add] = adds;
+  if (add === undefined || adds.length > 1)
+    throw new Error(`the install block has ${adds.length} pnpm add commands, not one`);
+  if (commands.indexOf(AUDIT) < commands.indexOf(add))
+    throw new Error(`the install block does not run ${AUDIT} after its pnpm add`);
+  // A package with its version, `zod@4.6.7`, or the package by its name alone.
+  const added = operands(add).map((arg) => arg.replace(/(.)@[^@]*$/, "$1"));
+  return { commands, add, added };
+}
+
+/**
+ * The commands that the consumer test runs: the install block with `spec`, quoted, in place of the
+ * package's name in its `pnpm add`, and without {@link AUDIT}.
+ */
+export function installCommands(install: Install, spec: string): string[] {
+  const add = install.add
+    .split(" ")
+    .map((arg) => (arg === PACKAGE_NAME ? `'${spec}'` : arg))
+    .join(" ");
+  if (add === install.add) throw new Error(`the README's pnpm add does not add ${PACKAGE_NAME}`);
+  return install.commands.filter((c) => c !== AUDIT).map((c) => (c === install.add ? add : c));
 }
 
 /** The files of the example that its block copies into the project: the `$example/<file>.ts`. */

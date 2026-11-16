@@ -41,9 +41,9 @@ pnpm --filter @tumaet/ichnaea build
 ```
 
 Then run the example from this directory. `pnpm exec ichnaea` runs the CLI of the workspace
-package, `@tumaet/ichnaea`, from its build. In your own project, install a build commit
-as the [README](../../README.md#use-ichnaea-from-a-typescript-project) shows, and the same
-commands run there.
+package, `@tumaet/ichnaea`, from its build. In your own project, install the package as the
+[README](../../README.md#use-ichnaea-from-a-typescript-project) shows, and the same commands run
+there.
 
 ### A candidate that answers as well as the base
 
