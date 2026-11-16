@@ -19,6 +19,14 @@ import type {
  */
 export type Stability = "development" | "alpha" | "beta" | "stable";
 
+/** A measured value with why the scorer gave it, in one short sentence. */
+export interface ExplainedValue {
+  /** The value, or undefined when the trial carries none. */
+  readonly value: MeasuredValue | undefined;
+  /** Why the scorer gave the value. */
+  readonly why?: string;
+}
+
 /** A known-good or known-bad example for a measure's tester (REQ-33). */
 export interface MeasureExample {
   /** The example's name, which the tester's failure messages quote. */
@@ -46,8 +54,11 @@ export interface MeasureDefinition<Id extends string = string> {
    * a failed trial counts as 0 of that many. Absent means 1.
    */
   readonly items?: (c: Case) => number;
-  /** Scores one trial of one case. Returns undefined when the trial carries no value. */
-  readonly score?: (trial: Trial, c: Case) => MeasuredValue | undefined;
+  /**
+   * Scores one trial of one case: its value, or the value with why the scorer gave it. Returns
+   * undefined when the trial carries no value.
+   */
+  readonly score?: (trial: Trial, c: Case) => MeasuredValue | ExplainedValue | undefined;
   /** Known-good and known-bad examples. A measure is primary only when its tester passes. */
   readonly examples?: {
     readonly good: readonly MeasureExample[];

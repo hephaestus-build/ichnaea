@@ -62,7 +62,12 @@ const suite = defineSuite({
   ],
   measures: {
     answers: binary({
-      score: (o) => (isOutput(o) ? o.text !== "" : undefined),
+      score: (o) =>
+        !isOutput(o)
+          ? { value: undefined }
+          : o.text === ""
+            ? { value: false, why: "the review says nothing" }
+            : { value: true },
       examples: {
         good: [
           { name: "answers", case: raise, output: { text: "ok", declined: false }, expected: true },
@@ -73,7 +78,7 @@ const suite = defineSuite({
       },
     }),
     declines: binary({
-      score: (o) => (isOutput(o) ? o.declined : undefined),
+      score: (o) => ({ value: isOutput(o) ? o.declined : undefined }),
       appliesTo: (c) => c.slices?.["expected"] === "decline",
       examples: {
         good: [

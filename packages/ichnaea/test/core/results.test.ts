@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  binary,
   ImportError,
   importResults,
   NOT_CAPTURED,
+  ScoreError,
   type TimedResult,
 } from "../../src/core/index.ts";
 import { createPlan } from "../../src/decide/index.ts";
@@ -70,6 +72,43 @@ describe("importResults", () => {
       warnings: [],
       unused: [],
     });
+  });
+
+  it("stores the scorer's why beside its value, and a value without one has none", () => {
+    const silent = replace(0, { result: answer(first, { text: "", declined: true }) });
+    const { records } = importResults(plan, silent);
+    const value = (trial: string, measure: string) =>
+      records.values.find((v) => v.trial === trial && v.measure === measure);
+    expect(value("c1/base/r0", "composer/answered")).toMatchObject({
+      value: { type: "binary", pass: false },
+      why: "the answer is empty",
+    });
+    expect(value("c1/candidate/r0", "composer/answered")).not.toHaveProperty("why");
+  });
+
+  it.each([
+    ["an empty why", { value: false, why: " " }, "why is empty"],
+    ["a why over two lines", { value: false, why: "one\ntwo" }, "why spans more than one line"],
+    ["a why over 200 characters", { value: false, why: "x".repeat(201) }, "201 characters"],
+    ["a bare boolean", true, "not { value, why? }"],
+    ["a value that is not a boolean", { value: 1 }, "not true, false or undefined"],
+  ])("refuses a scorer that gives %s, naming the measure and the trial", (_n, score, message) => {
+    const odd = {
+      ...SUITE,
+      measures: { ...SUITE.measures, declines: binary({ score: () => score as never }) },
+    };
+    const p = createPlan(
+      { ...odd, policy: { ...odd.policy, primary: { answered: SUITE.policy.primary.answered } } },
+      { run: "run-why", base, candidate, intendedChanges: ["/prompts/composer"] },
+    );
+    const run = () =>
+      importResults(
+        p,
+        p.record.trials.map((t) => ({ result: answer(t, OK) })),
+      );
+    expect(run).toThrow(ScoreError);
+    expect(run).toThrow("measure 'composer/declines' on trial 'c1/base/r0': ");
+    expect(run).toThrow(message);
   });
 
   it("takes results without times, and keeps the usage the worker reports", () => {

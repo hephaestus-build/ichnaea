@@ -19,12 +19,24 @@ import type { MeasureDefinition, MeasureExample } from "./plugin.ts";
 export type SuiteCase = z.input<typeof Case>;
 
 /**
- * Scores one trial of a binary measure from the trial's raw output: `true` passes, `false` fails,
- * and `undefined` gives the trial no value, so it counts as missing. The output is whatever the
+ * What a binary scorer gives one trial: `value` true passes, false fails, and undefined gives the
+ * trial no value, so it counts as missing. `why` says why, in one short sentence of at most 200
+ * characters on one line, for example "claims a test that is not in the diff". It is stored beside
+ * the value for readers; no statistic reads it.
+ */
+export interface BinaryScore {
+  /** Whether the trial passes, or undefined when it carries no value. */
+  readonly value: boolean | undefined;
+  /** Why the scorer gave the value. */
+  readonly why?: string;
+}
+
+/**
+ * Scores one trial of a binary measure from the trial's raw output. The output is whatever the
  * system returned, as JSON, so stored outputs can be scored again with no model call. It is
  * `undefined` when the trial recorded only a pointer to its output.
  */
-export type BinaryScorer = (output: unknown, c: Case) => boolean | undefined;
+export type BinaryScorer = (output: unknown, c: Case) => BinaryScore;
 
 /** A known-good or known-bad output of a binary measure, for its tester (REQ-33). */
 export interface BinaryExample {
@@ -358,6 +370,36 @@ export function defineSuite<const Measure extends string>(
   return suite;
 }
 
+/** Thrown when a scorer gives a result that is not a binary score. The message names the trial. */
+export class ScoreError extends Error {
+  /** The error's name, for `instanceof`-free checks. */
+  override readonly name = "ScoreError";
+}
+
+/** The longest `why` a scorer may give. */
+const WHY_LENGTH = 200;
+
+/**
+ * A scorer's result, checked: an object whose `value` is true, false or undefined, and whose `why`,
+ * when present, is one non-empty line of at most 200 characters.
+ */
+function checkedScore(result: unknown, measure: string, trial: string): BinaryScore {
+  const where = `measure '${measure}' on trial '${trial}'`;
+  if (typeof result !== "object" || result === null || !("value" in result))
+    throw new ScoreError(`${where}: the scorer returned ${String(result)}, not { value, why? }`);
+  const { value, why } = result as { value: unknown; why?: unknown };
+  if (value !== undefined && typeof value !== "boolean")
+    throw new ScoreError(`${where}: value is ${String(value)}, not true, false or undefined`);
+  if (why === undefined) return { value };
+  if (typeof why !== "string" || why.trim() === "")
+    throw new ScoreError(`${where}: why is empty; give one short sentence, or leave it out`);
+  if (/[\r\n\u2028\u2029]/.test(why))
+    throw new ScoreError(`${where}: why spans more than one line; give one short sentence`);
+  if (why.length > WHY_LENGTH)
+    throw new ScoreError(`${where}: why has ${why.length} characters, more than ${WHY_LENGTH}`);
+  return { value, why };
+}
+
 /** The ID of a suite's measure in the records: `<suite id>/<measure key>`. */
 export function measureId(suite: Pick<SuiteDefinition, "id">, key: string): string {
   return `${suite.id}/${key}`;
@@ -422,8 +464,11 @@ export function suiteMeasures(suite: SuiteDefinition): Map<string, MeasureDefini
       },
       ...(measure.appliesTo ? { appliesTo: measure.appliesTo } : {}),
       score: (trial, c) => {
-        const pass = measure.score(trial.output, c);
-        return pass === undefined ? undefined : { type: "binary", pass };
+        const { value, why } = checkedScore(measure.score(trial.output, c), id, trial.id);
+        return {
+          value: value === undefined ? undefined : { type: "binary", pass: value },
+          ...(why === undefined ? {} : { why }),
+        };
       },
       ...(measure.examples
         ? {

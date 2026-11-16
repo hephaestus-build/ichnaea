@@ -2,11 +2,12 @@ import {
   type Case,
   canonicalize,
   digest,
+  type MeasuredValue,
   type MeasureValue,
   type Trial,
 } from "../contracts/index.ts";
 
-import type { MeasureDefinition } from "./plugin.ts";
+import type { ExplainedValue, MeasureDefinition } from "./plugin.ts";
 
 /** Outcomes that a measure scores (REQ-20). */
 const SCORED = new Set(["completed", "abstained"]);
@@ -50,11 +51,25 @@ export function scoreTrials(
         continue;
       }
       if (!SCORED.has(trial.outcome)) continue;
-      const value = measure.score(trial, c);
-      if (value !== undefined) values.push({ ...base, applicable: true, value } as MeasureValue);
+      const { value, why } = explained(measure.score(trial, c));
+      if (value !== undefined)
+        values.push({
+          ...base,
+          applicable: true,
+          value,
+          ...(why === undefined ? {} : { why }),
+        } as MeasureValue);
     }
   }
   return values;
+}
+
+/**
+ * A scorer's result as a value and its optional reason. Every measured value has a `type`, and an
+ * explained value has none (a score value has a `value` member of its own).
+ */
+function explained(result: MeasuredValue | ExplainedValue | undefined): ExplainedValue {
+  return result === undefined || "type" in result ? { value: result } : result;
 }
 
 function failureValue(measure: MeasureDefinition, c: Case): MeasureValue["value"] {
@@ -103,7 +118,7 @@ export function testMeasure(measure: MeasureDefinition): TesterResult {
       const actual = !applies
         ? "not-applicable"
         : measure.score
-          ? (measure.score(example.trial, example.case) ?? "missing")
+          ? (explained(measure.score(example.trial, example.case)).value ?? "missing")
           : "missing";
       if (canonicalize(actual) !== canonicalize(example.expected)) {
         failures.push(

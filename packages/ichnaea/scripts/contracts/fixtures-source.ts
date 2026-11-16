@@ -747,6 +747,10 @@ export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
   },
   measureValue: {
     "non-finite-score": (r) => (r["value"] = { type: "score", value: { nonFinite: "-inf" } }),
+    "with-why": (r) => {
+      r["value"] = { type: "binary", pass: false };
+      r["why"] = "claims a test that is not in the diff";
+    },
   },
   trialResult: {
     "infrastructure-failure": (r) => {

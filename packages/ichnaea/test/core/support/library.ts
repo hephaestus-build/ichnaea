@@ -53,7 +53,12 @@ const raise = caseOf("example-raise", "raise");
 const decline = caseOf("example-decline", "decline");
 
 export const answered = binary({
-  score: (o) => (isOutput(o) ? o.text.length > 0 : undefined),
+  score: (o) =>
+    !isOutput(o)
+      ? { value: undefined }
+      : o.text.length > 0
+        ? { value: true }
+        : { value: false, why: "the answer is empty" },
   examples: {
     good: [
       { name: "answers", case: raise, output: { text: "yes", declined: false }, expected: true },
@@ -63,7 +68,7 @@ export const answered = binary({
 });
 
 export const declines = binary({
-  score: (o) => (isOutput(o) ? o.declined : undefined),
+  score: (o) => ({ value: isOutput(o) ? o.declined : undefined }),
   appliesTo: (c) => c.slices?.["expected"] === "decline",
   examples: {
     good: [

@@ -36,6 +36,22 @@ describe("compare", () => {
     expect(decision.plan).toBe(digest(plan.record));
   });
 
+  it("ignores why: the same values without it give the same decision", () => {
+    const { records } = importResults(
+      plan,
+      rows((arm) => arm === "base"),
+    );
+    expect(records.values.some((v) => v.why !== undefined)).toBe(true);
+    const bare = {
+      ...records,
+      values: records.values.map((v) => {
+        const { why: _, ...rest } = v;
+        return rest;
+      }),
+    };
+    expect(compare(plan, bare, { decidedAt })).toEqual(compare(plan, records, { decidedAt }));
+  });
+
   it("gives REGRESSION when the candidate stops answering", () => {
     const { records } = importResults(
       plan,

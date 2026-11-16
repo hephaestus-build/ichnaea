@@ -70,6 +70,11 @@ export const MeasureValue = z.strictObject({
   value: MeasuredValue.optional(),
   source: none(z.enum(["ichnaea", "application", "judge", "human"])),
   detail: content(z.string()).optional(),
+  /**
+   * Why the scorer gave this value, in one short sentence, for example "claims a test that is not
+   * in the diff". It explains the value to a reader; no statistic reads it.
+   */
+  why: content(z.string()).optional(),
   dataClass: none(RecordDataClass),
 });
 /** A measure value. */

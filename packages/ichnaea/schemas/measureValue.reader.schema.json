@@ -354,6 +354,17 @@
         "retention": "subject"
       }
     },
+    "why": {
+      "type": "string",
+      "x-ichnaea-data": {
+        "class": "inherit",
+        "identifier": "content",
+        "egress": [
+          "*"
+        ],
+        "retention": "subject"
+      }
+    },
     "dataClass": {
       "type": "string",
       "x-ichnaea-data": {

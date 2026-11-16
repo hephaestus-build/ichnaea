@@ -61,7 +61,13 @@ export interface BinaryOptions {
 }
 
 // @public
-export type BinaryScorer = (output: unknown, c: Case) => boolean | undefined;
+export interface BinaryScore {
+    readonly value: boolean | undefined;
+    readonly why?: string;
+}
+
+// @public
+export type BinaryScorer = (output: unknown, c: Case) => BinaryScore;
 
 // @public
 export class CallLedger {
@@ -227,6 +233,13 @@ export interface EgressRequest {
 
 // @public
 export function exitCode(decision: Decision, policy: Plan["policy"]): number;
+
+// @public
+export interface ExplainedValue {
+    // Warning: (ae-forgotten-export) The symbol "MeasuredValue" needs to be exported by the entry point index.d.ts
+    readonly value: MeasuredValue | undefined;
+    readonly why?: string;
+}
 
 // @public
 export class FileStore {
@@ -440,8 +453,7 @@ export interface MeasureDefinition<Id extends string = string> {
         readonly bad: readonly MeasureExample[];
     };
     readonly items?: (c: Case) => number;
-    // Warning: (ae-forgotten-export) The symbol "MeasuredValue" needs to be exported by the entry point index.d.ts
-    readonly score?: (trial: Trial, c: Case) => MeasuredValue | undefined;
+    readonly score?: (trial: Trial, c: Case) => MeasuredValue | ExplainedValue | undefined;
 }
 
 // @public
@@ -688,6 +700,11 @@ export interface RunRecords {
 
 // @public
 export function satisfies(version: string, range: string): boolean;
+
+// @public
+export class ScoreError extends Error {
+    readonly name = "ScoreError";
+}
 
 // @public
 export function scoreTrials(measures: readonly MeasureDefinition[], trials: readonly Trial[], cases: ReadonlyMap<string, Case>): MeasureValue[];

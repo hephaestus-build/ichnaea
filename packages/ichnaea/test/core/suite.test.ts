@@ -63,7 +63,10 @@ describe("defineSuite", () => {
   });
 
   it("refuses a primary measure without known-good and known-bad examples", () => {
-    const measures = { ...DEFINITION.measures, answered: binary({ score: () => true }) };
+    const measures = {
+      ...DEFINITION.measures,
+      answered: binary({ score: () => ({ value: true }) }),
+    };
     expect(refused({ measures })).toMatch(
       /primary measure 'answered' needs at least one known-good/,
     );
@@ -104,8 +107,12 @@ describe("binary", () => {
     });
     const c = declines?.examples?.good[0]?.case;
     const trial = declines?.examples?.good[0]?.trial;
-    expect(c && trial && declines?.score?.(trial, c)).toEqual({ type: "binary", pass: true });
-    expect(declines?.score?.({ ...trial!, output: "not an output" }, c!)).toBeUndefined();
+    expect(c && trial && declines?.score?.(trial, c)).toEqual({
+      value: { type: "binary", pass: true },
+    });
+    expect(declines?.score?.({ ...trial!, output: "not an output" }, c!)).toEqual({
+      value: undefined,
+    });
     expect(declines?.appliesTo?.(c!)).toBe(true);
   });
 });
