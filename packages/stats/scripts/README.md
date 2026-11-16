@@ -40,6 +40,16 @@ gh workflow run confirmation-sweep.yml --ref main
 To run only some phases, set inputs to false, for example `-f d=false -f e-large=false -f e-embedded=false`.
 D needs A, B and C in the same run. The embedding needs B.
 
+Before the full sweep, run a pre-check of one margin, then compare its rows and skip logs with the server's (below):
+
+```sh
+gh workflow run confirmation-sweep.yml --ref main -f margins=13 -f d=false -f e-large=false -f e-embedded=false
+```
+
+A margin subset runs only A, B, C and the large suites.
+D and the embedding need every margin, because a subset would change their seeds and rows, so the plan refuses them.
+Every matrix stays within GitHub's limit of 256 jobs, and the plan refuses a larger one.
+
 A second dispatch waits until the running sweep finishes.
 If a job fails for a runner fault, use "Re-run failed jobs".
 Every row is deterministic, so a rerun gives the same bytes.
@@ -60,6 +70,7 @@ node packages/stats/scripts/collect-sweep.ts --in sweep/in --out sweep/again --p
 cmp sweep/summary.json sweep/again/summary.json
 ```
 
+For a pre-check, give `collect-sweep.ts` the run's phases and the same `--margins` as the dispatch.
 The summary depends only on the artifacts, so the rebuilt summary must be byte-identical.
 
 ## Compare with the server runs

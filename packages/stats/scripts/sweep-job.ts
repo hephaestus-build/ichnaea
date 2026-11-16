@@ -5,9 +5,11 @@
 // of every job. scripts/README.md says how to dispatch and verify the sweep.
 //
 // Commands, each writing into --out (a new or empty directory):
-//   plan                         reads the workflow's phase inputs (SWEEP_A, SWEEP_B, SWEEP_C,
+//   plan [--margins i,j]         reads the workflow's phase inputs (SWEEP_A, SWEEP_B, SWEEP_C,
 //                                SWEEP_D, SWEEP_E_LARGE, SWEEP_E_EMBEDDED: "true" or "false")
-//                                and appends the job matrices and their sizes to $GITHUB_OUTPUT.
+//                                and appends the job matrices, their sizes and the margins to
+//                                $GITHUB_OUTPUT. --margins runs a subset, for example the pre-check
+//                                of one margin before the full sweep.
 //   exact --phase P --margin i   phase A, B or C at margin index i, as worker i of 51.
 //   structures                   the large suites of scripts/generate-structures.ts --one-trial,
 //                                which must have the sha256 GENERATOR_SHA256.
@@ -15,7 +17,8 @@
 //   simulate --set S --job j --in R
 //                                processes 4j to 4j + 3 of the set's shards of
 //                                scripts/simulate-structures.ts, on the inputs in R.
-// For a local dry run, --margins i,j limits the margins and --jobs n the jobs per set. The rows of
+// For a local dry run, --margins i,j also limits the margins of the other commands, and --jobs n
+// the jobs per set. The rows of
 // a structure depend only on its index and the seed base, not on the shard, so --jobs changes no
 // row.
 import { spawn } from "node:child_process";
@@ -158,18 +161,32 @@ export interface SimulationJob {
 }
 export interface Plan {
   readonly phases: string;
+  /** The margin indices, comma-separated, for the collector's `--margins`. */
+  readonly margins: string;
   readonly exact: { readonly include: readonly ExactJob[] };
   readonly skips: { readonly include: readonly SimulationJob[] };
   readonly large: { readonly include: readonly SimulationJob[] };
   readonly embedded: { readonly include: readonly SimulationJob[] };
 }
 
-/** The job matrices of the selected phases, as `include` lists. */
+/** GitHub runs at most 256 jobs from one matrix. */
+export const MAX_MATRIX_JOBS = 256;
+
+/**
+ * The job matrices of the selected phases, as `include` lists. A subset of the margins runs only
+ * the exact phases and the large suites: phase D reads the skips of every margin in the server's
+ * order, and phase E-embedded takes the worst structures of every margin, so a subset would change
+ * their seeds and rows.
+ */
 export function plan(
   phases: readonly Phase[],
   margins: readonly number[] = range(MARGINS),
   jobs?: number,
 ): Plan {
+  if (margins.length < MARGINS && phases.some((p) => p === "D" || p === "E-embedded"))
+    throw new Error(
+      "phases D and E-embedded need every margin; select a subset only for A, B, C and E-large",
+    );
   const exactJobs = (["A", "B", "C"] as const)
     .filter((p) => phases.includes(p))
     .flatMap((phase) =>
@@ -185,13 +202,20 @@ export function plan(
           artifact: simulationName(set, job),
         })),
       );
-  return {
+  const p: Plan = {
     phases: phases.join(","),
+    margins: margins.join(","),
     exact: { include: exactJobs },
     skips: { include: sims((s) => s.startsWith("D-")) },
     large: { include: sims((s) => s === "E-large") },
     embedded: { include: sims((s) => s === "E-embedded") },
   };
+  for (const [name, m] of Object.entries(p))
+    if (typeof m !== "string" && m.include.length > MAX_MATRIX_JOBS)
+      throw new Error(
+        `the ${name} matrix has ${m.include.length} jobs; GitHub runs at most ${MAX_MATRIX_JOBS}`,
+      );
+  return p;
 }
 
 export const range = (n: number): number[] => Array.from({ length: n }, (_, i) => i);
