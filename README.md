@@ -86,7 +86,8 @@ pnpm install --frozen-lockfile
 node scripts/verify-build.ts <build-commit>
 ```
 
-`verify-build.ts` reads the `Source-Commit` trailer and checks that the commit is on `main`. It
+`verify-build.ts` reads the `Source-Commit` trailer and checks that the commit is on `main` and
+that GitHub shows its signature as verified. It
 builds that commit in a temporary worktree, with the Node and pnpm versions that the build
 commit's `build.json` records, and compares the result with the build commit byte for byte: the
 same paths, bytes and modes. It refuses on the first difference and names the file. It also checks

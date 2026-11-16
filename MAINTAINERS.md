@@ -6,23 +6,49 @@
 
 Maintainers review and merge pull requests, cut releases and decide on the project's direction.
 
+## The build branch
+
+Consumers pin a commit of the `build` branch (README § Use Ichnaea from a TypeScript project).
+[Decision 0019](docs/decisions/0019-built-package-on-a-build-branch.md) gives the reasons.
+
+`.github/workflows/build-branch.yml` writes it on every push to `main`. It builds the commit,
+assembles the tree with `scripts/build-package.ts`, runs the consumer test on that tree, and
+appends one commit to `build` whose tree is exactly the built tree. The message is
+`build: <title of the main commit>` with a `Source-Commit: <main commit>` trailer. The commit is
+not signed: it is written by the deploy key of the `build-branch` environment, and its integrity
+comes from reproducibility. The verify job of the same workflow rebuilds the new build commit with
+`scripts/verify-build.ts` and fails on any difference.
+
+- **The first build.** When `build` does not exist, the publish job creates it with a commit that
+  has no parent, so the history of `main` never enters `build`. Nothing is done by hand.
+- **No new build commit.** A tree equal to the tree of the current build commit is not committed
+  again. A pending run that a newer push replaces gets no build commit; the next build commit holds
+  the newer source.
+- **A failed verify job.** The build is not reproducible. Do not tell consumers to move to that
+  commit. Find the cause from the first differing path that the job names, fix it on `main`, and the
+  next push writes a new build commit.
+- **Check a build commit by hand.** In a checkout, with the Node version that the commit's
+  `build.json` records: `pnpm install --frozen-lockfile`, then `node scripts/verify-build.ts <sha>`.
+
 ## Releases
 
-**Releases are paused.** Consumers pin a commit as a git submodule (README § Use Ichnaea from a
-TypeScript project). The packages ship TypeScript sources, and Node does not run them from
-`node_modules`, so the tarballs below no longer work. The release workflow fails in its first step.
-The procedure below is the paused design.
+**Releases are paused until 1.0.** Consumers pin a commit of the `build` branch. At 1.0, the same
+build tree is packed and published to npm with provenance, as decision 0019 states. The release
+workflow fails in its first step. The procedure below is the paused design of
+[decision 0013](docs/decisions/0013-release-attested-tarballs.md): pre-releases `v0.<minor>.<patch>`
+as tarballs on a GitHub release, with build provenance and an SBOM attested by the release
+workflow. A new decision record replaces it before 1.0.
 
-Before 1.0, a release is a pre-release `v0.<minor>.<patch>`: tarballs on a GitHub release, with
-build provenance and an SBOM attested by the release workflow. Nothing is published to npm.
-[Decision 0013](docs/decisions/0013-release-attested-tarballs.md) gives the reasons for this paused
-design, and [decision 0018](docs/decisions/0018-pinned-source-distribution.md) why consumers pin a
-source commit instead.
+The release deploy key and its secret are deleted. The release key returns at 1.0, and only
+together with a protection of `build` that does not rely on "deploy keys only": the `build`
+ruleset's bypass covers every write deploy key of the repository, so a second write key could
+write `build` too.
 
 ### Set up once
 
 [Repository settings](#repository-settings) has the settings that the release workflow relies on:
-the `release` environment, its deploy key, the tag rulesets and immutable releases.
+the `release` environment, the tag rulesets and immutable releases. At 1.0 it also needs a release
+key, as step 9 says.
 
 ### Cut a release
 
@@ -35,11 +61,11 @@ the `release` environment, its deploy key, the tag rulesets and immutable releas
    gh workflow run release.yml --ref main -f tag=v0.1.0
    ```
 
-3. The build job checks that the commit is on `main` and that every package has the tag's
-   version. It runs `pnpm check`, packs the tarballs, runs the example on them, and writes and
-   checks the SBOM. When it passes, approve the `release` environment in the run.
-4. The release job attests the tarballs, creates the tag on the commit, and publishes the
-   pre-release. Download one tarball and verify it with the commands in the README.
+3. The build job checks that the commit is on `main` and that the package has the tag's version.
+   It runs `pnpm check`, packs the tarball, and writes and checks the SBOM. When it passes, approve
+   the `release` environment in the run.
+4. The release job attests the tarball, creates the tag on the commit, and publishes the
+   pre-release.
 
 ## Repository settings
 
@@ -83,7 +109,8 @@ commands from a checkout of `main`.
    organisation, so it cannot be lowered for this repository alone. The maintainers keep that role.
    The protection is a rule, not a removal: the code owner ruleset of step 6 requires a code owner's
    approval for every change to `main`, and only the `maintainer` team may bypass it. The `v*` tag
-   rules below let only the release deploy key create a release tag.
+   rules below let nobody create a release tag while releases are paused, and the `build` rulesets
+   of step 13 let only the build workflow's deploy key write `build`.
 
    Remove a direct collaborator without a row with
    `gh api --method DELETE repos/hephaestus-build/ichnaea/collaborators/<login>`, then read the
@@ -180,16 +207,26 @@ commands from a checkout of `main`.
    If the code owner ruleset does not exist yet, create it with
    `gh api --method POST repos/hephaestus-build/ichnaea/rulesets --input .github/rulesets/main-code-owner.json`.
 
-7. **Signed commits.** Every commit pushed to a branch must carry a verified signature. Before you
-   apply this ruleset, each maintainer sets up commit signing, as
+7. **Signed commits.** Every commit pushed to a branch other than `build` must carry a verified
+   signature. The build workflow's commits on `build` are not signed: the ruleset excludes
+   `refs/heads/build`, and step 13 protects that branch. Before you apply this ruleset, each maintainer sets up commit signing, as
    [CONTRIBUTING.md](CONTRIBUTING.md#signed-commits) shows, and checks that GitHub shows their
-   last commit as verified: the ruleset refuses a push of an unsigned commit to any branch. GitHub
+   last commit as verified: the ruleset refuses a push of an unsigned commit to any other branch. GitHub
    signs the commits that it creates itself: the squash commit of a merged pull request, and the
    commits of Renovate. Tags are not branches, so the release workflow's tag push is not affected.
    The tag names a squash commit on `main`, which GitHub signed.
 
    ```sh
    gh api --method POST repos/hephaestus-build/ichnaea/rulesets \
+     --input .github/rulesets/signed-commits.json
+   ```
+
+   The ruleset exists already. To apply a change of its file, update it in place:
+
+   ```sh
+   id="$(gh api repos/hephaestus-build/ichnaea/rulesets \
+     --jq '.[] | select(.name == "signed commits") | .id')"
+   gh api --method PUT "repos/hephaestus-build/ichnaea/rulesets/$id" \
      --input .github/rulesets/signed-commits.json
    ```
 
@@ -202,25 +239,18 @@ commands from a checkout of `main`.
      -f name=main -f type=branch
    ```
 
-9. **The release deploy key.** The private key exists only as a secret of the environment. The
-   organisation must allow deploy keys (`deploy_keys_enabled_for_repositories`, an organisation
-   setting); otherwise `gh repo deploy-key add` fails with 422. Read it back with
-   `gh api orgs/hephaestus-build --jq .deploy_keys_enabled_for_repositories`, which gives `true`:
+9. **The release deploy key, at 1.0 only.** The repository has no release key now: the old key and
+   its secret, `RELEASE_DEPLOY_KEY`, are deleted, and the release workflow is paused. The key
+   returns at 1.0 together with a protection of `build` that does not rely on "deploy keys only",
+   because the `build` ruleset's bypass covers every write deploy key. Then the private key exists
+   only as a secret of the `release` environment.
 
-   ```sh
-   ssh-keygen -t ed25519 -N "" -C "ichnaea release tags" -f release-key
-   gh repo deploy-key add release-key.pub --repo hephaestus-build/ichnaea --allow-write \
-     --title "release tags"
-   gh secret set RELEASE_DEPLOY_KEY --repo hephaestus-build/ichnaea --env release < release-key
-   rm release-key release-key.pub
-   ```
-
-10. **The `v*` tags and the releases.** Only deploy keys may create a release tag, nobody may move
-    or delete one, and a published release cannot change. Keep the release key the only deploy key
-    of the repository. Apply the tag rules in two parts, with a probe between them, so that a probe
-    that creates a tag by mistake cannot leave a tag that nobody can delete:
-    1. Apply the rule that only deploy keys create a release tag. Then list the tag rulesets: the
-       list must have only this ruleset.
+10. **The `v*` tags and the releases.** While releases are paused, nobody may create a release tag.
+    Nobody may move or delete one, and a published release cannot change. Apply the tag rules in two
+    parts, with a probe between them, so that a probe that creates a tag by mistake cannot leave a
+    tag that nobody can delete:
+    1. Apply the rule that nobody creates a release tag. Then list the tag rulesets: the list must
+       have only this ruleset.
 
     ```sh
     gh api --method POST repos/hephaestus-build/ichnaea/rulesets \
@@ -241,7 +271,9 @@ commands from a checkout of `main`.
     so delete it with `git push origin :refs/tags/v0.0.0-probe`, correct the ruleset and probe
     again. Go on only when `git ls-remote origin refs/tags/v0.0.0-probe` prints nothing.
 
-    3. Apply the rule that nobody moves or deletes a release tag, and immutable releases:
+    3. Apply the rule that nobody moves or deletes a release tag, and immutable releases. Both tag
+       rulesets exist already; to apply a change of a file, `PUT` it to the ruleset's id, as step 7
+       shows for the signed commits ruleset.
 
     ```sh
     gh api --method POST repos/hephaestus-build/ichnaea/rulesets \
@@ -249,7 +281,7 @@ commands from a checkout of `main`.
     gh api --method PUT repos/hephaestus-build/ichnaea/immutable-releases
     ```
 
-11. **Read back.** Read the settings of steps 3 to 10 back. Step 1 has its own read-back:
+11. **Read back.** Read the settings of steps 3 to 10 and 13 back. Step 1 has its own read-back:
 
     ```sh
     gh api repos/hephaestus-build/ichnaea --jq '{visibility, has_wiki, has_projects,
@@ -263,8 +295,21 @@ commands from a checkout of `main`.
     gh api repos/hephaestus-build/ichnaea/environments/release
     gh api repos/hephaestus-build/ichnaea/environments/release/deployment-branch-policies \
       --jq '.branch_policies[] | {name, type}' # only main, as a branch
-    gh api repos/hephaestus-build/ichnaea/keys --jq '.[] | {title, read_only}' # only the release key
+    gh api repos/hephaestus-build/ichnaea/environments/build-branch
+    gh api repos/hephaestus-build/ichnaea/environments/build-branch/deployment-branch-policies \
+      --jq '.branch_policies[] | {name, type}' # only main, as a branch
+    gh api repos/hephaestus-build/ichnaea/environments/build-branch/secrets --jq '.secrets[].name'
+    gh api repos/hephaestus-build/ichnaea/environments/release/secrets --jq '.secrets[].name' # none
     gh api repos/hephaestus-build/ichnaea/immutable-releases
+    ```
+
+    The repository has exactly one deploy key: the build branch's write key, titled
+    `build-branch writer`. A second write key could write `build` too (step 13). The command
+    prints nothing when the list is right:
+
+    ```sh
+    diff <(echo '[{"read_only": false, "title": "build-branch writer"}]' | jq -S .) \
+      <(gh api repos/hephaestus-build/ichnaea/keys | jq -S '[.[] | {title, read_only}]')
     ```
 
     The signed commits ruleset must equal its file. The command prints nothing when it does:
@@ -299,3 +344,49 @@ commands from a checkout of `main`.
               {context: "dependency review", integration_id: 15368}] else . end]}' \
       | gh api --method PUT "repos/hephaestus-build/ichnaea/rulesets/$id" --input -
     ```
+
+13. **The `build` branch.** The `build-branch` environment lets only `main` deploy, has no required
+    reviewer, and holds one secret, `BUILD_BRANCH_DEPLOY_KEY`: the private key of the repository's
+    only write deploy key, `build-branch writer`. Only the publish job of
+    `.github/workflows/build-branch.yml` names the environment, and a test fails if another workflow
+    does. A repository secret would reach the workflows of every branch, so the key is a secret of
+    the environment only. Two rulesets protect `build`. `build.json` restricts its creation, updates
+    and deletion, blocks force pushes, and lets only deploy keys bypass it, with no signature
+    required. `build-no-force-push.json` blocks force pushes and the deletion of `build` with no
+    bypass at all: a bypass skips every rule of its ruleset, so without the second ruleset the deploy
+    key could force-push.
+
+    The bypass covers every write deploy key. Keep the build key the only deploy key, as the
+    read-back of step 11 checks. A release key at 1.0 needs a protection of `build` that does not
+    rely on "deploy keys only" first.
+
+    Apply the environment and the rulesets:
+
+    ```sh
+    gh api --method PUT repos/hephaestus-build/ichnaea/environments/build-branch \
+      --input .github/environments/build-branch.json
+    gh api --method POST repos/hephaestus-build/ichnaea/environments/build-branch/deployment-branch-policies \
+      -f name=main -f type=branch
+    ssh-keygen -t ed25519 -N "" -C "ichnaea build branch" -f build-key
+    gh repo deploy-key add build-key.pub --repo hephaestus-build/ichnaea --allow-write \
+      --title "build-branch writer"
+    gh secret set BUILD_BRANCH_DEPLOY_KEY --repo hephaestus-build/ichnaea --env build-branch < build-key
+    rm build-key build-key.pub
+    gh api --method POST repos/hephaestus-build/ichnaea/rulesets --input .github/rulesets/build.json
+    gh api --method POST repos/hephaestus-build/ichnaea/rulesets \
+      --input .github/rulesets/build-no-force-push.json
+    ```
+
+    Each ruleset must equal its file. Each command prints nothing when it does:
+
+    ```sh
+    for file in build build-no-force-push; do
+      name="$(jq -r .name ".github/rulesets/$file.json")"
+      id="$(gh api repos/hephaestus-build/ichnaea/rulesets --jq ".[] | select(.name == \"$name\") | .id")"
+      diff <(jq -S . ".github/rulesets/$file.json") \
+        <(gh api "repos/hephaestus-build/ichnaea/rulesets/$id" \
+          | jq -S '{name, target, enforcement, conditions, rules, bypass_actors}')
+    done
+    ```
+
+    The first run of the workflow on `main` creates `build`.
