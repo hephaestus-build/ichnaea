@@ -15,6 +15,7 @@ const base = configuration("base prompt", 0.2);
 const candidate = configuration("candidate prompt", 0.2);
 const plan = createPlan(SUITE, {
   run: "run-1",
+  seed: 1,
   base,
   candidate,
   intendedChanges: ["/prompts/composer"],
@@ -99,7 +100,14 @@ describe("importResults", () => {
     };
     const p = createPlan(
       { ...odd, policy: { ...odd.policy, primary: { answered: SUITE.policy.primary.answered } } },
-      { run: "run-why", base, candidate, intendedChanges: ["/prompts/composer"] },
+      {
+        run: "run-why",
+        createdAt: "2026-11-16T12:00:00Z",
+        seed: 1,
+        base,
+        candidate,
+        intendedChanges: ["/prompts/composer"],
+      },
     );
     const run = () =>
       importResults(
@@ -218,6 +226,7 @@ describe("importResults", () => {
     };
     const p = createPlan(SUITE, {
       run: "run-2",
+      seed: 1,
       base: pinned,
       candidate: pinned,
       createdAt: "2026-11-16T12:00:00Z",

@@ -12,6 +12,7 @@ const comparison: PlanComparison = {
   base,
   candidate,
   intendedChanges: ["/prompts/composer"],
+  seed: 1,
   createdAt: "2026-11-16T12:00:00Z",
 };
 
@@ -70,7 +71,13 @@ describe("createPlan", () => {
   });
 
   it("plans a noise check: the base compared with itself, with nothing intended to change", () => {
-    const { record } = createPlan(SUITE, { run: "noise-1", base, candidate: base });
+    const { record } = createPlan(SUITE, {
+      run: "noise-1",
+      createdAt: "2026-11-16T12:00:00Z",
+      seed: 1,
+      base,
+      candidate: base,
+    });
     expect(record.arms[0]?.identity).toBe(record.arms[1]?.identity);
     expect(record.varies).toEqual([]);
     expect(record.mode).toBe("decision");
@@ -106,8 +113,17 @@ describe("createPlan", () => {
       expect(() => createPlan(SUITE, { ...comparison, seed })).toThrow(PlanError);
   });
 
+  it("is pure: it needs its seed and its creation time, and reads no clock", () => {
+    const { seed: _, ...unseeded } = comparison;
+    expect(() => createPlan(SUITE, unseeded as PlanComparison)).toThrow(/seed/);
+    const { createdAt: __, ...undated } = comparison;
+    expect(() => createPlan(SUITE, undated as PlanComparison)).toThrow(/createdAt/);
+  });
+
   it("refuses a comparison that is not valid, and a limit no run can decide", () => {
-    expect(() => createPlan(SUITE, { ...comparison, run: "" })).toThrow(/comparison is not valid/);
+    expect(() =>
+      createPlan(SUITE, { ...comparison, run: "", createdAt: "2026-11-16T12:00:00Z", seed: 1 }),
+    ).toThrow(/comparison is not valid/);
     const tight = {
       ...SUITE,
       policy: { ...SUITE.policy, primary: { answered: { margin: 0.01, owner: "o", reason: "r" } } },

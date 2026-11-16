@@ -36,10 +36,13 @@ export interface PlanComparison {
    * INVALID. Absent means no change is intended.
    */
   readonly intendedChanges?: readonly string[];
-  /** The seed of the plan's generator, an integer from 0 to below 10^9. Default 1. */
-  readonly seed?: number;
-  /** The plan's creation time, ISO 8601. Default: now. Pass it to reproduce a plan byte for byte. */
-  readonly createdAt?: string;
+  /**
+   * The seed of the plan's generator, an integer from 0 to below 10^9. It decides each case's coin
+   * (which arm runs first), so a plan is reproducible from it.
+   */
+  readonly seed: number;
+  /** The plan's creation time, ISO 8601. The caller reads the clock; createPlan never does. */
+  readonly createdAt: string;
   /** How many trials run at once and the endpoint they call. One trial per case needs it. */
   readonly schedule?: Plan["schedule"];
   /** The noise checks (A/A decisions) this plan cites, by run and decision digest. */
@@ -57,15 +60,16 @@ const ComparisonSchema = z.strictObject({
   seed: z
     .int("the seed is an integer")
     .min(0, "the seed is at least 0")
-    .lt(MAX_SEED, "the seed is below 10^9")
-    .optional(),
-  createdAt: Timestamp.optional(),
+    .lt(MAX_SEED, "the seed is below 10^9"),
+  createdAt: Timestamp,
   schedule: Schedule.optional(),
   aa: z.strictObject({ decisions: z.array(AaCitation) }).optional(),
 });
 
 /**
- * Resolves a suite and a comparison into a locked plan, before any trial runs. It does no I/O.
+ * Resolves a suite and a comparison into a locked plan, before any trial runs. It is pure: it does
+ * no I/O and reads no clock, so the same suite and comparison, seed and creation time included,
+ * give the same plan byte for byte.
  * It lists every planned trial: at one trial per case and arm, case by case in the order of each
  * case's seeded coin; otherwise in alternating batches by replicate. It resolves the cases each
  * measure applies to, tests each measure against its examples, states the planning power, and
@@ -160,8 +164,8 @@ export function createPlan<const S extends SuiteDefinition>(
     // the one that varies nothing by its kind.
     trigger: "manual",
     varies: intendedFactors(checked.data.intendedChanges ?? [], base, candidate),
-    seed: checked.data.seed ?? 1,
-    now: checked.data.createdAt ?? new Date().toISOString(),
+    seed: checked.data.seed,
+    now: checked.data.createdAt,
     ichnaea: CORE_VERSION,
     ...(checked.data.schedule === undefined ? {} : { schedule: checked.data.schedule }),
     ...(checked.data.aa === undefined ? {} : { aa: checked.data.aa }),

@@ -9,6 +9,7 @@ const base = configuration("base prompt", 0.2);
 const candidate = configuration("candidate prompt", 0.2);
 const plan = createPlan(SUITE, {
   run: "run-1",
+  seed: 1,
   base,
   candidate,
   intendedChanges: ["/prompts/composer"],
@@ -78,7 +79,13 @@ describe("compare", () => {
   });
 
   it("is INVALID when the records belong to another plan", () => {
-    const other = createPlan(SUITE, { run: "run-2", base, candidate, seed: 7 });
+    const other = createPlan(SUITE, {
+      run: "run-2",
+      createdAt: "2026-11-16T12:00:00Z",
+      base,
+      candidate,
+      seed: 7,
+    });
     const { records } = importResults(
       other,
       rows(() => true),
@@ -90,6 +97,7 @@ describe("compare", () => {
     const hotter = configuration("candidate prompt", 0.9);
     const undeclared = createPlan(SUITE, {
       run: "run-3",
+      seed: 1,
       base,
       candidate: hotter,
       intendedChanges: ["/prompts/composer"],

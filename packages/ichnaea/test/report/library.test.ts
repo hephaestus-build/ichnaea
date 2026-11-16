@@ -9,6 +9,7 @@ const base = configuration("base prompt", 0.2);
 const candidate = configuration("candidate prompt", 0.2);
 const plan = createPlan(SUITE, {
   run: "run-1",
+  seed: 1,
   base,
   candidate,
   intendedChanges: ["/prompts/composer"],

@@ -182,6 +182,7 @@ describe("the library API, end to end", () => {
   it("gives REGRESSION when the candidate stops answering, and reports it", () => {
     const plan = createPlan(suite, {
       run: "pr-1",
+      seed: 1,
       base,
       candidate,
       intendedChanges: suite.changes(["prompts/compose.prompt"]),
@@ -216,6 +217,7 @@ describe("the library API, end to end", () => {
   it("plans and compares a noise check: the base against itself", () => {
     const plan = createPlan(suite, {
       run: "noise-1",
+      seed: 1,
       base,
       candidate: base,
       createdAt: "2026-11-16T12:00:00Z",

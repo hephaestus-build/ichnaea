@@ -49,6 +49,7 @@ describe("the library API", () => {
     const base = configuration("base", 0.2);
     const plan = createPlan(suite, {
       run: "offline-1",
+      seed: 1,
       base,
       candidate: configuration("candidate", 0.2),
       intendedChanges: ["/prompts/composer"],

@@ -545,11 +545,11 @@ export interface PlanComparison {
     // Warning: (ae-forgotten-export) The symbol "Configuration" needs to be exported by the entry point index.d.ts
     readonly base: Configuration;
     readonly candidate: Configuration;
-    readonly createdAt?: string;
+    readonly createdAt: string;
     readonly intendedChanges?: readonly string[];
     readonly run: string;
     readonly schedule?: Plan["schedule"];
-    readonly seed?: number;
+    readonly seed: number;
 }
 
 // @public
