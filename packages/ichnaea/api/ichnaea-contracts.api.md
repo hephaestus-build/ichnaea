@@ -2100,8 +2100,24 @@ export const Observation: z.ZodObject<{
 }, z.core.$strict>;
 
 // @public
-export const ObservedConfiguration: z.ZodObject<{
+export const ObservedCode: z.ZodUnion<readonly [z.ZodObject<{
     commit: z.ZodString;
+    image: z.ZodOptional<z.ZodString>;
+}, z.core.$strict>, z.ZodObject<{
+    image: z.ZodString;
+}, z.core.$strict>]>;
+
+// @public
+export type ObservedCode = z.infer<typeof ObservedCode>;
+
+// @public
+export const ObservedConfiguration: z.ZodObject<{
+    code: z.ZodUnion<readonly [z.ZodObject<{
+        commit: z.ZodString;
+        image: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>, z.ZodObject<{
+        image: z.ZodString;
+    }, z.core.$strict>]>;
     model: z.ZodString;
     route: z.ZodString;
     parameters: z.ZodRecord<z.ZodString, z.ZodJSONSchema>;
@@ -3158,8 +3174,21 @@ export const TrialResult: z.ZodObject<{
         message: z.ZodOptional<z.ZodString>;
     }, z.core.$strict>>;
     calls: z.ZodInt;
+    usage: z.ZodOptional<z.ZodObject<{
+        calls: z.ZodOptional<z.ZodInt>;
+        inputTokens: z.ZodOptional<z.ZodInt>;
+        outputTokens: z.ZodOptional<z.ZodInt>;
+        cost: z.ZodOptional<z.ZodNumber>;
+        costUnit: z.ZodOptional<z.ZodString>;
+        wallMs: z.ZodOptional<z.ZodNumber>;
+    }, z.core.$strict>>;
     observed: z.ZodObject<{
-        commit: z.ZodString;
+        code: z.ZodUnion<readonly [z.ZodObject<{
+            commit: z.ZodString;
+            image: z.ZodOptional<z.ZodString>;
+        }, z.core.$strict>, z.ZodObject<{
+            image: z.ZodString;
+        }, z.core.$strict>]>;
         model: z.ZodString;
         route: z.ZodString;
         parameters: z.ZodRecord<z.ZodString, z.ZodJSONSchema>;

@@ -17,7 +17,9 @@
   },
   "calls": 3,
   "observed": {
-    "commit": "0123456",
+    "code": {
+      "commit": "0123456"
+    },
     "model": "example-model-2026-10",
     "route": "sha256:e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1",
     "parameters": {

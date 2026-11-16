@@ -207,12 +207,13 @@
         "retention": "record"
       }
     },
-    "observed": {
+    "usage": {
       "type": "object",
       "properties": {
-        "commit": {
-          "type": "string",
-          "pattern": "^[0-9a-f]{40}$",
+        "calls": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991,
           "x-ichnaea-data": {
             "class": "none",
             "identifier": "none",
@@ -221,6 +222,132 @@
             ],
             "retention": "record"
           }
+        },
+        "inputTokens": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991,
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          }
+        },
+        "outputTokens": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991,
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          }
+        },
+        "cost": {
+          "type": "number",
+          "minimum": 0,
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          }
+        },
+        "costUnit": {
+          "type": "string",
+          "minLength": 1,
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          }
+        },
+        "wallMs": {
+          "type": "number",
+          "minimum": 0,
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "observed": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "commit": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{40}$",
+                  "x-ichnaea-data": {
+                    "class": "none",
+                    "identifier": "none",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "record"
+                  }
+                },
+                "image": {
+                  "type": "string",
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "x-ichnaea-data": {
+                    "class": "none",
+                    "identifier": "none",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "record"
+                  }
+                }
+              },
+              "required": [
+                "commit"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "image": {
+                  "type": "string",
+                  "pattern": "^sha256:[0-9a-f]{64}$",
+                  "x-ichnaea-data": {
+                    "class": "none",
+                    "identifier": "none",
+                    "egress": [
+                      "*"
+                    ],
+                    "retention": "record"
+                  }
+                }
+              },
+              "required": [
+                "image"
+              ],
+              "additionalProperties": false
+            }
+          ]
         },
         "model": {
           "type": "string",
@@ -265,7 +392,7 @@
         }
       },
       "required": [
-        "commit",
+        "code",
         "model",
         "route",
         "parameters"

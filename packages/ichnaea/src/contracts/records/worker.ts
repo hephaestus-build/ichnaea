@@ -15,6 +15,7 @@ import {
   Unit,
 } from "../primitives.ts";
 import { ScriptedTurn } from "./case.ts";
+import { Usage } from "./trial.ts";
 
 /**
  * Which trial a request asks for and a result answers: the identity that resume uses. A result
@@ -27,7 +28,10 @@ export const TrialIdentity = z.strictObject({
   suite: none(SuiteId),
   /** The case the trial runs. */
   case: none(CaseId),
-  /** The arm the trial runs under, as an opaque name: never whether it is the base or the candidate. */
+  /**
+   * The arm the trial runs under, as an opaque name. Ichnaea assigns arm names that do not reveal
+   * which arm is the base and which the candidate, so the name never tells a system its side.
+   */
   arm: none(ArmName),
   /** The replicate of the case under the arm, from 0. */
   replicate: none(z.int().min(0)),
@@ -100,13 +104,35 @@ export const TrialFailure = z.strictObject({
 /** A trial failure. */
 export type TrialFailure = z.infer<typeof TrialFailure>;
 
+/** The commit of the system's code, as 40 hexadecimal characters. */
+const Commit = none(z.string().regex(/^[0-9a-f]{40}$/));
+
+/**
+ * Which code the worker ran: a git commit, an image digest, or both. A system that is not one git
+ * checkout, such as an image-released service, names its image instead of inventing a commit.
+ */
+export const ObservedCode = z.union([
+  z.strictObject({
+    /** The commit of the system's code. */
+    commit: Commit,
+    /** The digest of the image that ran the code, when there is one. */
+    image: none(Digest).optional(),
+  }),
+  z.strictObject({
+    /** The digest of the image that ran the code. */
+    image: none(Digest),
+  }),
+]);
+/** The code a worker ran. */
+export type ObservedCode = z.infer<typeof ObservedCode>;
+
 /**
  * The configuration the worker actually ran with. Before scoring, Ichnaea compares it with the
  * arm's planned configuration and refuses the trial on any difference.
  */
 export const ObservedConfiguration = z.strictObject({
-  /** The commit of the system's code, as 40 hexadecimal characters. */
-  commit: none(z.string().regex(/^[0-9a-f]{40}$/)),
+  /** The code that ran: a git commit, an image digest, or both. */
+  code: ObservedCode,
   /** The model identity the system called. */
   model: none(Text),
   /** The digest of the endpoint route, never its URL. */
@@ -140,6 +166,8 @@ export const TrialResult = z.strictObject({
   failure: TrialFailure.optional(),
   /** The model calls made in this trial. Required: the run's call bound and budget sum it. */
   calls: none(z.int().min(0)),
+  /** Token and cost usage, when the worker knows it. Absent means unknown, never zero. */
+  usage: Usage.optional(),
   /** The configuration the worker ran with. */
   observed: ObservedConfiguration,
 });
