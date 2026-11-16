@@ -43,3 +43,64 @@ const result = compareCounts({
 ```
 
 Licence: MIT.
+
+## Descriptive cluster estimates
+
+`clusterBootstrap` estimates a row-weighted mean with a percentile interval from whole-cluster
+resampling. It supports numeric outcomes and null values, which remain missing. It is estimate-only,
+not a validated decision method. It never makes a non-inferiority or population claim.
+
+```ts
+import { clusterBootstrap, createRng } from "@hephaestus-build/ichnaea/stats";
+
+const estimate = clusterBootstrap(
+  [
+    { cluster: "case-a", value: 1 },
+    { cluster: "case-a", value: 0 },
+    { cluster: "case-b", value: 1 },
+  ],
+  { rng: createRng(42), resamples: 2000 },
+);
+// estimate.estimate, estimate.lower, estimate.upper
+// estimate.sampling.mode === "native"; estimate.estimateOnly === true
+```
+
+To reproduce a registered analysis from another runtime, pass `schedule` instead of `rng` and
+`resamples`. A schedule states its ordered `clusterIds`, zero-based `draws`, `algorithm`, and `seed`.
+The result records replay mode. Store the schedule and its digest with the analysis. The method
+refuses a schedule whose cluster IDs, dimensions, or indices do not match.
+
+For paired differences, keep paired outcomes in each row and the family or case as its cluster.
+For a planned-attempt denominator, supply the defined 0/1 operational outcome of every planned
+attempt. Do not drop a row because its quality verdict is unavailable.
+
+## Agreement between raters
+
+`rawAgreement`, `cohenKappa` and `gwetAc1` take a square table of counts, one row and one column per
+declared category. `confusionTable` builds that table from two raters' labels: a null label is
+missing, and a label outside the declared categories throws. `krippendorffAlpha` takes one row per
+item, with any number of raters and null for a missing value.
+
+```ts
+import { confusionTable, gwetAc1, krippendorffAlpha } from "@hephaestus-build/ichnaea/stats";
+
+const { table, skipped } = confusionTable(
+  ["yes", "no", null, "no"],
+  ["yes", "yes", "no", "no"],
+  ["yes", "no"],
+);
+const ac1 = gwetAc1(table); // skipped === 1: the third item has one label only
+const alpha = krippendorffAlpha(
+  [
+    [4, 5],
+    [2, 2],
+    [3, null],
+  ],
+  "ordinal",
+);
+```
+
+These are point estimates, validated against R. No interval for them is validated: an interval
+from resampling whole cases is estimate only. Kappa and alpha are NaN where they are undefined, and
+a resample can hit that: count those replicates and report their share, never drop them. AC1 is
+never NaN. `VALIDATION.md` lists the oracles and the limits.

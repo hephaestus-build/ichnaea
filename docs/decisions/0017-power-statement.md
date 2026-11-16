@@ -83,3 +83,12 @@ This record supersedes decision 0014.
 - A library caller gets the same planning statement as the CLI. It does not get the plugin's
   refusal or its switch to estimate-only, because those apply before any call. A caller that wants
   them makes the plan with the plugin.
+
+## Note (2026-11-16): where the cited files are now
+
+The merge into one package (#35) moved the files that this decision cites. The decision is unchanged. The files are now:
+
+- `packages/decide/scripts/mutants.ts` is `packages/ichnaea/scripts/decide/mutants.ts`.
+- `packages/decide/test/power.test.ts` is `packages/ichnaea/test/decide/power.test.ts`.
+
+The mutants it names run in `.github/workflows/mutants.yml`, so the claim that the tests kill them rests on that workflow's latest green run on main.

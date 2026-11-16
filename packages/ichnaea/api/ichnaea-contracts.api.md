@@ -263,6 +263,32 @@ export function candidateRunsFirst(seed: {
 export function canonicalize(value: unknown): string;
 
 // @public
+export const CARD_LABELS: readonly [{
+    readonly label: "Regression";
+    readonly symbol: "✗";
+    readonly verdict: "REGRESSION";
+}, {
+    readonly label: "Pass";
+    readonly symbol: "✓";
+    readonly verdict: "PASS";
+}, {
+    readonly label: "Inconclusive";
+    readonly symbol: "?";
+    readonly verdict: "INCONCLUSIVE";
+}, {
+    readonly label: "Invalid";
+    readonly symbol: "!";
+    readonly verdict: "INVALID";
+}, {
+    readonly label: "Estimate only";
+    readonly symbol: "·";
+    readonly verdict: null;
+}];
+
+// @public
+export type CardLabel = (typeof CARD_LABELS)[number]["label"];
+
+// @public
 export const Case: z.ZodObject<{
     schema: z.ZodLiteral<"ichnaea.case/1">;
     id: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
@@ -794,6 +820,12 @@ export function configurationIdentity(input: unknown): Promise<ConfigurationIden
 
 // @public
 export function content<T extends z.ZodType>(schema: T): T;
+
+// @public
+export const CONTEXT_SLOTS: readonly ["measure", "margin", "change", "bound", "cases", "caseNoun", "trials", "changed", "broke", "fixed", "test", "p", "rawP", "m", "side"];
+
+// @public
+export type ContextSlot = (typeof CONTEXT_SLOTS)[number];
 
 // @public
 export function contractFor(id: string): RecordContract | undefined;
@@ -2088,6 +2120,9 @@ export class NonJsonValueError extends Error {
 }
 
 // @public
+export type NoParams = Readonly<Record<never, never>>;
+
+// @public
 export function notComputedReason(entry: Extract<PowerEntry, {
     computed: false;
 }>): string;
@@ -2547,6 +2582,173 @@ export const Real: z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
 
 // @public
 export type Real = z.infer<typeof Real>;
+
+// @public
+export interface Reason {
+    readonly action?: string;
+    readonly labels: readonly CardLabel[];
+    readonly meaning: string;
+    readonly parent?: ReasonCode;
+    readonly scope: ReasonScope;
+    readonly sentences: readonly ReasonSentence[];
+}
+
+// @public
+export const REASON_CODES: readonly ["REGRESSION_DETECTED", "HARD_CHECK_FAILED", "PASS", "NO_DECREASE_DETECTED", "NON_INFERIORITY_UNVALIDATED", "MARGIN_NOT_CLEARED", "MARGIN_UNREACHABLE", "MISSING_TRIALS_CHANGE_VERDICT", "REGRESSION_TEST_UNVALIDATED", "INVALID_COVERAGE", "INVALID_BUDGET", "INVALID_NO_BASE_RESULTS", "INVALID_UNDECLARED_CHANGE", "INVALID_RECORDS_MISMATCH", "INVALID_RECORDS_CONTRADICT", "INVALID_HARD_CHECK_MISSING", "INVALID_SUITE_SETUP", "ESTIMATE_ONLY_SINGLE_TRIAL", "ESTIMATE_ONLY_FEW_CASES", "ESTIMATE_ONLY_NO_COMPARISON", "ESTIMATE_ONLY_NO_PRIMARY", "ESTIMATE_ONLY_SAMPLED_CASES", "ESTIMATE_ONLY_EXPLORATORY", "ESTIMATE_ONLY_CACHED_ARM", "ESTIMATE_ONLY_PLACEHOLDER_MARGIN", "ESTIMATE_ONLY_NO_METHOD", "INTERVAL_UNAVAILABLE_NO_METHOD", "INTERVAL_UNAVAILABLE_NO_VALUE", "INTERVAL_UNAVAILABLE_DESCRIPTIVE", "INTERVAL_UNAVAILABLE_METHOD", "JUDGE_ARM_BIAS_WITHIN_BOUND", "JUDGE_DIAGNOSTIC", "RATERS_BELOW_FLOOR", "JUDGE_BELOW_RATERS", "ARM_BIAS_NOT_SHOWN_SMALL", "ATTENTION_FAILED", "PROBE_FAILED", "JUDGE_NOT_COVERED", "JUDGE_MODEL_NOT_COVERED", "SYSTEM_MODEL_NOT_COVERED", "ANSWER_LENGTH_OUTSIDE", "POPULATION_NOT_COVERED", "JUDGE_CALIBRATION_EXPIRED", "JUDGE_CHANGED", "RUBRIC_CHANGED", "INPUTS_CHANGED", "AGE_EXPIRED"];
+
+// @public
+export const REASON_PARAMS: {
+    readonly [C in ReasonCode]: ReadonlyArray<keyof ReasonParams[C] & string>;
+};
+
+// @public
+export type ReasonCode = (typeof REASON_CODES)[number];
+
+// @public
+export function reasonFor(code: string): Reason | undefined;
+
+// @public
+export type ReasonInstance = {
+    readonly [C in ReasonCode]: {
+        readonly code: C;
+        readonly params: ReasonParams[C];
+    };
+}[ReasonCode];
+
+// @public
+export interface ReasonParams {
+    AGE_EXPIRED: {
+        readonly expiresAt: string;
+    };
+    ANSWER_LENGTH_OUTSIDE: {
+        readonly median: number;
+        readonly p5: number;
+        readonly p95: number;
+    };
+    ARM_BIAS_NOT_SHOWN_SMALL: {
+        readonly shownBound: number;
+        readonly limit: number;
+        readonly casesNeeded: number | "not reachable";
+    };
+    ATTENTION_FAILED: {
+        readonly pseudonym: string;
+    };
+    ESTIMATE_ONLY_CACHED_ARM: NoParams;
+    ESTIMATE_ONLY_EXPLORATORY: NoParams;
+    ESTIMATE_ONLY_FEW_CASES: NoParams;
+    ESTIMATE_ONLY_NO_COMPARISON: NoParams;
+    ESTIMATE_ONLY_NO_METHOD: {
+        readonly valueType: string;
+    };
+    ESTIMATE_ONLY_NO_PRIMARY: NoParams;
+    ESTIMATE_ONLY_PLACEHOLDER_MARGIN: NoParams;
+    ESTIMATE_ONLY_SAMPLED_CASES: NoParams;
+    ESTIMATE_ONLY_SINGLE_TRIAL: NoParams;
+    HARD_CHECK_FAILED: {
+        readonly check: string;
+        readonly failures: number;
+        readonly checked: number;
+    };
+    INPUTS_CHANGED: NoParams;
+    INTERVAL_UNAVAILABLE_DESCRIPTIVE: NoParams;
+    INTERVAL_UNAVAILABLE_METHOD: NoParams;
+    INTERVAL_UNAVAILABLE_NO_METHOD: {
+        readonly valueType: string;
+    };
+    INTERVAL_UNAVAILABLE_NO_VALUE: NoParams;
+    INVALID_BUDGET: {
+        readonly calls: number;
+    };
+    INVALID_COVERAGE: {
+        readonly available: number;
+        readonly planned: number;
+        readonly arm: string;
+        readonly share: number;
+        readonly coverageFloor: number;
+        readonly classes: string;
+    };
+    INVALID_HARD_CHECK_MISSING: {
+        readonly check: string;
+    };
+    INVALID_NO_BASE_RESULTS: NoParams;
+    INVALID_RECORDS_CONTRADICT: {
+        readonly count: number;
+    };
+    INVALID_RECORDS_MISMATCH: {
+        readonly detail: string;
+    };
+    INVALID_SUITE_SETUP: {
+        readonly detail: string;
+        readonly fix: string;
+    };
+    INVALID_UNDECLARED_CHANGE: {
+        readonly factors: readonly string[];
+    };
+    JUDGE_ARM_BIAS_WITHIN_BOUND: {
+        readonly shownBound: number;
+        readonly boundCases: number;
+    };
+    JUDGE_BELOW_RATERS: {
+        readonly gap: number;
+        readonly tolerance: number;
+    };
+    JUDGE_CALIBRATION_EXPIRED: NoParams;
+    JUDGE_CHANGED: NoParams;
+    JUDGE_DIAGNOSTIC: NoParams;
+    JUDGE_MODEL_NOT_COVERED: {
+        readonly observed: string;
+        readonly covered: readonly string[];
+    };
+    JUDGE_NOT_COVERED: NoParams;
+    MARGIN_NOT_CLEARED: NoParams;
+    MARGIN_UNREACHABLE: {
+        readonly floor: number;
+        readonly add: number;
+    };
+    MISSING_TRIALS_CHANGE_VERDICT: {
+        readonly missing: number;
+        readonly arm: string;
+        readonly imputed: "passed" | "failed";
+        readonly imputedP: number;
+    };
+    NO_DECREASE_DETECTED: NoParams;
+    NON_INFERIORITY_UNVALIDATED: NoParams;
+    PASS: NoParams;
+    POPULATION_NOT_COVERED: NoParams;
+    PROBE_FAILED: {
+        readonly probes: number;
+    };
+    RATERS_BELOW_FLOOR: {
+        readonly humanHuman: number;
+        readonly minimum: number;
+    };
+    REGRESSION_DETECTED: NoParams;
+    REGRESSION_TEST_UNVALIDATED: {
+        readonly limitation: string;
+    };
+    RUBRIC_CHANGED: NoParams;
+    SYSTEM_MODEL_NOT_COVERED: {
+        readonly model: string;
+        readonly covered: readonly string[];
+        readonly calibrationCases: number;
+        readonly hours: number;
+    };
+}
+
+// @public
+export const REASONS: {
+    readonly [C in ReasonCode]: Reason;
+};
+
+// @public
+export type ReasonScope = "decision" | "judge";
+
+// @public
+export interface ReasonSentence {
+    readonly key: string;
+    readonly text: string;
+    readonly when: string;
+}
 
 // @public
 export const RECORD_CONTRACTS: readonly RecordContract[];

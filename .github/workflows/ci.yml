@@ -136,12 +136,14 @@ jobs:
         working-directory: packages/ichnaea
         run: |
           docker run --rm -v "$PWD":/w -w /w "$R_IMAGE" Rscript scripts/stats/reference-normal.R
+          docker run --rm --network none -v "$PWD":/w -w /w "$R_IMAGE" Rscript scripts/stats/reference-cluster-bootstrap.R
           docker run --rm -v "$PWD":/w -w /w "$PYTHON_IMAGE" sh -c \
             "pip install --quiet --root-user-action=ignore --require-hashes -r scripts/stats/oracle-requirements.txt \
             && python scripts/stats/reference-mt19937.py && python scripts/stats/reference-normal-mpmath.py"
           node scripts/stats/reference-normal-coefficients.ts
           git diff --exit-code -- test/stats/reference-r-normal.json test/stats/reference-numpy-mt19937.json \
-            test/stats/reference-mpmath-normal.json test/stats/reference-normal-coefficients.json
+            test/stats/reference-mpmath-normal.json test/stats/reference-normal-coefficients.json \
+            test/stats/reference-cluster-bootstrap.tsv
       # The score permutation test's tables, and its two oracles: coin, and an exact enumeration in
       # Python that was written from the formulas alone and checks itself first.
       - name: The score permutation reference values are what their oracles write
@@ -156,6 +158,30 @@ jobs:
                test/stats/reference-python-score-permutation.json"
           git diff --exit-code -- test/stats/reference-score-permutation-tables.json \
             test/stats/reference-coin-score-permutation.json test/stats/reference-python-score-permutation.json
+      # The score non-inferiority bounds on the same tables: an R implementation (with ratesci for
+      # S-A) and a Python implementation of S-B, both written from the formulas alone.
+      - name: The score bound reference values are what their oracles write
+        working-directory: packages/ichnaea
+        run: |
+          docker run --rm -v "$PWD":/w -w /w "$R_IMAGE" Rscript scripts/stats/reference-score-intervals.R \
+            test/stats/reference-score-permutation-tables.json test/stats/reference-r-score-intervals.json
+          docker run --rm -v "$PWD":/w -w /w "$PYTHON_IMAGE" sh -c \
+            "pip install --quiet --root-user-action=ignore --require-hashes -r scripts/stats/oracle-requirements.txt \
+            && python scripts/stats/score_intervals_oracle.py test/stats/reference-score-permutation-tables.json \
+               test/stats/reference-python-score-intervals.json"
+          git diff --exit-code -- test/stats/reference-r-score-intervals.json \
+            test/stats/reference-python-score-intervals.json
+      # Agreement between raters: irr and Gwet's irrCAC in R, and a base-R alpha written from Krippendorff's
+      # definition by a separate author.
+      - name: The agreement reference values are what their oracles write
+        working-directory: packages/ichnaea
+        run: |
+          node scripts/stats/agreement-fixtures.ts
+          docker run --rm -v "$PWD":/w -w /w "$R_IMAGE" Rscript scripts/stats/reference-agreement.R
+          docker run --rm --network none -v "$PWD":/w -w /w "$R_IMAGE" Rscript scripts/stats/reference-base-r-alpha.R \
+            test/stats/reference-alpha-units.tsv test/stats/reference-base-r-alpha.tsv
+          git diff --exit-code -- test/stats/reference-agreement-inputs.json test/stats/reference-r-agreement.json \
+            test/stats/reference-alpha-units.tsv test/stats/reference-base-r-alpha.tsv
 
   workflows:
     name: workflows

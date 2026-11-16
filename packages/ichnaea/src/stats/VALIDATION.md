@@ -29,7 +29,7 @@ true 0.936 and 0.937 fail and 0.9395 passes after confirmation; a grid mean of 0
 screened points at 0.9465 fail on the grid mean (3·SE of the mean, the SEs added in quadrature) and
 nine at 0.949 pass; exact type-I 0.0501 fails; a true 0.0527 fails and 0.0505 passes; confirmation
 uses the seed plus 100,000.
-`scripts/stats/mutants.ts` changes each threshold, the confirmation and the cap, 16 changes in all, and
+`scripts/stats/mutants.ts` changes each threshold, the confirmation and the cap: 16 mutants (those named `rule:`), and
 the unit suite detects each one.
 
 ## Reference values
@@ -93,7 +93,7 @@ neighbouring doubles wobble by up to 2.4 ε·|v|), and that `qnorm(pnorm(x)) = x
 median, where p keeps its full relative precision.
 
 `scripts/stats/mutants.ts` changes coefficients, every branch bound and cutoff, the tail bounds and the
-generator: 49 mutants of the statistics, and the tests detect every one. One change is not detectable: a change to the fifth-order
+generator: 22 mutants of `normal.ts`, `normal-coefficients.ts`, `mt19937.ts` and `rng.ts`, and the tests detect every one. One change is not detectable: a change to the fifth-order
 term of the subnormal expansion moves the result by at most 0.84 ε·|v|. That is below rounding.
 
 ## fixed-cases: what counts
@@ -122,7 +122,7 @@ primary measure, and at the latest for 1.0.
 
 The estimand is the mean of the per-case differences, every case with the same weight whatever its
 trial count (decision 0004). Mantel–Haenszel weights (n1·n2/(n1+n2)) give another estimand as soon as trial
-counts differ. `test/decision-values` pins a two-case example.
+counts differ. `test/stats/decision-values.test.ts` pins a two-case example.
 
 The interval is the stratified Miettinen–Nurminen score interval with the N/(N−1) factor and no
 skewness correction (decision 0004), chosen by a 252-point study at 10,000 repetitions
@@ -240,7 +240,7 @@ fixed-cases comparison of a suite means by "no change". **The validated domain i
 case for the regression result, under the conditions below (decision 0020).** This study is its
 evidence. Non-inferiority at one trial per case is not validated.
 
-`scripts/study-binary-one-trial.ts` computes the type-I error exactly. Cases are independent, so a
+`scripts/stats/study-binary-one-trial.ts` computes the type-I error exactly. Cases are independent, so a
 dynamic programme over (n, c) gives the distribution of the discordant counts, and the rejection
 region comes from the decision path itself: `compareCounts` gives the p-value of every (n, c), and
 the region c ≤ c\*(n) is checked to equal the exact McNemar test's for every n up to 300. A unit
@@ -302,7 +302,7 @@ its structure. Its sidecar records the commit, the script hashes, the seeds and 
     favouring one arm. This study has no shocks, so it sets no shock bound.
   - **Both arms of a case ran adjacent in time.** Every trial that ran records `startedAt` and
     `endedAt`; otherwise the result is not validated, because "the records do not show when the arms
-    ran". c is the largest number of trials whose [startedAt, endedAt] intervals overlap, computed
+    ran". c is the largest number of trials whose half-open [startedAt, endedAt) intervals overlap, computed
     from the records. The trials are ranked by `startedAt`, ties broken by trial ID, and a case whose
     two trials' ranks differ by more than 2c − 1 is unpaired. There is no fixed time window.
   - **Unpaired cases and missing trials.** A case without its pair, unpaired or with a missing
@@ -345,11 +345,13 @@ Two workflows run the studies with `pnpm --filter @hephaestus-build/ichnaea run 
 - The `Nightly` workflow (`.github/workflows/nightly.yml`), job `simulation`: every day at 02:17
   UTC and on demand, with `ICHNAEA_SIM_REPS=10000` and a limit of 120 minutes.
 
-`test:sim` runs six study files in parallel: `test/stats/coverage.sim.test.ts`,
+`test:sim` runs seven study files in parallel: `test/stats/coverage.sim.test.ts`,
 `test/stats/checks-coverage.sim.test.ts`, `test/stats/type-i-exact.sim.test.ts`,
-`test/stats/type-i-permutation-17.sim.test.ts`, `test/stats/type-i-permutation-60.sim.test.ts`, and
+`test/stats/type-i-permutation-17.sim.test.ts`, `test/stats/type-i-permutation-60.sim.test.ts`,
 `test/stats/score-permutation-work.sim.test.ts`, which times the score permutation test at its work
-limit and judges no grid. Candidates are confirmed in the same run.
+limit and judges no grid, and `test/stats/score-ni-equivalence.sim.test.ts`, which checks the score
+non-inferiority study's decision against the root-finder and judges no grid. Candidates are
+confirmed in the same run.
 
 The results at 6,000 repetitions, by the grid title that the CI log prints. Each study compares its
 result with its row here and fails if they differ, so a change to a grid or to its results changes
@@ -394,6 +396,106 @@ exactly (0.0525, see above) and requires the rule to fail it.
 
 Seeds 1–999 serve coverage points, 1000–1999 type-I points, 9000 and above the checks of the check;
 confirmations add 100,000.
+
+## Descriptive cluster percentile estimates
+
+`clusterBootstrap` resamples whole clusters and computes the mean of their observed rows in each
+draw. Unequal clusters keep their row weights. Null values stay missing, and their clusters remain
+in the resampling frame. A planned-attempt estimand supplies its defined binary outcome for every
+planned attempt instead of dropping unavailable quality evidence.
+
+The method is **estimate-only**, not a validated decision method. It never establishes
+non-inferiority or a population claim. Nominal coverage is not established at any cluster count. A constant
+resampling distribution is marked degenerate, with no coverage claim. Draws containing only missing
+values are omitted and counted explicitly.
+
+Native mode uses the package's seeded MT19937 generator. Replay mode consumes a recorded cluster
+schedule and checks its ordered cluster IDs, dimensions, indices, algorithm, and seed. It does not
+claim that a seed from another generator produces the same draws.
+
+`scripts/stats/reference-cluster-bootstrap.R` generates synthetic reference vectors with base R 4.5.2 in
+`rocker/r-ver:4.5.2@sha256:fd4ccdd3a4a6f7ef805e2daeee2a0fe3bf126bc231f36351223baecf5a595a4c`.
+The committed TSV includes every cluster draw. It covers binary outcomes, unequal cluster sizes,
+missing values, paired differences, and a degenerate distribution. The tests match R's observed mean
+and type-7 percentile bounds within an absolute tolerance of 1e-12. This numerical agreement does
+not validate coverage or a decision rule.
+
+Regenerate from `packages/ichnaea`, as CI does:
+
+```sh
+docker run --rm --network none -v "$PWD":/w -w /w \
+  rocker/r-ver:4.5.2@sha256:fd4ccdd3a4a6f7ef805e2daeee2a0fe3bf126bc231f36351223baecf5a595a4c \
+  Rscript scripts/stats/reference-cluster-bootstrap.R
+```
+
+## Agreement between raters
+
+`rawAgreement`, `cohenKappa`, `gwetAc1` and `krippendorffAlpha` (nominal, ordinal and interval
+metrics) are point estimates. They decide nothing on their own.
+
+**What is validated, and what is not.**
+
+- Validated: the point estimates, against the oracles below.
+- Not validated: any interval for these statistics. A caller can resample whole cases (the items of
+  one case are not independent), but no coverage study backs such an interval, and a percentile
+  interval for kappa can undercover at small n and near the boundaries. An interval from it is
+  estimate only, with coverage not studied.
+- Not implemented: weighted kappa, and kappa or AC1 for more than two raters.
+
+**NaN replicates.** Kappa is NaN when both raters put every item in one category. Alpha is NaN when
+no two values can be paired or no paired value differs. A case resample can hit either. A caller
+that resamples counts the NaN replicates and reports their share. It never sorts them into a
+percentile and never drops them silently. AC1 is never NaN: its chance term is at most 1/q.
+
+Two definitions to know:
+
+- **AC1 counts the declared categories.** Its chance term divides by q − 1, where q is the size of
+  the table, so a category that nobody chose still counts. Kappa does not depend on unused
+  categories.
+- **Only paired items count.** `confusionTable` leaves out an item that either rater did not label.
+  Gwet's general formula for raw ratings also estimates category shares from unpaired ratings; this
+  implementation does not, so it compares a judge and raters on exactly the same items.
+
+**Alpha's cost.** It keeps a v × v coincidence matrix for v distinct values. It is meant for rating
+scales with a few levels. With thousands of distinct values (continuous scores), use another
+statistic.
+
+The reference values come from test-only oracles in the R image that CI pins. The inputs are
+synthetic (`scripts/stats/agreement-fixtures.ts` writes them).
+
+| Set                                                                                                                                               | Oracle                                                                                                                                                                                                        | Size          | Tolerance                                                            |
+| ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | -------------------------------------------------------------------- |
+| Raw agreement, kappa and AC1 from tables of 2–7 categories, including the prevalence pair with equal raw agreement and a declared unused category | R irrCAC (`kappa2.table`, `gwet.ac1.table`); kappa also from irr (`kappa2`)                                                                                                                                   | 35 tables     | 1e-12                                                                |
+| Confusion tables from labels with missing values, and their kappa                                                                                 | R `table` and irr `kappa2`                                                                                                                                                                                    | 5 label pairs | exact, and 1e-12                                                     |
+| Krippendorff's alpha, three metrics, 2–5 raters, missing values, including unequally spaced non-integer values                                    | R irr (`kripp.alpha`), a base-R implementation written from Krippendorff's definition by a separate author, and Krippendorff's published example; nominal and interval also from irrCAC (`krippen.alpha.raw`) | 12 matrices   | 1e-12 (irr, base R); 6e-6 (irrCAC, which rounds alpha to 5 decimals) |
+| Krippendorff's published example (12 units, 4 raters): 0.743, 0.815, 0.849                                                                        | Krippendorff (2011)                                                                                                                                                                                           | 1             | 3 decimals                                                           |
+
+The ordinal alpha, the decision statistic for rating levels, uses Krippendorff's frequency-based
+distance. Its oracles are irr (`kripp.alpha`, method "ordinal"), the base-R implementation and the
+published example. irrCAC's ordinal weights are rank-based, not Krippendorff's metric, so irrCAC is
+never an oracle for ordinal alpha; it stays the oracle for AC1.
+
+`scripts/stats/reference-base-r-alpha.R` uses no package. Its author wrote it from Krippendorff's
+definition without seeing the TypeScript implementation, so it is an independent second source. It
+reads the matrices as one row per cell (`test/stats/reference-alpha-units.tsv`, written by the
+fixture script) and needs no network. The Python package `krippendorff` agreed with these values
+too, but it is GPL-licensed, which is outside the repository's licence allowlist, so it is not a
+committed oracle.
+
+Regenerate from `packages/ichnaea`, as CI does:
+
+```sh
+node scripts/stats/agreement-fixtures.ts
+docker run --rm -v "$PWD":/w -w /w \
+  rocker/r-ver:4.5.2@sha256:fd4ccdd3a4a6f7ef805e2daeee2a0fe3bf126bc231f36351223baecf5a595a4c \
+  Rscript scripts/stats/reference-agreement.R
+docker run --rm --network none -v "$PWD":/w -w /w \
+  rocker/r-ver:4.5.2@sha256:fd4ccdd3a4a6f7ef805e2daeee2a0fe3bf126bc231f36351223baecf5a595a4c \
+  Rscript scripts/stats/reference-base-r-alpha.R test/stats/reference-alpha-units.tsv test/stats/reference-base-r-alpha.tsv
+```
+
+`reference-agreement.R` installs irr, irrCAC and jsonlite from a dated CRAN snapshot, so it needs the
+network. The base-R script does not.
 
 ## Floors and the minimum detectable effect
 
@@ -463,10 +565,10 @@ and the same table always takes the same path. The limit counts work, not the si
 limit of 5·10⁷ on the support times the number of cases let 146 cases of 3-decimal scores with 3
 trials run for over a minute.
 
-`scripts/benchmark-score-permutation.ts` times the exact path against W on tables like real suites
+`scripts/stats/benchmark-score-permutation.ts` times the exact path against W on tables like real suites
 (1–5 ratings, proportions of 20 items, 2- and 3-decimal scores, 1 to 9 trials, 12 to 300 cases).
 The time per unit of W is about 4–40 ns on an Apple M3 Max under heavy load from other jobs. The
-`simulation` CI job (`test/score-permutation-work.sim.test.ts`) takes, for five shapes, the
+`simulation` CI job (`test/stats/score-permutation-work.sim.test.ts`) takes, for five shapes, the
 largest table whose W is within the limit, runs it exactly on the CI runner, prints its time and
 fails above 3 seconds. The limit aims at about 1 second there. On the CI runner (`ubuntu-latest`,
 image 20261103.629, Node 24) the largest exact tables took:
@@ -483,7 +585,7 @@ The slowest is 0.36 s, so the limit stays at 5·10⁷.
 
 ### Reference values
 
-`test/reference-score-permutation-tables.json` holds 248 tables (`scripts/score-permutation-tables.ts`,
+`test/stats/reference-score-permutation-tables.json` holds 248 tables (`scripts/stats/score-permutation-tables.ts`,
 seed 20261116):
 
 - 1–5 ratings with k from 1 to 146 and 1 to 3 trials, mixed counts, arm-unequal and one-trial
@@ -516,51 +618,105 @@ off a multiple of 1/1,000 is off the lattice; values whose products with D fall 
 integer (0.57, 0.58 and 0.29 at D = 100) round to it; a case with 100,000 labellings enumerates and
 one with 100,001 does not; the largest table within the work limit enumerates and the next runs
 Monte Carlo; the rerun seed at the wrap; and that the reported p is the rerun's, equal to a fresh
-run at the rerun's seed. `scripts/mutants.ts` changes the test in 19 ways (ties, weights, tails, the
+run at the rerun's seed. `scripts/stats/mutants.ts` changes the test in 19 ways, mutants S1 to S19 (ties, weights, tails, the
 +1, sampling with replacement, the range check, the case count, the recomputation near a level, the
 enumeration cap, the lattice size, tolerance and rounding, the work limit, the rerun seed and the p
 it reports), and the unit suite detects every one.
 
 ### The type-I study (fixed before it runs; it has not run)
 
-The study judges the test on the two-stage rule above, at one-sided α = 0.05, at a true difference
-of 0. Inside the simulation the test runs Monte Carlo with 99 resamples: (B + 1)·α is a whole
-number, so it keeps its level. Seeds are MT19937: 2,000,000 + 1,000·g + c for generator g and cell
-c when screening, and 3,000,000 + 1,000·g + c when confirming. Every output records its commit,
-script sha256, seeds, arguments, Node version and runner.
+The study judges the test at a true difference of 0, at one-sided α = 0.05 and at the Holm levels
+α/m for m = 2, 3 and 4 (0.025, 0.05/3 and 0.0125). A REGRESSION verdict compares Holm-adjusted
+p-values across the primary measures, so the test must keep each level. Every point records its
+rejections at the four levels from the same repetitions, and the rule below applies at each.
 
+- **Inside the simulation** the test runs Monte Carlo with 239 resamples. (1 + B)·level is then a
+  whole number at every level (12, 6, 4 and 3), so the test's size under exchangeability is exactly
+  the level. With 99 resamples it would be 0.02, 0.01 and 0.01 at the three Holm levels, and a
+  check at those levels would let the test exceed them by 20–40% unseen. The comparison with a
+  level allows a relative 1e-9, because p = (1 + count)/240 lands on the levels exactly.
+- **The rule, at each level:** a point screens at 6,000 repetitions. It is confirmed if its
+  estimate is above level − 2·SE at any level, with SE = √(p̂(1 − p̂)/n) from the estimate itself.
+  A confirmation draws from the point's confirmation seed in batches until the SE is at most 0.0005
+  at every level, and runs at least 190,000 repetitions, so an estimate of 0 cannot stop it. A
+  confirmed point fails if its estimate − 3·SE is above the level at any level.
+- **Exact computation is not used.** The rejection rate of the 239-resample test needs every joint
+  outcome of a cell enumerated, and the smallest grid cells are already too large (a bimodal judge
+  at k = 5 with 2 trials has 81⁵ ≈ 3.5·10⁹ outcomes), so every point is simulated.
+- **Seeds**, MT19937, each point with its own generator. Uniqueness holds within this study, and
+  the harness asserts the bounds below. Seeds may repeat across studies: each study's claim stands
+  on its own, and two older studies use seeds inside the 2,000,000, 10,000,000 and 20,000,000
+  ranges.
+  - Generator g (not G2), cell c < 1,000: screen 2,000,000 + 1,000·g + c, confirmation
+    3,000,000 + 1,000·g + c, re-check 4,000,000 + 1,000·g + c.
+  - G2 cell c′ < 1,000, structure s < 1,000: screen 10,000,000 + 1,000·c′ + s, confirmation
+    20,000,000 + …, re-check 25,000,000 + …. The cell's random structures and its perturbations
+    come from the stream 2,002,000 + c′, which c′ < 1,000 keeps below generator 3's seeds.
+  - Every output records its commit, script sha256, seeds, arguments, runtime and runner.
 - **Generators**, each at a true difference of 0:
   - per-case beta scores, Beta(μν, (1 − μ)ν) with μ from {0.05, 0.2, 0.5, 0.8, 0.95} and ν ∈
     {2, 10, 50};
   - heterogeneous per-case effects with mean 0, in two families: most cases near the top (μ = 0.95)
     drop slightly and 1–3 noisy cases rise to offset them; and its mirror, most cases near the floor
     (μ = 0.05) rise slightly and the noisy cases carry the drop, so the long tail of the per-case
-    differences lies on the side the test looks at. 500 random structures per cell, with
-    refinement around the worst 5, and symmetric ±d with d ∈ {0.05, 0.1, 0.2}. Structure s of G2
-    cell c′ uses seed 10,000,000 + 1,000·c′ + s (confirmation 20,000,000 + …), and every cell
-    asserts s < 1,000;
+    differences lies on the side the test looks at. ν ∈ {2, 10}, and 500 random structures per
+    cell. Then hill-climbing from the worst 5: each chain tries 4 rounds of 5 perturbations (scale
+    the stable effects by 0.7–1.3, move the noisy base by up to ±0.1) and moves to one that is
+    worse, the largest estimate/level over the levels. That is 100 refinement structures per cell,
+    s = 500–599, where step t of chain h is s = 500 + 20·h + t whether or not its perturbation
+    stays inside [0.01, 0.99]. Every structure's true mean difference is 0 to 1e-12.
+  - **The space the random structures search:** 1–3 noisy cases offset the drops of all the stable
+    cases, and the noisy case's means must stay inside [0.01, 0.99]. At large k this keeps the
+    stable drops small: at k = 300 with one trial most structures have 3 noisy cases and drops of at
+    most about 0.02; at k = 146 with 2 trials the floor family's drops reach about 0.04. Larger
+    drops at large k need more noisy cases, which the generator does not draw.
+  - symmetric ±d with d ∈ {0.05, 0.1, 0.2}: bases 0.2, 0.5 and 0.8 in turn, half the cases rise by
+    d and half drop. At d = 0.2 some means are exactly 0 or 1, and those arms are point masses, not
+    beta draws; the mean difference is still 0;
   - unequal variances in the two arms at the same mean (ν 2 against 50, either way);
   - run-level shocks per replicate and arm, with SD 0, 0.01, 0.02, 0.05 and 0.10, shared across
-    arms (interleaved) or not; with one trial per case only shared shocks, because a separate shock
-    cannot be told apart from an effect;
+    arms (interleaved) or not. With one trial per case, shared shocks count and separate shocks are
+    reported, because a separate shock cannot be told apart from an effect;
   - proportions from a beta-binomial with 3, 5, 10 or 20 items and intra-output correlation 0, 0.2
     or 0.5;
   - a bimodal judge: 0 or 1, and 0.5 with probability 0.1 or 0.3;
   - 1–5 ratings from a latent normal with even or skewed thresholds.
 - **Grid:** k ∈ {5, 8, 10, 12, 17, 20, 30, 60, 146} with 2 or 3 trials per case and arm, equal or
   mixed across cases, up to 10% of cells with one trial; and one trial per case and arm at
-  k ∈ {12, 17, 30, 60, 100, 146, 300}. Arm-unequal cells (3 against 2) run and are reported, outside
-  the domain.
+  k ∈ {12, 17, 20, 30, 60, 100, 146, 200, 300}. Arm-unequal cells (3 against 2) run and are
+  reported, outside the domain. G2 has 307 cells: 4 random-structure settings and 3 symmetric ones
+  on each of the 43 shapes, and 6 reported cells below the grid.
 - **Reported, outside the grid:** the top family with one trial per case at k = 5, 8 and 10. A
   prototype found the sign flip above the bar there: 0.0575 ± 0.0016 at k = 5 and 0.0585 ± 0.0017
   at k = 8, the case-level form of the sign flip's known failure with few clusters. These points
   never set the domain.
-- **Re-check with the shipped test:** every point that is confirmed or fails, and the 10 worst of
-  each generator, run again with the shipped test (exact, or 10,000 resamples with the rerun) at
-  20,000 repetitions, a standard error of about 0.0015 at 0.05. A point fails if its estimate −
-  3·SE is above 0.05. Over all re-checked points, the mean of (shipped − study) must lie within 3
-  pooled standard errors of 0. The validity claim rests on the study's own points at SE ≤ 0.0005;
-  the re-check shows that the shipped path behaves as the study's.
+- **Holm across correlated primaries, reported:** six cells with four primary measures on the same
+  cases and no change, each through the shipped test, Holm across the four, at 20,000
+  repetitions. Three take G2 structures (one noisy case pair, d = 0.05): per trial a shared
+  x ~ Beta(mean, ν), and each measure a beta of mean x and its own precision (2, 5, 10 or 50).
+  Three take G5 proportions: per trial a shared rate from the beta of ICC ρ, and each measure its
+  own binomial items at that rate. They report the familywise rate and each measure's rate. They
+  are evidence only: Holm holds under any dependence when each test holds at its level, which the
+  four-level rule checks.
+- **Re-check with the shipped test:** every point that is confirmed or fails, whatever its role,
+  the 10 worst type-I points of each generator, and, apart, the 10 worst reported points of each
+  generator, ranked by the largest estimate/level. Each runs at 20,000 repetitions from its
+  re-check seed: every repetition draws one data set and runs both the shipped test (exact, or
+  10,000 resamples with the rerun near each level) and the study's 239-resample test on it.
+  - A point fails if the shipped test's estimate − 3·SE is above a level, at any level; the SE is
+    about 0.0015 at 0.05.
+  - **The pooled check**, per level, over the re-checked type-I points: the mean of (shipped −
+    study) must not exceed 3 pooled standard errors. The standard error comes from the paired
+    differences: per point (n₁₀ + n₀₁ − (n₁₀ − n₀₁)²/n)/n², with n₁₀ the repetitions where only the
+    shipped test rejects and n₀₁ those where only the study's does, pooled as √Σ/N. The estimates
+    are fresh, never the screening estimates that selected the worst points. The check is
+    one-sided: the claim is about the shipped test, and on a lattice the shipped exact test and the
+    study's Monte Carlo test differ by design, so a negative mean (the shipped test more
+    conservative) is reported, not failed. Points where the shipped test took the exact path in
+    every repetition, in none, and in some are pooled apart, and each pool is reported.
+  - The re-checks of reported points are reported, outside the pooled check.
+  - The validity claim rests on the study's own points at SE ≤ 0.0005; the re-check shows that the
+    shipped path behaves as the study's.
 - **What decides:**
   - The validated domain will need equal completed counts in the two arms of every case. A
     variant fills missing trials as the sensitivity analysis does against a drop (a missing
@@ -578,3 +734,56 @@ script sha256, seeds, arguments, Node version and runner.
   family; and, with one trial per case, the paired t-test at k = 5 under the top family. A
   permutation across cases is reported, not used as a must-fail: pooling adds the spread between
   cases, so it is conservative (0.000–0.016 in a prototype) and cannot fail.
+- **The collector** (`scripts/stats/collect-score-type-i.ts`) applies the rule again to every count:
+  a stage or a fail flag that the counts do not give, a confirmation that stopped early, a
+  must-fail that does not fail, or a failing pool fails the study. It derives the re-check list
+  again from the screen and refuses a list or a shard that differs. A smoke run never passes. The
+  summary prints the thresholds in effect.
+
+## Score measures: non-inferiority
+
+Three candidate bounds for the one-sided 95% lower bound of the equal-weight mean of per-case
+differences, for values in [0, 1] (`src/stats/score-interval.ts`, internal: nothing decides with them,
+and the package does not export them). **None is validated. Stage 1 of their study, which chooses
+one, has not run.** Score, proportion and ordinal measures stay estimate-only for non-inferiority.
+
+- **S-A:** the shipped stratified Miettinen–Nurminen score interval (equal case weights, the N/(N−1)
+  factor, no skewness correction), with the sum of each cell's values as fractional successes.
+- **S-B:** S-A with its variance multiplied by φ = max(φ̂, φ_min), where the pooled dispersion
+  φ̂ = Σ SS / Σ [(n − 1)·ȳ(1 − ȳ) + SS/n] runs over every cell of both arms. The bracket is n − 1
+  times an unbiased estimate of μ(1 − μ), so φ̂ estimates Var(Y)/(μ(1 − μ)). It is exactly 1 for 0/1
+  values, so S-B is S-A on binary data, and at most 1 for any values in [0, 1]. The simpler
+  Σ SS / Σ n·ȳ(1 − ȳ) estimates (n − 1)φ/(n − φ), about half of φ at two values per cell; it runs in
+  the study only as a reported variant. φ only scales the variance, so the bound at φ is the root
+  of Z₁ at the target z·√φ, and at φ = 0 it is the estimate.
+- **S-C:** a stratified t bound with one pooled within-cell variance and df = Σ (n − 1);
+  unavailable without residual degrees of freedom.
+
+**Reference values.** On the 248 tables of the regression test, S-A, S-B at every φ_min, S-C, φ̂ and
+the estimate match an R implementation and S-B a Python implementation, both written from a
+formula-only specification without the TypeScript (`scripts/stats/reference-score-intervals.R`,
+`scripts/stats/score_intervals_oracle.py`). S-A also matches ratesci's stratified score interval with
+fractional counts. Largest differences: 2.1e-13 (R), 6.7e-14 (Python), 2.6e-11 (ratesci, which
+rounds its output to 12 decimals); the bars are 1e-10 and 1e-9.
+
+**The root-finder's path is shared.** The binary intervals' root-finder (`lowerRoot`, `src/stats/solve.ts`)
+and the study's decision "the bound is at most θ" (`lowerRootAtMost`) share one scan and one
+bisection. The decision follows the root-finder's own path and stops once the answer is certain, so
+it equals `lowerRoot(...) ≤ θ` for every function. On the machine that runs the tests, every
+binary bound on the reference inputs (2,088) is computed with the current root-finder and with a
+verbatim copy of the one before the change (`test/stats/support/solve-before-refactor.ts`, whose body
+a sha256 pins to the old file), and all agree bit for bit. V8's Math is not bit-identical across
+platforms: the same Node version on linux x64 and macOS arm64 moved 2 of the 2,088 bounds in their
+last bits. So the stored bounds (`test/stats/reference-solver-snapshot.json`) record the runtime
+that wrote them, Node version, platform and CPU architecture, and are compared bit for bit on that
+runtime and within 1e-9 on any other. Bit reproducibility holds for one runtime; a study's shards
+all run on one, record it, and the collectors refuse outputs from different runtimes.
+
+**A known property of the score statistic, binary or not:** Z(δ) need not be monotone. A case whose
+two arms are both all 1 (or all 0) adds no variance at δ = 0 and some next to it, so Z can rise near
+δ = 0; a prototype found such bumps within δ ∈ [−0.08, 0.04] on synthetic tables built at those
+boundaries, and none on tables drawn from the study's generators. The root-finder takes the first
+crossing from −1, so the shipped bound is well defined, and the binary claim covers that bound. The
+study's decision follows the same path, so it needs no monotonicity; its equivalence test
+(`test/stats/score-ni-equivalence.sim.test.ts`) counts the non-monotone tables per kind and compares
+every setting with a full `lowerRoot` on 10,000 tables.

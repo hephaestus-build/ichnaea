@@ -32,8 +32,10 @@ describe("the statistics study workflow", () => {
   });
 
   it("never cancels a running study, and sets no study override", () => {
-    expect(workflow).toContain("group: stats-study-${{ inputs.study }}");
-    expect(workflow).toContain("cancel-in-progress: false");
+    // Every heavy run shares one group: a new one queues behind the running one, never cancels it.
+    expect(workflow).toMatch(
+      /\nconcurrency:\n {2}group: heavy-runners\n {2}cancel-in-progress: false\n/,
+    );
     // Any ICHNAEA_* setting makes a run a smoke run, which the collectors refuse without --smoke.
     expect(workflow).not.toContain("ICHNAEA_");
   });
