@@ -8,7 +8,11 @@ const tarball = Buffer.from("a tarball");
 const hex = createHash("sha512").update(tarball).digest("hex");
 const integrity = `sha512-${createHash("sha512").update(tarball).digest("base64")}`;
 
-const statement = (overrides: { ref?: string; path?: string; digest?: string } = {}) => ({
+const commit = "0123456789abcdef0123456789abcdef01234567";
+
+const statement = (
+  overrides: { ref?: string; path?: string; digest?: string; gitCommit?: string } = {},
+) => ({
   _type: "https://in-toto.io/Statement/v1",
   subject: [
     { name: "pkg:npm/%40tumaet/ichnaea@0.2.0", digest: { sha512: overrides.digest ?? hex } },
@@ -23,6 +27,12 @@ const statement = (overrides: { ref?: string; path?: string; digest?: string } =
           path: overrides.path ?? ".github/workflows/release.yml",
         },
       },
+      resolvedDependencies: [
+        {
+          uri: `git+https://github.com/hephaestus-build/ichnaea@${overrides.ref ?? "refs/tags/v0.2.0"}`,
+          digest: { gitCommit: overrides.gitCommit ?? commit },
+        },
+      ],
     },
     runDetails: { builder: { id: "https://github.com/actions/runner/github-hosted" } },
   },
@@ -52,7 +62,7 @@ const audit = (provenance: unknown = statement()) => ({
   ],
 });
 
-const expected = { tag: "v0.2.0", sha512: hex };
+const expected = { tag: "v0.2.0", sha512: hex, commit };
 
 describe("the provenance of a published version", () => {
   it("names this repository's release workflow, the tag and the tarball's SHA-512", () => {
@@ -67,11 +77,24 @@ describe("the provenance of a published version", () => {
         ".github/workflows/x.yml at refs/tags/v0.2.0, not https://github.com/hephaestus-build/ichnaea " +
         ".github/workflows/release.yml at refs/tags/v0.2.0",
     ]);
-    expect(provenanceProblems(audit(statement({ ref: "refs/heads/main" })), expected)).toHaveLength(
-      1,
+    const branch = provenanceProblems(audit(statement({ ref: "refs/heads/main" })), expected);
+    expect(branch).toHaveLength(2);
+    expect(branch[1]).toBe(
+      `the provenance names the source none, not ${commit}, the commit of v0.2.0`,
     );
     expect(provenanceProblems(audit(statement({ digest: "00" })), expected)).toEqual([
       "the provenance's subject is not pkg:npm/%40tumaet/ichnaea@0.2.0 with the staged SHA-512",
+    ]);
+  });
+
+  it("fails a provenance of another commit than the tag's", () => {
+    expect(provenanceProblems(audit(statement({ gitCommit: "f".repeat(40) })), expected)).toEqual([
+      `the provenance names the source ${"f".repeat(40)}, not ${commit}, the commit of v0.2.0`,
+    ]);
+    const none = statement();
+    none.predicate.buildDefinition.resolvedDependencies = [];
+    expect(provenanceProblems(audit(none), expected)).toEqual([
+      `the provenance names the source none, not ${commit}, the commit of v0.2.0`,
     ]);
   });
 

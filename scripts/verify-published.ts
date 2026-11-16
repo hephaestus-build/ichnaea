@@ -3,14 +3,18 @@
 // - a new npm project installs the version with zod, and `npm audit signatures` finds every
 //   registry signature valid and the provenance of the version;
 // - that provenance names this repository's `.github/workflows/release.yml` at the release tag,
-//   on a GitHub-hosted runner, for the staged tarball;
+//   on a GitHub-hosted runner, for the staged tarball, built from the tag's commit;
+// - the tag's commit is reachable from main;
 // - the installed bin prints the version.
 // Usage: node scripts/verify-published.ts <tag> <staged integrity, sha512-…>
+// Run it from a checkout of main with every tag and the history (`fetch-depth: 0`), never from the
+// tag: the finish workflow runs no code of the version that it checks.
 import { execFileSync, spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+import { notOnMain } from "./check-on-main.ts";
 import { tagProblem } from "./check-release-tag.ts";
 import { PACKAGE_NAME, workspaceZod } from "./readme-example.ts";
 
@@ -44,7 +48,7 @@ const named = (p: unknown): string => `${String(at(p, "name"))}@${String(at(p, "
  */
 export function provenanceProblems(
   audit: unknown,
-  expected: { readonly tag: string; readonly sha512: string },
+  expected: { readonly tag: string; readonly sha512: string; readonly commit: string },
 ): string[] {
   const version = expected.tag.slice(1);
   const problems: string[] = [];
@@ -84,6 +88,17 @@ export function provenanceProblems(
   const want = `${REPOSITORY} ${WORKFLOW} at refs/tags/${expected.tag}`;
   const have = `${String(at(workflow, "repository"))} ${String(at(workflow, "path"))} at ${String(at(workflow, "ref"))}`;
   if (have !== want) problems.push(`the provenance names the workflow ${have}, not ${want}`);
+  // The source that the workflow checked out: the tag's ref and the commit that it named.
+  const dependencies = at(statement, "predicate", "buildDefinition", "resolvedDependencies");
+  const source = (Array.isArray(dependencies) ? dependencies : []).find(
+    (d) => at(d, "uri") === `git+${REPOSITORY}@refs/tags/${expected.tag}`,
+  );
+  const gitCommit = at(source, "digest", "gitCommit");
+  if (gitCommit !== expected.commit)
+    problems.push(
+      `the provenance names the source ${typeof gitCommit === "string" ? gitCommit : "none"}, ` +
+        `not ${expected.commit}, the commit of ${expected.tag}`,
+    );
   const builder = at(statement, "predicate", "runDetails", "builder", "id");
   if (builder !== HOSTED)
     problems.push(`the provenance names the builder ${String(builder)}, not ${HOSTED}`);
@@ -96,6 +111,12 @@ if (import.meta.main) {
   if (why) throw new Error(why);
   const version = tag.slice(1);
   const spec = `${PACKAGE_NAME}@${version}`;
+  const commit = execFileSync("git", ["rev-parse", `refs/tags/${tag}^{commit}`], {
+    encoding: "utf8",
+  }).trim();
+  const off = notOnMain(`refs/tags/${tag}`, commit);
+  if (off) throw new Error(off);
+  console.log(`published: ${tag} names ${commit}, which is reachable from main`);
   const registry = execFileSync("npm", ["view", spec, "dist.integrity"], { encoding: "utf8" });
   if (registry.trim() !== staged)
     throw new Error(
@@ -117,6 +138,7 @@ if (import.meta.main) {
     const problems = provenanceProblems(JSON.parse(audit.stdout) as unknown, {
       tag,
       sha512: sha512Hex(staged),
+      commit,
     });
     if (audit.status !== 0 && problems.length === 0)
       problems.push(`npm audit signatures exited with ${audit.status}: ${audit.stderr.trim()}`);
