@@ -40,6 +40,18 @@ Each verdict comes with its reason in words.
 The exit code tells a CI job what to do: 0 to continue, 1 when the policy blocks, 2 for an error.
 A trial that did not complete (an infrastructure failure, or output that was not captured) stays visible as missing. Ichnaea never counts it as a failure of your system.
 
+## Why not a fixed threshold
+
+A common gate blocks a change when the score falls by 3 points.
+Models answer differently from run to run, so that gate fires even when nothing changed.
+
+Take a suite of 12 cases with 3 trials each, where most cases always pass. Compare the system with itself 200 times:
+
+- the fixed 3-point gate blocks 42 of the 200 runs
+- Ichnaea reports REGRESSION in 2 of the 200 runs
+
+Every one of those alarms is false. Try your own suite in the [planning explorer](/ichnaea/planner/).
+
 ## What it is not
 
 - It does not host anything. Ichnaea is a TypeScript library and a command line tool.

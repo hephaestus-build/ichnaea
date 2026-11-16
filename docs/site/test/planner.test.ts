@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -30,6 +33,17 @@ describe("planning explorer model", () => {
     const se = Math.sqrt((0.05 * 0.95) / runs.runs);
     expect(runs.regressionAlarms / runs.runs).toBeLessThanOrEqual(0.05 + 3 * se);
     expect(runs.thresholdAlarms).toBeGreaterThan(runs.regressionAlarms);
+  });
+
+  // The landing page quotes the explorer's default design. This keeps the quote true.
+  it("gives the landing page's numbers for the explorer's default design", () => {
+    const runs = simulateNoChange(support, 200, 1);
+    const landing = readFileSync(
+      join(import.meta.dirname, "..", "src", "content", "docs", "index.mdx"),
+      "utf8",
+    );
+    expect(landing).toContain(`blocks ${runs.thresholdAlarms} of the 200 runs`);
+    expect(landing).toContain(`REGRESSION in ${runs.regressionAlarms} of the 200 runs`);
   });
 
   it("repeats its numbers for the same seed", () => {
