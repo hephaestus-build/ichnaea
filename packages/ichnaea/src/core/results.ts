@@ -195,7 +195,9 @@ function remove(root: unknown, path: readonly PropertyKey[]): void {
  * with no failure and no `output` is a capture failure (`not-captured`): it counts as missing,
  * never as a failure of the system. That includes a result with only a `pointer`, because a scorer
  * reads the output itself: resolve pointers to outputs before import. A result whose observed configuration is not
- * the arm's is an invalid configuration with the reason, and gives no value.
+ * the arm's is an invalid configuration with the reason, and gives no value. A result that made more
+ * calls than the suite's `budget.callsPerTrial` is over budget (`budget_exceeded`): a failed trial,
+ * and the run is INVALID.
  *
  * Results are read tolerantly: members no record defines are ignored and reported as unused. A
  * value this version does not know (a later failure class), a result of a trial the plan does not
@@ -220,6 +222,7 @@ export function importResults(
   const mismatched: string[] = [];
   const trials: Trial[] = [];
   const accepted: Accepted[] = [];
+  const overCalls: string[] = [];
   let index = 0;
   for (const input of results) {
     index++;
@@ -298,22 +301,33 @@ export function importResults(
     const protocol = failure?.class === "protocol";
     const problem = protocol ? undefined : observedProblem(result.observed, arm.configuration);
     if (problem !== undefined) mismatched.push(`'${id.id}': ${problem}`);
+    // The per-trial call bound holds whatever the trial's outcome: a trial over it is over budget.
+    const bound = plan.suite.budget.callsPerTrial;
+    const overBound =
+      !protocol && problem === undefined && result.calls > bound
+        ? `the trial made ${result.calls} calls, over the bound of ${bound} per trial`
+        : undefined;
+    if (overBound !== undefined) overCalls.push(id.id);
     const outcome: Outcome = protocol
       ? "protocol_failure"
       : problem !== undefined
         ? "invalid_configuration"
-        : failure === undefined
-          ? "completed"
-          : (OUTCOME_OF[failure.class] ?? "infrastructure_failure");
+        : overBound !== undefined
+          ? "budget_exceeded"
+          : failure === undefined
+            ? "completed"
+            : (OUTCOME_OF[failure.class] ?? "infrastructure_failure");
     const error =
       problem !== undefined
         ? { kind: "configuration-mismatch", message: problem }
-        : failure === undefined
-          ? undefined
-          : {
-              kind: failure.kind,
-              ...(failure.message === undefined ? {} : { message: failure.message }),
-            };
+        : overBound !== undefined
+          ? { kind: "over-call-bound", message: overBound }
+          : failure === undefined
+            ? undefined
+            : {
+                kind: failure.kind,
+                ...(failure.message === undefined ? {} : { message: failure.message }),
+              };
     const trial = Trial.parse({
       schema: "ichnaea.trial/1",
       id: id.id,
@@ -398,6 +412,10 @@ export function importResults(
   if (mismatched.length > 0)
     warnings.push(
       `${mismatched.length} result(s) ran another configuration than their arm, so they give no value; for example ${mismatched[0]}`,
+    );
+  if (overCalls.length > 0)
+    warnings.push(
+      `${overCalls.length} result(s) made more calls than the bound of ${plan.suite.budget.callsPerTrial} per trial, for example '${overCalls[0]}'; they count as over budget, so the run is INVALID`,
     );
   const protocolFailures = trials.filter((t) => t.outcome === "protocol_failure");
   if (protocolFailures.length > 0)

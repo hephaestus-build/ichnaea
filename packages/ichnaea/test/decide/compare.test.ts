@@ -108,6 +108,16 @@ describe("compare", () => {
     expect(decision.missingness.byArm.find((a) => a.arm === candidateArm)?.missing).toBe(12);
   });
 
+  it("is INVALID when a trial made more calls than the bound", () => {
+    const all = rows(() => true);
+    all[0] = {
+      result: answer(plan.record.trials[0]!, { text: "a", declined: true }, { calls: 5 }),
+    };
+    const decision = compare(plan, importResults(plan, all).records, { decidedAt });
+    expect(decision.verdict).toBe("INVALID");
+    expect(decision.invalidReasons).toContain("the run exhausted its budget");
+  });
+
   it("is INVALID when the records belong to another plan", () => {
     const other = createPlan(SUITE, {
       run: "run-2",

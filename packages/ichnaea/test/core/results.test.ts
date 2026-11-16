@@ -354,6 +354,25 @@ describe("importResults", () => {
     });
   });
 
+  it("records a trial over the per-trial call bound as over budget, with no passing value", () => {
+    const over = answer(first, OK, { calls: SUITE.budget.callsPerTrial + 1 });
+    const { records, summary } = importResults(plan, replace(0, { result: over }));
+    expect(records.trials[0]).toMatchObject({
+      outcome: "budget_exceeded",
+      usage: { calls: 2 },
+      error: {
+        kind: "over-call-bound",
+        message: "the trial made 2 calls, over the bound of 1 per trial",
+      },
+    });
+    expect(
+      records.values.filter((v) => v.trial === FIRST && v.applicable).map((v) => v.value),
+    ).toEqual([{ type: "binary", pass: false }]);
+    expect(summary.warnings).toContain(
+      `1 result(s) made more calls than the bound of 1 per trial, for example '${FIRST}'; they count as over budget, so the run is INVALID`,
+    );
+  });
+
   it("records a planned trial without a result as not run", () => {
     const { records, summary } = importResults(plan, results().slice(1));
     expect(records.run.ledger[0]).toEqual({
