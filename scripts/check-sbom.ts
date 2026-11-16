@@ -5,10 +5,9 @@
 // committer date and its serial number derives from the source commit, it lists every peer
 // dependency, its lists are sorted, and it holds no path on the build machine.
 //
-// The release SBOM (the paused design of decision 0013): its top-level component is the release
-// project in the release's npm scope, every tarball is a component at its version with its
-// SHA-512 and its download URL for the tag, and every runtime and peer dependency of every tarball
-// is listed.
+// The release SBOM (decision 0021): its top-level component is the release project in the
+// release's npm scope, every tarball is a component at its version with its SHA-512 and its
+// download URL for the tag, and every runtime and peer dependency of every tarball is listed.
 // Usage: node scripts/check-sbom.ts --build <build tree>
 //        node scripts/check-sbom.ts <sbom.cdx.json> <directory with .tgz files> [<tag>]
 // Without a tag, the download URLs must name the placeholder tag of release-sbom.ts.

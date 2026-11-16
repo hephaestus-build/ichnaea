@@ -6,8 +6,8 @@
 // timestamp is the source commit's committer date and its serial number derives from the source
 // commit, so two builds of one commit give the same bytes.
 //
-// The release SBOM is the paused design of decision 0013. pnpm gives each tarball's path on this
-// machine as its distribution URL; the release SBOM gives the tarball's download URL on the release
+// The release SBOM describes the tarball of a release (decision 0021). pnpm gives the tarball's path
+// on this machine as its distribution URL; the release SBOM gives its download URL on the release
 // instead.
 // Usage: node scripts/release-sbom.ts <directory with .tgz files> <output file> [<tag>]
 // Without a tag, the URLs name the placeholder tag `untagged`, and no release has them.
