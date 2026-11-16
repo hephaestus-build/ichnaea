@@ -12,6 +12,7 @@ import {
   distTag,
   isBreaking,
   latestTag,
+  previousTag,
   releaseTags,
   tagProblem,
 } from "./check-release-tag.ts";
@@ -66,6 +67,13 @@ describe("the release tag", () => {
   it("follows the greatest other v* tag, the previous release", () => {
     expect(latestTag([])).toBeUndefined();
     expect(latestTag(["v0.9.3", "v0.10.0-rc.1", "v0.10.0", "v0.2.0"])).toBe("v0.10.0");
+  });
+
+  it("follows the greatest version tag below it, whatever was tagged after it", () => {
+    const tags = ["v0.1.0", "v0.2.0-rc.1", "v0.2.0", "v0.3.0", "vnext"];
+    expect(previousTag("v0.2.0", tags)).toBe("v0.2.0-rc.1");
+    expect(previousTag("v0.3.0", tags)).toBe("v0.2.0");
+    expect(previousTag("v0.1.0", tags)).toBeUndefined();
   });
 
   it("goes to the dist-tag next for a pre-release, and to latest otherwise", () => {

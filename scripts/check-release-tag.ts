@@ -59,6 +59,14 @@ export function latestTag(tags: readonly string[]): string | undefined {
   return tags.toSorted(compareTags).at(-1);
 }
 
+/**
+ * The greatest version tag below `tag`: the release that `tag` follows, even when a later release
+ * was tagged before `tag` was finished.
+ */
+export function previousTag(tag: string, tags: readonly string[]): string | undefined {
+  return latestTag(tags.filter((t) => VERSION_TAG.test(t) && compareTags(t, tag) < 0));
+}
+
 /** The npm dist-tag of a release: `next` for a pre-release, so that it never becomes `latest`. */
 export const distTag = (tag: string): "latest" | "next" =>
   parse(tag).pre.length > 0 ? "next" : "latest";
