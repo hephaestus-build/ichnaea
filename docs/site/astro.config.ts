@@ -1,6 +1,7 @@
 import starlight from "@astrojs/starlight";
 import { defineConfig, passthroughImageService } from "astro/config";
 import starlightLinksValidator from "starlight-links-validator";
+import starlightLlmsTxt from "starlight-llms-txt";
 
 // DOCS_URL is the one setting for where the site lives. Its origin is `site`, and its path is
 // `base`. A custom domain later only changes this value.
@@ -22,7 +23,7 @@ export default defineConfig({
       editLink: { baseUrl: `${repository}/edit/main/docs/site/` },
       lastUpdated: true,
       components: { Banner: "./src/components/StatusBanner.astro" },
-      plugins: [starlightLinksValidator({ errorOnLocalLinks: true })],
+      plugins: [starlightLinksValidator({ errorOnLocalLinks: true }), starlightLlmsTxt()],
     }),
   ],
 });
