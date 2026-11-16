@@ -1,6 +1,6 @@
 import * as z from "zod";
 import { none } from "../data-class.js";
-import { ArmName, GateId, CaseId, CaseSetId, ConfigurationIdentity, Digest, MeasureId, Seed, SemVer, SuiteId, Text, Timestamp, TrialId, } from "../primitives.js";
+import { ArmName, GateId, CaseId, CaseSetId, ConfigurationIdentity, Digest, MeasureId, RunId, Seed, SemVer, SuiteId, Text, Timestamp, TrialId, } from "../primitives.js";
 import { Configuration } from "./configuration.js";
 import { CiPolicy, Estimand, PrimaryMeasure } from "./suite.js";
 /** A versioned part that can change a verdict, with its hash (REQ-17). */
@@ -83,7 +83,26 @@ export const PlannedTrial = z.strictObject({
     family: none(Text).optional(),
     arm: none(ArmName),
     replicate: none(z.int().min(0)),
+    /**
+     * The trial's batch (REQ-25). At two or more trials per case and arm, replicate r runs every case
+     * under every arm before r + 1, and the batch numbers each replicate's arm. At one trial per case
+     * and arm, it numbers the pairs: both trials of a case carry the case's index, and the plan lists
+     * them in the order `candidateRunsFirst` chose, which is the run order.
+     */
     batch: none(z.int().min(0)),
+});
+/** A decision record that a plan cites as A/A evidence: its run and its canonical digest. */
+export const AaCitation = z.strictObject({
+    run: none(RunId),
+    digest: none(Digest),
+});
+/**
+ * The run settings that shape a run's schedule: how many trials run at once and the endpoint they
+ * call. A/A evidence holds only for the same schedule.
+ */
+export const Schedule = z.strictObject({
+    concurrency: none(z.int().min(1)),
+    endpoint: none(Text),
 });
 /** The trigger that caused a plan (REQ-149). */
 export const TriggerKind = z.enum([
@@ -134,6 +153,17 @@ export const Plan = z.strictObject({
         monthlyRemaining: none(z.int().min(0)).optional(),
     }),
     trials: z.array(PlannedTrial),
+    /**
+     * The run settings that shape the schedule. A decision at one trial per case and arm needs them:
+     * its A/A evidence must match them.
+     */
+    schedule: Schedule.optional(),
+    /**
+     * The A/A decisions this plan cites, by run and decision digest. At one trial per case and arm, a
+     * regression result is validated only with at least two clean A/A decisions of the same suite,
+     * model and schedule (VALIDATION.md, "One trial per case").
+     */
+    aa: z.strictObject({ decisions: z.array(AaCitation) }).optional(),
     seed: Seed,
     createdAt: none(Timestamp),
     ichnaea: none(SemVer),

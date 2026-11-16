@@ -176,6 +176,19 @@ export declare const PlannedTrial: z.ZodObject<{
     replicate: z.ZodInt;
     batch: z.ZodInt;
 }, z.core.$strict>;
+/** A decision record that a plan cites as A/A evidence: its run and its canonical digest. */
+export declare const AaCitation: z.ZodObject<{
+    run: z.core.$ZodBranded<z.ZodString, "RunId", "out">;
+    digest: z.ZodString;
+}, z.core.$strict>;
+/**
+ * The run settings that shape a run's schedule: how many trials run at once and the endpoint they
+ * call. A/A evidence holds only for the same schedule.
+ */
+export declare const Schedule: z.ZodObject<{
+    concurrency: z.ZodInt;
+    endpoint: z.ZodString;
+}, z.core.$strict>;
 /** The trigger that caused a plan (REQ-149). */
 export declare const TriggerKind: z.ZodEnum<{
     "case-set": "case-set";
@@ -401,6 +414,16 @@ export declare const Plan: z.ZodObject<{
         arm: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
         replicate: z.ZodInt;
         batch: z.ZodInt;
+    }, z.core.$strict>>;
+    schedule: z.ZodOptional<z.ZodObject<{
+        concurrency: z.ZodInt;
+        endpoint: z.ZodString;
+    }, z.core.$strict>>;
+    aa: z.ZodOptional<z.ZodObject<{
+        decisions: z.ZodArray<z.ZodObject<{
+            run: z.core.$ZodBranded<z.ZodString, "RunId", "out">;
+            digest: z.ZodString;
+        }, z.core.$strict>>;
     }, z.core.$strict>>;
     seed: z.ZodObject<{
         algorithm: z.ZodString;

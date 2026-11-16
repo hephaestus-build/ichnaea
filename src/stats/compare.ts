@@ -60,6 +60,22 @@ export interface ComparisonInput {
    * between cells.
    */
   readonly rng?: Rng;
+  /**
+   * The caller's checks of the records behind a comparison at one trial per case and arm: the
+   * order within each pair, the adjacency of the arms in time and the A/A runs (VALIDATION.md, "One
+   * trial per case"). The statistics cannot see the records, so the regression result at one trial
+   * per case is validated only when the caller states that these checks passed. Without it, that
+   * result is not validated (`ONE_TRIAL_NEEDS_CHECKS`). It changes nothing at two or more trials.
+   */
+  readonly oneTrial?: OneTrialChecks;
+}
+
+/** What the caller's checks of the records found, for a comparison at one trial per case. */
+export interface OneTrialChecks {
+  /** Whether every check passed. */
+  readonly checksPassed: boolean;
+  /** Why a check did not pass. Each one becomes a limitation of the regression result. */
+  readonly limitations: readonly string[];
 }
 
 /** The result of a paired comparison. */
@@ -109,6 +125,17 @@ const validity = (limitations: readonly string[]): Validity => ({
   limitations,
 });
 
+/** The regression limitation at one trial per case and arm when the caller states no checks. */
+export const ONE_TRIAL_NEEDS_CHECKS =
+  "one trial per case needs decide's checks of the trial order, the timestamps and the A/A runs";
+
+/**
+ * The non-inferiority limitation at one trial per case and arm. Most pairs agree there, the
+ * mechanism that sets the margin floor, so the interval needs its own floor sweep first.
+ */
+export const NON_INFERIORITY_AT_ONE_TRIAL =
+  "non-inferiority is not validated at one trial per case";
+
 /** Thrown when the data cannot support the estimand. The decision then runs estimate-only. */
 export class EstimandError extends Error {
   /** The error's name, for `instanceof`-free checks. */
@@ -128,7 +155,10 @@ export const VALIDATED_FIXED_CASES: {
    * effects covers 2, 3 and mixed counts, so more than 3 is outside the validated domain.
    */
   maxTrials: 3,
-  /** Smallest share of case-arm cells with at least 2 completed trials (missingness studied). */
+  /**
+   * Smallest share of case-arm cells with at least 2 completed trials (missingness studied). It
+   * does not apply at exactly one trial in every cell, which has its own conditions (`oneTrial`).
+   */
   minShareWithTwoTrials: 0.9,
 };
 
@@ -186,6 +216,13 @@ export const MARGIN_FLOOR_NOT_SET = "the validated margin floor is not set yet";
  */
 export const VALIDATED_MARGIN_CEILING = 0.3;
 
+/** The regression limitations at one trial per case and arm, from the caller's checks. */
+function oneTrialLimitations(checks: OneTrialChecks | undefined): readonly string[] {
+  if (checks === undefined) return [ONE_TRIAL_NEEDS_CHECKS];
+  if (checks.limitations.length > 0) return checks.limitations;
+  return checks.checksPassed ? [] : ["the caller's checks of one trial per case did not pass"];
+}
+
 /**
  * Chooses and runs the paired method for a binary measure. Proportion, score and ordinal measures
  * have no validated method yet (decision 0008) and never reach it.
@@ -194,7 +231,9 @@ export const VALIDATED_MARGIN_CEILING = 0.3;
  *   arm enters the stratified Miettinen–Nurminen score interval and test with equal case weight, so
  *   the estimate is the mean of per-case differences. A case with no completed trial in an arm is
  *   excluded and counted. The regression test is the exact stratified conditional test when every
- *   case and arm has the same number of trials, and a within-case permutation test otherwise.
+ *   case and arm has the same number of trials, and a within-case permutation test otherwise. At one
+ *   trial per case and arm, the regression result is validated only with the caller's `oneTrial`
+ *   checks passed, and the non-inferiority result never is.
  * - `sampled-cases`, one trial per case and arm, one case per family, at least 300 cases: Tango's
  *   skewness-corrected score interval. It is experimental, so never validated.
  * - `sampled-cases` otherwise: no method; an EstimandError makes the measure estimate-only.
@@ -236,21 +275,29 @@ export function compareCounts(input: ComparisonInput): Comparison {
       regressionTest = withinCasePermutationTest(strata, input.rng);
     }
     const domain = VALIDATED_FIXED_CASES;
+    // One trial in every cell of at least 5 cases: the domain of the binary one-trial study. Its
+    // conditions are checks of the records, which the caller states (VALIDATION.md).
+    const oneTrial = used.length >= domain.minCases && cells.every((n) => n === 1);
+    const checks = oneTrial ? input.oneTrial : undefined;
     const domainLimitations = [
       ...(used.length < domain.minCases
         ? [`${used.length} case(s); the validated domain starts at ${domain.minCases}`]
         : []),
-      ...(excludedCases > 0
+      // At one trial per case, the caller's checks count a case without its pair against coverage,
+      // so its exclusion is no limitation once the caller states them.
+      ...(excludedCases > 0 && checks === undefined
         ? [`${excludedCases} case(s) have no completed trial in an arm and are excluded`]
         : []),
       ...(Math.max(...cells) > domain.maxTrials
         ? [`more than ${domain.maxTrials} trials per case and arm is outside the studied grid`]
         : []),
-      ...(cells.filter((n) => n >= 2).length < domain.minShareWithTwoTrials * cells.length
-        ? [
-            `fewer than ${domain.minShareWithTwoTrials * 100}% of case-arm cells have 2 or more completed trials`,
-          ]
-        : []),
+      ...(oneTrial
+        ? oneTrialLimitations(checks)
+        : cells.filter((n) => n >= 2).length < domain.minShareWithTwoTrials * cells.length
+          ? [
+              `fewer than ${domain.minShareWithTwoTrials * 100}% of case-arm cells have 2 or more completed trials`,
+            ]
+          : []),
     ];
     const marginLimitations = [
       ...(VALIDATED_MARGIN_FLOOR_SET ? [] : [MARGIN_FLOOR_NOT_SET]),
@@ -272,7 +319,11 @@ export function compareCounts(input: ComparisonInput): Comparison {
       usedCases: used.length,
       excludedCases,
       regression: validity(domainLimitations),
-      nonInferiority: validity([...domainLimitations, ...marginLimitations]),
+      nonInferiority: validity([
+        ...domainLimitations,
+        ...marginLimitations,
+        ...(oneTrial ? [NON_INFERIORITY_AT_ONE_TRIAL] : []),
+      ]),
     };
   }
 

@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { Case, CaseSet, canonicalize, Configuration, digest, proportionProblem, Run, Suite, } from "../contracts/index.js";
 import { scoreTrials } from "./measures.js";
 import { createPlan } from "./planner.js";
-import { FileStore, recordProblems } from "./store.js";
+import { FileStore, recordProblems, StoreError } from "./store.js";
 /**
  * The error kind of a trial whose output was not captured. Such a trial is an infrastructure
  * failure, never a completed trial: it counts as missing, never as a failure of the system.
@@ -64,6 +64,29 @@ function passing(value) {
         (value?.type === "proportion" && value.successes > 0));
 }
 /**
+ * The plan's citations of decided A/A runs, each by run ID and the digest of its stored decision.
+ * A run without a decision cannot be cited.
+ */
+async function citations(store, runs) {
+    if (runs.length === 0)
+        return undefined;
+    const decisions = [];
+    for (const run of runs) {
+        let decision;
+        try {
+            decision = (await store.read(run)).decision;
+        }
+        catch (error) {
+            if (!(error instanceof StoreError))
+                throw error;
+        }
+        if (!decision)
+            throw new ImportError(`--aa run '${run}' has no decision in the store; import and decide the A/A run first`);
+        decisions.push({ run: decision.run, digest: await digest(decision) });
+    }
+    return { decisions };
+}
+/**
  * Import mode (REQ-22): resolves the plan, runs an importer over another runner's result files,
  * scores the measures Ichnaea computes, runs the hard gates that have a check, and stores plan,
  * trials, values, gates and the run with its ledger in one atomic write. Every record is checked
@@ -96,6 +119,8 @@ export async function importRun(input) {
         role: a.role,
         configuration: Configuration.parse(await json(a.configuration)),
     })));
+    const store = new FileStore(input.store);
+    const aa = await citations(store, input.aa ?? []);
     const plan = await host.planCreated(await createPlan({
         suite,
         caseSet,
@@ -106,6 +131,8 @@ export async function importRun(input) {
         gates: host.gates,
         trigger: input.trigger,
         ...(input.varies === undefined ? {} : { varies: input.varies }),
+        ...(input.schedule === undefined ? {} : { schedule: input.schedule }),
+        ...(aa === undefined ? {} : { aa }),
         seed: input.seed,
         now: input.now,
         ichnaea: input.ichnaea,
@@ -216,7 +243,7 @@ export async function importRun(input) {
         startedAt: input.now,
         completedAt: input.now,
     });
-    await new FileStore(input.store).createRun({ plan, run, trials, values, gates });
+    await store.createRun({ plan, run, trials, values, gates });
     for (const t of trials)
         await host.trialRecorded(t);
     await host.runCompleted(run);

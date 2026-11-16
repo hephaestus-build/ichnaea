@@ -1,4 +1,4 @@
-import { canonicalize, Decision, digest, FactorPart, proportionProblem, REFUSED_MARGIN, verifyArms, } from "../contracts/index.js";
+import { candidateRunsFirst, canonicalize, Decision, digest, FactorPart, proportionProblem, REFUSED_MARGIN, verifyArms, } from "../contracts/index.js";
 import { recordProblems, TRIGGER_VARIES } from "../core/index.js";
 import { compareCounts, createRng, EstimandError, fixedCasesMde, holm, MARGIN_FLOOR_NOT_SET, sampledCasesFloor, wilson, } from "../stats/index.js";
 import { describeCounts, plannedTrialsPerCase, planningPower } from "./planning.js";
@@ -65,6 +65,174 @@ function planningOf(plan) {
             : { ...common, reason: REFUSED_MARGIN, refusal: refuse };
     });
 }
+const NO_CASES = new Set();
+/** The regression limitation of a run at one trial per case whose records lack a time. */
+const NO_TIMES = "the records do not show when the arms ran";
+/** The decision's limitation at one trial per case: the pair checks read the recorded times. */
+const CLOCK_LIMITATION = "Decide trusts the trial timestamps as recorded. An importer that merges several hosts states its clock source.";
+/** Orders strings by UTF-16 code units. */
+const byCodeUnits = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+/**
+ * Whether a plan runs exactly one trial per case in its base and its candidate arm, under
+ * fixed-cases: the domain whose regression result needs the checks of `oneTrialRecords`.
+ */
+function oneTrialPlan(plan) {
+    const base = plan.arms.find((a) => a.role === "base")?.name;
+    const candidate = plan.arms.find((a) => a.role === "candidate")?.name;
+    if (plan.estimand !== "fixed-cases" || base === undefined || candidate === undefined)
+        return false;
+    const cells = new Map();
+    const cases = new Set();
+    for (const t of plan.trials) {
+        cases.add(t.case);
+        if (t.arm !== base && t.arm !== candidate)
+            continue;
+        const key = `${t.case}\u0000${t.arm}`;
+        cells.set(key, (cells.get(key) ?? 0) + 1);
+    }
+    return (cases.size > 0 && cells.size === 2 * cases.size && [...cells.values()].every((n) => n === 1));
+}
+/**
+ * The largest number of trials whose closed [startedAt, endedAt] intervals overlap. A start sorts
+ * before an end at the same time, so a trial that starts as another ends overlaps it.
+ */
+function concurrencyOf(intervals) {
+    const events = [...intervals]
+        .flatMap((i) => [
+        { at: i.start, step: 1 },
+        { at: i.end, step: -1 },
+    ])
+        .toSorted((a, b) => a.at - b.at || b.step - a.step);
+    let open = 0;
+    let most = 0;
+    for (const e of events) {
+        open += e.step;
+        most = Math.max(most, open);
+    }
+    return most;
+}
+/**
+ * The checks of a run at one trial per case and arm (VALIDATION.md, "Conditions for a validated
+ * result at one trial per case"). Every trial that ran must record when it started and ended. Then
+ * a case's pair holds only when its arms ran in the order `candidateRunsFirst` chose (a tie is not
+ * the other order) and their ranks by start time, ties broken by trial ID, differ by at most
+ * 2c − 1, where c is the most trials the records show running at once. A case whose pair does not
+ * hold is unpaired: it counts as missing, so one lost pair never invalidates a run, and the
+ * coverage floor decides how many may be lost. The plan must state its schedule and cite at least
+ * two clean A/A decisions (`aaLimitations`), unless it is itself an A/A plan.
+ */
+async function oneTrialRecords(input, pair) {
+    const { plan } = input;
+    const limitations = [];
+    const unpaired = new Set();
+    let concurrency;
+    // A trial that never ran has no time to show.
+    const ran = input.trials.filter((t) => t.outcome !== "not_run");
+    const times = new Map();
+    for (const t of ran) {
+        const start = t.startedAt === undefined ? Number.NaN : Date.parse(t.startedAt);
+        const end = t.endedAt === undefined ? Number.NaN : Date.parse(t.endedAt);
+        if (start <= end)
+            times.set(t.id, { start, end });
+    }
+    if (times.size < ran.length)
+        limitations.push(NO_TIMES);
+    else {
+        const c = concurrencyOf(times.values());
+        concurrency = c;
+        const startOf = (id) => times.get(id)?.start ?? Number.NaN;
+        const ranked = ran
+            .map((t) => t.id)
+            .toSorted((a, b) => startOf(a) - startOf(b) || byCodeUnits(a, b));
+        const rank = new Map(ranked.map((id, i) => [id, i]));
+        const trialOf = new Map(plan.trials.map((t) => [`${t.case}\u0000${t.arm}`, t.id]));
+        for (const id of new Set(plan.trials.map((t) => t.case))) {
+            const base = trialOf.get(`${id}\u0000${pair.base}`) ?? "";
+            const candidate = trialOf.get(`${id}\u0000${pair.candidate}`) ?? "";
+            const rb = rank.get(base);
+            const rc = rank.get(candidate);
+            // A pair without both trials on record is missing a trial already.
+            if (rb === undefined || rc === undefined)
+                continue;
+            const [first, second] = (await candidateRunsFirst(plan.seed, id))
+                ? [candidate, base]
+                : [base, candidate];
+            if (startOf(second) < startOf(first) || Math.abs(rb - rc) > 2 * c - 1)
+                unpaired.add(id);
+        }
+    }
+    if (plan.schedule === undefined)
+        limitations.push("the plan states no schedule (concurrency and endpoint), which one trial per case needs");
+    const identity = (name) => plan.arms.find((a) => a.name === name)?.identity;
+    // An A/A plan is the evidence itself, so it waives its own A/A precondition and nothing else.
+    if (identity(pair.base) !== identity(pair.candidate))
+        limitations.push(...(await aaLimitations(plan, input.aa ?? [])));
+    return {
+        unpaired,
+        checks: { checksPassed: limitations.length === 0, limitations },
+        ...(concurrency === undefined ? {} : { concurrency }),
+    };
+}
+/** The models of a plan's base arm, sorted by role, as the identity projection compares them. */
+function baseModels(plan) {
+    const models = plan.arms.find((a) => a.role === "base")?.configuration.models ?? [];
+    return canonicalize(models.toSorted((a, b) => byCodeUnits(a.role, b.role)));
+}
+/**
+ * The A/A precondition of a plan at one trial per case (VALIDATION.md). The plan cites at least two
+ * distinct A/A decisions, and each one is given with its plan and run and passes every check: its
+ * digests match (the cited decision digest, its plan and its run); both arms are one
+ * configuration; it runs one trial per case and arm; it ran this plan's suite; it is a decision,
+ * not INVALID, whose every primary regression result is validated; no primary measure gave
+ * REGRESSION; and it ran this plan's base model and schedule. Each failure is one limitation that
+ * names the check and the run.
+ */
+async function aaLimitations(plan, given) {
+    const cited = new Map((plan.aa?.decisions ?? []).map((c) => [c.run, c.digest]));
+    const out = [];
+    if (cited.size < 2)
+        out.push(`one trial per case needs at least two A/A decisions, and the plan cites ${cited.size}`);
+    for (const [run, cite] of cited) {
+        const fail = (problem) => void out.push(`A/A run '${run}': ${problem}`);
+        const e = given.find((g) => g.decision.run === run);
+        if (!e) {
+            fail("no decision record was given");
+            continue;
+        }
+        // Records that do not match their digests prove nothing, so no other check reads them.
+        const before = out.length;
+        if ((await digest(e.decision)) !== cite)
+            fail("its decision record does not match the cited digest");
+        if (e.decision.plan !== (await digest(e.plan)))
+            fail("its decision does not belong to the given plan");
+        if (e.decision.runDigest !== (await digest(e.run)))
+            fail("its decision does not belong to the given run");
+        if (out.length > before)
+            continue;
+        const arms = e.plan.arms.filter((a) => a.role === "base" || a.role === "candidate");
+        if (arms.length !== 2 || new Set(arms.map((a) => a.identity)).size !== 1)
+            fail("its arms are not one configuration, so it is not an A/A comparison");
+        if (!oneTrialPlan(e.plan))
+            fail("it does not run one trial per case and arm");
+        if (e.plan.suiteDigest !== plan.suiteDigest)
+            fail("it ran another suite");
+        const primaries = e.decision.measures.filter((m) => m.tier === "primary");
+        const validated = e.decision.mode === "decision" &&
+            e.decision.verdict !== "INVALID" &&
+            primaries.length > 0 &&
+            primaries.every((m) => m.comparisons.length > 0 && m.comparisons.every((c) => c.regression.validated));
+        if (!validated)
+            fail("its regression results are not validated");
+        if (primaries.some((m) => m.verdict === "REGRESSION"))
+            fail("a primary measure gave REGRESSION");
+        if (baseModels(e.plan) !== baseModels(plan))
+            fail("its model differs from this plan's base arm");
+        if (plan.schedule === undefined ||
+            canonicalize(e.plan.schedule ?? null) !== canonicalize(plan.schedule))
+            fail("its schedule differs from this plan's");
+    }
+    return out;
+}
 function seedOf(plan) {
     return Number((BigInt(plan.seed.value) % 4294967295n) + 1n);
 }
@@ -87,7 +255,7 @@ function passing(value) {
  * configuration, or a trial without a value) is left out, unless an imputation gives it an outcome
  * for the sensitivity analysis.
  */
-function tally(plan, trials, values, measure, arms, imputation) {
+function tally(plan, trials, values, measure, arms, imputation, unpaired = NO_CASES) {
     const cases = new Map();
     const availability = new Map();
     let unsupported;
@@ -119,7 +287,10 @@ function tally(plan, trials, values, measure, arms, imputation) {
             pass = false;
             av.available++;
         }
-        else if (MISSING.has(outcome) || v === undefined) {
+        else if (MISSING.has(outcome) ||
+            v === undefined ||
+            // A case that lost its pair at one trial per case counts as missing, as a lost trial does.
+            (side !== undefined && unpaired.has(planned.case))) {
             av.missing++;
             const imputed = side === undefined ? undefined : imputation?.[side];
             if (imputed === undefined)
@@ -406,6 +577,7 @@ export function decidePrimariesWith(input, compare) {
                 alpha: input.alpha,
                 margin: effective,
                 rng,
+                ...(input.oneTrial === undefined ? {} : { oneTrial: input.oneTrial }),
             });
             const notValidated = nonInferiorityOnly(comparison).map((l) => `the non-inferiority result is not validated: ${l}`);
             if (!comparison.regression.validated) {
@@ -478,11 +650,12 @@ export function decidePrimariesWith(input, compare) {
     });
     return verdicts;
 }
-function primaryVerdicts(plan, tallies, compare) {
+function primaryVerdicts(plan, tallies, compare, oneTrial) {
     return decidePrimariesWith({
         estimand: plan.estimand,
         alpha: plan.alpha,
         seed: seedOf(plan),
+        ...(oneTrial === undefined ? {} : { oneTrial }),
         measures: plan.primary.map((p) => {
             const t = tallies.get(p.measure);
             return {
@@ -540,7 +713,7 @@ function rateDifference(t, base, candidate, level) {
  * status and limitations, and no test: it is descriptive. When the data supports no interval, the
  * difference has none and the notes say why.
  */
-function descriptiveComparison(plan, t, pair, margin, safetyMargin, compare) {
+function descriptiveComparison(plan, t, pair, margin, safetyMargin, compare, oneTrial) {
     const common = {
         base: pair.base,
         candidate: pair.candidate,
@@ -563,6 +736,7 @@ function descriptiveComparison(plan, t, pair, margin, safetyMargin, compare) {
             alpha: plan.alpha,
             margin: Math.max(margin - safetyMargin, 0),
             rng: createRng(seedOf(plan)),
+            ...(oneTrial === undefined ? {} : { oneTrial }),
         });
         return {
             comparison: { ...common, difference: estimateOf(c.difference), ...validityOf(c) },
@@ -755,6 +929,15 @@ export async function decideWith(input, compare) {
         invalid.push("a decision needs a primary measure");
     if (pair)
         invalid.push(...triggerCheck(plan, pair, input.trials));
+    // At one trial per case and arm, the checks of the records decide which pairs hold and whether
+    // a regression result can be validated (VALIDATION.md, "One trial per case").
+    const one = pair && oneTrialPlan(plan) ? await oneTrialRecords(input, pair) : undefined;
+    const unpaired = one?.unpaired ?? NO_CASES;
+    const pairNote = one?.concurrency !== undefined && unpaired.size > 0
+        ? [
+            `${unpaired.size} case(s) lost their pair: their trials ran against the planned order or more than ${2 * one.concurrency - 1} start rank(s) apart (concurrency ${one.concurrency} in the records), so they count as missing`,
+        ]
+        : [];
     // An exploratory run (REQ-16) reports like an estimate-only plan: no confirmatory verdict.
     const modeReasons = run.exploratory
         ? [
@@ -767,7 +950,7 @@ export async function decideWith(input, compare) {
         ...plan.primary.map((p) => p.measure),
         ...plan.secondary.map((s) => s),
     ];
-    const tallies = new Map(ids.map((id) => [id, tally(plan, trials, values, id, pair)]));
+    const tallies = new Map(ids.map((id) => [id, tally(plan, trials, values, id, pair, undefined, unpaired)]));
     const primaryIds = new Set(plan.primary.map((p) => p.measure));
     const compared = pair ? [pair.base, pair.candidate] : plan.arms.map((a) => a.name);
     const coverageOf = (t) => Math.min(...compared.map((arm) => {
@@ -783,7 +966,7 @@ export async function decideWith(input, compare) {
         if (decision && coverage < floor)
             invalid.push(`measure '${p.measure}': coverage ${(coverage * 100).toFixed(1)}% is below its floor of ${(floor * 100).toFixed(1)}%`);
     }
-    const tested = decision && pair ? primaryVerdicts(plan, tallies, compare) : undefined;
+    const tested = decision && pair ? primaryVerdicts(plan, tallies, compare, one?.checks) : undefined;
     // The sensitivity analysis for missing trials (REQ-56, decision 0010): whenever a primary measure
     // misses a trial in either arm, each verdict is tested against the imputation that works
     // against it.
@@ -797,8 +980,8 @@ export async function decideWith(input, compare) {
     if (tested && pair && missesTrials) {
         const again = (imputation) => primaryVerdicts(plan, new Map(plan.primary.map((p) => [
             p.measure,
-            tally(plan, trials, values, p.measure, pair, imputation),
-        ])), compare);
+            tally(plan, trials, values, p.measure, pair, imputation, unpaired),
+        ])), compare, one?.checks);
         againstNonInferiority = again(AGAINST_NON_INFERIORITY);
         const againstRegression = again(AGAINST_REGRESSION);
         for (const [id, v] of tested) {
@@ -860,7 +1043,7 @@ export async function decideWith(input, compare) {
         const margin = p?.margin ?? 0;
         const safetyMargin = p?.safetyMargin ?? 0;
         if (!result) {
-            const described = descriptiveComparison(plan, t, pair, margin, safetyMargin, compare);
+            const described = descriptiveComparison(plan, t, pair, margin, safetyMargin, compare, one?.checks);
             return {
                 ...outcome,
                 comparisons: [described.comparison],
@@ -868,12 +1051,13 @@ export async function decideWith(input, compare) {
                 notes: [
                     ...(t.unsupported ? [t.unsupported] : []),
                     ...(tier === "primary" && !decision ? modeReasons : []),
+                    ...pairNote,
                     ...described.notes,
                 ],
             };
         }
         const c = result.comparison;
-        const notes = [...result.notes];
+        const notes = [...pairNote, ...result.notes];
         if (c && c.excludedCases > 0)
             notes.push(`${c.excludedCases} case(s) have no completed trial in an arm and count as missing`);
         if (changed.has(id))
@@ -967,6 +1151,7 @@ export async function decideWith(input, compare) {
             : []),
         "An observed model identity cannot detect a silent update behind the same identity.",
         "Hosted models rarely honour seeds; replicates measure run-to-run noise instead.",
+        ...(one ? [CLOCK_LIMITATION] : []),
         ...invalid.slice(1).map((m) => `Also invalid: ${m}`),
     ];
     return Decision.parse({

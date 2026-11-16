@@ -190,6 +190,28 @@ export class FileStore {
             throw new StoreError(`run '${run}': ${problems.join("; ")}`);
         return stored;
     }
+    /**
+     * The A/A evidence a plan cites (`plan.aa`): each cited run's decision with its plan and run, in
+     * the order cited. A cited run that is not stored, or has no decision, is left out, and `decide`
+     * names it.
+     */
+    async aaEvidence(plan) {
+        const found = [];
+        for (const { run } of plan.aa?.decisions ?? []) {
+            let stored;
+            try {
+                stored = await this.read(run);
+            }
+            catch (error) {
+                if (error instanceof StoreError)
+                    continue;
+                throw error;
+            }
+            if (stored.decision)
+                found.push({ decision: stored.decision, plan: stored.plan, run: stored.run });
+        }
+        return found;
+    }
     /** The run index, oldest first. */
     async index() {
         return parseLines((await readOptional(join(this.root, "index.jsonl"))) ?? "", IndexLine, "index.jsonl");

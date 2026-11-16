@@ -70,6 +70,16 @@ export declare class FileStore {
     writeDecision(decision: DecisionRecord, suite: string): Promise<void>;
     /** Reads everything stored for a run. Missing primary records are an error, never an empty run. */
     read(run: string): Promise<StoredRun>;
+    /**
+     * The A/A evidence a plan cites (`plan.aa`): each cited run's decision with its plan and run, in
+     * the order cited. A cited run that is not stored, or has no decision, is left out, and `decide`
+     * names it.
+     */
+    aaEvidence(plan: PlanRecord): Promise<{
+        decision: DecisionRecord;
+        plan: PlanRecord;
+        run: RunRecord;
+    }[]>;
     /** The run index, oldest first. */
     index(): Promise<RunIndexEntry[]>;
     /** The IDs of stored runs. */

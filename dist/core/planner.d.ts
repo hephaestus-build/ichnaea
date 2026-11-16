@@ -40,6 +40,10 @@ export interface PlanInput {
     readonly ichnaea: string;
     /** Calls left this month on the endpoint, from the call ledger. */
     readonly monthlyRemaining?: number;
+    /** The run settings that shape the schedule; a decision at one trial per case needs them. */
+    readonly schedule?: Plan["schedule"];
+    /** The A/A decisions the plan cites, by run and decision digest. */
+    readonly aa?: Plan["aa"];
 }
 /** Fewest cases a fixed-cases decision is validated for (VALIDATED_FIXED_CASES in stats). */
 export declare const MIN_DECISION_CASES = 5;
@@ -58,11 +62,13 @@ export declare const TRIGGER_VARIES: {
  * Resolves a suite into a locked plan (REQ-16, REQ-19, REQ-21, REQ-49): every planned trial is
  * listed before the first call, with each case's trial count (the suite's, or more for the cases of
  * a `replicatesFor` slice), the worst-case calls are computed, and the estimand's conditions
- * are checked. What cannot be resolved is refused with a PlanError that names the fix. What can
+ * are checked. At one trial per case and arm, the trials run case by case, each pair in the order
+ * `candidateRunsFirst` chose; otherwise in alternating batches by replicate (REQ-25). What cannot be resolved is refused with a PlanError that names the fix. What can
  * be measured but not decided runs estimate-only, and `modeReasons` says why: no base and
  * candidate, no primary measure, a primary measure with values no validated method decides yet
  * (decision 0008), a placeholder margin (decision 0012), `sampled-cases` (no validated method yet),
- * one trial per case and arm, or fewer than 5 cases. A primary measure must have a primary card that
+ * one trial in some cases and more in others, one trial per case and arm with a primary measure
+ * that is not binary, or fewer than 5 cases. A primary measure must have a primary card that
  * is not a composite (REQ-34).
  */
 export declare function createPlan(input: PlanInput): Promise<Plan>;

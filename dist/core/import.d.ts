@@ -28,6 +28,10 @@ export interface ImportRunInput {
     readonly trigger: Plan["trigger"];
     /** Factor keys the change varies beyond what its trigger varies by kind (REQ-15). */
     readonly varies?: readonly string[];
+    /** The schedule the trials ran on: how many ran at once, and the endpoint they called. */
+    readonly schedule?: Plan["schedule"];
+    /** Decided A/A runs in the store that the plan cites, by run ID (one trial per case). */
+    readonly aa?: readonly string[];
     /** The plan's seed, a non-negative integer. */
     readonly seed: number;
     /** The ISO 8601 timestamp recorded as the plan's creation and the run's start and end. */

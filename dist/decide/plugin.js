@@ -51,6 +51,7 @@ const command = {
             trials: stored.trials,
             values: stored.values,
             gates: stored.gates,
+            aa: await store.aaEvidence(stored.plan),
             decidedAt: values["now"] ?? new Date().toISOString(),
             ichnaea: stored.plan.ichnaea,
         });

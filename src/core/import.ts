@@ -5,6 +5,7 @@ import {
   CaseSet,
   canonicalize,
   Configuration,
+  type Decision,
   digest,
   type GateResult,
   type MeasureValue,
@@ -18,7 +19,7 @@ import {
 import type { Host } from "./host.ts";
 import { scoreTrials } from "./measures.ts";
 import { createPlan } from "./planner.ts";
-import { FileStore, recordProblems } from "./store.ts";
+import { FileStore, recordProblems, StoreError } from "./store.ts";
 
 /** What `ichnaea import` needs. */
 export interface ImportRunInput {
@@ -48,6 +49,10 @@ export interface ImportRunInput {
   readonly trigger: Plan["trigger"];
   /** Factor keys the change varies beyond what its trigger varies by kind (REQ-15). */
   readonly varies?: readonly string[];
+  /** The schedule the trials ran on: how many ran at once, and the endpoint they called. */
+  readonly schedule?: Plan["schedule"];
+  /** Decided A/A runs in the store that the plan cites, by run ID (one trial per case). */
+  readonly aa?: readonly string[];
   /** The plan's seed, a non-negative integer. */
   readonly seed: number;
   /** The ISO 8601 timestamp recorded as the plan's creation and the run's start and end. */
@@ -129,6 +134,29 @@ function passing(value: MeasureValue["value"]): boolean {
 }
 
 /**
+ * The plan's citations of decided A/A runs, each by run ID and the digest of its stored decision.
+ * A run without a decision cannot be cited.
+ */
+async function citations(store: FileStore, runs: readonly string[]): Promise<Plan["aa"]> {
+  if (runs.length === 0) return undefined;
+  const decisions = [];
+  for (const run of runs) {
+    let decision: Decision | undefined;
+    try {
+      decision = (await store.read(run)).decision;
+    } catch (error) {
+      if (!(error instanceof StoreError)) throw error;
+    }
+    if (!decision)
+      throw new ImportError(
+        `--aa run '${run}' has no decision in the store; import and decide the A/A run first`,
+      );
+    decisions.push({ run: decision.run, digest: await digest(decision) });
+  }
+  return { decisions };
+}
+
+/**
  * Import mode (REQ-22): resolves the plan, runs an importer over another runner's result files,
  * scores the measures Ichnaea computes, runs the hard gates that have a check, and stores plan,
  * trials, values, gates and the run with its ledger in one atomic write. Every record is checked
@@ -167,6 +195,8 @@ export async function importRun(
       configuration: Configuration.parse(await json(a.configuration)),
     })),
   );
+  const store = new FileStore(input.store);
+  const aa = await citations(store, input.aa ?? []);
   const plan = await host.planCreated(
     await createPlan({
       suite,
@@ -178,6 +208,8 @@ export async function importRun(
       gates: host.gates,
       trigger: input.trigger,
       ...(input.varies === undefined ? {} : { varies: input.varies }),
+      ...(input.schedule === undefined ? {} : { schedule: input.schedule }),
+      ...(aa === undefined ? {} : { aa }),
       seed: input.seed,
       now: input.now,
       ichnaea: input.ichnaea,
@@ -312,7 +344,7 @@ export async function importRun(
     completedAt: input.now,
   });
 
-  await new FileStore(input.store).createRun({ plan, run, trials, values, gates });
+  await store.createRun({ plan, run, trials, values, gates });
   for (const t of trials) await host.trialRecorded(t);
   await host.runCompleted(run);
   return { plan, trials: trials.length, values: values.length };

@@ -44,6 +44,21 @@ export interface ComparisonInput {
      * between cells.
      */
     readonly rng?: Rng;
+    /**
+     * The caller's checks of the records behind a comparison at one trial per case and arm: the
+     * order within each pair, the adjacency of the arms in time and the A/A runs (VALIDATION.md, "One
+     * trial per case"). The statistics cannot see the records, so the regression result at one trial
+     * per case is validated only when the caller states that these checks passed. Without it, that
+     * result is not validated (`ONE_TRIAL_NEEDS_CHECKS`). It changes nothing at two or more trials.
+     */
+    readonly oneTrial?: OneTrialChecks;
+}
+/** What the caller's checks of the records found, for a comparison at one trial per case. */
+export interface OneTrialChecks {
+    /** Whether every check passed. */
+    readonly checksPassed: boolean;
+    /** Why a check did not pass. Each one becomes a limitation of the regression result. */
+    readonly limitations: readonly string[];
 }
 /** The result of a paired comparison. */
 export interface Comparison {
@@ -85,6 +100,13 @@ export interface Validity {
     /** Why the result is not validated. Empty when it is. */
     readonly limitations: readonly string[];
 }
+/** The regression limitation at one trial per case and arm when the caller states no checks. */
+export declare const ONE_TRIAL_NEEDS_CHECKS = "one trial per case needs decide's checks of the trial order, the timestamps and the A/A runs";
+/**
+ * The non-inferiority limitation at one trial per case and arm. Most pairs agree there, the
+ * mechanism that sets the margin floor, so the interval needs its own floor sweep first.
+ */
+export declare const NON_INFERIORITY_AT_ONE_TRIAL = "non-inferiority is not validated at one trial per case";
 /** Thrown when the data cannot support the estimand. The decision then runs estimate-only. */
 export declare class EstimandError extends Error {
     /** The error's name, for `instanceof`-free checks. */
@@ -140,7 +162,9 @@ export declare const VALIDATED_MARGIN_CEILING = 0.3;
  *   arm enters the stratified Miettinen–Nurminen score interval and test with equal case weight, so
  *   the estimate is the mean of per-case differences. A case with no completed trial in an arm is
  *   excluded and counted. The regression test is the exact stratified conditional test when every
- *   case and arm has the same number of trials, and a within-case permutation test otherwise.
+ *   case and arm has the same number of trials, and a within-case permutation test otherwise. At one
+ *   trial per case and arm, the regression result is validated only with the caller's `oneTrial`
+ *   checks passed, and the non-inferiority result never is.
  * - `sampled-cases`, one trial per case and arm, one case per family, at least 300 cases: Tango's
  *   skewness-corrected score interval. It is experimental, so never validated.
  * - `sampled-cases` otherwise: no method; an EstimandError makes the measure estimate-only.

@@ -1,5 +1,5 @@
 import { Decision, type GateResult, type MeasuredValue, type MeasureValue, type Plan, type Run, type Trial } from "../contracts/index.ts";
-import { type CaseCounts, type Comparison, type ComparisonInput } from "../stats/index.ts";
+import { type CaseCounts, type Comparison, type ComparisonInput, type OneTrialChecks } from "../stats/index.ts";
 /** Everything a decision is computed from. Reports never compute anything new. */
 export interface DecideInput {
     /** The plan that the run carries out. */
@@ -16,6 +16,21 @@ export interface DecideInput {
     readonly decidedAt: string;
     /** The Ichnaea version, a semantic version, recorded in the decision. */
     readonly ichnaea: string;
+    /**
+     * The A/A evidence that the plan cites in `aa`: each cited decision with the plan and the run it
+     * decided, as the store holds them. `decide` checks each one (VALIDATION.md, "One trial per
+     * case"); the CLI loads them from the store by run ID. Only a plan at one trial per case reads it.
+     */
+    readonly aa?: readonly AaEvidence[];
+}
+/** One cited A/A decision with the plan and the run it decided. */
+export interface AaEvidence {
+    /** The A/A decision record. */
+    readonly decision: Decision;
+    /** The plan that the decision names by digest. */
+    readonly plan: Plan;
+    /** The run that the decision names by digest. */
+    readonly run: Run;
 }
 /**
  * The comparison of one measure's counts. Every decision uses `compareCounts`; a test of the rule
@@ -72,6 +87,8 @@ export interface PrimariesInput {
     readonly seed: number;
     /** The primary measures, in the order they are decided. */
     readonly measures: readonly PrimaryCounts[];
+    /** The checks of the records at one trial per case and arm, passed to every comparison. */
+    readonly oneTrial?: OneTrialChecks;
 }
 /**
  * Per-measure verdicts for the primary measures (DESIGN § 6.3, REQ-51, decision 0015):

@@ -1,4 +1,4 @@
-import { caseDigest, caseSetDigest, configurationIdentity, digest, Plan, } from "../contracts/index.js";
+import { caseDigest, caseSetDigest, candidateRunsFirst, configurationIdentity, digest, Plan, } from "../contracts/index.js";
 import { testMeasure } from "./measures.js";
 /** Thrown when a suite cannot be resolved into a valid plan. The message names the fix. */
 export class PlanError extends Error {
@@ -37,11 +37,13 @@ const ARM_NAME = /^[A-Za-z0-9][A-Za-z0-9._@+-]*$/;
  * Resolves a suite into a locked plan (REQ-16, REQ-19, REQ-21, REQ-49): every planned trial is
  * listed before the first call, with each case's trial count (the suite's, or more for the cases of
  * a `replicatesFor` slice), the worst-case calls are computed, and the estimand's conditions
- * are checked. What cannot be resolved is refused with a PlanError that names the fix. What can
+ * are checked. At one trial per case and arm, the trials run case by case, each pair in the order
+ * `candidateRunsFirst` chose; otherwise in alternating batches by replicate (REQ-25). What cannot be resolved is refused with a PlanError that names the fix. What can
  * be measured but not decided runs estimate-only, and `modeReasons` says why: no base and
  * candidate, no primary measure, a primary measure with values no validated method decides yet
  * (decision 0008), a placeholder margin (decision 0012), `sampled-cases` (no validated method yet),
- * one trial per case and arm, or fewer than 5 cases. A primary measure must have a primary card that
+ * one trial in some cases and more in others, one trial per case and arm with a primary measure
+ * that is not binary, or fewer than 5 cases. A primary measure must have a primary card that
  * is not a composite (REQ-34).
  */
 export async function createPlan(input) {
@@ -88,6 +90,7 @@ export async function createPlan(input) {
     if (input.arms.filter((a) => a.role === "candidate").length > 1)
         throw new PlanError("more than one candidate arm is not supported yet (REQ-57); compare one candidate per run");
     const reasons = [];
+    let binary = true;
     for (const primary of suite.primary) {
         const safety = primary.safetyMargin ?? 0;
         if (!(primary.margin < 1 && safety <= primary.margin))
@@ -107,8 +110,10 @@ export async function createPlan(input) {
             throw new PlanError(`primary measure '${primary.measure}' is a composite of other measures; report it as a secondary measure (REQ-34)`);
         if (measure.card.tier !== "primary")
             throw new PlanError(`primary measure '${primary.measure}' has a ${measure.card.tier} card; only a card of tier primary can decide`);
-        if (measure.card.valueType !== "binary")
+        if (measure.card.valueType !== "binary") {
+            binary = false;
             reasons.push(`primary measure '${primary.measure}' has ${measure.card.valueType} values, which no validated method decides yet (decision 0008)`);
+        }
         if (primary.marginStatus === "placeholder")
             reasons.push(`margins not registered: primary measure '${primary.measure}' has a placeholder margin (decision 0012)`);
     }
@@ -143,26 +148,47 @@ export async function createPlan(input) {
             throw new PlanError(`replicatesFor ${o.slice}=${o.value} matches no selected case; check the slice name and value`);
     const trialsOf = (c) => Math.max(suite.replicates, ...overrides.filter((o) => c.slices?.[o.slice] === o.value).map((o) => o.replicates));
     const counts = selectedCases.map(trialsOf);
-    if (suite.estimand === "fixed-cases" && Math.min(...counts) < 2)
+    // One trial per case and arm is validated for binary regression only (VALIDATION.md).
+    const oneTrial = counts.every((n) => n === 1);
+    if (suite.estimand === "fixed-cases" && Math.min(...counts) < 2 && !(oneTrial && binary))
         reasons.push("one trial per case and arm is outside the validated domain");
     if (selected.length < MIN_DECISION_CASES)
         reasons.push(`${selected.length} case(s); a decision is validated from ${MIN_DECISION_CASES} cases`);
     const trials = [];
-    for (let replicate = 0; replicate < Math.max(...counts); replicate++) {
+    const planned = (c, entry, arm, replicate, batch) => ({
+        id: `${c.id}/${arm.name}/r${replicate}`,
+        case: c.id,
+        ...(entry.family === undefined ? {} : { family: entry.family }),
+        arm: arm.name,
+        replicate,
+        batch,
+    });
+    const seed = { algorithm: "mt19937", value: String(input.seed) };
+    if (oneTrial) {
+        // One pair per case, in the coin's order, so the plan's order is the run order. An arm that is
+        // neither base nor candidate runs after the pair.
+        const base = arms.find((a) => a.role === "base");
+        const candidate = arms.find((a) => a.role === "candidate");
         for (const [i, entry] of selected.entries()) {
             const c = selectedCases[i];
-            if (replicate >= counts[i])
-                continue;
-            for (const [k, arm] of arms.entries()) {
+            const pair = base && candidate
+                ? (await candidateRunsFirst(seed, c.id))
+                    ? [candidate, base]
+                    : [base, candidate]
+                : [];
+            for (const arm of [...pair, ...arms.filter((a) => !pair.includes(a))])
+                trials.push(planned(c, entry, arm, 0, i));
+        }
+    }
+    else {
+        for (let replicate = 0; replicate < Math.max(...counts); replicate++) {
+            for (const [i, entry] of selected.entries()) {
+                const c = selectedCases[i];
+                if (replicate >= counts[i])
+                    continue;
                 // Alternating batches: replicate r runs every case under every arm before r + 1 (REQ-25).
-                trials.push({
-                    id: `${c.id}/${arm.name}/r${replicate}`,
-                    case: c.id,
-                    ...(entry.family === undefined ? {} : { family: entry.family }),
-                    arm: arm.name,
-                    replicate,
-                    batch: replicate * arms.length + k,
-                });
+                for (const [k, arm] of arms.entries())
+                    trials.push(planned(c, entry, arm, replicate, replicate * arms.length + k));
             }
         }
     }
@@ -201,7 +227,9 @@ export async function createPlan(input) {
             ...(input.monthlyRemaining === undefined ? {} : { monthlyRemaining: input.monthlyRemaining }),
         },
         trials,
-        seed: { algorithm: "mt19937", value: String(input.seed) },
+        ...(input.schedule === undefined ? {} : { schedule: input.schedule }),
+        ...(input.aa === undefined ? {} : { aa: input.aa }),
+        seed,
         createdAt: input.now,
         ichnaea: input.ichnaea,
     });

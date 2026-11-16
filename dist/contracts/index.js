@@ -4,6 +4,7 @@ export * from "./egress.js";
 export * from "./identity.js";
 export * from "./json-schema.js";
 export * from "./lint.js";
+export * from "./pair-order.js";
 export * from "./primitives.js";
 export * from "./reader.js";
 export * from "./records/case.js";

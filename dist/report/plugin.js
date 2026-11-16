@@ -20,12 +20,17 @@ const command = {
             host.out("report: --run is required");
             return 2;
         }
-        const stored = await new FileStore(storePath).read(runId);
+        const store = new FileStore(storePath);
+        const stored = await store.read(runId);
         if (!stored.decision) {
             host.out(`report: run '${runId}' has no decision; run 'ichnaea decide' first`);
             return 2;
         }
-        const check = await recompute({ ...stored, decision: stored.decision });
+        const check = await recompute({
+            ...stored,
+            decision: stored.decision,
+            aa: await store.aaEvidence(stored.plan),
+        });
         if (!check.matches) {
             host.out(`report: the stored decision does not recompute from the stored records (${check.differences.join(", ")})`);
             return 1;
