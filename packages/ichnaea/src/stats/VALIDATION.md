@@ -345,11 +345,13 @@ Two workflows run the studies with `pnpm --filter @hephaestus-build/ichnaea run 
 - The `Nightly` workflow (`.github/workflows/nightly.yml`), job `simulation`: every day at 02:17
   UTC and on demand, with `ICHNAEA_SIM_REPS=10000` and a limit of 120 minutes.
 
-`test:sim` runs six study files in parallel: `test/stats/coverage.sim.test.ts`,
+`test:sim` runs seven study files in parallel: `test/stats/coverage.sim.test.ts`,
 `test/stats/checks-coverage.sim.test.ts`, `test/stats/type-i-exact.sim.test.ts`,
-`test/stats/type-i-permutation-17.sim.test.ts`, `test/stats/type-i-permutation-60.sim.test.ts`, and
+`test/stats/type-i-permutation-17.sim.test.ts`, `test/stats/type-i-permutation-60.sim.test.ts`,
 `test/stats/score-permutation-work.sim.test.ts`, which times the score permutation test at its work
-limit and judges no grid. Candidates are confirmed in the same run.
+limit and judges no grid, and `test/stats/score-ni-equivalence.sim.test.ts`, which checks the score
+non-inferiority study's decision against the root-finder and judges no grid. Candidates are
+confirmed in the same run.
 
 The results at 6,000 repetitions, by the grid title that the CI log prints. Each study compares its
 result with its row here and fails if they differ, so a change to a grid or to its results changes
@@ -609,3 +611,51 @@ script sha256, seeds, arguments, Node version and runner.
   family; and, with one trial per case, the paired t-test at k = 5 under the top family. A
   permutation across cases is reported, not used as a must-fail: pooling adds the spread between
   cases, so it is conservative (0.000–0.016 in a prototype) and cannot fail.
+
+## Score measures: non-inferiority
+
+Three candidate bounds for the one-sided 95% lower bound of the equal-weight mean of per-case
+differences, for values in [0, 1] (`src/stats/score-interval.ts`, internal: nothing decides with them,
+and the package does not export them). **None is validated. Stage 1 of their study, which chooses
+one, has not run.** Score, proportion and ordinal measures stay estimate-only for non-inferiority.
+
+- **S-A:** the shipped stratified Miettinen–Nurminen score interval (equal case weights, the N/(N−1)
+  factor, no skewness correction), with the sum of each cell's values as fractional successes.
+- **S-B:** S-A with its variance multiplied by φ = max(φ̂, φ_min), where the pooled dispersion
+  φ̂ = Σ SS / Σ [(n − 1)·ȳ(1 − ȳ) + SS/n] runs over every cell of both arms. The bracket is n − 1
+  times an unbiased estimate of μ(1 − μ), so φ̂ estimates Var(Y)/(μ(1 − μ)). It is exactly 1 for 0/1
+  values, so S-B is S-A on binary data, and at most 1 for any values in [0, 1]. The simpler
+  Σ SS / Σ n·ȳ(1 − ȳ) estimates (n − 1)φ/(n − φ), about half of φ at two values per cell; it runs in
+  the study only as a reported variant. φ only scales the variance, so the bound at φ is the root
+  of Z₁ at the target z·√φ, and at φ = 0 it is the estimate.
+- **S-C:** a stratified t bound with one pooled within-cell variance and df = Σ (n − 1);
+  unavailable without residual degrees of freedom.
+
+**Reference values.** On the 248 tables of the regression test, S-A, S-B at every φ_min, S-C, φ̂ and
+the estimate match an R implementation and S-B a Python implementation, both written from a
+formula-only specification without the TypeScript (`scripts/stats/reference-score-intervals.R`,
+`scripts/stats/score_intervals_oracle.py`). S-A also matches ratesci's stratified score interval with
+fractional counts. Largest differences: 2.1e-13 (R), 6.7e-14 (Python), 2.6e-11 (ratesci, which
+rounds its output to 12 decimals); the bars are 1e-10 and 1e-9.
+
+**The root-finder's path is shared.** The binary intervals' root-finder (`lowerRoot`, `src/stats/solve.ts`)
+and the study's decision "the bound is at most θ" (`lowerRootAtMost`) share one scan and one
+bisection. The decision follows the root-finder's own path and stops once the answer is certain, so
+it equals `lowerRoot(...) ≤ θ` for every function. On the machine that runs the tests, every
+binary bound on the reference inputs (2,088) is computed with the current root-finder and with a
+verbatim copy of the one before the change (`test/stats/support/solve-before-refactor.ts`, whose body
+a sha256 pins to the old file), and all agree bit for bit. V8's Math is not bit-identical across
+platforms: the same Node version on linux x64 and macOS arm64 moved 2 of the 2,088 bounds in their
+last bits. So the stored bounds (`test/stats/reference-solver-snapshot.json`) record the runtime
+that wrote them, Node version, platform and CPU architecture, and are compared bit for bit on that
+runtime and within 1e-9 on any other. Bit reproducibility holds for one runtime; a study's shards
+all run on one, record it, and the collectors refuse outputs from different runtimes.
+
+**A known property of the score statistic, binary or not:** Z(δ) need not be monotone. A case whose
+two arms are both all 1 (or all 0) adds no variance at δ = 0 and some next to it, so Z can rise near
+δ = 0; a prototype found such bumps within δ ∈ [−0.08, 0.04] on synthetic tables built at those
+boundaries, and none on tables drawn from the study's generators. The root-finder takes the first
+crossing from −1, so the shipped bound is well defined, and the binary claim covers that bound. The
+study's decision follows the same path, so it needs no monotonicity; its equivalence test
+(`test/stats/score-ni-equivalence.sim.test.ts`) counts the non-monotone tables per kind and compares
+every setting with a full `lowerRoot` on 10,000 tables.

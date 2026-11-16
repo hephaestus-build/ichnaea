@@ -111,15 +111,15 @@ export const UNEQUAL_SHAPES: readonly Shape[] = CASE_COUNTS.flatMap((k) =>
   (["c3b2", "c2b3"] as const).map((pattern) => ({ k, pattern })),
 );
 
-const MEANS = [0.05, 0.2, 0.5, 0.8, 0.95] as const;
-const meanOf = (i: number): number => MEANS[i % MEANS.length] as number;
+export const MEANS = [0.05, 0.2, 0.5, 0.8, 0.95] as const;
+export const meanOf = (i: number): number => MEANS[i % MEANS.length] as number;
 
 // --- Data -----------------------------------------------------------------------------------------
 
 /** A trial value of case i in an arm at replicate j. */
-type Trial = (rng: Rng, i: number, arm: "candidate" | "base", j: number) => number;
+export type Trial = (rng: Rng, i: number, arm: "candidate" | "base", j: number) => number;
 
-function dataset(rng: Rng, shape: Shape, trial: Trial): CaseScores[] {
+export function dataset(rng: Rng, shape: Shape, trial: Trial): CaseScores[] {
   return Array.from({ length: shape.k }, (_, i) => {
     const [nc, nb] = trialsOf(shape, i);
     return {
@@ -173,12 +173,12 @@ function imputed(
   }));
 }
 
-const LATENT_MEANS = [-1, -0.5, 0, 0.5, 1] as const;
-const THRESHOLDS = {
+export const LATENT_MEANS = [-1, -0.5, 0, 0.5, 1] as const;
+export const THRESHOLDS = {
   even: [-1.5, -0.5, 0.5, 1.5],
   skewed: [-0.5, 0, 0.5, 1.5],
 } as const;
-function likert(rng: Rng, i: number, thresholds: readonly number[]): number {
+export function likert(rng: Rng, i: number, thresholds: readonly number[]): number {
   const z = (LATENT_MEANS[i % LATENT_MEANS.length] as number) + normal(rng);
   return thresholds.filter((t) => t < z).length / 4;
 }
@@ -375,7 +375,7 @@ export const G2_REFINE_STEPS = 4;
  * dᵢ, and 1–3 noisy cases rise to offset them. Family "floor" mirrors it: most cases at base 0.05
  * rise, and the noisy cases carry the drop, so the long tail is on the side the test looks at.
  */
-function g2Structure(rng: Rng, k: number, family: "top" | "floor"): Structure {
+export function g2Structure(rng: Rng, k: number, family: "top" | "floor"): Structure {
   for (;;) {
     const noisy = Math.min(k - 1, 1 + Math.floor(rng.uniform() * 3));
     const stable = k - noisy;
@@ -395,7 +395,7 @@ function g2Structure(rng: Rng, k: number, family: "top" | "floor"): Structure {
 }
 
 /** A refinement step: scale the stable effects and move the noisy base, keeping the mean at 0. */
-function perturb(rng: Rng, s: Structure, family: "top" | "floor"): Structure | undefined {
+export function perturb(rng: Rng, s: Structure, family: "top" | "floor"): Structure | undefined {
   const scale = 0.7 + rng.uniform() * 0.6;
   const shift = (rng.uniform() * 2 - 1) * 0.1;
   const noisy = s.filter(([b]) => b !== (family === "top" ? 0.95 : 0.05));
