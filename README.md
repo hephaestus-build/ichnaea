@@ -62,8 +62,11 @@ Then, at the root of your project, add zod and Ichnaea at that commit. The CLI l
 <!-- The build consumer test runs this install. -->
 
 ```sh
-pnpm pkg set type=module
-pnpm add zod@4.6.7 'github:hephaestus-build/ichnaea#<build-commit>'
+TAG=$(gh release view -R hephaestus-build/ichnaea --json tagName -q .tagName)
+gh release download "$TAG" -R hephaestus-build/ichnaea -p 'hephaestus-build-ichnaea-*.tgz'
+gh attestation verify "hephaestus-build-ichnaea-${TAG#v}.tgz" -R hephaestus-build/ichnaea \
+  --signer-workflow hephaestus-build/ichnaea/.github/workflows/release.yml
+pnpm add zod@4.6.7 "https://github.com/hephaestus-build/ichnaea/releases/download/$TAG/hephaestus-build-ichnaea-${TAG#v}.tgz"
 ```
 
 Your `package.json` then has
