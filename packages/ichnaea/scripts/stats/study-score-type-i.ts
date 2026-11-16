@@ -2,13 +2,15 @@
 // test"), one shard at a time. Two phases, each sharded:
 //
 //   node scripts/study-score-type-i.ts screen --shard 3/80 --out results/
-//     Screens every point of the shard's cells at ICHNAEA_SIM_REPS repetitions (6,000), refines
-//     each G2 cell around its worst structures, and confirms every candidate with its confirmation
-//     seed until the standard error is at most 0.0005. Writes screen-3-of-80.tsv.
+//     Screens every point of the shard's cells at ICHNAEA_SIM_REPS repetitions (6,000), counting
+//     its rejections at each level from the same repetitions, refines each G2 cell by hill-climbing
+//     from its worst structures, and confirms every candidate with its confirmation seed until the
+//     standard error is at most 0.0005 at every level. Writes screen-3-of-80.tsv.
 //
 //   node scripts/study-score-type-i.ts recheck --points results/recheck.json --shard 3/20 --out results/
-//     Re-checks the points that the collector selected with the shipped test (exact, or 10,000
-//     resamples with the rerun near the level) at 20,000 repetitions. Writes recheck-3-of-20.tsv.
+//     Re-checks the points that the collector selected at 20,000 repetitions: each repetition draws
+//     one data set from the re-check seed and runs both the shipped test (exact, or 10,000 resamples
+//     with the rerun near a level) and the study's test on it. Writes recheck-3-of-20.tsv.
 //
 // Each output has a sidecar `<output>.meta.json` (scripts/provenance.ts) with the commit, the
 // script hashes, the arguments, the Node version, the runner image, the phase, the shard and the
@@ -21,17 +23,31 @@ import { fileURLToPath } from "node:url";
 import { createRng } from "../../src/stats/index.ts";
 import { provenance, writeMeta } from "./provenance.ts";
 import {
-  ALPHA,
   type Cell,
   cells,
+  G2_REFINE_ROUNDS,
+  G2_REFINE_STEPS,
+  G2_REFINE_STEPS_PER_ROUND,
   G2_REFINE_WORST,
   G2_STRUCTURES,
   type Point,
   pointById,
+  rejections,
   runTest,
   shardOf,
   shippedTest,
 } from "./score-type-i-points.ts";
+import {
+  confirmationDone,
+  failsAtAnyLevel,
+  formatCounts,
+  LEVELS,
+  minConfirmReps,
+  needsConfirmation,
+  STUDY_RESAMPLES,
+  studyRejects,
+  worstness,
+} from "./score-type-i-rule.ts";
 
 /** Screening repetitions: 6,000 in the study; a smaller value is a smoke run, and the collector refuses it. */
 export const SCREEN_REPS: number = Number(process.env["ICHNAEA_SIM_REPS"] ?? 6000);
@@ -40,10 +56,12 @@ export const CONFIRM_SE: number = Number(process.env["ICHNAEA_CONFIRM_SE"] ?? 0.
 /** Repetitions of the re-check with the shipped test (SE about 0.0015 at 0.05). */
 export const RECHECK_REPS: number = Number(process.env["ICHNAEA_RECHECK_REPS"] ?? 20_000);
 
-const se = (p: number, n: number): number => Math.sqrt((p * (1 - p)) / n);
-const clears = (p: number, s: number): boolean => p <= ALPHA - 2 * s;
-const fails = (p: number, s: number): boolean => p - 3 * s > ALPHA;
-
+/**
+ * Screen columns. Counts are per level, in the order of LEVELS, as comma-separated lists:
+ * `screen_hits` over `screen_reps` screening repetitions, and `hits` over `reps`, the
+ * confirmation's when `stage` is "confirmed" and the screen's otherwise. `measure_hits` holds a
+ * Holm point's per-measure rejections at 0.05, and is empty for every other point.
+ */
 export const SCREEN_COLUMNS = [
   "id",
   "generator",
@@ -53,53 +71,73 @@ export const SCREEN_COLUMNS = [
   "pattern",
   "test",
   "seed",
-  "screen_rate",
+  "screen_hits",
+  "screen_reps",
   "stage",
-  "value",
-  "se",
+  "hits",
   "reps",
   "fails",
   "structure",
+  "measure_hits",
 ] as const;
+/**
+ * Re-check columns, per level as comma-separated lists: the shipped test's and the study test's
+ * rejections on the same repetitions, and the discordant counts (n10: only the shipped test
+ * rejects; n01: only the study's). `exact` counts the repetitions where the shipped test took
+ * the exact path.
+ */
 export const RECHECK_COLUMNS = [
   "id",
   "seed",
-  "study_value",
-  "study_se",
-  "value",
-  "se",
   "reps",
+  "exact",
+  "shipped_hits",
+  "study_hits",
+  "n10",
+  "n01",
   "fails",
 ] as const;
 
-/** The rejection rate of a point over `reps` repetitions from `seed`, with the study's test or the shipped one. */
-function rate(point: Point, seed: number, reps: number, shipped: boolean): number {
+/** Screening repetitions of a point: the screen's, or the point's own scaled with them. */
+export const screenRepsOf = (point: Point): number =>
+  point.reps === undefined ? SCREEN_REPS : Math.ceil((point.reps * SCREEN_REPS) / 6000);
+
+/** Per-level rejection counts of a point over `reps` repetitions from `seed`, with the study's test. */
+function rejectionCounts(
+  point: Point,
+  seed: number,
+  reps: number,
+): { hits: number[]; measures: number[] } {
   const rng = createRng(seed);
-  let hits = 0;
+  const hits = LEVELS.map(() => 0);
+  const measures: number[] = [];
   for (let i = 0; i < reps; i++) {
-    const data = point.draw(rng);
-    if ((shipped ? shippedTest(data, rng) : runTest(point, data, rng)) <= ALPHA) hits++;
+    const r = rejections(point, point.draw(rng), rng);
+    r.levels.forEach((x, l) => {
+      if (x) hits[l] = (hits[l] as number) + 1;
+    });
+    r.measures?.forEach((x, j) => {
+      measures[j] = (measures[j] ?? 0) + (x ? 1 : 0);
+    });
   }
-  return hits / reps;
+  return { hits, measures };
 }
 
-/** Repetitions from the confirmation seed, in batches, until the standard error is at most CONFIRM_SE. */
-function confirm(point: Point): { value: number; reps: number } {
+/** Repetitions from the confirmation seed, in batches, until every level's standard error is at most CONFIRM_SE. */
+function confirm(point: Point): { hits: number[]; reps: number } {
   const rng = createRng(point.confirmSeed);
-  let hits = 0;
+  const hits = LEVELS.map(() => 0);
   let reps = 0;
   // About a quarter of the repetitions that reach CONFIRM_SE at 0.05, at most 50,000.
-  const batch = Math.min(50_000, Math.ceil((0.05 * 0.95) / CONFIRM_SE ** 2 / 4));
+  const batch = Math.min(50_000, Math.ceil(minConfirmReps(CONFIRM_SE) / 4));
   do {
-    for (let i = 0; i < batch; i++) {
-      const data = point.draw(rng);
-      if (runTest(point, data, rng) <= ALPHA) hits++;
-    }
+    for (let i = 0; i < batch; i++)
+      rejections(point, point.draw(rng), rng).levels.forEach((x, l) => {
+        if (x) hits[l] = (hits[l] as number) + 1;
+      });
     reps += batch;
-    // At least the repetitions that reach CONFIRM_SE at 0.05 (about 190,000 at 0.0005): an estimate
-    // of 0 or 1 has a standard error of 0, which would otherwise stop the loop after one batch.
-  } while (reps < (0.05 * 0.95) / CONFIRM_SE ** 2 || se(hits / reps, reps) > CONFIRM_SE);
-  return { value: hits / reps, reps };
+  } while (!confirmationDone(hits, reps, CONFIRM_SE));
+  return { hits, reps };
 }
 
 function parseShard(text: string | undefined): { index: number; count: number } {
@@ -152,6 +190,7 @@ const runner = (): Record<string, string> =>
 const local = (file: string): string => fileURLToPath(new URL(file, import.meta.url));
 const SCRIPTS = [
   local("./score-type-i-points.ts"),
+  local("./score-type-i-rule.ts"),
   local("./provenance.ts"),
   local("../../src/stats/score-permutation.ts"),
   local("../../src/stats/score-permutation-core.ts"),
@@ -160,6 +199,13 @@ const SCRIPTS = [
   local("../../src/stats/mt19937.ts"),
   local("../../src/stats/rng.ts"),
 ];
+
+interface Screened {
+  readonly point: Point;
+  readonly reps: number;
+  readonly hits: number[];
+  readonly measures: number[];
+}
 
 function screen(args: readonly string[]): void {
   const { index, count } = parseShard(argument(args, "--shard"));
@@ -175,6 +221,8 @@ function screen(args: readonly string[]): void {
     cells: mine.length,
     reps: SCREEN_REPS,
     confirmSe: CONFIRM_SE,
+    levels: LEVELS,
+    studyResamples: STUDY_RESAMPLES,
     seedRange: seeds.length === 0 ? null : [Math.min(...seeds), Math.max(...seeds)],
     runtime: runtime(),
     runner: runner(),
@@ -182,32 +230,44 @@ function screen(args: readonly string[]): void {
   writeFileSync(output, `${SCREEN_COLUMNS.join("\t")}\n`);
   writeMeta(output, meta, false, extra());
   for (const cell of mine) {
-    const screened = cell.points.map((point) => ({
-      point,
-      value: rate(point, point.seed, SCREEN_REPS, false),
-    }));
-    if (cell.refine) {
-      const worst = screened.toSorted((a, b) => b.value - a.value).slice(0, G2_REFINE_WORST);
-      for (const point of cell.refine(
-        worst.map((w) => w.point),
-        G2_STRUCTURES,
-      ))
-        screened.push({ point, value: rate(point, point.seed, SCREEN_REPS, false) });
+    const screenPoint = (point: Point): Screened => {
+      const reps = screenRepsOf(point);
+      return { point, reps, ...rejectionCounts(point, point.seed, reps) };
+    };
+    const screened = cell.points.map(screenPoint);
+    if (cell.refine !== undefined) {
+      // Hill-climbing from the worst structures: each chain tries 4 rounds of 5 perturbations and
+      // moves to one that is worse. Step t of chain h is structure 500 + 20·h + t, whether or not
+      // the perturbation stays in range, so a point's seeds never depend on another's result.
+      const bad = (x: Screened): number => worstness(x.hits, x.reps);
+      const starts = screened.toSorted((a, b) => bad(b) - bad(a)).slice(0, G2_REFINE_WORST);
+      starts.forEach((start, chain) => {
+        let current = start;
+        for (let round = 0; round < G2_REFINE_ROUNDS; round++)
+          for (let step = 0; step < G2_REFINE_STEPS_PER_ROUND; step++) {
+            const s =
+              G2_STRUCTURES + G2_REFINE_STEPS * chain + G2_REFINE_STEPS_PER_ROUND * round + step;
+            const next = cell.refine?.(current.point, s);
+            if (next === undefined) continue;
+            const scored = screenPoint(next);
+            screened.push(scored);
+            if (bad(scored) > bad(current)) current = scored;
+          }
+      });
     }
-    for (const { point, value } of screened) {
-      const s = se(value, SCREEN_REPS);
+    for (const { point, reps: screenReps, hits: screenHits, measures } of screened) {
       seeds.push(point.seed);
       let stage = "screen";
-      let final = value;
-      let reps = SCREEN_REPS;
-      if (!clears(value, s)) {
+      let hits = screenHits;
+      let reps = screenReps;
+      // A point with its own repetitions (the Holm simulation) is reported from them alone.
+      if (point.reps === undefined && needsConfirmation(screenHits, screenReps)) {
         const c = confirm(point);
         seeds.push(point.confirmSeed);
         stage = "confirmed";
-        final = c.value;
+        hits = c.hits;
         reps = c.reps;
       }
-      const finalSe = se(final, reps);
       appendFileSync(
         output,
         `${[
@@ -219,19 +279,52 @@ function screen(args: readonly string[]): void {
           point.shape.pattern,
           point.test,
           point.seed,
-          value,
+          formatCounts(screenHits),
+          screenReps,
           stage,
-          final,
-          finalSe,
+          formatCounts(hits),
           reps,
-          stage === "confirmed" && fails(final, finalSe),
+          (stage === "confirmed" || point.reps !== undefined) && failsAtAnyLevel(hits, reps),
           (point.params["structure"] as string | undefined) ?? "",
+          measures.length === 0 ? "" : measures.join(","),
         ].join("\t")}\n`,
       );
     }
     console.log(`${cell.id}: ${screened.length} point(s)`);
   }
   writeMeta(output, meta, true, extra());
+}
+
+const zeros = (): number[] => LEVELS.map(() => 0);
+const add = (xs: number[], l: number): void => {
+  xs[l] = (xs[l] as number) + 1;
+};
+
+/**
+ * The re-check of a point from its re-check seed: each repetition draws one data set and runs the
+ * shipped test and then the study's test on it, from the same stream.
+ */
+function paired(
+  point: Point,
+  reps: number,
+): { shipped: number[]; study: number[]; n10: number[]; n01: number[]; exact: number } {
+  const rng = createRng(point.recheckSeed);
+  const out = { shipped: zeros(), study: zeros(), n10: zeros(), n01: zeros(), exact: 0 };
+  for (let i = 0; i < reps; i++) {
+    const data = point.draw(rng);
+    const shipped = shippedTest(data, rng);
+    if (shipped.method === "within-case-permutation-exact") out.exact++;
+    const study = runTest(point, data, rng);
+    LEVELS.forEach((level, l) => {
+      const a = shipped.p <= level;
+      const b = studyRejects(study, level);
+      if (a) add(out.shipped, l);
+      if (b) add(out.study, l);
+      if (a && !b) add(out.n10, l);
+      if (b && !a) add(out.n01, l);
+    });
+  }
+  return out;
 }
 
 function recheck(args: readonly string[]): void {
@@ -244,9 +337,7 @@ function recheck(args: readonly string[]): void {
   const meta = provenance(local("./study-score-type-i.ts"), SCRIPTS, 4_000_000, [...args]);
   const listText = readFileSync(list, "utf8");
   const selected = (
-    JSON.parse(listText) as {
-      points: { id: string; structure?: string; value: number; se: number }[];
-    }
+    JSON.parse(listText) as { points: { id: string; structure?: string }[] }
   ).points.filter((_point, i) => i % count === index);
   // The collector checks that every shard ran the list it rebuilds from the screen outputs.
   const pointsSha256 = createHash("sha256").update(listText).digest("hex");
@@ -258,6 +349,8 @@ function recheck(args: readonly string[]): void {
     points: selected.length,
     pointsSha256,
     reps: RECHECK_REPS,
+    levels: LEVELS,
+    studyResamples: STUDY_RESAMPLES,
     seedRange: seeds.length === 0 ? null : [Math.min(...seeds), Math.max(...seeds)],
     runtime: runtime(),
     runner: runner(),
@@ -268,13 +361,24 @@ function recheck(args: readonly string[]): void {
     const point = pointById(byCell, s.id, s.structure);
     if (!point.recheck) throw new Error(`${point.id} does not run the permutation test`);
     seeds.push(point.recheckSeed);
-    const value = rate(point, point.recheckSeed, RECHECK_REPS, true);
-    const valueSe = se(value, RECHECK_REPS);
+    const r = paired(point, RECHECK_REPS);
     appendFileSync(
       output,
-      `${[point.id, point.recheckSeed, s.value, s.se, value, valueSe, RECHECK_REPS, fails(value, valueSe)].join("\t")}\n`,
+      `${[
+        point.id,
+        point.recheckSeed,
+        RECHECK_REPS,
+        r.exact,
+        formatCounts(r.shipped),
+        formatCounts(r.study),
+        formatCounts(r.n10),
+        formatCounts(r.n01),
+        failsAtAnyLevel(r.shipped, RECHECK_REPS),
+      ].join("\t")}\n`,
     );
-    console.log(`${point.id}: study ${s.value.toFixed(4)}, shipped ${value.toFixed(4)}`);
+    console.log(
+      `${point.id}: study ${(r.study[0] as number) / RECHECK_REPS}, shipped ${(r.shipped[0] as number) / RECHECK_REPS}`,
+    );
   }
   writeMeta(output, meta, true, extra());
 }
