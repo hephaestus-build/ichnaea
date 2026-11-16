@@ -125,10 +125,14 @@ export interface ConditionResult {
 }
 
 // @public
-export function judgePass(analysis: CalibrationAnalysis, limit: number): {
-    readonly reachable: boolean;
+export interface JudgePass {
+    readonly blockedBy: readonly PassBlocker[];
     readonly lowerBoundAtLeast: number | undefined;
-};
+    readonly reachable: boolean;
+}
+
+// @public
+export function judgePass(analysis: CalibrationAnalysis, limit: number): JudgePass;
 
 // @public
 export interface PairedRate {
@@ -139,6 +143,9 @@ export interface PairedRate {
     readonly humanHuman: number;
     readonly judge: number;
 }
+
+// @public
+export type PassBlocker = "notCalibrated" | "noKnownWorse" | "dropNotShown" | "slopeNotShown";
 
 // @public
 export interface Slope {

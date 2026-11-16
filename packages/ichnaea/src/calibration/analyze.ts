@@ -291,19 +291,39 @@ export function analyzeCalibration(
   };
 }
 
+/** Why a judge-based Pass is not reachable. */
+export type PassBlocker = "notCalibrated" | "noKnownWorse" | "dropNotShown" | "slopeNotShown";
+
+/** Whether a judge-based Pass is reachable at a limit. */
+export interface JudgePass {
+  /** True when nothing blocks it. */
+  readonly reachable: boolean;
+  /** −(β_L · limit − B): the judge-measured change's lower bound must be at least this. */
+  readonly lowerBoundAtLeast: number | undefined;
+  /** Every reason that blocks it, in this order: notCalibrated, noKnownWorse, dropNotShown, slopeNotShown. */
+  readonly blockedBy: readonly PassBlocker[];
+}
+
 /**
  * Whether a judge-based Pass is reachable at a measure's limit, and the bound it would need. A Pass
  * needs the judge-measured change's lower bound to be at least −(β_L · limit − B), with β_L the
  * slope's lower bound and B the bias bound on the calibration's base against known-worse pair. It
- * is not reachable when β_L · limit ≤ B, when the human drop is not shown, or without known-worse
- * answers. Even when it is reachable, a calibrated judge's measures stay secondary.
+ * is blocked when the judge is not calibrated, without known-worse answers, when the human drop on
+ * that pair is not shown, or when β_L · limit ≤ B. Even when it is reachable, a calibrated judge's
+ * measures stay secondary in this version.
  */
-export function judgePass(
-  analysis: CalibrationAnalysis,
-  limit: number,
-): { readonly reachable: boolean; readonly lowerBoundAtLeast: number | undefined } {
+export function judgePass(analysis: CalibrationAnalysis, limit: number): JudgePass {
   const slope = analysis.slope;
-  if (slope === undefined) return { reachable: false, lowerBoundAtLeast: undefined };
+  const blockedBy: PassBlocker[] = analysis.status === "calibrated" ? [] : ["notCalibrated"];
+  if (slope === undefined) {
+    return {
+      reachable: false,
+      lowerBoundAtLeast: undefined,
+      blockedBy: [...blockedBy, "noKnownWorse"],
+    };
+  }
   const margin = slope.lower * limit - slope.pairBound;
-  return { reachable: slope.dropShown && margin > 0, lowerBoundAtLeast: -margin };
+  if (!slope.dropShown) blockedBy.push("dropNotShown");
+  if (!(margin > 0)) blockedBy.push("slopeNotShown");
+  return { reachable: blockedBy.length === 0, lowerBoundAtLeast: -margin, blockedBy };
 }

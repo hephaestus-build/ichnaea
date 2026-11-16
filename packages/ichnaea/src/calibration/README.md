@@ -41,10 +41,14 @@ names each condition that does not hold.
   change ÷ the raters' change in quality (1 − defect) from base to known-worse, with its one-sided
   95 % lower bound β_L, capped at 1, and B, the bias bound on the same pair. A judge that sees half
   of every drop has β = 1/2: it still detects a large drop, but it shrinks every change.
-- `judgePass(analysis, limit)` says whether a judge-based Pass is reachable at a measure's limit. It
-  is reachable only when the raters' drop is shown and β_L · limit > B. Then the judge-measured
-  change's lower bound must be at least −(β_L · limit − B). At a limit of 0.10 and a few hundred
-  answers it is practically never reachable (see the operating characteristics in
+- `judgePass(analysis, limit)` says whether a judge-based Pass is reachable at a measure's limit,
+  and `blockedBy` names what blocks it: `notCalibrated`, `noKnownWorse`, `dropNotShown` or
+  `slopeNotShown`. It is reachable only for a calibrated judge whose raters' drop is shown and
+  whose β_L · limit > B. Then the judge-measured
+  change's lower bound must be at least −(β_L · limit − B). At a limit of 0.10 it is rarely
+  reachable. In the registered draw, β_L · limit − B is positive in at most 7 % of 460-answer draws
+  for a judge as good as a rater, and in 12 % of 360-answer draws whose raters agree at 0.87 (see the
+  operating characteristics in
   [VALIDATION.md](../stats/VALIDATION.md#the-judge-calibration-rule-operating-characteristics)).
 
 ```ts

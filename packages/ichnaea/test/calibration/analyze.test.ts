@@ -227,7 +227,11 @@ describe("the slope on the base against known-worse pair", () => {
     expect(slope.humanChange).toBeCloseTo(-0.4, 12);
     expect(slope.dropShown).toBe(true);
     expect(slope.pairBound).toBe(0);
-    expect(judgePass(analysis, 0.1)).toEqual({ reachable: true, lowerBoundAtLeast: -0.1 });
+    expect(judgePass(analysis, 0.1)).toEqual({
+      reachable: true,
+      lowerBoundAtLeast: -0.1,
+      blockedBy: [],
+    });
   });
 
   it("is about 1/2 for a judge that sees half of the drop, and caps no Pass it cannot reach", () => {
@@ -248,7 +252,9 @@ describe("the slope on the base against known-worse pair", () => {
     );
     expect(analysis.slope!.estimate).toBeCloseTo(0.5, 12);
     const pass = judgePass(analysis, 0.1);
-    expect(pass.reachable).toBe(analysis.slope!.lower * 0.1 - analysis.slope!.pairBound > 0);
+    // This judge misses defects, so it is not calibrated, and its slope leaves no Pass margin.
+    expect(analysis.slope!.lower * 0.1 - analysis.slope!.pairBound).toBeLessThanOrEqual(0);
+    expect(pass).toMatchObject({ reachable: false, blockedBy: ["notCalibrated", "slopeNotShown"] });
     expect(pass.lowerBoundAtLeast).toBeCloseTo(
       -(analysis.slope!.lower * 0.1 - analysis.slope!.pairBound),
       12,
@@ -261,7 +267,29 @@ describe("the slope on the base against known-worse pair", () => {
       settings,
     );
     expect(analysis.slope).toBeUndefined();
-    expect(judgePass(analysis, 0.1)).toEqual({ reachable: false, lowerBoundAtLeast: undefined });
+    expect(judgePass(analysis, 0.1)).toMatchObject({
+      reachable: false,
+      lowerBoundAtLeast: undefined,
+    });
+    expect(judgePass(analysis, 0.1).blockedBy).toContain("noKnownWorse");
+  });
+});
+
+describe("judgePass on a drop that is not shown", () => {
+  it("is blocked when the raters see no drop from base to known-worse", () => {
+    // Known-worse answers are as good as the base's: there is no drop to calibrate the slope on.
+    const analysis = analyzeCalibration(
+      {
+        scale: "binary",
+        units: units(100, (item) => (item % 10 === 0 ? 1 : 0), {
+          configurations: ["base", "candidate", "known-worse"],
+        }),
+      },
+      settings,
+    );
+    expect(analysis.slope!.dropShown).toBe(false);
+    expect(judgePass(analysis, 0.1).blockedBy).toContain("dropNotShown");
+    expect(judgePass(analysis, 0.1).reachable).toBe(false);
   });
 });
 
