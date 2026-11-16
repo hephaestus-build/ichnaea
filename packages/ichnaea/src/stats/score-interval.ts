@@ -196,11 +196,22 @@ export function studentCdf(t: number, df: number): number {
   return t >= 0 ? 1 - tail : tail;
 }
 
-/** The quantile of Student's t at p in (0.5, 1), by bisection. */
+/**
+ * The quantile of Student's t at p in (0, 1) with df > 0 degrees of freedom, by bisection. It
+ * refuses any other p or df, and a search that does not close throws instead of running on.
+ */
 export function studentQuantile(p: number, df: number): number {
+  if (!(p > 0 && p < 1)) throw new RangeError(`the probability must be in (0, 1), got ${p}`);
+  if (!(Number.isFinite(df) && df > 0))
+    throw new RangeError(`the degrees of freedom must be finite and positive, got ${df}`);
+  if (p === 0.5) return 0;
+  if (p < 0.5) return -studentQuantile(1 - p, df);
   let low = 0;
   let high = 1;
-  while (studentCdf(high, df) < p) high *= 2;
+  for (let doublings = 0; studentCdf(high, df) < p; doublings++) {
+    if (doublings >= 1100) throw new Error(`no t quantile found for p = ${p}, df = ${df}`);
+    high *= 2;
+  }
   for (let i = 0; i < 200 && high - low > 1e-14 * high; i++) {
     const mid = (low + high) / 2;
     if (studentCdf(mid, df) < p) low = mid;

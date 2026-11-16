@@ -15,6 +15,7 @@
 // Each output has a sidecar `<output>.meta.json` (scripts/stats/provenance.ts).
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { createRng } from "../../src/stats/index.ts";
 import { boundSC, scoreBound } from "../../src/stats/score-interval.ts";
@@ -120,7 +121,7 @@ const runner = (): Record<string, string> =>
     ].flatMap((k) => (process.env[k] === undefined ? [] : [[k, process.env[k] as string]])),
   );
 
-const local = (file: string): string => new URL(file, import.meta.url).pathname;
+const local = (file: string): string => fileURLToPath(new URL(file, import.meta.url));
 
 function row(point: NiPoint, reps: number, counts: readonly number[]): string {
   return `${[

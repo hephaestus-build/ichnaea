@@ -1,8 +1,9 @@
 // Writes test/stats/reference-solver-snapshot.json: every bound that the root-finder gives the binary
 // intervals on the reference inputs (ratesci's and R's sets), on each side, plus seeded random
-// stratified tables. It was written by the root-finder before it shared its scan and bisection
-// with the score study's decision, and test/stats/solver-snapshot.test.ts requires the same doubles, bit
-// for bit, from the current code.
+// stratified tables, with the platform that computed them. It was written by the root-finder before it
+// shared its scan and bisection with the score study's decision. V8's Math is not bit-identical across
+// CPU architectures, so test/stats/solver-snapshot.test.ts compares the file only on the platform it
+// records; on every platform it compares the current solver with a verbatim copy of the old one.
 //   node scripts/stats/solver-snapshot.ts
 import { readFileSync, writeFileSync } from "node:fs";
 
@@ -117,7 +118,7 @@ if (import.meta.main) {
   const rows = snapshotRows();
   writeFileSync(
     new URL("../../test/stats/reference-solver-snapshot.json", import.meta.url),
-    `${JSON.stringify({ rows })}\n`,
+    `${JSON.stringify({ platform: process.platform, arch: process.arch, node: process.version, rows })}\n`,
   );
   console.log(`${rows.length} bounds`);
 }

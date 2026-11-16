@@ -14,6 +14,7 @@ import {
   boundSC,
   pooledDispersion,
   scoreBound,
+  studentQuantile,
 } from "../../src/stats/score-interval.ts";
 import type { CaseScores } from "../../src/stats/score-permutation-core.ts";
 
@@ -105,6 +106,17 @@ describe("score bounds: definition", () => {
         0,
       ) / t.length;
     expect(Math.abs(scoreBound(t, 0.95, 0) - estimate)).toBeLessThan(1e-12);
+  });
+
+  it("refuses a t quantile it cannot solve, and finds the lower quantiles by symmetry", () => {
+    for (const p of [0, 1, Number.NaN, -0.1, 1.1])
+      expect(() => studentQuantile(p, 10), `p = ${p}`).toThrow(RangeError);
+    for (const df of [0, -1, Number.NaN, Number.POSITIVE_INFINITY])
+      expect(() => studentQuantile(0.95, df), `df = ${df}`).toThrow(RangeError);
+    expect(studentQuantile(0.5, 3)).toBe(0);
+    expect(studentQuantile(0.05, 10)).toBeCloseTo(-studentQuantile(0.95, 10), 12);
+    // R: qt(0.95, 10) = 1.812461122811676.
+    expect(studentQuantile(0.95, 10)).toBeCloseTo(1.812461122811676, 10);
   });
 
   it("has no S-C bound without residual degrees of freedom", () => {
