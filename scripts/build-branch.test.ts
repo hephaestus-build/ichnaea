@@ -179,17 +179,6 @@ describe("the build rulesets", () => {
       bypass_actors: [],
     });
   });
-
-  it("let nobody create a release tag while releases are paused", () => {
-    expect(ruleset("release-tags-create.json")).toEqual({
-      name: "release tags: nobody creates them while releases are paused",
-      target: "tag",
-      enforcement: "active",
-      conditions: { ref_name: { include: ["refs/tags/v*"], exclude: [] } },
-      rules: [{ type: "creation" }],
-      bypass_actors: [],
-    });
-  });
 });
 
 describe("the build verification", () => {
