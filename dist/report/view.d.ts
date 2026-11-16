@@ -134,6 +134,10 @@ export interface DecisionView {
 }
 /** The label of a bound that its comparison's non-inferiority result does not vouch for. */
 export declare const NOT_VALIDATED = "(not validated)";
+/** The start of a bound cell that has no bound; its reason follows in parentheses. */
+export declare const NO_BOUND = "no bound";
+/** Why a difference has no bound, in words, from what the record says about it. */
+export declare function noBoundReason(difference: Decision["measures"][number]["comparisons"][number]["difference"]): string;
 /**
  * Builds the view model from a decision record alone. It computes nothing new: every number comes
  * from the record (REQ-82, REQ-128).
