@@ -1,4 +1,4 @@
-# Test-only oracle. Base R suffices. Run from packages/stats in the pinned R image used by CI.
+# Test-only oracle. Base R suffices. Run from packages/ichnaea in the pinned R image used by CI.
 # The output contains synthetic values, R's actual cluster draws, and full-precision type-7 bounds.
 fixtures <- list(
   binary = list(a = c(0, 1), b = c(1, 1), c = c(0, 0), d = c(1, 0)),
