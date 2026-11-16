@@ -7,6 +7,16 @@
 import * as z from 'zod';
 
 // @public
+export interface AaEvidence {
+    // Warning: (ae-forgotten-export) The symbol "Decision" needs to be exported by the entry point index.d.ts
+    readonly decision: Decision;
+    // Warning: (ae-forgotten-export) The symbol "Plan" needs to be exported by the entry point index.d.ts
+    readonly plan: Plan;
+    // Warning: (ae-forgotten-export) The symbol "Run" needs to be exported by the entry point index.d.ts
+    readonly run: Run;
+}
+
+// @public
 export class AppendOnlyError extends Error {
     readonly name = "AppendOnlyError";
 }
@@ -63,13 +73,9 @@ export const CORE_VERSION: string;
 // @public
 export function createHost(config: Config, versions: HostVersions, log?: (message: string) => void): Host;
 
-// Warning: (ae-forgotten-export) The symbol "Plan" needs to be exported by the entry point index.d.ts
-//
 // @public
 export function createPlan(input: PlanInput): Promise<Plan>;
 
-// Warning: (ae-forgotten-export) The symbol "Decision" needs to be exported by the entry point index.d.ts
-//
 // @public
 export function decide(input: DecideInput): Promise<Decision>;
 
@@ -81,12 +87,12 @@ export function decideEgress(request: EgressRequest, hooks: ReadonlyArray<[Plugi
 
 // @public
 export interface DecideInput {
+    readonly aa?: readonly AaEvidence[];
     readonly decidedAt: string;
     // Warning: (ae-forgotten-export) The symbol "GateResult" needs to be exported by the entry point index.d.ts
     readonly gates: readonly GateResult[];
     readonly ichnaea: string;
     readonly plan: Plan;
-    // Warning: (ae-forgotten-export) The symbol "Run" needs to be exported by the entry point index.d.ts
     readonly run: Run;
     // Warning: (ae-forgotten-export) The symbol "Trial" needs to be exported by the entry point index.d.ts
     readonly trials: readonly Trial[];
@@ -169,6 +175,11 @@ export function exitCode(decision: Decision, policy: Plan["policy"]): number;
 // @public
 export class FileStore {
     constructor(root: string);
+    aaEvidence(plan: Plan): Promise<{
+        decision: Decision;
+        plan: Plan;
+        run: Run;
+    }[]>;
     createRun(records: RunRecords): Promise<void>;
     index(): Promise<RunIndexEntry[]>;
     read(run: string): Promise<StoredRun>;
@@ -287,6 +298,7 @@ export function importRun(input: ImportRunInput): Promise<{
 
 // @public
 export interface ImportRunInput {
+    readonly aa?: readonly string[];
     readonly arms: ReadonlyArray<{
         readonly name: string;
         readonly role: "base" | "candidate" | "reference";
@@ -300,6 +312,7 @@ export interface ImportRunInput {
     readonly importer: string;
     readonly now: string;
     readonly run: string;
+    readonly schedule?: Plan["schedule"];
     readonly seed: number;
     readonly store: string;
     readonly suite: string;
@@ -434,6 +447,7 @@ export class PlanError extends Error {
 
 // @public
 export interface PlanInput {
+    readonly aa?: Plan["aa"];
     readonly arms: ReadonlyArray<{
         readonly name: string;
         readonly role: "base" | "candidate" | "reference";
@@ -448,6 +462,7 @@ export interface PlanInput {
     readonly measures: ReadonlyMap<string, MeasureDefinition>;
     readonly monthlyRemaining?: number;
     readonly now: string;
+    readonly schedule?: Plan["schedule"];
     readonly seed: number;
     // Warning: (ae-forgotten-export) The symbol "Suite" needs to be exported by the entry point index.d.ts
     readonly suite: Suite;
@@ -505,6 +520,8 @@ export interface PrimariesInput {
     readonly alpha: number;
     readonly estimand: Plan["estimand"];
     readonly measures: readonly PrimaryCounts[];
+    // Warning: (ae-forgotten-export) The symbol "OneTrialChecks" needs to be exported by the entry point index.d.ts
+    readonly oneTrial?: OneTrialChecks;
     readonly seed: number;
 }
 
@@ -536,6 +553,11 @@ export function recompute(records: {
     readonly values: readonly MeasureValue[];
     readonly gates: readonly GateResult[];
     readonly decision: Decision;
+    readonly aa?: readonly {
+        decision: Decision;
+        plan: Plan;
+        run: Run;
+    }[];
 }): Promise<RecomputeResult>;
 
 // @public
@@ -626,7 +648,7 @@ export const TRIGGER_VARIES: {
 
 // Warnings were encountered during analysis:
 //
-// src/core/planner.ts:35:5 - (ae-forgotten-export) The symbol "Configuration" needs to be exported by the entry point index.d.ts
+// src/core/planner.ts:36:5 - (ae-forgotten-export) The symbol "Configuration" needs to be exported by the entry point index.d.ts
 // src/core/plugin.ts:65:5 - (ae-forgotten-export) The symbol "Case" needs to be exported by the entry point index.d.ts
 
 // (No @packageDocumentation comment for this package)

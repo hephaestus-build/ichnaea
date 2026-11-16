@@ -33,6 +33,14 @@ when every compared case has at least 2 completed trials in each arm (decision 0
 Whenever a primary measure misses a trial in either arm, each verdict is tested against the
 imputation that works against it. A verdict that this changes becomes INCONCLUSIVE (decision 0010).
 
+**One trial per case and arm** can give REGRESSION, never PASS (decision 0020). `decide` checks the
+records first. A case whose two trials ran against the plan's order, or more than 2c − 1 start ranks
+apart (c is the largest number of trials the records show running at once), is unpaired: it counts
+as missing. Every trial that ran must record when it started and ended, the plan must state its
+schedule, and it must cite at least two clean A/A decisions of the same suite, model and schedule.
+`ichnaea decide` and `ichnaea report` load the cited decisions from the store. Each check that fails
+is a limitation of the regression result. VALIDATION.md in the statistics lists the checks.
+
 The plugin refuses a plan whose margin, less its safety margin, lies outside the validated
 margins of the statistics (decision 0012). It adds the planning power statement to every
 plan, an estimate-only plan too. Without the plugin, a plan has no power statement, and

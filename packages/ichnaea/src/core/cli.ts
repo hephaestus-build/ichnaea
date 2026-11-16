@@ -56,6 +56,8 @@ Commands from the core:
                       --arm <name>:<role>:<configuration.json> (repeat) --file <path> (repeat)
                       --run <id> [--store .ichnaea] [--trigger code] [--seed 1] [--now <ISO time>]
                       [--vary <factor key>] (repeat: what the change varies beyond its trigger)
+                      [--concurrency <n> --endpoint <name>] (the schedule the trials ran on)
+                      [--aa <run>] (repeat: a decided A/A run to cite, at one trial per case)
   doctor              Check the configuration: plugins, measures, testers, warnings
   help                Show this help
   --version, -v       Print the version
@@ -226,6 +228,9 @@ async function importCommand(
       store: { type: "string" },
       trigger: { type: "string" },
       vary: { type: "string", multiple: true },
+      concurrency: { type: "string" },
+      endpoint: { type: "string" },
+      aa: { type: "string", multiple: true },
       seed: { type: "string" },
       now: { type: "string" },
     },
@@ -246,6 +251,16 @@ async function importCommand(
   const seed = values.seed ?? "1";
   if (!/^(0|[1-9][0-9]{0,8})$/.test(seed)) {
     out("import: --seed must be a non-negative integer below 10^9");
+    return 2;
+  }
+  if ((values.concurrency === undefined) !== (values.endpoint === undefined)) {
+    out(
+      "import: --concurrency and --endpoint go together: they state the schedule the trials ran on",
+    );
+    return 2;
+  }
+  if (values.concurrency !== undefined && !/^[1-9][0-9]{0,5}$/.test(values.concurrency)) {
+    out("import: --concurrency must be a whole number from 1");
     return 2;
   }
   const arms = [];
@@ -273,6 +288,10 @@ async function importCommand(
     files: values.file ?? [],
     trigger: trigger.data,
     varies: values.vary ?? [],
+    ...(values.concurrency === undefined || values.endpoint === undefined
+      ? {}
+      : { schedule: { concurrency: Number(values.concurrency), endpoint: values.endpoint } }),
+    aa: values.aa ?? [],
     seed: Number(seed),
     now: values.now ?? new Date().toISOString(),
     ichnaea: CORE_VERSION,
