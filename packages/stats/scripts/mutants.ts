@@ -600,8 +600,8 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "S7 score permutation statistic over all cases",
     file: "src/score-permutation-core.ts",
-    from: "    used.length;\n  const exact = exactP(used);",
-    to: "    cases.length;\n  const exact = exactP(used);",
+    from: "    used.length;\n  const exact = options.exact",
+    to: "    cases.length;\n  const exact = options.exact",
   },
   {
     id: "S8 score permutation never recomputes near a level",
