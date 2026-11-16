@@ -114,8 +114,8 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "S2",
     file: "src/contracts/records/case.ts",
-    from: "author: personal(Text).optional(),",
-    to: "author: none(Text).optional(),",
+    from: 'author: personal(Text.describe("Who wrote the case.")).optional(),',
+    to: 'author: none(Text.describe("Who wrote the case.")).optional(),',
     regen: true,
   },
   {
@@ -128,15 +128,15 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "S4",
     file: "src/contracts/records/case.ts",
-    from: "references: content(z.record(z.string(), Json)).optional(),",
-    to: "references: none(z.record(z.string(), Json)).optional(),",
+    from: "  references: content(\n    z\n      .record(z.string(), Json)",
+    to: "  references: none(\n    z\n      .record(z.string(), Json)",
     regen: true,
   },
   {
     id: "S5",
     file: "src/contracts/records/case.ts",
-    from: "note: content(z.string()).optional(),",
-    to: "note: none(z.string()).optional(),",
+    from: 'note: content(z.string().describe("A reviewer\'s note on the case.")).optional(),',
+    to: 'note: none(z.string().describe("A reviewer\'s note on the case.")).optional(),',
     regen: true,
   },
   {
@@ -163,8 +163,8 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "S10",
     file: "src/contracts/records/case.ts",
-    from: "      limits: none(Text),",
-    to: "      limits: none(Text).optional(),",
+    from: '      limits: none(Text.describe("The known limits of the dataset for this use.")),',
+    to: '      limits: none(Text.describe("The known limits of the dataset for this use.")).optional(),',
     regen: true,
   },
   {
@@ -184,15 +184,15 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "S14",
     file: "src/contracts/records/case.ts",
-    from: "  created: none(CalendarDate),",
-    to: "  created: none(CalendarDate).optional(),",
+    from: '  created: none(CalendarDate.describe("The date the case was created.")),',
+    to: '  created: none(CalendarDate.describe("The date the case was created.")).optional(),',
     regen: true,
   },
   {
     id: "S15",
     file: "src/contracts/records/case.ts",
-    from: '  exposure: none(z.enum(["public", "private", "sealed"])),',
-    to: '  exposure: none(z.enum(["public", "private", "sealed"])).optional(),',
+    from: '  exposure: none(z.enum(["public", "private", "sealed"]).describe("Who may see the case.")),',
+    to: '  exposure: none(z.enum(["public", "private", "sealed"]).describe("Who may see the case.")).optional(),',
     regen: true,
   },
   {
