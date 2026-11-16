@@ -1,0 +1,222 @@
+// The reason codes and the card's wording: one entry per code, and every template follows the card
+// rules that a template can break on its own (the card's output lint checks the rest).
+import { describe, expect, it } from "vitest";
+
+import {
+  CARD_LABELS,
+  REASON_CODES,
+  REASONS,
+  reasonFor,
+  type ReasonCode,
+} from "../../src/contracts/index.ts";
+
+const entries = REASON_CODES.map((code) => [code, REASONS[code]] as const);
+const texts = entries.flatMap(([code, r]) => [
+  ...r.sentences.map((s) => ({ code, key: s.key, text: s.text })),
+  ...(r.action === undefined ? [] : [{ code, key: "action", text: r.action }]),
+]);
+
+/** The slots a template may use; `report` fills each from the decision or the suite. */
+const SLOTS = new Set([
+  "add",
+  "arm",
+  "available",
+  "boundCases",
+  "bound",
+  "broke",
+  "calls",
+  "caseNoun",
+  "cases",
+  "change",
+  "changed",
+  "check",
+  "checked",
+  "classes",
+  "count",
+  "covered",
+  "detail",
+  "expiresAt",
+  "factors",
+  "failures",
+  "fix",
+  "fixed",
+  "floor",
+  "gap",
+  "high",
+  "hours",
+  "imputed",
+  "imputedP",
+  "limit",
+  "limitation",
+  "low",
+  "m",
+  "margin",
+  "measure",
+  "median",
+  "minimum",
+  "missing",
+  "model",
+  "observed",
+  "p",
+  "planned",
+  "probes",
+  "rater",
+  "rawP",
+  "share",
+  "shownBound",
+  "test",
+  "tolerance",
+  "trials",
+  "humanHuman",
+]);
+
+/** Words the card never uses, with the rule each breaks. */
+const BANNED: ReadonlyArray<readonly [RegExp, string]> = [
+  [/\bdrop(s|ped)?\b/i, "the card says 'decrease', never 'drop'"],
+  [/\bat worst\b/i, "no unvalidated confidence claim"],
+  [/\bsafe\b/i, "never 'safe'"],
+  [/\bsignifican(t|ce)\b/i, "never 'significant'"],
+  [/\b(better|improve[sd]?|improvement|gain)\b/i, "no improvement claim"],
+  [/n't\b|n’t\b/, "no negative contractions"],
+  [/\b(please|sorry)\b/i, "no 'please' or 'sorry'"],
+  [/!/, "no exclamation mark"],
+  [
+    /\b(behaviour|honour|colour|favour|labour|catalogue|centre|licence|artefact|\w+is(e|ed|es|ing|ation)|analys(e|ed|es|ing))\b/i,
+    "American spelling",
+  ],
+  [/[a-z]'s\b/i, "the apostrophe is ’"],
+];
+/** Words that end like a British "-ise" spelling but are American spelling too. */
+const AMERICAN = new Set([
+  "arise",
+  "arises",
+  "otherwise",
+  "precise",
+  "precisely",
+  "noise",
+  "raise",
+  "raised",
+  "raises",
+  "promise",
+  "exercise",
+  "advise",
+  "surprise",
+  "concise",
+  "wise",
+  "likewise",
+  "rise",
+  "rises",
+  "revise",
+  "revised",
+]);
+
+/** The words of a sentence, a slot counting as one. */
+const words = (sentence: string): number => sentence.trim().split(/\s+/).filter(Boolean).length;
+
+describe("REASONS", () => {
+  it("has one entry for each code, in the order of REASON_CODES", () => {
+    expect(Object.keys(REASONS)).toEqual([...REASON_CODES]);
+    expect(new Set(REASON_CODES).size).toBe(REASON_CODES.length);
+  });
+
+  it("finds a reason by code and refuses a string that is not a code", () => {
+    expect(reasonFor("PASS")).toBe(REASONS.PASS);
+    expect(reasonFor("toString")).toBeUndefined();
+    expect(reasonFor("PASS ")).toBeUndefined();
+  });
+
+  it("names only card labels, and a label's code family matches it", () => {
+    const labels = new Set<string>(CARD_LABELS.map((l) => l.label));
+    for (const [code, r] of entries) {
+      for (const label of r.labels) expect(labels, code).toContain(label);
+      if (code.startsWith("INVALID_")) expect(r.labels, code).toEqual(["INVALID"]);
+      if (code.startsWith("ESTIMATE_ONLY_")) expect(r.labels, code).toEqual(["ESTIMATE ONLY"]);
+      if (r.scope === "judge") expect(r.labels, code).toEqual([]);
+    }
+  });
+
+  it("gives ✓ to PASS alone", () => {
+    expect(CARD_LABELS.filter((l) => l.symbol === "✓").map((l) => l.label)).toEqual(["PASS"]);
+  });
+
+  it("points each detailed reason to a judge status that has no parent itself", () => {
+    const statuses: ReasonCode[] = [
+      "JUDGE_DIAGNOSTIC",
+      "JUDGE_NOT_COVERED",
+      "JUDGE_CALIBRATION_EXPIRED",
+    ];
+    for (const [code, r] of entries) {
+      if (r.parent === undefined) continue;
+      expect(statuses, code).toContain(r.parent);
+      expect(REASONS[r.parent].parent, code).toBeUndefined();
+      expect(r.action, `${code} names the next step`).toBeDefined();
+    }
+  });
+
+  it("names the next step for every INVALID and ESTIMATE ONLY reason", () => {
+    for (const [code, r] of entries)
+      if (
+        r.labels.includes("INVALID") ||
+        (code.startsWith("ESTIMATE_ONLY_") && code !== "ESTIMATE_ONLY_NO_METHOD")
+      )
+        expect(r.action, code).toBeDefined();
+  });
+
+  it("keys each reason's sentences uniquely", () => {
+    for (const [code, r] of entries)
+      expect(new Set(r.sentences.map((s) => s.key)).size, code).toBe(r.sentences.length);
+  });
+
+  it("uses only known slots", () => {
+    for (const { code, key, text } of texts)
+      for (const [, slot] of text.matchAll(/\{([^}]*)\}/g))
+        expect(SLOTS, `${code}/${key}: {${slot}}`).toContain(slot);
+  });
+
+  it.each(BANNED)("keeps the card rule %s", (pattern, rule) => {
+    for (const { code, key, text } of texts) {
+      const hits = (text.match(new RegExp(pattern, "gi")) ?? []).filter(
+        (w) => !AMERICAN.has(w.toLowerCase()),
+      );
+      expect(hits, `${code}/${key} breaks "${rule}": ${text}`).toEqual([]);
+    }
+  });
+
+  it("keeps every sentence at 25 words or fewer", () => {
+    for (const { code, key, text } of texts)
+      for (const sentence of text.split(/(?<=\.)\s+/))
+        expect(words(sentence), `${code}/${key}: ${sentence}`).toBeLessThanOrEqual(25);
+  });
+
+  it("claims run-to-run noise only where every case has two trials", () => {
+    for (const [code, r] of entries)
+      for (const s of r.sentences)
+        if (/run-to-run noise/.test(s.text))
+          expect(s.when, `${code}/${s.key}`).not.toMatch(/one trial per arm/);
+  });
+
+  it("keeps PASS words for PASS", () => {
+    for (const { code, key, text } of texts) {
+      if (code === "PASS") continue;
+      expect(text, `${code}/${key}`).not.toMatch(/With 95% confidence|is non-inferior/);
+      for (const m of text.matchAll(/\bPASS\b/g))
+        expect(text.slice(0, m.index), `${code}/${key}`).toMatch(/(not a statistical|of|make)\s*$/);
+    }
+  });
+
+  it("says that a regression does not establish a loss beyond the margin", () => {
+    expect(REASONS.REGRESSION_DETECTED.sentences.find((s) => s.when === "always")?.text).toBe(
+      "This does not establish that the loss exceeds the {margin}-point margin.",
+    );
+  });
+
+  it("calls a missing trial missing, never a failure", () => {
+    for (const code of ["INVALID_COVERAGE", "MISSING_TRIALS_CHANGE_VERDICT"] as const) {
+      const missing = REASONS[code].sentences.find((s) => s.key === "missing")?.text ?? "";
+      expect(missing, code).toMatch(/missing/i);
+      expect(missing.replace("missing, not wrong", ""), code).not.toMatch(
+        /\b(failed|broke|error|wrong)\b/,
+      );
+    }
+  });
+});

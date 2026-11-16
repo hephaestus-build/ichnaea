@@ -251,6 +251,36 @@ export type Calibration = z.infer<typeof Calibration>;
 export function canonicalize(value: unknown): string;
 
 // @public
+export const CARD_LABELS: readonly [{
+    readonly label: "REGRESSION";
+    readonly symbol: "✗";
+    readonly verdict: "REGRESSION";
+}, {
+    readonly label: "PASS";
+    readonly symbol: "✓";
+    readonly verdict: "PASS";
+}, {
+    readonly label: "NO DECREASE DETECTED";
+    readonly symbol: "○";
+    readonly verdict: "INCONCLUSIVE";
+}, {
+    readonly label: "INCONCLUSIVE";
+    readonly symbol: "?";
+    readonly verdict: "INCONCLUSIVE";
+}, {
+    readonly label: "INVALID";
+    readonly symbol: "!";
+    readonly verdict: "INVALID";
+}, {
+    readonly label: "ESTIMATE ONLY";
+    readonly symbol: "·";
+    readonly verdict: null;
+}];
+
+// @public
+export type CardLabel = (typeof CARD_LABELS)[number]["label"];
+
+// @public
 export const Case: z.ZodObject<{
     schema: z.ZodLiteral<"ichnaea.case/1">;
     id: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
@@ -2498,6 +2528,40 @@ export const Real: z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
 
 // @public
 export type Real = z.infer<typeof Real>;
+
+// @public
+export interface Reason {
+    readonly action?: string;
+    readonly labels: readonly CardLabel[];
+    readonly meaning: string;
+    readonly parent?: ReasonCode;
+    readonly scope: ReasonScope;
+    readonly sentences: readonly ReasonSentence[];
+}
+
+// @public
+export const REASON_CODES: readonly ["REGRESSION_DETECTED", "HARD_CHECK_FAILED", "PASS", "NO_DECREASE_DETECTED", "NON_INFERIORITY_UNVALIDATED", "MARGIN_NOT_CLEARED", "MARGIN_UNREACHABLE", "MISSING_TRIALS_CHANGE_VERDICT", "REGRESSION_TEST_UNVALIDATED", "INVALID_COVERAGE", "INVALID_BUDGET", "INVALID_NO_BASE_RESULTS", "INVALID_UNDECLARED_CHANGE", "INVALID_RECORDS_MISMATCH", "INVALID_RECORDS_CONTRADICT", "INVALID_HARD_CHECK_MISSING", "INVALID_SUITE_SETUP", "ESTIMATE_ONLY_SINGLE_TRIAL", "ESTIMATE_ONLY_FEW_CASES", "ESTIMATE_ONLY_NO_COMPARISON", "ESTIMATE_ONLY_NO_PRIMARY", "ESTIMATE_ONLY_SAMPLED_CASES", "ESTIMATE_ONLY_EXPLORATORY", "ESTIMATE_ONLY_CACHED_ARM", "ESTIMATE_ONLY_PLACEHOLDER_MARGIN", "ESTIMATE_ONLY_NO_METHOD", "JUDGE_ARM_BIAS_WITHIN_BOUND", "JUDGE_DIAGNOSTIC", "RATERS_BELOW_FLOOR", "JUDGE_BELOW_RATERS", "ARM_BIAS_NOT_SHOWN_SMALL", "ATTENTION_FAILED", "PROBE_FAILED", "JUDGE_NOT_COVERED", "JUDGE_MODEL_NOT_COVERED", "SYSTEM_MODEL_NOT_COVERED", "ANSWER_LENGTH_OUTSIDE", "POPULATION_NOT_COVERED", "JUDGE_CALIBRATION_EXPIRED", "JUDGE_CHANGED", "RUBRIC_CHANGED", "INPUTS_CHANGED", "AGE_EXPIRED"];
+
+// @public
+export type ReasonCode = (typeof REASON_CODES)[number];
+
+// @public
+export function reasonFor(code: string): Reason | undefined;
+
+// @public
+export const REASONS: {
+    readonly [C in ReasonCode]: Reason;
+};
+
+// @public
+export type ReasonScope = "decision" | "judge";
+
+// @public
+export interface ReasonSentence {
+    readonly key: string;
+    readonly text: string;
+    readonly when: string;
+}
 
 // @public
 export const RECORD_CONTRACTS: readonly RecordContract[];
