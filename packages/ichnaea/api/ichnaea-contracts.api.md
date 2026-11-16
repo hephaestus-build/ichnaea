@@ -257,7 +257,7 @@ export type Calibration = z.infer<typeof Calibration>;
 export function candidateRunsFirst(seed: {
     readonly algorithm: string;
     readonly value: string;
-}, caseId: string): Promise<boolean>;
+}, caseId: string): boolean;
 
 // @public
 export function canonicalize(value: unknown): string;
@@ -447,7 +447,7 @@ export const Case: z.ZodObject<{
 export type Case = z.infer<typeof Case>;
 
 // @public
-export function caseDigest(input: unknown): Promise<Digest>;
+export function caseDigest(input: unknown): Digest;
 
 // @public
 export function caseForTarget(record: Case): TargetCase;
@@ -589,7 +589,7 @@ export const CaseSet: z.ZodObject<{
 export type CaseSet = z.infer<typeof CaseSet>;
 
 // @public
-export function caseSetDigest(entries: readonly unknown[]): Promise<Digest>;
+export function caseSetDigest(entries: readonly unknown[]): Digest;
 
 // @public
 export const CaseSetEntry: z.ZodObject<{
@@ -816,7 +816,7 @@ export const ConfigurationIdentity: z.core.$ZodBranded<z.ZodString, "Configurati
 export type ConfigurationIdentity = z.infer<typeof ConfigurationIdentity>;
 
 // @public
-export function configurationIdentity(input: unknown): Promise<ConfigurationIdentity>;
+export function configurationIdentity(input: unknown): ConfigurationIdentity;
 
 // @public
 export function content<T extends z.ZodType>(schema: T): T;
@@ -1204,7 +1204,7 @@ export const Digest: z.ZodString;
 export type Digest = z.infer<typeof Digest>;
 
 // @public
-export function digest(value: unknown): Promise<`sha256:${string}`>;
+export function digest(value: unknown): `sha256:${string}`;
 
 // @public
 export const DIGEST_RULES: {
@@ -3039,7 +3039,10 @@ export const SensitivityResult: z.ZodObject<{
 }, z.core.$strict>;
 
 // @public
-export function sha256(text: string): Promise<`sha256:${string}`>;
+export function sha256(text: string): `sha256:${string}`;
+
+// @public
+export function sha256Hex(message: Uint8Array): string;
 
 // @public
 export type Stability = "development" | "alpha" | "beta" | "stable";
@@ -3477,10 +3480,10 @@ export type Verdict = z.infer<typeof Verdict>;
 export function verifyArms(arms: ReadonlyArray<{
     identity: string;
     configuration: unknown;
-}>, at?: string): Promise<LinkError[]>;
+}>, at?: string): LinkError[];
 
 // @public
-export function verifyConfiguration(input: unknown, at?: string): Promise<LinkError[]>;
+export function verifyConfiguration(input: unknown, at?: string): LinkError[];
 
 // @public
 export const WorkerError: z.ZodObject<{
