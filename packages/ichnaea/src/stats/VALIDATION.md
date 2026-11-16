@@ -148,11 +148,14 @@ result lists every condition that fails in its `limitations`.
   cases, every exact point of the CI grid is at least 0.9435; its exact points with one-trial cells
   or mixed counts are at least 0.9431, at 5 cases with 2 candidate trials against 5 base trials,
   outside the cap);
-- no excluded case;
+- no excluded case, except at one trial per case under its conditions (below), where a case
+  without its pair counts against coverage instead;
 - at most 3 completed trials per case and arm. Suites run 2 or 3, and the search for heterogeneous
   effects covers 2, 3 and mixed counts;
-- at least 90% of case-arm cells with 2 or more completed trials (one trial per case and arm by
-  design is not studied; missingness that leaves some cells with one trial is).
+- at least 90% of case-arm cells with 2 or more completed trials (missingness that leaves some cells
+  with one trial is studied), or exactly one completed trial in every cell, for `regression` only
+  and under the conditions of "One trial per case: the binary regression test" (decision 0020).
+  Mixed one and two trials stay under the 90% rule.
 
 - for `nonInferiority` only: an established margin floor, and an effective margin (the declared
   margin minus any safety margin) from that floor up to 0.30, the validated margin ceiling. A
@@ -233,9 +236,9 @@ With one trial per case and arm, the exact stratified conditional test is the ex
 McNemar test: a case where both arms agree adds nothing, and given n discordant cases, the number c
 where only the candidate passes is Binomial(n, 1/2) under the sharp null. That test is exact. What
 had to be shown is the weak null: per-case effects that differ but average 0, which is what a
-fixed-cases comparison of a suite means by "no change". **The validated domain does not include one
-trial per case yet.** This study is its evidence; the domain changes in its own change, with the
-conditions below.
+fixed-cases comparison of a suite means by "no change". **The validated domain includes one trial per
+case for the regression result, under the conditions below (decision 0020).** This study is its
+evidence. Non-inferiority at one trial per case is not validated.
 
 `scripts/study-binary-one-trial.ts` computes the type-I error exactly. Cases are independent, so a
 dynamic programme over (n, c) gives the distribution of the discordant counts, and the rejection
@@ -281,19 +284,57 @@ its structure. Its sidecar records the commit, the script hashes, the seeds and 
 
 - **Claim:** no failure found in this space, which is a search, not a proof. A structure outside it
   may still fail.
-- **Conditions for a validated result at one trial per case**, which the change that widens the
-  domain to one trial per case and at least 5 cases must enforce:
-  - **Interleaving:** both arms of a case ran adjacent in time, as the trial records show. The
-    stated assumption is that a run-level shock is shared by both arms of a case. With one trial
-    per arm, a shock between the arms cannot be told apart from an effect. This study has no
-    shocks, so it sets no shock bound.
-  - **A/A runs:** the suite's A/A runs at one trial per case, with at least two runs per arm, give
-    no REGRESSION.
-  - **Missing trials:** a case with a missing trial has no pair, so it is excluded and counts
-    against coverage. The sensitivity analysis covers it.
-  - Non-inferiority at one trial per case needs its own floor sweep: with one trial per arm most
-    pairs agree, the zero-variance mechanism that sets the margin floor. Until then, one trial per
-    case can give REGRESSION but never PASS.
+- **Conditions for a validated result at one trial per case.** `compareCounts` validates the
+  regression result at exactly one completed trial in every case-arm cell of at least 5 cases only
+  when its caller states, as `oneTrial`, that its checks of the records passed. Without it, the
+  result names "one trial per case needs decide's checks of the trial order, the timestamps and the
+  A/A runs". `decide` runs these checks for a plan that runs exactly one trial per case in its base
+  and candidate arms. Each check that fails is a limitation of the regression result, which then
+  gives no REGRESSION:
+  - **The order within each pair is random.** A fair coin per case chooses which arm runs first:
+    SHA-256 over the canonical JSON of `{ seed, case }`, with the plan's seed record and the case
+    ID; the candidate runs first when the lowest bit of the first byte is 1 (`candidateRunsFirst`).
+    The plan lists the trials case by case in that order, so its order is the run order, and
+    `batch` numbers the pairs. `decide` recomputes the coin: a case whose trials ran in the other
+    order (by `startedAt`; a tie is not the other order) is unpaired. The stated assumption is that
+    a run-level shock is shared by both arms of a case. With one trial per arm, a shock between the
+    arms cannot be told apart from an effect, and a random order keeps a drift over the run from
+    favouring one arm. This study has no shocks, so it sets no shock bound.
+  - **Both arms of a case ran adjacent in time.** Every trial that ran records `startedAt` and
+    `endedAt`; otherwise the result is not validated, because "the records do not show when the arms
+    ran". c is the largest number of trials whose [startedAt, endedAt] intervals overlap, computed
+    from the records. The trials are ranked by `startedAt`, ties broken by trial ID, and a case whose
+    two trials' ranks differ by more than 2c − 1 is unpaired. There is no fixed time window.
+  - **Unpaired cases and missing trials.** A case without its pair, unpaired or with a missing
+    trial, is excluded from the comparison and counts against coverage, exactly as a missing trial
+    does. The coverage floor decides whether too many were lost, so one retry never invalidates a
+    whole run. The sensitivity analysis covers them.
+  - **The schedule.** The plan states `schedule`: the concurrency and the endpoint the run uses.
+  - **A/A runs.** The plan cites, in `aa`, at least two distinct A/A decisions by run and decision
+    digest (`ichnaea import --aa <run>`), and the caller gives each with its plan and run. Each
+    one must:
+    1. match its cited digest, and name the given plan and run by their digests;
+    2. compare one configuration with itself: both arms have the same identity;
+    3. run one trial per case and arm;
+    4. run this plan's suite (the same `suiteDigest`);
+    5. meet these conditions itself: it is a decision, not INVALID, and every primary measure's
+       regression result is validated. An A/A plan waives only its own A/A precondition;
+    6. give no REGRESSION for any primary measure, after Holm;
+    7. be one of at least two distinct such decisions;
+    8. match this plan's base model (the configuration's `models`, compared as the identity
+       projection does) and its schedule. The base configuration's own identity need not match.
+  - **Non-inferiority** at one trial per case needs its own floor sweep: with one trial per arm
+    most pairs agree, the zero-variance mechanism that sets the margin floor. Until then, its
+    result names "non-inferiority is not validated at one trial per case", and one trial per case
+    can give REGRESSION but never PASS.
+- **Limitations `decide` cannot check.** It trusts the timestamps as recorded; an importer that
+  merges the records of several hosts states its clock source. Every decision at one trial per
+  case says so. A provider-side change behind the same model ID is not detected, so A/A runs on
+  the same model ID can hide it.
+- **The owner rule, which `decide` cannot see.** An A/A REGRESSION is never discarded. It blocks
+  validation at one trial per case for that suite, model and schedule until its cause is found and
+  two later, consecutive A/A decisions are clean. The cited records must be the two most recent A/A
+  decisions.
 
 ## Results of the CI gate
 

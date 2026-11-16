@@ -8,7 +8,9 @@ Benjamini–Yekutieli adjustment, floors and minimum detectable effects, and one
 saying whether it is validated and, if not, why: `regression` for the regression test, and
 `nonInferiority` for the interval against the margin. No verdict may rest on a result that is not
 validated. Score, proportion and ordinal measures have no validated method yet, so they are
-estimate-only.
+estimate-only. At one trial per case and arm, the regression result is validated only when the
+caller states that its checks of the records passed (`oneTrial`), and the non-inferiority result
+never is (decision 0020).
 
 **No non-inferiority result is validated yet.** The validated margin floor is not set. Exact
 searches found coverage below the bar at margins from 0.05 to 0.185, with 5 to 8 cases and 3 trials
