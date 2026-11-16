@@ -14,7 +14,8 @@
 //     settings have no failing point at truth −margin; among them the highest median π₀ at an
 //     effective margin of 0.10 wins, and on a tie S-A, then S-B with the larger φ_min, then S-C.
 //     Writes results/summary.json and results/summary.md.
-import { readFileSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { readPhase, type Row } from "./collect-score-type-i.ts";
@@ -132,12 +133,18 @@ function structures(): void {
   console.log(`\nB.6 trigger (k ≤ 30, m ≥ 0.10, fewer than 50 kept): ${trigger.length} cell(s)`);
 }
 
-function select(dir: string, smoke: boolean): void {
-  const problems: string[] = [];
-  const { rows } = readPhase(dir, "screen", SCREEN_COLUMNS, 6000, smoke, problems);
-  checkPoints(rows, problems);
-  if (problems.length > 0)
-    throw new Error(`the screen outputs fail their checks:\n${problems.join("\n")}`);
+/** One point of the confirmation list: its ID, and its stored structure for a refinement step. */
+export interface ConfirmPoint {
+  readonly id: string;
+  readonly structure?: string;
+}
+
+/**
+ * The confirmation list that the screen outputs determine: every point at truth −margin where a
+ * candidate setting is a candidate, and the 10 worst of each must-fail setting, sorted by ID.
+ * `select` writes it, and `verdict` rebuilds it to check the list the confirmation ran.
+ */
+export function confirmSelection(rows: readonly Row[]): ConfirmPoint[] {
   const atMargin = rows.filter((r) => r["truth"] === "margin");
   const chosen = new Map<string, Row>();
   for (const r of atMargin) {
@@ -159,9 +166,55 @@ function select(dir: string, smoke: boolean): void {
       .slice(0, WORST_PER_MUST_FAIL))
       chosen.set(r["id"] as string, r);
   });
-  const points = [...chosen.values()]
+  return [...chosen.values()]
     .toSorted((a, b) => ((a["id"] as string) < (b["id"] as string) ? -1 : 1))
-    .map((r) => ({ id: r["id"], ...(r["structure"] === "" ? {} : { structure: r["structure"] }) }));
+    .map((r) => ({
+      id: r["id"] as string,
+      ...(r["structure"] === "" ? {} : { structure: r["structure"] as string }),
+    }));
+}
+
+/**
+ * The checks that bind the confirmation to the screen: the list equals the one the screen outputs
+ * determine, every confirmation sidecar ran that very list (its sha256), and every selected point
+ * was confirmed once and no other. A candidate left unconfirmed would otherwise be judged on its
+ * screening estimate. Returns the problems, empty when everything holds.
+ */
+export function confirmBindingProblems(
+  screenRows: readonly Row[],
+  listText: string,
+  confirmRows: readonly Row[],
+  sidecarSha256s: readonly (string | undefined)[],
+): string[] {
+  const problems: string[] = [];
+  const expected = confirmSelection(screenRows);
+  const listed = (JSON.parse(listText) as { points: ConfirmPoint[] }).points;
+  if (JSON.stringify(listed) !== JSON.stringify(expected))
+    problems.push("confirm.json differs from the list that the screen outputs determine");
+  const listSha = createHash("sha256").update(listText).digest("hex");
+  sidecarSha256s.forEach((sha, i) => {
+    if (sha !== listSha)
+      problems.push(`confirmation shard ${i}: ran a different list (${sha ?? "none recorded"})`);
+  });
+  const wanted = new Set(expected.map((p) => p.id));
+  const seen = new Set<string>();
+  for (const r of confirmRows) {
+    const id = r["id"] as string;
+    if (seen.has(id)) problems.push(`${id}: confirmed more than once`);
+    seen.add(id);
+    if (!wanted.has(id)) problems.push(`${id}: confirmed but not selected`);
+  }
+  for (const id of wanted) if (!seen.has(id)) problems.push(`${id}: selected but not confirmed`);
+  return problems;
+}
+
+function select(dir: string, smoke: boolean): void {
+  const problems: string[] = [];
+  const { rows } = readPhase(dir, "screen", SCREEN_COLUMNS, 6000, smoke, problems);
+  checkPoints(rows, problems);
+  if (problems.length > 0)
+    throw new Error(`the screen outputs fail their checks:\n${problems.join("\n")}`);
+  const points = confirmSelection(rows);
   writeFileSync(path.join(dir, "confirm.json"), `${JSON.stringify({ points }, null, 1)}\n`);
   console.log(`${rows.length} points checked; ${points.length} selected for confirmation`);
 }
@@ -183,14 +236,23 @@ function verdict(dir: string, smoke: boolean): void {
   const screen = readPhase(dir, "screen", SCREEN_COLUMNS, 6000, smoke, problems);
   checkPoints(screen.rows, problems);
   const confirmPhase = readPhase(dir, "confirm", CONFIRM_COLUMNS, 190_000, smoke, problems);
-  const selected = (
-    JSON.parse(readFileSync(path.join(dir, "confirm.json"), "utf8")) as { points: { id: string }[] }
-  ).points.map((p) => p.id);
+  // The confirmation is bound to the screen: the list, and the list each shard ran.
+  const sidecars = readdirSync(dir)
+    .filter((f) => /^confirm-\d+-of-\d+\.tsv\.meta\.json$/.test(f))
+    .map(
+      (f) =>
+        (JSON.parse(readFileSync(path.join(dir, f), "utf8")) as { pointsSha256?: string })
+          .pointsSha256,
+    );
+  problems.push(
+    ...confirmBindingProblems(
+      screen.rows,
+      readFileSync(path.join(dir, "confirm.json"), "utf8"),
+      confirmPhase.rows,
+      sidecars,
+    ),
+  );
   const confirmed = new Map(confirmPhase.rows.map((r) => [r["id"] as string, r]));
-  for (const id of selected)
-    if (!confirmed.has(id)) problems.push(`${id}: selected but not confirmed`);
-  for (const id of confirmed.keys())
-    if (!selected.includes(id)) problems.push(`${id}: confirmed but not selected`);
   // One runtime for every shard of both phases: outputs compare byte for byte only within one.
   if (screen.runtime !== confirmPhase.runtime)
     problems.push(

@@ -13,6 +13,7 @@
 // In both phases, every hundredth repetition is also computed with the full bounds (the shipped
 // root-finder for the score settings), and a disagreement with the study's decision stops the run.
 // Each output has a sidecar `<output>.meta.json` (scripts/stats/provenance.ts).
+import { createHash } from "node:crypto";
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -197,9 +198,12 @@ function confirm(args: readonly string[]): void {
   mkdirSync(dir, { recursive: true });
   const output = path.join(dir, `confirm-${index}-of-${shards}.tsv`);
   const meta = provenance(local("./study-score-ni.ts"), [], 40_000_000, [...args]);
+  const listText = readFileSync(list, "utf8");
   const selected = (
-    JSON.parse(readFileSync(list, "utf8")) as { points: { id: string; structure?: string }[] }
+    JSON.parse(listText) as { points: { id: string; structure?: string }[] }
   ).points.filter((_point, i) => i % shards === index);
+  // The collector checks that every shard ran the list it rebuilds from the screen outputs.
+  const pointsSha256 = createHash("sha256").update(listText).digest("hex");
   const byCell = new Map(niCells().map((cell) => [cell.id, cell]));
   // At least the repetitions whose standard error at 0.95 is CONFIRM_SE (190,000 at 0.0005).
   const reps = Math.ceil((0.95 * 0.05) / CONFIRM_SE ** 2 / 10_000) * 10_000;
@@ -207,6 +211,7 @@ function confirm(args: readonly string[]): void {
     phase: "confirm",
     shard: { index, count: shards },
     points: selected.length,
+    pointsSha256,
     reps,
     confirmSe: CONFIRM_SE,
     guardEvery: GUARD_EVERY,
