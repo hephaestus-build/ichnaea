@@ -38,7 +38,7 @@ const SECTIONS: ReadonlyArray<{
   },
   {
     title: "Invalid runs",
-    intro: "Why a run cannot be trusted. An INVALID run gives no verdict about your change.",
+    intro: "Why a run cannot be trusted. An Invalid run gives no verdict about your change.",
     match: (code) => code.startsWith("INVALID_"),
   },
   {
