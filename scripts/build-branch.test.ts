@@ -7,7 +7,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { sourceCommitOf, toolProblems } from "./verify-build.ts";
+import { BUILD_INSTALL_FILTER, sourceCommitOf, toolProblems } from "./verify-build.ts";
 
 const github = join(import.meta.dirname, "..", ".github");
 const read = (...path: string[]): string => readFileSync(join(github, ...path), "utf8");
@@ -33,6 +33,13 @@ const fingerprint = (key: string): string =>
     .replace(/=+$/, "")}`;
 
 describe("the build branch workflow", () => {
+  it("installs the same projects for the build, the verify job and verify-build.ts, never the docs site", () => {
+    const install = `pnpm install --frozen-lockfile ${BUILD_INSTALL_FILTER.map((a) => (a.startsWith("!") ? `'${a}'` : a)).join(" ")}`;
+    for (const name of ["build", "verify"])
+      expect(job(name), name).toContain(`- run: ${install}\n`);
+    expect(workflow).not.toMatch(/- run: pnpm install --frozen-lockfile\n/);
+  });
+
   it("runs on pushes to main and on a dispatch, and refuses a dispatch on another ref", () => {
     expect(workflow).toMatch(
       /\non:\n {2}push:\n {4}branches: \[main\]\n {2}workflow_dispatch:\n\n/,
