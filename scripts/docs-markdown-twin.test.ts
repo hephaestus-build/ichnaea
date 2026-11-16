@@ -15,6 +15,12 @@ describe("Markdown twin", () => {
     expect(markdownTwin(body)).toBe("Text.");
   });
 
+  it("leaves fenced code untouched, even an import, a tag or a comment in it", () => {
+    const body =
+      'Use it:\n\n```ts\nimport { compare } from "@hephaestus-build/ichnaea";\n<Card title="x">\n{/* kept */}\n<Tag />\n```\n\nDone.';
+    expect(markdownTwin(body)).toBe(body);
+  });
+
   it("replaces an interactive component with a sentence that sends the reader to the page", () => {
     expect(markdownTwin("Before.\n\n<PlanningExplorer />\n\nAfter.")).toBe(
       "Before.\n\nThis part of the page is interactive. Open the page to use it.\n\nAfter.",
