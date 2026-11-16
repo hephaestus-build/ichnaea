@@ -47,6 +47,10 @@ describe("planning explorer model", () => {
   it("reports the library's own limitations outside the validated domain", () => {
     expect(regressionLimitations(support)).toEqual([]);
     expect(regressionLimitations({ ...support, cases: 4 })).not.toEqual([]);
-    expect(regressionLimitations({ ...support, trials: 1 })).not.toEqual([]);
+    expect(regressionLimitations({ ...support, cases: 4, trials: 1 })).not.toEqual([]);
+  });
+
+  it("validates the regression test at one trial per case, assuming the record checks pass", () => {
+    expect(regressionLimitations({ ...support, trials: 1 })).toEqual([]);
   });
 });
