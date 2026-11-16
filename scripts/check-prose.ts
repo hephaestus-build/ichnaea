@@ -64,12 +64,11 @@ export function proseBlocks(source: string): ProseBlock[] {
   };
   lines.forEach((raw, index) => {
     const line = index + 1;
-    const trimmed = raw.trim();
+    let trimmed = raw.trim();
     if (frontMatter) {
       if (index > 0 && trimmed === "---") frontMatter = false;
       return;
     }
-    const fenceMark = /^(`{3,}|~{3,})/.exec(trimmed)?.[1];
     if (fence !== undefined) {
       // A closing fence is the opening character, at least as many times, and only whitespace.
       const close = /^(`+|~+)$/.exec(trimmed)?.[1];
@@ -77,13 +76,22 @@ export function proseBlocks(source: string): ProseBlock[] {
         fence = undefined;
       return;
     }
-    // An MDX comment, `{/* … */}`, can span lines. The page does not render it.
+    // An MDX comment, `{/* … */}`, can span lines. The page does not render it, but it renders
+    // the text after the comment's end on the same line, so that text is read as prose.
     if (mdxComment || trimmed.startsWith("{/*")) {
       flush();
-      mdxComment = !trimmed.includes("*/}");
+      const end = trimmed.indexOf("*/}", mdxComment ? 0 : 3);
+      mdxComment = end < 0;
+      if (mdxComment) return;
+      trimmed = trimmed.slice(end + 3).trim();
+      if (trimmed === "") return;
+    }
+    // An import or export can span lines. It ends with a semicolon, with its `from "…"` clause or,
+    // as MDX ends it, at the next blank line: `export const meta = {}` needs no semicolon.
+    if (esm && trimmed === "") {
+      esm = false;
       return;
     }
-    // An import or export can span lines. It ends with a semicolon or with its `from "…"` clause.
     if (esm || /^(import|export)\s/.test(trimmed)) {
       flush();
       esm = !/;\s*$|\bfrom\s*["'][^"']*["']\s*$/.test(trimmed);
@@ -95,6 +103,7 @@ export function proseBlocks(source: string): ProseBlock[] {
       comment = !trimmed.includes("-->");
       return;
     }
+    const fenceMark = /^(`{3,}|~{3,})/.exec(trimmed)?.[1];
     if (fenceMark !== undefined) {
       flush();
       fence = fenceMark;

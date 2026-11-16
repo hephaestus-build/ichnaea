@@ -69,11 +69,29 @@ describe("prose check", () => {
     expect(problems("It runs {/* note; hidden */} locally.")).toEqual([]);
   });
 
+  it("reads the text after an MDX comment's end on the same line as prose", () => {
+    expect(problems("{/* note */} Simply run it.")).toEqual([
+      "a word that tells the reader it is easy",
+    ]);
+    expect(problems("{/* a note\nthat spans lines */} Simply run it.")).toEqual([
+      "a word that tells the reader it is easy",
+    ]);
+  });
+
   it("skips a whole multiline import or export", () => {
     expect(problems('import {\n  Card,\n  CardGrid,\n} from "x";\n\nIt runs locally.')).toEqual([]);
     expect(problems("export const meta = {\n  title: 'a; b',\n};\n\nSimply run it.")).toHaveLength(
       1,
     );
+  });
+
+  it("ends an import or export without a semicolon at the next blank line, as MDX does", () => {
+    expect(problems("export const meta = {}\n\nSimply run it.")).toEqual([
+      "a word that tells the reader it is easy",
+    ]);
+    expect(problems('import "./styles.css"\n\nSimply run it.')).toEqual([
+      "a word that tells the reader it is easy",
+    ]);
   });
 
   it("counts a code span as one word and keeps the text of a link", () => {
