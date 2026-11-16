@@ -23,8 +23,8 @@
     </fieldset>
     <div class="field">
       <label for="margin">Margin, in points</label>
-      <input id="margin" name="margin" type="number" min="1" max="30" step="0.5" value="15" />
-      <p class="hint">The largest decrease you accept. You register it before any run.</p>
+      <input id="margin" name="margin" type="number" min="5" max="30" step="0.5" value="15" />
+      <p class="hint">The largest decrease you accept. You register it before any run. The planner refuses a margin below 5 points.</p>
     </div>
     <div class="field">
       <label for="alwaysPass">Cases the base passes every time, in percent</label>
@@ -74,7 +74,7 @@
         <span id="count-threshold" class="bar-count"></span>
       </div>
     </dd>
-    <dt>Chance of PASS when nothing changes</dt>
+    <dt>Bound clears the margin when nothing changes</dt>
     <dd id="pass"></dd>
   </dl>
 </section>
@@ -110,7 +110,7 @@
       design: {
         cases: Math.round(clamp(number("cases", 12), 2, 300)),
         trials: clamp(number("trials", 3), 1, 3),
-        margin: clamp(number("margin", 15), 1, 30) / 100,
+        margin: clamp(number("margin", 15), 5, 30) / 100,
         alwaysPass: clamp(number("alwaysPass", 80), 0, 100) / 100,
         otherRate: clamp(number("otherRate", 70), 5, 95) / 100,
       },
@@ -167,7 +167,7 @@
     field("bar-threshold").style.width = width(noChange.thresholdAlarms);
     field("count-ichnaea").textContent = share(noChange.regressionAlarms, noChange.runs);
     field("count-threshold").textContent = share(noChange.thresholdAlarms, noChange.runs);
-    field("pass").textContent = `The bound clears your margin in ${share(noChange.boundClearsMargin, noChange.runs)}. That is the chance of PASS once Ichnaea validates non-inferiority. Today no run can pass.`;
+    field("pass").textContent = `The bound clears your margin in ${share(noChange.boundClearsMargin, noChange.runs)}. PASS would also need both statistical results validated for this design. Today no run can pass.`;
     field("details").hidden = false;
     field("summary").textContent = `With no change, Ichnaea raised a false alarm in ${share(noChange.regressionAlarms, noChange.runs)}, and the fixed rule in ${share(noChange.thresholdAlarms, noChange.runs)}.`;
     if (button) button.disabled = false;
