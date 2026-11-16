@@ -3,7 +3,6 @@ import { readFile } from "node:fs/promises";
 import {
   Case,
   CaseSet,
-  canonicalize,
   Configuration,
   type Decision,
   digest,
@@ -13,13 +12,20 @@ import {
   proportionProblem,
   Run,
   Suite,
-  type Trial,
 } from "../contracts/index.ts";
 
 import type { Host } from "./host.ts";
 import { scoreTrials } from "./measures.ts";
+import {
+  checkCaptured,
+  checkConfiguration,
+  FAILED_OUTCOMES,
+  ImportError,
+  passing,
+} from "./import-rules.ts";
 import { resolvePlan } from "./planner.ts";
-import { FileStore, recordProblems, StoreError } from "./store.ts";
+import { recordProblems } from "./records.ts";
+import { FileStore, StoreError } from "./store.ts";
 
 /** What `ichnaea import` needs. */
 export interface ImportRunInput {
@@ -64,73 +70,12 @@ export interface ImportRunInput {
   readonly ichnaea: string;
 }
 
-/**
- * The error kind of a trial whose output was not captured. Such a trial is an infrastructure
- * failure, never a completed trial: it counts as missing, never as a failure of the system.
- */
-export const NOT_CAPTURED = "not-captured";
-
-/** Outcomes that score as a failed trial, whatever value a record carries (REQ-20). */
-const FAILED_OUTCOMES: ReadonlySet<string> = new Set(["system_failure", "budget_exceeded"]);
-
-/** Thrown when an importer's records cannot be stored. The message names the record. */
-export class ImportError extends Error {
-  /** The error's name, for `instanceof`-free checks. */
-  override readonly name = "ImportError";
-}
-
 async function json(path: string): Promise<unknown> {
   try {
     return JSON.parse(await readFile(path, "utf8"));
   } catch (error) {
     throw new ImportError(`${path}: ${(error as Error).message}`);
   }
-}
-
-/**
- * Marks a trial whose configuration differs from its arm, or whose observations differ from what
- * the configuration expects (REQ-15), as an invalid configuration. Its outputs stay recorded; it
- * gives no value, so it counts as missing.
- */
-function checkConfiguration(trial: Trial, identity: string | undefined): Trial {
-  if (trial.outcome === "invalid_configuration") return trial;
-  const mismatch =
-    identity !== trial.configuration
-      ? `the trial ran configuration ${trial.configuration}, not its arm's ${identity ?? "(no arm)"}`
-      : trial.observed
-          ?.filter(
-            (o) => o.expected !== undefined && canonicalize(o.value) !== canonicalize(o.expected),
-          )
-          .map((o) => `observed ${o.name} differs from the expected value`)[0];
-  if (mismatch === undefined) return trial;
-  return {
-    ...trial,
-    outcome: "invalid_configuration",
-    error: { kind: "configuration-mismatch", message: mismatch },
-  };
-}
-
-/**
- * A trial is scored only on output that was captured (REQ-20). A completed record with neither
- * an output nor a pointer to one is a capture failure: an infrastructure failure, so it counts as
- * missing. An output the system returned empty is present, and is scored.
- */
-function checkCaptured(trial: Trial): Trial {
-  if (trial.outcome !== "completed" || trial.output !== undefined || trial.pointer !== undefined)
-    return trial;
-  return {
-    ...trial,
-    outcome: "infrastructure_failure",
-    error: { kind: NOT_CAPTURED, message: "the record has no captured output" },
-  };
-}
-
-/** Whether a value says that its trial passed: a binary pass, or a proportion with a success. */
-function passing(value: MeasureValue["value"]): boolean {
-  return (
-    (value?.type === "binary" && value.pass) ||
-    (value?.type === "proportion" && value.successes > 0)
-  );
 }
 
 /**

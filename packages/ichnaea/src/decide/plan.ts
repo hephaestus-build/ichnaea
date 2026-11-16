@@ -16,7 +16,7 @@ import {
 import { CORE_VERSION } from "../core/version.ts";
 import { MAX_SEED, PlanError, resolvePlan } from "../core/planner.ts";
 import { IntendedChange, intendedFactors } from "../core/pointers.ts";
-import { measureId, type SuiteDefinition, suiteMeasures } from "../core/suite.ts";
+import { measureId, type SuiteDefinition, suiteMeasures, type SuitePlan } from "../core/suite.ts";
 
 import { planningPower } from "./planning.ts";
 
@@ -44,16 +44,6 @@ export interface PlanComparison {
   readonly schedule?: Plan["schedule"];
   /** The noise checks (A/A decisions) this plan cites, by run and decision digest. */
   readonly aa?: Plan["aa"];
-}
-
-/** A plan with the suite it was made from, as `importResults` and `compare` take it. */
-export interface SuitePlan<S extends SuiteDefinition = SuiteDefinition> {
-  /** The suite whose cases, measures and limits the plan resolves. */
-  readonly suite: S;
-  /** The ID of the run that carries out the plan. */
-  readonly run: string;
-  /** The plan record. */
-  readonly record: Plan;
 }
 
 /** A suite record as a definition gives it: the measure review date is optional there. */

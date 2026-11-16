@@ -15,7 +15,8 @@ import {
   type Trial,
   verifyArms,
 } from "../contracts/index.ts";
-import { recordProblems, TRIGGER_VARIES } from "../core/index.ts";
+import { TRIGGER_VARIES } from "../core/planner.ts";
+import { recordProblems } from "../core/records.ts";
 import {
   type CaseCounts,
   type Comparison,

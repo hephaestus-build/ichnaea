@@ -2,11 +2,22 @@ export * from "./cases.ts";
 export * from "./cli.ts";
 export * from "./host.ts";
 export * from "./import.ts";
+export { ImportError, NOT_CAPTURED } from "./import-rules.ts";
 export * from "./ledger.ts";
 export * from "./measures.ts";
 export { MIN_DECISION_CASES, PlanError, TRIGGER_VARIES } from "./planner.ts";
 export * from "./package-version.ts";
 export * from "./plugin.ts";
+export * from "./records.ts";
+export {
+  type CompletedRow,
+  type FailedRow,
+  type ImportSummary,
+  importResults,
+  type ResultRow,
+  type ResultRowBase,
+  type Runtime,
+} from "./results.ts";
 export * from "./semver.ts";
 export * from "./store.ts";
 export * from "./version.ts";
@@ -23,5 +34,6 @@ export {
   type SuiteCase,
   type SuiteDefinition,
   SuiteError,
+  type SuitePlan,
   type SuitePolicy,
 } from "./suite.ts";

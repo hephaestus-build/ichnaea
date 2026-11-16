@@ -9,6 +9,7 @@ import {
   SemVer,
   Text,
   Trial,
+  type Plan,
   type Unit,
 } from "../contracts/index.ts";
 
@@ -175,6 +176,16 @@ export interface SuiteDefinition<Measure extends string = string> {
   readonly changes: (paths: readonly string[]) => readonly string[];
   /** How trials are collected. Opaque here; collection reads it. */
   readonly worker?: unknown;
+}
+
+/** A plan with the suite it was made from, as `importResults` and `compare` take it. */
+export interface SuitePlan<S extends SuiteDefinition = SuiteDefinition> {
+  /** The suite whose cases, measures and limits the plan resolves. */
+  readonly suite: S;
+  /** The ID of the run that carries out the plan. */
+  readonly run: string;
+  /** The plan record. */
+  readonly record: Plan;
 }
 
 /** Thrown when a suite definition is not valid. The message names the field and the fix. */
