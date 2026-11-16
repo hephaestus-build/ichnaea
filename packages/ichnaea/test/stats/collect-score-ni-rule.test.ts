@@ -60,6 +60,27 @@ const confirmAll = (
   ids = screen.map((r) => r["id"] as string),
 ): Map<string, Row> => new Map(ids.map((id) => [id, confirmedRow(id, rates)]));
 
+// The bar is estimate + 3·SE < 0.94, with the confirmation's own SE. Points 2.5 and 3.5 SE below
+// 0.94 sit on either side of it, so dropping the 3·SE, raising the bar, or moving 3 to 2 or 4
+// each fails one of these tests.
+const nearBar = (seBelow: number): Map<string, Row> => {
+  const reps = 250_000;
+  const sd = Math.sqrt((0.94 * 0.06) / reps);
+  // A whole count, so the row's events are exactly this coverage.
+  let p = Math.round((0.94 - seBelow * sd) * reps) / reps;
+  // Step to the count whose own SE puts it seBelow below the bar, to within 0.05 SE.
+  const z = (q: number): number => (0.94 - q) / Math.sqrt((q * (1 - q)) / reps);
+  while (z(p) < seBelow - 0.05) p -= 1 / reps;
+  while (z(p) > seBelow + 0.05) p += 1 / reps;
+  expect(Math.abs(z(p) - seBelow)).toBeLessThan(0.05);
+  const confirmed = confirmAll(failing);
+  const id = "G3/nuC2-nuB50/k12-r2/m0.050/margin";
+  confirmed.set(id, confirmedRow(id, { ...failing, "S-C": p }, reps));
+  return confirmed;
+};
+const sCOnG3 = (confirmed: Map<string, Row>) =>
+  mustFailResults(screen, confirmed).find((m) => m.setting === "S-C" && m.family.includes("G3"));
+
 /** A setting's result as the choice reads it. */
 const result = (name: string, pi0: number, eligible = true) => ({
   name,
@@ -113,6 +134,16 @@ describe("score non-inferiority: the named must-fail checks", () => {
     expect(harnessPasses(mustFailResults(screenedOnly, new Map()))).toBe(false);
     const atZero = screen.map((r) => ({ ...r, truth: "zero" }));
     expect(harnessPasses(mustFailResults(atZero, confirmAll(failing)))).toBe(false);
+  });
+
+  it("does not count a confirmed point 2.5 SE below 0.94 as a failure: the bar is estimate + 3·SE", () => {
+    expect(sCOnG3(nearBar(2.5))).toMatchObject({ confirmedFailures: 0, failed: false });
+    expect(harnessPasses(mustFailResults(screen, nearBar(2.5)))).toBe(false);
+  });
+
+  it("counts a confirmed point 3.5 SE below 0.94 as a failure", () => {
+    expect(sCOnG3(nearBar(3.5))).toMatchObject({ confirmedFailures: 1, failed: true });
+    expect(harnessPasses(mustFailResults(screen, nearBar(3.5)))).toBe(true);
   });
 
   it("reports S-B with φ_min = 0 on the concentrated family apart: it decides nothing", () => {
