@@ -31,6 +31,10 @@ on:
         description: "E: B's worst structures embedded at K 20, 30 and 60 (needs B)"
         type: boolean
         default: true
+      max_parallel:
+        description: "Jobs of one matrix at once, at most 30 (the organisation shares 60, and other repositories keep 30 or more)"
+        type: string
+        default: "20"
       margins:
         description: "Margin indices 0-50, comma-separated, for a pre-check (A, B, C and E-large only); empty runs every margin"
         type: string
@@ -59,6 +63,7 @@ jobs:
     outputs:
       phases: ${{ steps.plan.outputs.phases }}
       margins: ${{ steps.plan.outputs.margins }}
+      max_parallel: ${{ steps.plan.outputs.max_parallel }}
       exact: ${{ steps.plan.outputs.exact }}
       exact_count: ${{ steps.plan.outputs.exact_count }}
       skips: ${{ steps.plan.outputs.skips }}
@@ -84,6 +89,7 @@ jobs:
           SWEEP_E_LARGE: ${{ inputs.e-large }}
           SWEEP_E_EMBEDDED: ${{ inputs.e-embedded }}
           MARGINS: ${{ inputs.margins }}
+          MAX_PARALLEL: ${{ inputs.max_parallel }}
         run: node packages/ichnaea/scripts/stats/sweep-job.ts plan ${MARGINS:+--margins "$MARGINS"}
 
   exact:
@@ -94,6 +100,7 @@ jobs:
     timeout-minutes: 330
     strategy:
       fail-fast: false
+      max-parallel: ${{ fromJSON(needs.plan.outputs.max_parallel) }}
       matrix: ${{ fromJSON(needs.plan.outputs.exact) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -123,6 +130,7 @@ jobs:
     timeout-minutes: 330
     strategy:
       fail-fast: false
+      max-parallel: ${{ fromJSON(needs.plan.outputs.max_parallel) }}
       matrix: ${{ fromJSON(needs.plan.outputs.skips) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -177,6 +185,7 @@ jobs:
     timeout-minutes: 330
     strategy:
       fail-fast: false
+      max-parallel: ${{ fromJSON(needs.plan.outputs.max_parallel) }}
       matrix: ${{ fromJSON(needs.plan.outputs.large) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -237,6 +246,7 @@ jobs:
     timeout-minutes: 330
     strategy:
       fail-fast: false
+      max-parallel: ${{ fromJSON(needs.plan.outputs.max_parallel) }}
       matrix: ${{ fromJSON(needs.plan.outputs.embedded) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

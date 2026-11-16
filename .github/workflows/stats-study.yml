@@ -20,6 +20,10 @@ on:
         description: "R: jobs of the second phase (recheck or confirm), 4 shards each"
         type: string
         default: "40"
+      max_parallel:
+        description: "Jobs of one matrix at once, at most 30 (the organisation shares 60, and other repositories keep 30 or more)"
+        type: string
+        default: "20"
       pilot:
         description: "Screen shard indices for a pilot, comma-separated (stops before select); empty runs the study"
         type: string
@@ -55,6 +59,7 @@ jobs:
       secondCount: ${{ steps.plan.outputs.secondCount }}
       secondJobs: ${{ steps.plan.outputs.secondJobs }}
       second_count: ${{ steps.plan.outputs.second_count }}
+      max_parallel: ${{ steps.plan.outputs.maxParallel }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -70,9 +75,10 @@ jobs:
           JOBS: ${{ inputs.jobs }}
           SECOND_JOBS: ${{ inputs.second_jobs }}
           PILOT: ${{ inputs.pilot }}
+          MAX_PARALLEL: ${{ inputs.max_parallel }}
         run: >-
           node scripts/stats/study-plan.ts --study "$STUDY" --jobs "$JOBS"
-          --second-jobs "$SECOND_JOBS" --pilot "$PILOT"
+          --second-jobs "$SECOND_JOBS" --pilot "$PILOT" --max-parallel "$MAX_PARALLEL"
       - name: The study's scripts exist on this commit
         working-directory: packages/ichnaea
         env:
@@ -115,6 +121,7 @@ jobs:
     timeout-minutes: 330
     strategy:
       fail-fast: false
+      max-parallel: ${{ fromJSON(needs.plan.outputs.max_parallel) }}
       matrix: ${{ fromJSON(needs.plan.outputs.screen) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -186,6 +193,7 @@ jobs:
     timeout-minutes: 330
     strategy:
       fail-fast: false
+      max-parallel: ${{ fromJSON(needs.plan.outputs.max_parallel) }}
       matrix: ${{ fromJSON(needs.plan.outputs.secondJobs) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
