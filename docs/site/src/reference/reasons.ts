@@ -38,7 +38,8 @@ const SECTIONS: ReadonlyArray<{
   },
   {
     title: "Intervals not available",
-    intro: "Why a number is shown without an interval.",
+    intro:
+      'Why a number has no interval. The card says "No interval yet:" followed by the sentence below.',
     match: (code) => code.startsWith("INTERVAL_UNAVAILABLE_"),
   },
   {
