@@ -95,6 +95,9 @@ export const REASON_CODES = [
   "ESTIMATE_ONLY_CACHED_ARM",
   "ESTIMATE_ONLY_PLACEHOLDER_MARGIN",
   "ESTIMATE_ONLY_NO_METHOD",
+  "NO_BOUND_NO_VALUE",
+  "NO_BOUND_DESCRIPTIVE",
+  "NO_BOUND_METHOD",
   "JUDGE_ARM_BIAS_WITHIN_BOUND",
   "JUDGE_DIAGNOSTIC",
   "RATERS_BELOW_FLOOR",
@@ -391,6 +394,17 @@ export const REASONS: { readonly [C in ReasonCode]: Reason } = {
     "The measure’s value type has no validated method yet, so its change has no interval.",
     [always("no-method", "No interval yet: no validated method for score measures.")],
   ),
+  NO_BOUND_NO_VALUE: run([], "A change has no bound because an arm has no value to compare.", [
+    always("no-bound", "No bound: an arm has no value to compare."),
+  ]),
+  NO_BOUND_DESCRIPTIVE: run(
+    [],
+    "A descriptive change, shown without a bound because its comparison gives no interval.",
+    [always("no-bound", "No bound: this change is descriptive only.")],
+  ),
+  NO_BOUND_METHOD: run([], "A change whose comparison method gives no bound for these data.", [
+    always("no-bound", "No bound: the method for this comparison gives none here."),
+  ]),
   JUDGE_ARM_BIAS_WITHIN_BOUND: {
     scope: "judge",
     labels: JUDGE_LABELS,
@@ -673,6 +687,12 @@ export interface ReasonParams {
   ESTIMATE_ONLY_PLACEHOLDER_MARGIN: NoParams;
   /** The parameters of `ESTIMATE_ONLY_NO_METHOD`. */
   ESTIMATE_ONLY_NO_METHOD: NoParams;
+  /** The parameters of `NO_BOUND_NO_VALUE`. */
+  NO_BOUND_NO_VALUE: NoParams;
+  /** The parameters of `NO_BOUND_DESCRIPTIVE`. */
+  NO_BOUND_DESCRIPTIVE: NoParams;
+  /** The parameters of `NO_BOUND_METHOD`. */
+  NO_BOUND_METHOD: NoParams;
   /** The parameters of `JUDGE_ARM_BIAS_WITHIN_BOUND`. */
   JUDGE_ARM_BIAS_WITHIN_BOUND: { readonly shownBound: number; readonly boundCases: number };
   /** The parameters of `JUDGE_DIAGNOSTIC`. */
@@ -744,6 +764,9 @@ export const REASON_PARAMS: {
   ESTIMATE_ONLY_CACHED_ARM: [],
   ESTIMATE_ONLY_PLACEHOLDER_MARGIN: [],
   ESTIMATE_ONLY_NO_METHOD: [],
+  NO_BOUND_NO_VALUE: [],
+  NO_BOUND_DESCRIPTIVE: [],
+  NO_BOUND_METHOD: [],
   JUDGE_ARM_BIAS_WITHIN_BOUND: ["shownBound", "boundCases"],
   JUDGE_DIAGNOSTIC: [],
   RATERS_BELOW_FLOOR: ["humanHuman", "minimum"],
