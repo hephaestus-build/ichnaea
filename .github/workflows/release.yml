@@ -15,9 +15,9 @@ name: Release
 # - The consumer job installs exactly that tarball as the README says, on the Node floor and on
 #   the current Node, and runs the example.
 # - The stage job runs in the `npm` environment, which only `v*` tags may deploy to. It has no
-#   checkout and runs no repository code. It checks the SHA-512, then stages the tarball. npm's
-#   trusted publisher for this workflow and environment may only stage, never publish, and the
-#   package refuses tokens, so no token exists to store.
+#   checkout and runs no repository code. It checks the SHA-512, takes an exact npm, then
+#   stages the tarball. npm's trusted publisher for this workflow and environment may only stage,
+#   never publish, and the package refuses tokens, so no token exists to store.
 #
 # MAINTAINERS.md § Releases has the procedure, and § Repository settings the settings.
 
@@ -193,11 +193,33 @@ jobs:
             exit 1
           fi
           echo "::notice::$TARBALL has the integrity $INTEGRITY. Compare it before you approve."
-      - name: npm can stage, so it is 11.15.0 or later
+      # npm stage needs npm 11.15.0 or later. The job runs an exact npm, not the one that Node
+      # bundles: its tarball, checked against the integrity pinned here, unpacked and run first on PATH.
+      - name: Use npm at the exact version that stages
+        env:
+          NPM_VERSION: "11.19.1"
+          NPM_INTEGRITY: sha512-ztsxKxt/kkIaAs+2i0GU6I+DRmUdrNasxTZKJe9TCdSjKxlhah/4r/hl5ygMD6XAg1qZ9c2TNomR4qgOydp10g==
         run: |
-          version="$(npm --version)"
-          if [ "$(printf '%s\n' 11.15.0 "$version" | sort -V | head -n 1)" != 11.15.0 ]; then
-            echo "::error::npm $version cannot stage a version: npm stage needs 11.15.0 or later."
+          curl --fail --silent --show-error --location --retry 3 --output "$RUNNER_TEMP/npm.tgz" \
+            "https://registry.npmjs.org/npm/-/npm-$NPM_VERSION.tgz"
+          actual="sha512-$(openssl dgst -sha512 -binary "$RUNNER_TEMP/npm.tgz" | base64 -w0)"
+          if [ "$actual" != "$NPM_INTEGRITY" ]; then
+            echo "::error::npm $NPM_VERSION has $actual, not the pinned $NPM_INTEGRITY."
+            exit 1
+          fi
+          mkdir "$RUNNER_TEMP/npm" "$RUNNER_TEMP/npm-bin"
+          tar -xzf "$RUNNER_TEMP/npm.tgz" -C "$RUNNER_TEMP/npm"
+          # The package's own bin/npm looks for the npm beside Node, so a wrapper runs this one.
+          printf '#!/bin/sh\nexec node "%s" "$@"\n' "$RUNNER_TEMP/npm/package/bin/npm-cli.js" \
+            > "$RUNNER_TEMP/npm-bin/npm"
+          chmod +x "$RUNNER_TEMP/npm-bin/npm"
+          echo "$RUNNER_TEMP/npm-bin" >> "$GITHUB_PATH"
+      - name: npm is the pinned version
+        env:
+          NPM_VERSION: "11.19.1"
+        run: |
+          if [ "$(npm --version)" != "$NPM_VERSION" ]; then
+            echo "::error::npm is $(npm --version), not $NPM_VERSION."
             exit 1
           fi
       - name: Stage the tarball on npm, with provenance, for a package owner to approve

@@ -5,13 +5,20 @@ name: Release finish
 # starts it by hand with the tag, or the daily run finds every v* tag whose version npm lists as
 # published and that has no GitHub release yet.
 #
+# Every job checks out the default branch, never the tag: this workflow runs no code of the
+# version that it checks, only that version as npm serves it, in a scratch project.
+#
 # - The pending job finds those tags.
-# - The verify job downloads the files that release.yml staged for the tag, from its artifact. It
-#   checks that npm serves the version with the staged SHA-512, that a new npm project installs
-#   it with valid signatures and a provenance by release.yml at the tag, that its bin prints the
-#   version, and that the README's install and example run against it.
-# - The release job runs no repository code. It checks the files against SHA256SUMS and creates
-#   the GitHub release on the existing tag, with the notes, the tarball, the SBOM and SHA256SUMS.
+# - The verify job, one per tag, finds the release run of the tag by the tag's commit and
+#   downloads the files that it staged. It checks that npm serves the version with the staged
+#   SHA-512, that a new npm project installs it with valid signatures, and that its provenance
+#   names release.yml at the tag and the tag's commit, which is on main. It checks that the bin
+#   prints the version and that the README's install and example run against it. Then it records
+#   the run as verified.
+# - The release job, one per tag, runs no repository code. It needs the tag's verified record, so a
+#   tag that failed its checks gets no release and the others still do. It checks the files
+#   against SHA256SUMS, hashes each tarball and compares it with npm's integrity, and creates the
+#   GitHub release on the existing tag with the notes, the tarball, the SBOM and SHA256SUMS.
 #
 # MAINTAINERS.md § Releases has the procedure.
 
@@ -44,6 +51,7 @@ jobs:
       # Every tag: the job reads them with git.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.event.repository.default_branch }}
           fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -66,16 +74,18 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: read
-      actions: read # download the artifact of the release run
+      actions: read # find the release run and download its artifact
     strategy:
       fail-fast: false
       max-parallel: 1
       matrix:
         tag: ${{ fromJSON(needs.pending.outputs.tags) }}
     steps:
+      # main's scripts, every tag, and the history for the check that the tag's commit is on main.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: refs/tags/${{ matrix.tag }}
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
           persist-credentials: false
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -83,18 +93,18 @@ jobs:
           node-version: 24
           package-manager-cache: false
       - run: pnpm install --frozen-lockfile --filter '!ichnaea-docs'
-      - name: Download the files that the release run of the tag staged
+      - name: The release run of the tag, by the tag's commit
+        id: run
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
           TAG: ${{ matrix.tag }}
-        run: |
-          run="$(gh run list -R "$GITHUB_REPOSITORY" --workflow release.yml --event push \
-            --branch "$TAG" --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
-          if [ -z "$run" ]; then
-            echo "::error::No successful run of release.yml for $TAG. Its artifact holds the staged files."
-            exit 1
-          fi
-          gh run download "$run" -R "$GITHUB_REPOSITORY" -n release -D "$RUNNER_TEMP/release"
+        run: node scripts/release-run.ts "$TAG" >> "$GITHUB_OUTPUT"
+      - name: Download the files that the release run staged
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN: ${{ steps.run.outputs.run }}
+        run: gh run download "$RUN" -R "$GITHUB_REPOSITORY" -n release -D "$RUNNER_TEMP/release"
       - name: npm serves the staged tarball, with valid signatures and its provenance
         env:
           TAG: ${{ matrix.tag }}
@@ -107,10 +117,24 @@ jobs:
         run: |
           VERSION="${TAG#v}"
           node scripts/build-consumer.ts --spec "@tumaet/ichnaea@$VERSION"
+      - name: Record the verified run
+        env:
+          RUN: ${{ steps.run.outputs.run }}
+        run: |
+          mkdir "$RUNNER_TEMP/verified"
+          printf '%s\n' "$RUN" > "$RUNNER_TEMP/verified/run"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: verified-${{ matrix.tag }}
+          path: ${{ runner.temp }}/verified/
+          if-no-files-found: error
+          retention-days: 1
 
   release:
     name: release ${{ matrix.tag }}
     needs: [pending, verify]
+    # A failed verify of one tag skips the release of that tag alone: its record is missing.
+    if: ${{ !cancelled() && needs.pending.result == 'success' && needs.pending.outputs.tags != '[]' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -122,17 +146,36 @@ jobs:
       matrix:
         tag: ${{ fromJSON(needs.pending.outputs.tags) }}
     steps:
-      - name: Download the files that the release run of the tag staged
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: verified-${{ matrix.tag }}
+          path: verified
+      - name: Download the files of the verified release run
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ matrix.tag }}
-        run: |
-          run="$(gh run list -R "$GITHUB_REPOSITORY" --workflow release.yml --event push \
-            --branch "$TAG" --status success --limit 1 --json databaseId --jq '.[0].databaseId')"
-          gh run download "$run" -R "$GITHUB_REPOSITORY" -n release -D release
+        run: gh run download "$(cat verified/run)" -R "$GITHUB_REPOSITORY" -n release -D release
       - name: The files are the ones that the release run checked
         working-directory: release/assets
         run: sha256sum --check --strict SHA256SUMS
+      - name: Each tarball is the one that npm serves
+        env:
+          TAG: ${{ matrix.tag }}
+        run: |
+          VERSION="${TAG#v}"
+          registry="$(npm view "@tumaet/ichnaea@$VERSION" dist.integrity)"
+          count=0
+          for tgz in release/assets/*.tgz; do
+            actual="sha512-$(openssl dgst -sha512 -binary "$tgz" | base64 -w0)"
+            if [ "$actual" != "$registry" ]; then
+              echo "::error::$tgz has $actual, but npm serves $VERSION with $registry."
+              exit 1
+            fi
+            count=$((count + 1))
+          done
+          if [ "$count" -ne 1 ]; then
+            echo "::error::The release would carry $count tarballs, not one."
+            exit 1
+          fi
       - name: Create the GitHub release on the tag
         env:
           GH_TOKEN: ${{ github.token }}

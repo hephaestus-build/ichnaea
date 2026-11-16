@@ -176,10 +176,26 @@ describe("release.yml", () => {
     expect(stage).not.toContain("actions/checkout@");
     expect(stage).not.toMatch(/\bnode scripts|pnpm /);
     const [digest, digestStep] = release.step("stage", "openssl dgst -sha512 -binary");
-    const [npm, npmStep] = release.step("stage", "npm --version");
+    const [npm, npmStep] = release.step("stage", "NPM_INTEGRITY:");
+    const [pinnedCheck, pinnedStep] = release.step(
+      "stage",
+      'if [ "$(npm --version)" != "$NPM_VERSION" ]; then',
+    );
     const [publish, publishStep] = release.step("stage", "npm stage publish");
     expect(digestStep).toContain("INTEGRITY: ${{ needs.pack.outputs.integrity }}");
-    expect(npmStep).toContain("11.15.0");
+    // An exact npm, 11.15.0 or later, and never the npm that Node bundles.
+    const pinned = /NPM_VERSION: "(\d+)\.(\d+)\.(\d+)"/.exec(npmStep);
+    expect(pinned).not.toBeNull();
+    const [major, minor] = [Number(pinned?.[1]), Number(pinned?.[2])];
+    expect(major > 11 || (major === 11 && minor >= 15), pinned?.[0]).toBe(true);
+    expect(npmStep).toMatch(/NPM_INTEGRITY: sha512-[A-Za-z0-9+/]+={0,2}\n/);
+    expect(npmStep).toContain('if [ "$actual" != "$NPM_INTEGRITY" ]; then');
+    expect(npmStep).toContain('"$RUNNER_TEMP/npm/package/bin/npm-cli.js"');
+    expect(npmStep).toContain('echo "$RUNNER_TEMP/npm-bin" >> "$GITHUB_PATH"');
+    expect(npmStep.indexOf('$NPM_INTEGRITY" ]')).toBeLessThan(npmStep.indexOf("tar -xzf"));
+    expect(pinnedStep).toContain(`NPM_VERSION: "${pinned?.[1]}.${pinned?.[2]}.${pinned?.[3]}"`);
+    expect(npm).toBeLessThan(pinnedCheck);
+    expect(pinnedCheck).toBeLessThan(publish);
     expect(digest).toBeLessThan(publish);
     expect(npm).toBeLessThan(publish);
     expect(publishStep).toContain(
@@ -199,12 +215,19 @@ describe("release-finish.yml", () => {
     expect(finish.triggers.match(/^ {2}\w+:/gm)).toEqual(["  workflow_dispatch:", "  schedule:"]);
   });
 
-  it("finds the pending tags, verifies each, then releases it, in that order of needs", () => {
+  it("finds the pending tags, then verifies and releases each tag on its own", () => {
     expect(finish.jobNames).toEqual(["pending", "verify", "release"]);
     expect(finish.job("verify")).toMatch(/\n {4}needs: pending\n/);
     expect(finish.job("verify")).toContain("if: needs.pending.outputs.tags != '[]'");
-    expect(finish.job("verify")).toContain("tag: ${{ fromJSON(needs.pending.outputs.tags) }}");
     expect(finish.job("release")).toMatch(/\n {4}needs: \[pending, verify\]\n/);
+    // A failed verify of one tag skips the release of that tag alone.
+    expect(finish.job("release")).toContain(
+      "if: ${{ !cancelled() && needs.pending.result == 'success' && needs.pending.outputs.tags != '[]' }}",
+    );
+    for (const job of ["verify", "release"]) {
+      expect(finish.job(job), job).toContain("tag: ${{ fromJSON(needs.pending.outputs.tags) }}");
+      expect(finish.job(job), job).toContain("fail-fast: false");
+    }
     expect(finish.job("pending")).toContain(
       'node scripts/release-pending.ts "$TAG" >> "$GITHUB_OUTPUT"',
     );
@@ -216,21 +239,55 @@ describe("release-finish.yml", () => {
     expect(finish.permissions("release")).toEqual(["contents: write", "actions: read"]);
   });
 
+  it("runs only main's code, never the tag's", () => {
+    const checkouts = finish.text.split("actions/checkout@").slice(1);
+    expect(checkouts).toHaveLength(2);
+    for (const c of checkouts) {
+      const step = c.split("\n      - ")[0] ?? "";
+      expect(step).toContain("ref: ${{ github.event.repository.default_branch }}");
+      expect(step).toContain("fetch-depth: 0");
+    }
+    expect(finish.code).not.toMatch(/ref: refs\/tags|matrix\.tag \}\}\n {10}persist/);
+  });
+
+  it("finds the release run by the tag's commit, never by a branch name", () => {
+    expect(finish.code).not.toMatch(/--branch|gh run list/);
+    const [find, findStep] = finish.step("verify", "node scripts/release-run.ts");
+    const [download, downloadStep] = finish.step("verify", "gh run download");
+    expect(findStep).toContain('node scripts/release-run.ts "$TAG" >> "$GITHUB_OUTPUT"');
+    expect(downloadStep).toContain('gh run download "$RUN"');
+    expect(downloadStep).toContain("RUN: ${{ steps.run.outputs.run }}");
+    expect(find).toBeLessThan(download);
+  });
+
   it("verifies the registry's integrity, the provenance, the install and the example", () => {
     const verify = finish.job("verify");
-    expect(verify).toContain("gh run list");
-    expect(verify).toContain("--workflow release.yml --event push");
     expect(verify).toContain('node scripts/verify-published.ts "$TAG" "$INTEGRITY"');
     expect(verify).toContain('node scripts/build-consumer.ts --spec "@tumaet/ichnaea@$VERSION"');
+    const [check] = finish.step("verify", "node scripts/verify-published.ts");
+    const [consumer] = finish.step("verify", "node scripts/build-consumer.ts");
+    const [record, recordStep] = finish.step("verify", "actions/upload-artifact@");
+    expect(check).toBeLessThan(record);
+    expect(consumer).toBeLessThan(record);
+    expect(recordStep).toContain("name: verified-${{ matrix.tag }}");
   });
 
   it("creates the GitHub release with no repository code, from the files that it checks", () => {
     const job = finish.job("release");
     expect(job).not.toContain("actions/checkout@");
     expect(job).not.toMatch(/\bnode |pnpm /);
+    const [verified, verifiedStep] = finish.step("release", "actions/download-artifact@");
     const [check] = finish.step("release", "sha256sum --check --strict SHA256SUMS");
+    const [hash, hashStep] = finish.step("release", "npm view");
     const [create, createStep] = finish.step("release", "gh release create");
-    expect(check).toBeLessThan(create);
+    expect(verifiedStep).toContain("name: verified-${{ matrix.tag }}");
+    expect([verified, check, hash, create]).toEqual(
+      [verified, check, hash, create].toSorted((a, b) => a - b),
+    );
+    // Every tarball is hashed here and compared with npm, not only with the run's own files.
+    expect(hashStep).toContain('npm view "@tumaet/ichnaea@$VERSION" dist.integrity');
+    expect(hashStep).toContain("for tgz in release/assets/*.tgz; do");
+    expect(hashStep).toContain('openssl dgst -sha512 -binary "$tgz" | base64 -w0');
     expect(createStep).toContain(
       'gh release create "$TAG" release/assets/*.tgz release/assets/sbom.cdx.json \\\n' +
         "            release/assets/SHA256SUMS --verify-tag",
