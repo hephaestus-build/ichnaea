@@ -183,4 +183,15 @@ describe("REASONS", () => {
       );
     }
   });
+
+  it('renders every unavailable interval as "No interval yet:" and a reason', () => {
+    const unavailable = REASON_CODES.filter((c) => c.startsWith("INTERVAL_UNAVAILABLE_"));
+    expect(unavailable.length).toBeGreaterThan(0);
+    for (const code of unavailable)
+      for (const s of REASONS[code].sentences) expect(s.text, code).toMatch(/^No interval yet: \S/);
+    expect(
+      REASONS.INTERVAL_UNAVAILABLE_NO_METHOD.sentences[0]?.text.replace("{valueType}", "score"),
+    ).toBe("No interval yet: no validated method for score measures.");
+    for (const { code, text } of texts) expect(text, code).not.toMatch(/\bno bound\b/i);
+  });
 });

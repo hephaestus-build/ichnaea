@@ -95,9 +95,10 @@ export const REASON_CODES = [
   "ESTIMATE_ONLY_CACHED_ARM",
   "ESTIMATE_ONLY_PLACEHOLDER_MARGIN",
   "ESTIMATE_ONLY_NO_METHOD",
-  "NO_BOUND_NO_VALUE",
-  "NO_BOUND_DESCRIPTIVE",
-  "NO_BOUND_METHOD",
+  "INTERVAL_UNAVAILABLE_NO_METHOD",
+  "INTERVAL_UNAVAILABLE_NO_VALUE",
+  "INTERVAL_UNAVAILABLE_DESCRIPTIVE",
+  "INTERVAL_UNAVAILABLE_METHOD",
   "JUDGE_ARM_BIAS_WITHIN_BOUND",
   "JUDGE_DIAGNOSTIC",
   "RATERS_BELOW_FLOOR",
@@ -391,20 +392,34 @@ export const REASONS: { readonly [C in ReasonCode]: Reason } = {
   ),
   ESTIMATE_ONLY_NO_METHOD: run(
     ["ESTIMATE ONLY"],
-    "The measure’s value type has no validated method yet, so its change has no interval.",
-    [always("no-method", "No interval yet: no validated method for score measures.")],
+    "No primary measure has a validated method for its kind of value yet, so the run gives no verdict.",
+    [
+      always(
+        "no-method",
+        "No method for the {valueType} measures of this suite is validated yet, so they give no verdict.",
+      ),
+    ],
   ),
-  NO_BOUND_NO_VALUE: run([], "A change has no bound because an arm has no value to compare.", [
-    always("no-bound", "No bound: an arm has no value to compare."),
-  ]),
-  NO_BOUND_DESCRIPTIVE: run(
+  INTERVAL_UNAVAILABLE_NO_METHOD: run(
     [],
-    "A descriptive change, shown without a bound because its comparison gives no interval.",
-    [always("no-bound", "No bound: this change is descriptive only.")],
+    "A change has no interval because no method for its kind of value is validated yet. The record says `interval: unavailable`.",
+    [always("no-interval", "No interval yet: no validated method for {valueType} measures.")],
   ),
-  NO_BOUND_METHOD: run([], "A change whose comparison method gives no bound for these data.", [
-    always("no-bound", "No bound: the method for this comparison gives none here."),
-  ]),
+  INTERVAL_UNAVAILABLE_NO_VALUE: run(
+    [],
+    "A change has no interval because an arm has no value to compare. The record says `interval: unavailable`.",
+    [always("no-interval", "No interval yet: an arm has no value to compare.")],
+  ),
+  INTERVAL_UNAVAILABLE_DESCRIPTIVE: run(
+    [],
+    "A descriptive change whose comparison gives no interval. The record says `interval: unavailable`.",
+    [always("no-interval", "No interval yet: this change is descriptive only.")],
+  ),
+  INTERVAL_UNAVAILABLE_METHOD: run(
+    [],
+    "A change whose comparison method gives no interval for these data. The record says `interval: unavailable`.",
+    [always("no-interval", "No interval yet: the method for this comparison gives none here.")],
+  ),
   JUDGE_ARM_BIAS_WITHIN_BOUND: {
     scope: "judge",
     labels: JUDGE_LABELS,
@@ -696,13 +711,15 @@ export interface ReasonParams {
   /** The parameters of `ESTIMATE_ONLY_PLACEHOLDER_MARGIN`. */
   ESTIMATE_ONLY_PLACEHOLDER_MARGIN: NoParams;
   /** The parameters of `ESTIMATE_ONLY_NO_METHOD`. */
-  ESTIMATE_ONLY_NO_METHOD: NoParams;
-  /** The parameters of `NO_BOUND_NO_VALUE`. */
-  NO_BOUND_NO_VALUE: NoParams;
-  /** The parameters of `NO_BOUND_DESCRIPTIVE`. */
-  NO_BOUND_DESCRIPTIVE: NoParams;
-  /** The parameters of `NO_BOUND_METHOD`. */
-  NO_BOUND_METHOD: NoParams;
+  ESTIMATE_ONLY_NO_METHOD: { readonly valueType: string };
+  /** The parameters of `INTERVAL_UNAVAILABLE_NO_METHOD`. */
+  INTERVAL_UNAVAILABLE_NO_METHOD: { readonly valueType: string };
+  /** The parameters of `INTERVAL_UNAVAILABLE_NO_VALUE`. */
+  INTERVAL_UNAVAILABLE_NO_VALUE: NoParams;
+  /** The parameters of `INTERVAL_UNAVAILABLE_DESCRIPTIVE`. */
+  INTERVAL_UNAVAILABLE_DESCRIPTIVE: NoParams;
+  /** The parameters of `INTERVAL_UNAVAILABLE_METHOD`. */
+  INTERVAL_UNAVAILABLE_METHOD: NoParams;
   /** The parameters of `JUDGE_ARM_BIAS_WITHIN_BOUND`. */
   JUDGE_ARM_BIAS_WITHIN_BOUND: { readonly shownBound: number; readonly boundCases: number };
   /** The parameters of `JUDGE_DIAGNOSTIC`. */
@@ -777,10 +794,11 @@ export const REASON_PARAMS: {
   ESTIMATE_ONLY_EXPLORATORY: [],
   ESTIMATE_ONLY_CACHED_ARM: [],
   ESTIMATE_ONLY_PLACEHOLDER_MARGIN: [],
-  ESTIMATE_ONLY_NO_METHOD: [],
-  NO_BOUND_NO_VALUE: [],
-  NO_BOUND_DESCRIPTIVE: [],
-  NO_BOUND_METHOD: [],
+  ESTIMATE_ONLY_NO_METHOD: ["valueType"],
+  INTERVAL_UNAVAILABLE_NO_METHOD: ["valueType"],
+  INTERVAL_UNAVAILABLE_NO_VALUE: [],
+  INTERVAL_UNAVAILABLE_DESCRIPTIVE: [],
+  INTERVAL_UNAVAILABLE_METHOD: [],
   JUDGE_ARM_BIAS_WITHIN_BOUND: ["shownBound", "boundCases"],
   JUDGE_DIAGNOSTIC: [],
   RATERS_BELOW_FLOOR: ["humanHuman", "minimum"],
