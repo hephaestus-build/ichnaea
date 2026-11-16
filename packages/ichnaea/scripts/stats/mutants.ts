@@ -4,10 +4,10 @@
 //   node scripts/stats/mutants.ts "level"     # selected mutants
 // A mutant that survives is a test that cannot fail: kill it, or justify it as equivalent here.
 import { execFileSync } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-interface Mutant {
+export interface Mutant {
   readonly id: string;
   readonly file: string;
   readonly from: string;
@@ -74,8 +74,8 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "N/(N-1) default dropped",
     file: "src/stats/score-difference.ts",
-    from: "const bias = options.biasCorrection ?? true;",
-    to: "const bias = options.biasCorrection ?? false;",
+    from: "number {\n  const bias = options.biasCorrection ?? true;",
+    to: "number {\n  const bias = options.biasCorrection ?? false;",
   },
   {
     id: "Mantel-Haenszel weights for fixed-cases",
@@ -159,7 +159,7 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "missing trials: excluded cases still validated",
     file: "src/stats/compare.ts",
-    from: "      ...(excludedCases > 0\n",
+    from: "      ...(excludedCases > 0 && checks === undefined\n",
     to: "      ...(false\n",
   },
   {
@@ -468,8 +468,8 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "source: non-inferiority ignores the domain",
     file: "src/stats/compare.ts",
-    from: "nonInferiority: validity([...domainLimitations, ...marginLimitations]),",
-    to: "nonInferiority: validity(marginLimitations),",
+    from: "      nonInferiority: validity([\n        ...domainLimitations,\n        ...marginLimitations,",
+    to: "      nonInferiority: validity([\n        ...marginLimitations,",
   },
   {
     id: "source: sampled-cases regression validated",
@@ -563,157 +563,191 @@ export const MUTANTS: readonly Mutant[] = [
   },
   {
     id: "S1 score permutation exact p without ties",
-    file: "src/score-permutation-core.ts",
+    file: "src/stats/score-permutation-core.ts",
     from: "for (let x = 0; x <= observed; x++)",
     to: "for (let x = 0; x < observed; x++)",
   },
   {
     id: "S2 score permutation weight ignores the base count",
-    file: "src/score-permutation-core.ts",
+    file: "src/stats/score-permutation-core.ts",
     from: "(c.candidate.length + c.base.length) / (c.candidate.length * c.base.length);",
     to: "1 / c.candidate.length;",
   },
   {
     id: "S3 score permutation Monte Carlo wrong tail",
-    file: "src/score-permutation-core.ts",
+    file: "src/stats/score-permutation-core.ts",
     from: "if (t <= observed + MONTE_CARLO_TOLERANCE) extreme++;",
     to: "if (t >= observed - MONTE_CARLO_TOLERANCE) extreme++;",
   },
   {
     id: "S4 score permutation Monte Carlo p without +1",
-    file: "src/score-permutation-core.ts",
+    file: "src/stats/score-permutation-core.ts",
     from: "const p = (1 + extreme) / (1 + resamples);",
     to: "const p = Math.max(extreme, 1e-300) / resamples;",
   },
   {
     id: "S5 score permutation draws with replacement",
-    file: "src/score-permutation-core.ts",
+    file: "src/stats/score-permutation-core.ts",
     from: "const pick = j + Math.floor(rng.uniform() * (pool.length - j));",
     to: "const pick = Math.floor(rng.uniform() * pool.length);",
   },
   {
     id: "S6 score permutation accepts values above 1",
-    file: "src/score-permutation-core.ts",
+    file: "src/stats/score-permutation-core.ts",
     from: "v >= 0 && v <= 1))",
     to: "v >= 0))",
   },
   {
     id: "S7 score permutation statistic over all cases",
-    file: "src/score-permutation-core.ts",
+    file: "src/stats/score-permutation-core.ts",
     from: "    used.length;\n  const plan = options.exact",
     to: "    cases.length;\n  const plan = options.exact",
   },
   {
     id: "S8 score permutation never recomputes near a level",
-    file: "src/score-permutation-core.ts",
+    file: "src/stats/score-permutation-core.ts",
     from: "Math.abs(first.p - level) <= 3 * first.monteCarloSE",
     to: "Math.abs(first.p - level) <= 0 * first.monteCarloSE",
   },
   {
     id: "S9 score permutation enumerates past the cap",
-    file: "src/score-permutation-core.ts",
+    file: "src/stats/score-permutation-core.ts",
     from: "const MAX_ASSIGNMENTS = 100_000;",
     to: "const MAX_ASSIGNMENTS = 1_000_000;",
   },
   {
     id: "S10 score permutation off-lattice values rounded onto it",
-    file: "src/score-permutation-core.ts",
+    file: "src/stats/score-permutation-core.ts",
     from: "const LATTICE_TOLERANCE = 1e-9;",
     to: "const LATTICE_TOLERANCE = 0.5;",
   },
   {
     id: "S11 score permutation lattice only up to 999",
-    file: "src/score-permutation-core.ts",
+    file: "src/stats/score-permutation-core.ts",
     from: "const MAX_DENOMINATOR = 1000;",
     to: "const MAX_DENOMINATOR = 999;",
   },
   {
     id: "S12 score permutation lattice tolerance 1e-6",
-    file: "src/score-permutation-core.ts",
+    file: "src/stats/score-permutation-core.ts",
     from: "const LATTICE_TOLERANCE = 1e-9;",
     to: "const LATTICE_TOLERANCE = 1e-6;",
   },
   {
     id: "S13 score permutation units by floor",
-    file: "src/score-permutation-core.ts",
+    file: "src/stats/score-permutation-core.ts",
     from: "const candidate = c.candidate.map((v) => Math.round(v * d));",
     to: "const candidate = c.candidate.map((v) => Math.floor(v * d));",
   },
   {
     id: "S14 score permutation labelling cap inclusive",
-    file: "src/score-permutation-core.ts",
+    file: "src/stats/score-permutation-core.ts",
     from: "labellings.some((n) => n > MAX_ASSIGNMENTS)",
     to: "labellings.some((n) => n >= MAX_ASSIGNMENTS)",
   },
   {
     id: "S15 score permutation work limit a tenth",
-    file: "src/score-permutation-core.ts",
+    file: "src/stats/score-permutation-core.ts",
     from: "plan.work <= SCORE_PERMUTATION_WORK_LIMIT",
     to: "plan.work <= SCORE_PERMUTATION_WORK_LIMIT / 10",
   },
   {
     id: "S16 score permutation no work limit",
-    file: "src/score-permutation-core.ts",
+    file: "src/stats/score-permutation-core.ts",
     from: "plan.work <= SCORE_PERMUTATION_WORK_LIMIT",
     to: "plan.work <= Infinity",
   },
   {
     id: "S17 score permutation rerun seed offset off by one",
-    file: "src/score-permutation-core.ts",
+    file: "src/stats/score-permutation-core.ts",
     from: "const NEAR_LEVEL_SEED_OFFSET = 1_000_003;",
     to: "const NEAR_LEVEL_SEED_OFFSET = 1_000_004;",
   },
   {
     id: "S18 score permutation reports the first run's p under the rerun's settings",
-    file: "src/score-permutation-core.ts",
+    file: "src/stats/score-permutation-core.ts",
     from: "  return { statistic, ...result, method:",
     to: "  return { statistic, ...result, p: first.p, method:",
   },
   {
     id: "S19 score permutation rerun seed wraps mod 2^32",
-    file: "src/score-permutation-core.ts",
+    file: "src/stats/score-permutation-core.ts",
     from: "const SEED_MODULUS = 4_294_967_295;",
     to: "const SEED_MODULUS = 4_294_967_296;",
   },
 ];
 
-const root = join(import.meta.dirname, "..", "..");
-const wanted = process.argv.slice(2);
-const run = (cmd: string, args: string[]): boolean => {
-  try {
-    execFileSync(cmd, args, { cwd: root, stdio: "ignore" });
-    return true;
-  } catch {
-    return false;
-  }
-};
-const survivors: string[] = [];
-for (const m of MUTANTS.filter(
-  (x) => wanted.length === 0 || wanted.some((w) => x.id.startsWith(w)),
-)) {
-  const path = join(root, m.file);
-  const original = readFileSync(path, "utf8");
-  if (!original.includes(m.from)) {
-    console.log(`${m.id}: anchor not found (update the mutant)`);
-    survivors.push(m.id);
-    continue;
-  }
-  writeFileSync(path, original.replace(m.from, m.to));
-  try {
-    if (m.regen) {
-      run("node", ["scripts/contracts/generate-schemas.ts"]);
-      run("node", ["scripts/contracts/write-fixtures.ts"]);
-    }
-    const killed = !run("pnpm", ["exec", "vitest", "run", "--project", "stats"]);
-    console.log(`${m.id}: ${killed ? "killed" : "SURVIVED"}`);
-    if (!killed) survivors.push(m.id);
-  } finally {
-    writeFileSync(path, original);
-    if (m.regen) {
-      run("node", ["scripts/contracts/generate-schemas.ts"]);
-      run("node", ["scripts/contracts/write-fixtures.ts"]);
-    }
-  }
+/**
+ * The mutants whose change cannot apply: the file is missing, or the anchor `from` does not occur
+ * in it exactly once. Such a mutant never runs, so it would prove nothing; an anchor that occurs
+ * twice may mutate the wrong place.
+ */
+export function anchorProblems(mutants: readonly Mutant[], root: string): string[] {
+  return mutants.flatMap((m) => {
+    const path = join(root, m.file);
+    if (!existsSync(path)) return [`${m.id}: ${m.file} does not exist`];
+    const count = readFileSync(path, "utf8").split(m.from).length - 1;
+    return count === 1 ? [] : [`${m.id}: its anchor occurs ${count} times in ${m.file}, not once`];
+  });
 }
-console.log(survivors.length === 0 ? "all mutants killed" : `survivors: ${survivors.join(", ")}`);
-process.exitCode = survivors.length === 0 ? 0 : 1;
+
+/**
+ * Runs the selected mutants against the stats tests in `root` and returns the exit code. Every
+ * anchor is checked before any source changes: one that does not apply fails the whole run.
+ */
+export function runMutants(
+  mutants: readonly Mutant[],
+  root: string,
+  wanted: readonly string[],
+  log: (line: string) => void = console.log,
+): number {
+  const selected = mutants.filter(
+    (x) => wanted.length === 0 || wanted.some((w) => x.id.startsWith(w)),
+  );
+  const problems = anchorProblems(selected, root);
+  if (problems.length > 0) {
+    for (const p of problems) log(p);
+    log(`${problems.length} mutant(s) cannot apply: update them before running any`);
+    return 1;
+  }
+  const run = (cmd: string, args: string[]): boolean => {
+    try {
+      execFileSync(cmd, args, { cwd: root, stdio: "ignore" });
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  const survivors: string[] = [];
+  for (const m of selected) {
+    const path = join(root, m.file);
+    const original = readFileSync(path, "utf8");
+    writeFileSync(path, original.replace(m.from, m.to));
+    try {
+      if (m.regen) {
+        run("node", ["scripts/contracts/generate-schemas.ts"]);
+        run("node", ["scripts/contracts/write-fixtures.ts"]);
+      }
+      const killed = !run("pnpm", ["exec", "vitest", "run", "--project", "stats"]);
+      log(`${m.id}: ${killed ? "killed" : "SURVIVED"}`);
+      if (!killed) survivors.push(m.id);
+    } finally {
+      writeFileSync(path, original);
+      if (m.regen) {
+        run("node", ["scripts/contracts/generate-schemas.ts"]);
+        run("node", ["scripts/contracts/write-fixtures.ts"]);
+      }
+    }
+  }
+  log(survivors.length === 0 ? "all mutants killed" : `survivors: ${survivors.join(", ")}`);
+  return survivors.length === 0 ? 0 : 1;
+}
+
+// Importing this file runs nothing: only running it mutates the sources.
+if (import.meta.main) {
+  process.exitCode = runMutants(
+    MUTANTS,
+    join(import.meta.dirname, "..", ".."),
+    process.argv.slice(2),
+  );
+}
