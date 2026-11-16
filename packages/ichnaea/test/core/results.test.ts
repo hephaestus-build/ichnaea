@@ -449,5 +449,9 @@ describe("importResults", () => {
       node: "unknown",
       platform: "unknown-unknown",
     });
+    const deno = { name: "deno", version: "2.1.0", platform: "linux", arch: "x64" };
+    expect(importResults(plan, results(), { runtime: deno }).records.run.environment).toMatchObject(
+      { node: "2.1.0", runtime: deno },
+    );
   });
 });

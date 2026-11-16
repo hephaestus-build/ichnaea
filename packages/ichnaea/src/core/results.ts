@@ -390,7 +390,7 @@ export function importResults(
     plan: digest(record),
     exploratory: false,
     environment: {
-      node: runtime.name === "node" ? runtime.version : runtime.name,
+      node: runtime.version,
       platform: `${runtime.platform}-${runtime.arch}`,
       ichnaea: record.ichnaea,
       ...(runtime === UNKNOWN_RUNTIME ? {} : { arch: runtime.arch, runtime }),

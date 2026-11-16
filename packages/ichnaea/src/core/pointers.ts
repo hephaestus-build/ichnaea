@@ -12,7 +12,9 @@ import { PlanError } from "./planner.ts";
  */
 export const IntendedChange: z.ZodString = z
   .string()
-  .regex(/^(\/([^~/]|~[01])*)+$/, "an intended change is a JSON Pointer such as /prompts/composer");
+  .min(1, "the empty pointer names the whole configuration; name a member")
+  // The empty pointer passes here, so it gets only the message above.
+  .regex(/^(\/([^~/]|~[01])*)*$/, "an intended change is a JSON Pointer such as /prompts/composer");
 
 /** Each top-level member of the keyed view, with the prefix of its factor keys. */
 const KINDS: Readonly<Record<string, string>> = {
@@ -52,7 +54,8 @@ export function intendedFactors(
   const out = new Set<string>();
   for (const pointer of pointers) {
     const [member = "", name, ...rest] = pointer.slice(1).split("/").map(decode);
-    const kind = KINDS[member];
+    // An own member only: `constructor` or `toString` is not a member of the keyed view.
+    const kind = Object.hasOwn(KINDS, member) ? KINDS[member] : undefined;
     if (kind === undefined)
       throw new PlanError(
         `intended change '${pointer}' is outside the configuration identity; start it with /models, /parameters, /prompts or /factors`,

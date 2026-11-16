@@ -151,7 +151,9 @@ describe("createPlan", () => {
     ["/description", "is outside the configuration identity"],
     ["/prompts/nope", "names nothing in either configuration"],
     ["prompts/composer", "is a JSON Pointer"],
-    ["", "is a JSON Pointer"],
+    ["", "the empty pointer names the whole configuration; name a member"],
+    ["/constructor", "is outside the configuration identity"],
+    ["/toString/x", "is outside the configuration identity"],
   ])("refuses the intended change %j", (pointer, message) => {
     expect(() => createPlan(SUITE, { ...comparison, intendedChanges: [pointer] })).toThrow(message);
   });
