@@ -105,7 +105,8 @@ export const TrialRequest = z.strictObject({
   limits: z.strictObject({
     /**
      * The most model calls the trial may make. The worker stops before it exceeds them, and
-     * Ichnaea also checks `calls` in the result against them. Absent means no per-trial bound.
+     * Ichnaea also checks `usage.calls` in the result against them. Absent means no per-trial
+     * bound.
      */
     calls: none(z.int().min(0)).optional(),
   }),
@@ -324,8 +325,9 @@ export const TrialUsage = z.strictObject({
   /** The reasoning tokens. */
   reasoningTokens: none(z.int().min(0)).optional(),
   /**
-   * The cost that the provider reported, in millionths of a US dollar. A comparison prices the
-   * calls itself from one pinned price table, so this cost is only shown beside it.
+   * The cost that the provider reported, in millionths of a US dollar, and nothing else. A
+   * comparison prices the calls itself from one pinned price table at analysis time, so this cost
+   * is only shown beside it.
    */
   costMicros: none(z.int().min(0)).optional(),
   /**
@@ -383,10 +385,10 @@ export type TrialTrace = z.infer<typeof TrialTrace>;
  * trial identity. It carries the raw output, never a score or a verdict, because the base suite's
  * scorers read the output later (REQ-22). Ichnaea measures `startedAt` and `endedAt` itself: a
  * writer never sends them at the top level, and a reader ignores them as unknown members. The
- * worker's own times are in `timing`. The same record is the row that `importResults` takes for
- * results that already exist. A result without `failure` and with none of `output`, `pointer` and
- * `artifacts` is recorded as an infrastructure failure of kind `NOT_CAPTURED`, as import records
- * any completed trial without captured output: a capture failure is never a quality verdict.
+ * worker's own times are in `timing`. The rule for whoever reads a result: one without `failure`
+ * and with none of `output`, `pointer` and `artifacts`, or with `truncated`, counts as an
+ * infrastructure failure of kind `NOT_CAPTURED`, never as a failure of the system: a capture
+ * failure is never a quality verdict.
  */
 export const TrialResult = z.strictObject({
   schema: none(z.literal("ichnaea.trialResult/1")),
@@ -398,6 +400,11 @@ export const TrialResult = z.strictObject({
   output: content(Json).optional(),
   /** A trace or object ID where the output can be fetched, for outputs too large or private to inline. */
   pointer: quasi(Text).optional(),
+  /**
+   * True when the worker knows that it truncated the output. The output is then not captured:
+   * it counts as missing and is never scored.
+   */
+  truncated: none(z.boolean()).optional(),
   /** Files and directories that the trial produced, inside the request's `workdir`. */
   artifacts: z.array(Artifact).optional(),
   /** The raw events of the system's stages, in the order they happened. */
@@ -410,13 +417,11 @@ export const TrialResult = z.strictObject({
    */
   stop: Stop.optional(),
   /**
-   * The model calls made in this trial. Required: the run's call bound and budget sum it. When
-   * `usage` is present, its `calls` is the same number: a schema cannot compare the two, so the
-   * reader of a result checks it.
+   * The calls of the attempt and what they used. Required, on a failure too: `usage.calls` is the
+   * one count of the trial's calls, which the trial's call bound and the run's budget sum. An
+   * absent token count inside it is unknown, never zero.
    */
-  calls: none(z.int().min(0)),
-  /** Token and cost usage, when the worker knows it. Absent means unknown, never zero. */
-  usage: TrialUsage.optional(),
+  usage: TrialUsage,
   /** The times that the worker reports. Absent means unknown, never zero. */
   timing: Timing.optional(),
   /** The configuration the worker ran with. */

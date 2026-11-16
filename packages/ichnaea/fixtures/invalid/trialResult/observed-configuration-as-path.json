@@ -43,7 +43,6 @@
   "stop": {
     "reason": "end_turn"
   },
-  "calls": 3,
   "usage": {
     "calls": 3,
     "inputTokens": 812,

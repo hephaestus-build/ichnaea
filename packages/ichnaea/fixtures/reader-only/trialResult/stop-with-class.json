@@ -44,7 +44,6 @@
     "reason": "end_turn",
     "class": "completed"
   },
-  "calls": 3,
   "usage": {
     "calls": 3,
     "inputTokens": 812,

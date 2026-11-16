@@ -9,7 +9,16 @@
     "replicate": 0,
     "attempt": 1
   },
-  "calls": 1,
+  "usage": {
+    "calls": 1,
+    "responseIds": [
+      "resp_01"
+    ],
+    "throttled": {
+      "count": 3,
+      "ms": 9000
+    }
+  },
   "observed": {
     "code": {
       "commit": "0123456789abcdef0123456789abcdef01234567"

@@ -3647,6 +3647,7 @@ export const TrialResult: z.ZodObject<{
     }, z.core.$strict>;
     output: z.ZodOptional<z.ZodJSONSchema>;
     pointer: z.ZodOptional<z.ZodString>;
+    truncated: z.ZodOptional<z.ZodBoolean>;
     artifacts: z.ZodOptional<z.ZodArray<z.ZodObject<{
         name: z.ZodString;
         path: z.ZodString;
@@ -3684,8 +3685,7 @@ export const TrialResult: z.ZodObject<{
     stop: z.ZodOptional<z.ZodObject<{
         reason: z.ZodString;
     }, z.core.$strict>>;
-    calls: z.ZodInt;
-    usage: z.ZodOptional<z.ZodObject<{
+    usage: z.ZodObject<{
         calls: z.ZodInt;
         inputTokens: z.ZodOptional<z.ZodInt>;
         outputTokens: z.ZodOptional<z.ZodInt>;
@@ -3698,7 +3698,7 @@ export const TrialResult: z.ZodObject<{
             ms: z.ZodNumber;
             firstAcceptedAt: z.ZodOptional<z.ZodISODateTime>;
         }, z.core.$strict>>;
-    }, z.core.$strict>>;
+    }, z.core.$strict>;
     timing: z.ZodOptional<z.ZodObject<{
         startedAt: z.ZodISODateTime;
         firstChunkAt: z.ZodOptional<z.ZodISODateTime>;

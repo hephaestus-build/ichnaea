@@ -261,7 +261,6 @@ export const VALID: Record<string, Record<string, unknown>> = {
       { stage: "answer", iteration: 0, ran: true, stop: { reason: "end_turn" } },
     ],
     stop: { reason: "end_turn" },
-    calls: 3,
     usage: {
       calls: 3,
       inputTokens: 812,
@@ -728,8 +727,9 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
       (r["seed"] = { algorithm: "mt19937", value: "18446744073709551616" }),
   },
   trialResult: {
-    "missing-calls": (r) => delete r["calls"],
-    "negative-calls": (r) => (r["calls"] = -1),
+    "missing-usage": (r) => delete r["usage"],
+    "negative-calls": (r) => ((r["usage"] as Record<string, unknown>)["calls"] = -1),
+    "truncated-not-a-boolean": (r) => (r["truncated"] = "yes"),
     "event-without-ran": (r) => delete (r["events"] as Array<Record<string, unknown>>)[0]!["ran"],
     "event-negative-iteration": (r) =>
       ((r["events"] as Array<Record<string, unknown>>)[0]!["iteration"] = -1),
@@ -917,7 +917,7 @@ const REFUSED_PLANNING = {
 /** Further valid records: shapes the main valid fixture does not show. */
 /** Removes what only a delivered result carries, for a result that reports a failure. */
 const withoutDelivery = (r: Record<string, unknown>): void => {
-  for (const member of ["output", "events", "stop", "usage", "timing"]) delete r[member];
+  for (const member of ["output", "events", "stop", "timing"]) delete r[member];
 };
 
 export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
@@ -987,7 +987,7 @@ export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
         kind: "rate-limited",
         message: "429 from the endpoint",
       };
-      r["calls"] = 1;
+      r["usage"] = { calls: 1, responseIds: ["resp_01"], throttled: { count: 3, ms: 9000 } };
     },
     "image-released-service": (r) =>
       ((r["observed"] as Record<string, unknown>)["code"] = { image: d("b2") }),
@@ -996,11 +996,13 @@ export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
         commit: "0123456789abcdef0123456789abcdef01234567",
         image: d("b2"),
       }),
-    // Usage and timing are optional: absent means unknown, never zero.
-    "without-usage-or-timing": (r) => {
-      delete r["usage"];
+    // Timing and the token counts are optional: absent means unknown, never zero.
+    "only-the-calls": (r) => {
+      r["usage"] = { calls: 3, responseIds: [] };
       delete r["timing"];
     },
+    // The worker knows it cut the output: it is not captured, and never scored.
+    truncated: (r) => (r["truncated"] = true),
     "with-cost-and-reasoning": (r) =>
       Object.assign(r["usage"] as Record<string, unknown>, {
         reasoningTokens: 210,
@@ -1015,7 +1017,7 @@ export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
     "bad-request": (r) => {
       withoutDelivery(r);
       r["failure"] = { class: "protocol", kind: "bad-request" };
-      r["calls"] = 0;
+      r["usage"] = { calls: 0, responseIds: [] };
     },
     // A trial that delivers a directory instead of an inline output.
     "artifacts-only": (r) => {
@@ -1180,6 +1182,8 @@ export const READER_ONLY: Record<string, Record<string, Mutation>> = {
     // The base suite scores the output: a worker sends no score, and a reader ignores one.
     "worker-score": (r) => (r["values"] = { "support/facts-stated": true }),
     "future-failure-class": (r) => (r["failure"] = { class: "quality", kind: "wrong-answer" }),
+    // `usage.calls` is the one count: a reader ignores a top-level count as an unknown member.
+    "top-level-calls": (r) => (r["calls"] = 3),
     // The base derives a stage's status: a worker sends none, and a reader ignores one.
     "event-with-status": (r) =>
       ((r["events"] as Array<Record<string, unknown>>)[0]!["status"] = "ok"),

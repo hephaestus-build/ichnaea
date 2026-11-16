@@ -9,7 +9,10 @@
     "replicate": 0,
     "attempt": 1
   },
-  "calls": 0,
+  "usage": {
+    "calls": 0,
+    "responseIds": []
+  },
   "observed": {
     "code": {
       "commit": "0123456789abcdef0123456789abcdef01234567"

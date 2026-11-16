@@ -43,22 +43,6 @@
   "stop": {
     "reason": "end_turn"
   },
-  "usage": {
-    "calls": 3,
-    "inputTokens": 812,
-    "outputTokens": 64,
-    "cacheReadTokens": 512,
-    "responseIds": [
-      "resp_01",
-      "resp_02",
-      "resp_03"
-    ],
-    "throttled": {
-      "count": 0,
-      "ms": 0,
-      "firstAcceptedAt": "2026-11-15T10:01:00.100Z"
-    }
-  },
   "timing": {
     "startedAt": "2026-11-15T10:01:00.050Z",
     "firstChunkAt": "2026-11-15T10:01:01.200Z",

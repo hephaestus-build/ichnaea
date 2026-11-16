@@ -43,9 +43,8 @@
   "stop": {
     "reason": "end_turn"
   },
-  "calls": -1,
   "usage": {
-    "calls": 3,
+    "calls": -1,
     "inputTokens": 812,
     "outputTokens": 64,
     "cacheReadTokens": 512,

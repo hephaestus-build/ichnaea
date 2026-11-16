@@ -175,16 +175,32 @@ describe("the worker protocol", () => {
     expect(TrialResult.safeParse(unhashed).success).toBe(false);
   });
 
-  it("records every response ID and the calls of the attempt in its usage", () => {
+  it("counts the trial's calls once, in its usage, with every response ID", () => {
     const result = TrialResult.parse(fixture("valid", "trialResult.json"));
-    expect(result.usage?.calls).toBe(result.calls);
-    expect(result.usage?.responseIds).toHaveLength(3);
+    expect(result.usage.calls).toBe(3);
+    expect(result.usage.responseIds).toHaveLength(3);
+    // The usage is the one home of the count, so the run's budget always has it.
+    const withoutUsage = fixture("valid", "trialResult.json");
+    delete withoutUsage["usage"];
+    expect(TrialResult.safeParse(withoutUsage).success).toBe(false);
+    expect(TrialResult.safeParse({ ...result, calls: 3 }).success).toBe(false);
     const usage = result.usage as Record<string, unknown>;
     for (const member of ["calls", "responseIds"]) {
       const without = { ...usage };
       delete without[member];
       expect(TrialResult.safeParse({ ...result, usage: without }).success, member).toBe(false);
     }
+    // The provider's cost is shown only: a comparison prices the calls from its pinned table.
+    expect(TrialResult.safeParse({ ...result, usage: { ...usage, priced: true } }).success).toBe(
+      false,
+    );
+  });
+
+  it("marks an output that the worker knows it truncated", () => {
+    const result = TrialResult.parse(fixture("valid-extra", "trialResult/truncated.json"));
+    expect(result.truncated).toBe(true);
+    const record = fixture("valid", "trialResult.json");
+    expect(TrialResult.safeParse({ ...record, truncated: "yes" }).success).toBe(false);
   });
 
   it("reports what the process read: the configuration's digest, its keys and the factors", () => {
