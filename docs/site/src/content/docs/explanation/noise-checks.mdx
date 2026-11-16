@@ -1,0 +1,45 @@
+---
+title: Noise checks
+description: A noise check compares a version with itself. It shows that your own pipeline gives no false alarm before you let a verdict block a change.
+sidebar:
+  order: 5
+---
+
+In a noise check, the base and the candidate are the same version.
+Nothing changed, so the right answer is "no decrease".
+A Regression from a noise check is a false alarm.
+Statisticians call this an A/A run, and the records store it under that name.
+
+## What a noise check checks
+
+The statistics are validated in Ichnaea's own studies. Your pipeline is not.
+A noise check checks the parts that Ichnaea cannot see:
+
+- your cases, and how your system answers them
+- how your runner records outputs, retries and failures
+- how your measures score the answers
+- whether the base and the candidate really ran under the same conditions
+
+If any of these differs between the base and the candidate, a noise check can show a decrease that is not real.
+
+## What it does not check
+
+- **The method's error rate.** One noise check is one draw. A clean check does not prove that false alarms are rare. The validation studies measure that.
+- **Your next change.** A noise check says nothing about a candidate that does change.
+
+## When to run one
+
+Before you make a gate required in CI, run two noise checks. This is advice: Ichnaea does not check it.
+Run them again when you change the runner, the endpoint or how you score.
+
+At one trial per case, clean noise checks are a condition of the method itself.
+With one trial, a shock between the base trial and the candidate trial looks like an effect.
+So the plan must cite at least two separate noise checks, each at one trial per case on the same suite, model and schedule.
+Each must give no Regression and pass Ichnaea's eight checks of its records. Otherwise the result is not validated.
+A Regression in a noise check blocks one trial per case for that suite, model and schedule.
+The block stays until its cause is found and two later noise checks are clean.
+
+## Evidence
+
+- [Decision 0020](https://github.com/hephaestus-build/ichnaea/blob/main/docs/decisions/0020-binary-regression-at-one-trial.md): the noise-check precondition at one trial per case.
+- [Statistics validation, one trial per case](https://github.com/hephaestus-build/ichnaea/blob/main/packages/ichnaea/src/stats/VALIDATION.md#one-trial-per-case-the-binary-regression-test): the conditions for a validated result at one trial per case.

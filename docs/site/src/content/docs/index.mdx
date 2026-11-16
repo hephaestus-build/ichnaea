@@ -22,16 +22,16 @@ Ichnaea compares the old configuration (the base) and the new one (the candidate
 It tests the difference case by case and gives one of four verdicts.
 
 <CardGrid>
-  <Card title="REGRESSION">
+  <Card title="Regression">
     The candidate is worse on these cases, or a hard check failed. A CI job can block the change.
   </Card>
-  <Card title="PASS">
-    The candidate is not worse than the base by more than a margin that you set before the run.
+  <Card title="Pass">
+    The candidate is not worse than the base by more than a limit that you set before the run.
   </Card>
-  <Card title="INCONCLUSIVE">
+  <Card title="Inconclusive">
     Your cases cannot decide. The card says why, for example that too few cases were run.
   </Card>
-  <Card title="INVALID">
+  <Card title="Invalid">
     The run cannot be trusted. For example, the two configurations differ in more than you declared.
   </Card>
 </CardGrid>
@@ -62,9 +62,9 @@ Ichnaea is 0.x. It is not on npm before 1.0.
 
 | What                                                                               | Status                                                                 |
 | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| REGRESSION for pass/fail measures, with 2 or 3 trials per case and 5 or more cases | Validated                                                              |
-| REGRESSION for pass/fail measures, with 1 trial per case and 5 or more cases       | Validated when the records pass the order, timing and A/A checks       |
-| PASS                                                                               | Not validated yet. An unchanged candidate gets INCONCLUSIVE, not PASS. |
+| Regression for pass/fail measures, with 2 or 3 trials per case and 5 or more cases | Validated                                                              |
+| Regression for pass/fail measures, with 1 trial per case and 5 or more cases       | Validated when the records pass the order, timing and noise checks     |
+| Pass                                                                               | Not validated yet. An unchanged candidate gets Inconclusive, not Pass. |
 | Measures with scores, and model judges                                             | Estimates only. They give no verdict.                                  |
 | Judge calibration                                                                  | Planned: today only its schemas exist.                                 |
 
@@ -73,8 +73,9 @@ The [statistics validation](https://github.com/hephaestus-build/ichnaea/blob/mai
 ## How it decides
 
 - [Why paired comparisons](/ichnaea/explanation/paired/)
-- [Margins, and why you set them before any run](/ichnaea/explanation/margins/)
+- [Limits, and why you set them before any run](/ichnaea/explanation/limits/)
 - [Missing trials are not failures](/ichnaea/explanation/missing-trials/)
 - [What "validated" means](/ichnaea/explanation/validated/)
-- [A/A runs](/ichnaea/explanation/aa-runs/)
+- [Noise checks](/ichnaea/explanation/noise-checks/)
+- [Glossary](/ichnaea/glossary/)
   This site grows page by page. Until then, the [README](https://github.com/hephaestus-build/ichnaea#readme) is the guide.
