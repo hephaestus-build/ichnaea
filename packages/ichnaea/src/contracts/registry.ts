@@ -118,7 +118,7 @@ export const RECORD_CONTRACTS: readonly RecordContract[] = [
     id: "ichnaea.workerEvent/1",
     schema: WorkerEvent,
     stability: "alpha",
-    description: "What a worker writes about a trial in flight: a heartbeat with its calls so far.",
+    description: "What a worker writes about a trial in flight: a heartbeat or a tool call.",
   },
   {
     name: "cancel",

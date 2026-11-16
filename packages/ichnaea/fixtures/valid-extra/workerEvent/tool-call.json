@@ -1,0 +1,28 @@
+{
+  "schema": "ichnaea.workerEvent/1",
+  "trial": {
+    "id": "refund-window-de/a/r1",
+    "suite": "support-assistant",
+    "case": "refund-window-de",
+    "arm": "a",
+    "replicate": 1,
+    "attempt": 1
+  },
+  "kind": "tool_call",
+  "dataClass": "none",
+  "stage": "search",
+  "iteration": 0,
+  "call": {
+    "id": "call_01",
+    "name": "search_help_centre",
+    "args": {
+      "query": "Rückgabe nach 40 Tagen",
+      "top": 3
+    },
+    "result": {
+      "pages": [
+        "policy.md"
+      ]
+    }
+  }
+}

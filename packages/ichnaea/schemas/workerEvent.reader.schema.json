@@ -2,188 +2,487 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:ichnaea:schema:workerEvent:1:reader",
   "title": "ichnaea.workerEvent/1 (reader)",
-  "description": "What a worker writes about a trial in flight: a heartbeat with its calls so far.",
+  "description": "What a worker writes about a trial in flight: a heartbeat or a tool call.",
   "x-ichnaea-stability": "alpha",
-  "type": "object",
-  "properties": {
-    "schema": {
-      "type": "string",
-      "const": "ichnaea.workerEvent/1",
-      "x-ichnaea-data": {
-        "class": "none",
-        "identifier": "none",
-        "egress": [
-          "*"
-        ],
-        "retention": "record"
-      }
-    },
-    "trial": {
-      "type": "object",
-      "properties": {
-        "id": {
-          "type": "string",
-          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
-          "x-ichnaea-data": {
-            "class": "none",
-            "identifier": "none",
-            "egress": [
-              "*"
-            ],
-            "retention": "record"
+  "$defs": {
+    "JsonValue": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/JsonValue"
           }
         },
-        "suite": {
-          "type": "string",
-          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
-          "x-ichnaea-data": {
-            "class": "none",
-            "identifier": "none",
-            "egress": [
-              "*"
-            ],
-            "retention": "record"
-          }
-        },
-        "case": {
-          "type": "string",
-          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
-          "x-ichnaea-data": {
-            "class": "none",
-            "identifier": "none",
-            "egress": [
-              "*"
-            ],
-            "retention": "record"
-          }
-        },
-        "arm": {
-          "type": "string",
-          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
-          "x-ichnaea-data": {
-            "class": "none",
-            "identifier": "none",
-            "egress": [
-              "*"
-            ],
-            "retention": "record"
-          }
-        },
-        "replicate": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 9007199254740991,
-          "x-ichnaea-data": {
-            "class": "none",
-            "identifier": "none",
-            "egress": [
-              "*"
-            ],
-            "retention": "record"
-          }
-        },
-        "attempt": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 9007199254740991,
-          "x-ichnaea-data": {
-            "class": "none",
-            "identifier": "none",
-            "egress": [
-              "*"
-            ],
-            "retention": "record"
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
           }
         }
-      },
-      "required": [
-        "id",
-        "suite",
-        "case",
-        "arm",
-        "replicate",
-        "attempt"
-      ]
-    },
-    "kind": {
-      "type": "string",
-      "x-ichnaea-data": {
-        "class": "none",
-        "identifier": "none",
-        "egress": [
-          "*"
-        ],
-        "retention": "record"
-      },
-      "x-ichnaea-known": [
-        "heartbeat"
-      ]
-    },
-    "calls": {
-      "type": "integer",
-      "minimum": 0,
-      "maximum": 9007199254740991,
-      "x-ichnaea-data": {
-        "class": "none",
-        "identifier": "none",
-        "egress": [
-          "*"
-        ],
-        "retention": "record"
-      }
-    },
-    "throttled": {
-      "type": "object",
-      "properties": {
-        "count": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 9007199254740991,
-          "x-ichnaea-data": {
-            "class": "none",
-            "identifier": "none",
-            "egress": [
-              "*"
-            ],
-            "retention": "record"
-          }
-        },
-        "ms": {
-          "type": "number",
-          "minimum": 0,
-          "x-ichnaea-data": {
-            "class": "none",
-            "identifier": "none",
-            "egress": [
-              "*"
-            ],
-            "retention": "record"
-          }
-        },
-        "firstAcceptedAt": {
-          "type": "string",
-          "format": "date-time",
-          "pattern": "^(?:(?:[0-9][0-9][2468][048]|[0-9][0-9][13579][26]|[0-9][0-9]0[48]|[02468][048]00|[13579][26]00)-02-29|[0-9]{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12][0-9]|3[01])|(?:0[469]|11)-(?:0[1-9]|[12][0-9]|30)|(?:02)-(?:0[1-9]|1[0-9]|2[0-8])))T(?:(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\\.[0-9]+)?(?:Z|([+-](?:[01][0-9]|2[0-3]):[0-5][0-9])))$",
-          "x-ichnaea-data": {
-            "class": "none",
-            "identifier": "none",
-            "egress": [
-              "*"
-            ],
-            "retention": "record"
-          }
-        }
-      },
-      "required": [
-        "count",
-        "ms"
       ]
     }
   },
-  "required": [
-    "schema",
-    "trial",
-    "kind",
-    "calls"
+  "anyOf": [
+    {
+      "type": "object",
+      "properties": {
+        "schema": {
+          "type": "string",
+          "const": "ichnaea.workerEvent/1",
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          }
+        },
+        "trial": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "suite": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "case": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "arm": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "replicate": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991,
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "attempt": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991,
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            }
+          },
+          "required": [
+            "id",
+            "suite",
+            "case",
+            "arm",
+            "replicate",
+            "attempt"
+          ]
+        },
+        "kind": {
+          "type": "string",
+          "const": "heartbeat",
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          }
+        },
+        "calls": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991,
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          }
+        },
+        "throttled": {
+          "type": "object",
+          "properties": {
+            "count": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991,
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "ms": {
+              "type": "number",
+              "minimum": 0,
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "firstAcceptedAt": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:[0-9][0-9][2468][048]|[0-9][0-9][13579][26]|[0-9][0-9]0[48]|[02468][048]00|[13579][26]00)-02-29|[0-9]{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12][0-9]|3[01])|(?:0[469]|11)-(?:0[1-9]|[12][0-9]|30)|(?:02)-(?:0[1-9]|1[0-9]|2[0-8])))T(?:(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\\.[0-9]+)?(?:Z|([+-](?:[01][0-9]|2[0-3]):[0-5][0-9])))$",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            }
+          },
+          "required": [
+            "count",
+            "ms"
+          ]
+        }
+      },
+      "required": [
+        "schema",
+        "trial",
+        "kind",
+        "calls"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema": {
+          "type": "string",
+          "const": "ichnaea.workerEvent/1",
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          }
+        },
+        "dataClass": {
+          "type": "string",
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          },
+          "x-ichnaea-known": [
+            "none",
+            "pseudonymous",
+            "personal",
+            "special"
+          ]
+        },
+        "trial": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "suite": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "case": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "arm": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "replicate": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991,
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "attempt": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991,
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            }
+          },
+          "required": [
+            "id",
+            "suite",
+            "case",
+            "arm",
+            "replicate",
+            "attempt"
+          ]
+        },
+        "kind": {
+          "type": "string",
+          "const": "tool_call",
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          }
+        },
+        "stage": {
+          "type": "string",
+          "minLength": 1,
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          }
+        },
+        "iteration": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991,
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          }
+        },
+        "turn": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991,
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          }
+        },
+        "call": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "args": {
+              "x-ichnaea-data": {
+                "class": "inherit",
+                "identifier": "content",
+                "egress": [
+                  "*"
+                ],
+                "retention": "subject"
+              },
+              "$ref": "#/$defs/JsonValue"
+            },
+            "result": {
+              "x-ichnaea-data": {
+                "class": "inherit",
+                "identifier": "content",
+                "egress": [
+                  "*"
+                ],
+                "retention": "subject"
+              },
+              "$ref": "#/$defs/JsonValue"
+            },
+            "error": {
+              "type": "string",
+              "x-ichnaea-data": {
+                "class": "inherit",
+                "identifier": "content",
+                "egress": [
+                  "*"
+                ],
+                "retention": "subject"
+              }
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "args"
+          ]
+        }
+      },
+      "required": [
+        "schema",
+        "dataClass",
+        "trial",
+        "kind",
+        "stage",
+        "iteration",
+        "call"
+      ]
+    },
+    {
+      "type": "object",
+      "properties": {
+        "schema": {
+          "const": "ichnaea.workerEvent/1"
+        },
+        "kind": {
+          "type": "string",
+          "pattern": "^(?!(?:heartbeat|tool_call)$)"
+        }
+      },
+      "required": [
+        "schema",
+        "kind"
+      ],
+      "x-ichnaea-unknown-kind": true
+    }
   ]
 }

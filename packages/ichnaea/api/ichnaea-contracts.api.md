@@ -3907,7 +3907,7 @@ export const WorkerError: z.ZodObject<{
 export type WorkerError = z.infer<typeof WorkerError>;
 
 // @public
-export const WorkerEvent: z.ZodObject<{
+export const WorkerEvent: z.ZodDiscriminatedUnion<[z.ZodObject<{
     schema: z.ZodLiteral<"ichnaea.workerEvent/1">;
     trial: z.ZodObject<{
         id: z.core.$ZodBranded<z.ZodString, "TrialId", "out">;
@@ -3917,16 +3917,41 @@ export const WorkerEvent: z.ZodObject<{
         replicate: z.ZodInt;
         attempt: z.ZodInt;
     }, z.core.$strict>;
-    kind: z.ZodEnum<{
-        heartbeat: "heartbeat";
-    }>;
+    kind: z.ZodLiteral<"heartbeat">;
     calls: z.ZodInt;
     throttled: z.ZodOptional<z.ZodObject<{
         count: z.ZodInt;
         ms: z.ZodNumber;
         firstAcceptedAt: z.ZodOptional<z.ZodISODateTime>;
     }, z.core.$strict>>;
-}, z.core.$strict>;
+}, z.core.$strict>, z.ZodObject<{
+    schema: z.ZodLiteral<"ichnaea.workerEvent/1">;
+    dataClass: z.ZodEnum<{
+        none: "none";
+        personal: "personal";
+        pseudonymous: "pseudonymous";
+        special: "special";
+    }>;
+    trial: z.ZodObject<{
+        id: z.core.$ZodBranded<z.ZodString, "TrialId", "out">;
+        suite: z.core.$ZodBranded<z.ZodString, "SuiteId", "out">;
+        case: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
+        arm: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
+        replicate: z.ZodInt;
+        attempt: z.ZodInt;
+    }, z.core.$strict>;
+    kind: z.ZodLiteral<"tool_call">;
+    stage: z.ZodString;
+    iteration: z.ZodInt;
+    turn: z.ZodOptional<z.ZodInt>;
+    call: z.ZodObject<{
+        id: z.ZodString;
+        name: z.ZodString;
+        args: z.ZodJSONSchema;
+        result: z.ZodOptional<z.ZodJSONSchema>;
+        error: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>;
+}, z.core.$strict>], "kind">;
 
 // @public
 export type WorkerEvent = z.infer<typeof WorkerEvent>;

@@ -489,21 +489,54 @@ export const WorkerReady = z.strictObject({
 export type WorkerReady = z.infer<typeof WorkerReady>;
 
 /**
- * What a worker writes about a trial in flight, before its result. A `heartbeat` keeps the trial
- * alive and reports the calls that the attempt has made so far. If Ichnaea kills an attempt, it
- * counts the calls of the last heartbeat, or the full per-trial bound without one.
+ * What a worker writes about a trial in flight, before its result, by kind:
+ * - `heartbeat` keeps the trial alive and reports the calls that the attempt has made so far. If
+ *   Ichnaea kills an attempt, it counts the calls of the last heartbeat, or the full per-trial
+ *   bound without one;
+ * - `tool_call` reports one call of a tool inside a stage. Its fields map one to one onto the
+ *   OpenTelemetry `execute_tool` span.
+ *
+ * A reader accepts a kind that a later minor version adds, with members of its own.
  */
-export const WorkerEvent = z.strictObject({
-  schema: none(z.literal("ichnaea.workerEvent/1")),
-  /** The trial that the event is about. */
-  trial: TrialIdentity,
-  /** The kind of event. */
-  kind: none(z.enum(["heartbeat"])),
-  /** The accepted model calls of the attempt so far. */
-  calls: none(z.int().min(0)),
-  /** The calls that the provider rejected for its rate limit so far, and the waits. */
-  throttled: Throttling.optional(),
-});
+export const WorkerEvent = z.discriminatedUnion("kind", [
+  z.strictObject({
+    schema: none(z.literal("ichnaea.workerEvent/1")),
+    /** The trial that the event is about. */
+    trial: TrialIdentity,
+    kind: none(z.literal("heartbeat")),
+    /** The accepted model calls of the attempt so far. */
+    calls: none(z.int().min(0)),
+    /** The calls that the provider rejected for its rate limit so far, and the waits. */
+    throttled: Throttling.optional(),
+  }),
+  z.strictObject({
+    schema: none(z.literal("ichnaea.workerEvent/1")),
+    /** The data class of the call's content: at least the case's. */
+    dataClass: none(RecordDataClass),
+    /** The trial that the event is about. */
+    trial: TrialIdentity,
+    kind: none(z.literal("tool_call")),
+    /** The stage that made the call, as the suite lists it. */
+    stage: none(Text),
+    /** Which run of the stage within the trial, from 0. */
+    iteration: none(z.int().min(0)),
+    /** The turn of a session case that made the call, from 0. */
+    turn: none(z.int().min(0)).optional(),
+    /** The tool call. */
+    call: z.strictObject({
+      /** The call's ID, as the model gave it. */
+      id: none(Text),
+      /** The tool's name. */
+      name: none(Text),
+      /** The arguments, as canonical JSON. */
+      args: content(Json),
+      /** What the tool returned. A large result is sent as an artifact, by its digest. */
+      result: content(Json).optional(),
+      /** The tool's error, in its own words. */
+      error: content(z.string()).optional(),
+    }),
+  }),
+]);
 /** A worker event. */
 export type WorkerEvent = z.infer<typeof WorkerEvent>;
 

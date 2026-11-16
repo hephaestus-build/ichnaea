@@ -785,6 +785,25 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
     "missing-capacity": (r) => delete r["capacity"],
   },
   workerEvent: {
+    "tool-call-without-name": (r) => {
+      delete r["calls"];
+      Object.assign(r, {
+        dataClass: "none",
+        kind: "tool_call",
+        stage: "search",
+        iteration: 0,
+        call: { id: "call_01", args: {} },
+      });
+    },
+    "tool-call-without-data-class": (r) => {
+      delete r["calls"];
+      Object.assign(r, {
+        kind: "tool_call",
+        stage: "search",
+        iteration: 0,
+        call: { id: "call_01", name: "search_help_centre", args: {} },
+      });
+    },
     "missing-calls": (r) => delete r["calls"],
     "negative-calls": (r) => (r["calls"] = -1),
     "missing-trial": (r) => delete r["trial"],
@@ -1075,6 +1094,32 @@ export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
     scorer: (r) => (r["protocol"] = "ichnaea.scoreRequest/1"),
   },
   workerEvent: {
+    "tool-call": (r) => {
+      delete r["calls"];
+      Object.assign(r, {
+        dataClass: "none",
+        kind: "tool_call",
+        stage: "search",
+        iteration: 0,
+        call: {
+          id: "call_01",
+          name: "search_help_centre",
+          args: { query: "Rückgabe nach 40 Tagen", top: 3 },
+          result: { pages: ["policy.md"] },
+        },
+      });
+    },
+    "tool-call-error-in-a-turn": (r) => {
+      delete r["calls"];
+      Object.assign(r, {
+        dataClass: "none",
+        kind: "tool_call",
+        stage: "search",
+        iteration: 1,
+        turn: 1,
+        call: { id: "call_02", name: "search_help_centre", args: {}, error: "empty query" },
+      });
+    },
     // The shim reports each wait under the endpoint's budget in every heartbeat.
     "throttled-heartbeat": (r) =>
       (r["throttled"] = { count: 1, ms: 1200, firstAcceptedAt: "2026-11-15T10:01:01.300Z" }),
@@ -1213,7 +1258,9 @@ export const READER_ONLY: Record<string, Record<string, Mutation>> = {
   },
   workerEvent: {
     // A later minor version may add a kind of event, with members of its own.
+    // A later kind need not count calls: the count belongs to the heartbeat.
     "future-kind": (r) => {
+      delete r["calls"];
       r["kind"] = "progress";
       r["share"] = 0.5;
     },

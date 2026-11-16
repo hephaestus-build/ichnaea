@@ -286,10 +286,41 @@ describe("the worker protocol", () => {
     delete without["calls"];
     // Without a count, a killed attempt counts the full per-trial bound: a writer always sends it.
     expect(WorkerEvent.safeParse(without).success).toBe(false);
-    // A later minor version may add a kind of event, which a reader accepts and reports.
-    const later = { ...valid, kind: "progress", share: 0.5 };
+    // A later minor version may add a kind of event with members of its own and no calls, which
+    // a reader accepts and reports: the count belongs to the heartbeat, not to every event.
+    const later: Record<string, unknown> = { ...valid, kind: "progress", share: 0.5 };
+    delete later["calls"];
     expect(WorkerEvent.safeParse(later).success).toBe(false);
-    expect(readRecord(contractFor("ichnaea.workerEvent/1")!, later).ok).toBe(true);
+    const read = readRecord(contractFor("ichnaea.workerEvent/1")!, later);
+    expect(read.ok && read.unknownValues.map((v) => v.value)).toEqual(["progress"]);
+    // The schema ID stays strict for the reader: only the kind widens.
+    expect(
+      readRecord(contractFor("ichnaea.workerEvent/1")!, {
+        ...later,
+        schema: "ichnaea.workerEvent/2",
+      }).ok,
+    ).toBe(false);
+  });
+
+  it("reports a tool call as an event, with its arguments and result as content", () => {
+    const event = WorkerEvent.parse(fixture("valid-extra", "workerEvent/tool-call.json"));
+    expect(event).toMatchObject({
+      kind: "tool_call",
+      stage: "search",
+      iteration: 0,
+      call: { id: "call_01", name: "search_help_centre" },
+    });
+    const record = fixture("valid-extra", "workerEvent/tool-call.json");
+    // A tool call carries content, so it states its class; a heartbeat counts calls instead.
+    const withoutClass = { ...record };
+    delete withoutClass["dataClass"];
+    expect(WorkerEvent.safeParse(withoutClass).success).toBe(false);
+    expect(WorkerEvent.safeParse({ ...record, calls: 2 }).success).toBe(false);
+    for (const key of ["args", "result", "error"])
+      expect(
+        policyAt("workerEvent", ["oneOf", "1", "properties", "call", "properties", key]),
+        key,
+      ).toMatchObject({ class: "inherit", identifier: "content" });
   });
 
   it("cancels one trial by its identity, and says nothing else", () => {

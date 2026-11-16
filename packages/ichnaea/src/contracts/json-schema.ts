@@ -127,12 +127,15 @@ function relax(node: unknown): unknown {
       // A kind added later still reads: any object with a string discriminator. With the fallback
       // more than one option can match, so the reader uses anyOf.
       delete out["oneOf"];
+      const shared = sharedConstants(tagged as Array<Record<string, unknown>>);
       out["anyOf"] = [
         ...tagged,
         {
           type: "object",
-          // Only a kind no known option names: a malformed known kind must still fail.
+          // Only a kind no known option names: a malformed known kind must still fail. A constant
+          // that every known kind fixes, such as the record's `schema` ID, stays strict for it.
           properties: {
+            ...shared,
             [discriminator]: {
               type: "string",
               pattern: notOneOf(
@@ -140,7 +143,7 @@ function relax(node: unknown): unknown {
               ),
             },
           },
-          required: [discriminator],
+          required: [...Object.keys(shared), discriminator],
           "x-ichnaea-unknown-kind": true,
         },
       ];
@@ -153,6 +156,24 @@ function relax(node: unknown): unknown {
 function notOneOf(values: readonly unknown[]): string {
   const escaped = values.map((v) => String(v).replaceAll(/[.*+?^${}()|[\]\\/-]/g, "\\$&"));
   return `^(?!(?:${escaped.join("|")})$)`;
+}
+
+/** The members that every option of a tagged union requires and fixes to one same constant. */
+function sharedConstants(
+  options: ReadonlyArray<Record<string, unknown>>,
+): Record<string, { const: unknown }> {
+  const first = options[0]?.["properties"] as Record<string, Record<string, unknown>> | undefined;
+  const shared: Record<string, { const: unknown }> = {};
+  for (const [key, prop] of Object.entries(first ?? {})) {
+    if (!("const" in prop)) continue;
+    const same = options.every((o) => {
+      const other = (o["properties"] as Record<string, Record<string, unknown>> | undefined)?.[key];
+      const required = (o["required"] as string[] | undefined)?.includes(key) ?? false;
+      return required && other !== undefined && other["const"] === prop["const"];
+    });
+    if (same) shared[key] = { const: prop["const"] };
+  }
+  return shared;
 }
 
 /** The discriminator values a tagged union already knows. */
@@ -170,16 +191,21 @@ function knownKinds(
   ];
 }
 
-/** The member that every option of a tagged union fixes with `const`. */
+/**
+ * The member that every option of a tagged union fixes with `const`, to a value of its own. A
+ * member that every option fixes to the same value, such as a record's `schema` ID, tells the
+ * options apart from nothing, so it is not the tag and stays strict.
+ */
 function discriminatorOf(options: ReadonlyArray<Record<string, unknown>>): string | undefined {
   const first = options[0]?.["properties"] as Record<string, Record<string, unknown>> | undefined;
   if (!first) return undefined;
-  return Object.keys(first).find((key) =>
-    options.every((o) => {
-      const prop = (o["properties"] as Record<string, Record<string, unknown>> | undefined)?.[key];
-      return prop !== undefined && "const" in prop;
-    }),
-  );
+  return Object.keys(first).find((key) => {
+    const fixed = options.map(
+      (o) => (o["properties"] as Record<string, Record<string, unknown>> | undefined)?.[key],
+    );
+    if (!fixed.every((prop) => prop !== undefined && "const" in prop)) return false;
+    return options.length < 2 || new Set(fixed.map((prop) => prop?.["const"])).size > 1;
+  });
 }
 
 /**
