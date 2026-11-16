@@ -71,8 +71,15 @@ function failureValue(measure: MeasureDefinition, c: Case): MeasureValue["value"
 
 /** The result of running a measure's known-good and known-bad examples. */
 export interface TesterResult {
+  /**
+   * `passed` when every example gives its expected value and the measure has both kinds of example.
+   */
   readonly status: "passed" | "failed";
+  /**
+   * One message for each example that failed, or for missing examples; empty when the test passed.
+   */
   readonly failures: readonly string[];
+  /** The digest of the measure's card and examples that were tested. */
   readonly digest: string;
 }
 

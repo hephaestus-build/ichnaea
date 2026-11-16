@@ -2,6 +2,7 @@ import { MeasureCard, Plan } from "../contracts/index.js";
 import { satisfies } from "./semver.js";
 /** Thrown when a configuration cannot load. The message names the plugin. */
 export class HostError extends Error {
+    /** The error's name, for `instanceof`-free checks. */
     name = "HostError";
 }
 function rank(p) {

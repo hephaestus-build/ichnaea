@@ -9,7 +9,9 @@ export declare const FORBIDDEN_DEF_TYPES: readonly string[];
 export declare const FORBIDDEN_CHECKS: readonly string[];
 /** One violation of the contract rules. */
 export interface ContractViolation {
+    /** Where the violation is: `$` for the root schema, then `.`-separated child labels. */
     readonly path: string;
+    /** The rule that the schema breaks, in words. */
     readonly rule: string;
 }
 /**

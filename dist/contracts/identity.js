@@ -4,6 +4,7 @@ import { Case, CaseSetEntry } from "./records/case.js";
 import { Configuration } from "./records/configuration.js";
 /** Thrown when a record cannot have a well-defined identity. */
 export class IdentityError extends Error {
+    /** The error's name, for `instanceof`-free checks. */
     name = "IdentityError";
 }
 /**

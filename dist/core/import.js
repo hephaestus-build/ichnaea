@@ -12,6 +12,7 @@ export const NOT_CAPTURED = "not-captured";
 const FAILED_OUTCOMES = new Set(["system_failure", "budget_exceeded"]);
 /** Thrown when an importer's records cannot be stored. The message names the record. */
 export class ImportError extends Error {
+    /** The error's name, for `instanceof`-free checks. */
     name = "ImportError";
 }
 async function json(path) {

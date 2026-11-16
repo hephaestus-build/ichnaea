@@ -7,8 +7,11 @@ import { type DataClass } from "./data-class.ts";
  * grant never lifts the class limit.
  */
 export interface EgressContext {
+    /** The purpose for which the record leaves, such as `PU-2`. */
     readonly purpose: string;
+    /** The most sensitive data class the destination may receive. */
     readonly maxClass: DataClass;
+    /** Extra purposes that the deployment allows for the fields at the given JSON pointers. */
     readonly grants?: ReadonlyArray<{
         readonly path: string;
         readonly purposes: readonly string[];
@@ -16,7 +19,9 @@ export interface EgressContext {
 }
 /** A record reduced to the fields that may cross a boundary, with the paths that were dropped. */
 export interface EgressProjection {
+    /** The projected record, or `undefined` when the record as a whole is dropped. */
     readonly value: unknown;
+    /** The JSON pointers of the dropped values, `/` for the whole record. */
     readonly dropped: readonly string[];
 }
 /**

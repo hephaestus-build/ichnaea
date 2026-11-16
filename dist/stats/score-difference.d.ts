@@ -1,7 +1,9 @@
 import { type Count, type Interval, type Sided, type TestResult } from "./types.ts";
 /** One stratum: the candidate's and the base's count. In `fixed-cases`, one stratum per case. */
 export interface Stratum {
+    /** The candidate's count in the stratum. */
     readonly candidate: Count;
+    /** The base's count in the stratum. */
     readonly base: Count;
 }
 /**

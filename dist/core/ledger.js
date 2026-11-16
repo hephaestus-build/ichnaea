@@ -13,6 +13,7 @@ const LedgerLine = z.looseObject({ run: z.string(), calls: z.int().min(0) });
  * ledger that cannot be read never counts as 0 calls, so one corrupt line cannot lift the cap.
  */
 export class LedgerError extends Error {
+    /** The error's name, for `instanceof`-free checks. */
     name = "LedgerError";
 }
 /** Why a value is not a booking, from its first problem; undefined when it is one. */
@@ -26,6 +27,7 @@ function bookingProblem(value) {
 export const STALE_LOCK_MS = 30_000;
 /** Thrown when a run would exceed an endpoint's monthly cap. The run makes no call. */
 export class MonthlyCapError extends Error {
+    /** The error's name, for `instanceof`-free checks. */
     name = "MonthlyCapError";
 }
 /**
@@ -36,6 +38,7 @@ export class MonthlyCapError extends Error {
  * cannot together exceed the cap.
  */
 export class CallLedger {
+    /** The directory that holds the `ledger/` folder. */
     root;
     constructor(root) {
         this.root = root;

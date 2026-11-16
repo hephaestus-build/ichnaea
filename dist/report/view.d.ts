@@ -5,9 +5,13 @@ export declare function percent(value: Real | number): string;
 export declare function points(value: Real | number): string;
 /** One row of the per-measure table. */
 export interface MeasureRow {
+    /** The measure's ID. */
     readonly measure: string;
+    /** The measure's tier: `primary` or `secondary`. */
     readonly tier: string;
+    /** The measure's verdict. */
     readonly verdict: string;
+    /** One entry for each arm: its rate, interval, available of planned trials and missing trials. */
     readonly arms: ReadonlyArray<{
         readonly arm: string;
         readonly rate: string;
@@ -15,6 +19,10 @@ export interface MeasureRow {
         readonly n: string;
         readonly missing: number;
     }>;
+    /**
+     * The first comparison's difference with its bound, margin and flips; absent when the measure has
+     * no comparison.
+     */
     readonly difference?: {
         readonly estimate: string;
         readonly bound: string;
@@ -35,17 +43,24 @@ export interface MeasureRow {
             readonly validated: boolean;
         };
     };
+    /** The measure's notes from the decision. */
     readonly notes: readonly string[];
 }
 /** One row of the power statement. */
 export interface PowerRow {
     /** `planning` for the plan's statement, made before any call; `this run` for the run-time one. */
     readonly statement: "planning" | "this run";
+    /** The measure's ID. */
     readonly measure: string;
+    /** The number of applicable cases. */
     readonly cases: number;
+    /** The trials per case and arm. */
     readonly replicates: number;
+    /** The zero-noise floor in percentage points, or a dash when the entry was not computed. */
     readonly floor: string;
+    /** The minimum detectable effect in percentage points, or `not computed`. */
     readonly mde: string;
+    /** The margin in percentage points. */
     readonly margin: string;
     /** Whether the margin is within reach of the minimum detectable effect, or why it is unknown. */
     readonly reach: string;
@@ -54,29 +69,46 @@ export interface PowerRow {
 }
 /** One imputation of the sensitivity analysis for one measure. */
 export interface SensitivityRow {
+    /** The measure's ID. */
     readonly measure: string;
+    /** How the missing trials were imputed, in words. */
     readonly imputation: string;
+    /** The difference in percentage points, or a dash when there is no interval. */
     readonly difference: string;
+    /**
+     * The one-sided lower bound, labelled when it is not validated, or a dash when there is no
+     * interval.
+     */
     readonly bound: string;
     /** Whether the bound is validated, as in `MeasureRow`. */
     readonly validated: boolean;
+    /** The measure's verdict under this imputation. */
     readonly verdict: string;
+    /** `yes` when the imputation changes the measure's verdict, otherwise `no`. */
     readonly changes: string;
 }
 /** The view model of a decision. Every output renders from it, so they show the same numbers. */
 export interface DecisionView {
+    /** The report's title, which names the suite. */
     readonly title: string;
+    /** The run's verdict, or `ESTIMATE-ONLY` when the decision gives none. */
     readonly verdict: string;
     /** What the verdict is about, shown next to it, for example "on these 12 cases". */
     readonly claim: string;
+    /** Why the run has its verdict. */
     readonly reason: string;
     /** How the verdict was reached: estimand, bounds and adjustments. */
     readonly method: string;
+    /** One row for each measure. */
     readonly measures: readonly MeasureRow[];
+    /** Each hard gate with its result: `passed`, or `failed` with the number of failures. */
     readonly gates: ReadonlyArray<{
         readonly gate: string;
         readonly result: string;
     }>;
+    /**
+     * The cases whose binary outcome changed between the arms, from each measure's first comparison.
+     */
     readonly flips: ReadonlyArray<{
         readonly measure: string;
         readonly case: string;
@@ -84,11 +116,20 @@ export interface DecisionView {
         readonly base: string;
         readonly candidate: string;
     }>;
+    /** The planning power rows, then the run-time ones. */
     readonly power: readonly PowerRow[];
+    /** The rows of the sensitivity analysis for missing trials. */
     readonly sensitivity: readonly SensitivityRow[];
+    /** The missing trials of each arm and the outcome of the sensitivity analysis, in words. */
     readonly missingness: string;
+    /** The keys of the configuration factors in which the base and candidate arms differ. */
     readonly differingFactors: readonly string[];
+    /** The decision's limitations. */
     readonly limitations: readonly string[];
+    /**
+     * Label and value pairs that identify the run, its plan, arms, measures, plugins, seed and
+     * version.
+     */
     readonly lineage: ReadonlyArray<readonly [string, string]>;
 }
 /** The label of a bound that its comparison's non-inferiority result does not vouch for. */

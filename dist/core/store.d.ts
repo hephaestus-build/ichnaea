@@ -1,30 +1,43 @@
 import { type Decision as DecisionRecord, type GateResult as GateResultRecord, type MeasureValue as MeasureValueRecord, type Plan as PlanRecord, type Run as RunRecord, type Trial as TrialRecord } from "../contracts/index.ts";
 /** Thrown when a write would change a record that already exists. */
 export declare class AppendOnlyError extends Error {
+    /** The error's name, for `instanceof`-free checks. */
     readonly name = "AppendOnlyError";
 }
 /** Thrown when stored or offered records break the store's rules. The message names the record. */
 export declare class StoreError extends Error {
+    /** The error's name, for `instanceof`-free checks. */
     readonly name = "StoreError";
 }
 /** One line of the run index (REQ-28). */
 export interface RunIndexEntry {
+    /** The run's ID. */
     readonly run: string;
+    /** The ID of the suite that the run's plan resolves. */
     readonly suite: string;
+    /** The digest of the run's plan. */
     readonly plan: string;
+    /** The decision's verdict, or null when the decision gives none. */
     readonly verdict: "PASS" | "REGRESSION" | "INCONCLUSIVE" | "INVALID" | null;
+    /** The decision's ISO 8601 timestamp. */
     readonly decidedAt: string;
 }
 /** The primary records of one run, written together. */
 export interface RunRecords {
+    /** The plan that the run carries out. */
     readonly plan: PlanRecord;
+    /** The run record with its ledger. */
     readonly run: RunRecord;
+    /** The run's trial records, one for each trial ID. */
     readonly trials: readonly TrialRecord[];
+    /** The measure values, one for each measure and trial. */
     readonly values: readonly MeasureValueRecord[];
+    /** The hard gates' results, one for each gate. */
     readonly gates: readonly GateResultRecord[];
 }
 /** Everything stored for one run. */
 export interface StoredRun extends RunRecords {
+    /** The run's decision; absent until the run is decided. */
     readonly decision?: DecisionRecord;
 }
 /**
@@ -44,6 +57,7 @@ export declare function recordProblems(records: Omit<RunRecords, "plan" | "run">
  * so every contract-valid ID is storable and none can leave `runs/`.
  */
 export declare class FileStore {
+    /** The store's root directory. */
     readonly root: string;
     constructor(root: string);
     private dir;

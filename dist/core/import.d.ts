@@ -2,24 +2,40 @@ import { type Plan } from "../contracts/index.ts";
 import type { Host } from "./host.ts";
 /** What `ichnaea import` needs. */
 export interface ImportRunInput {
+    /** The loaded configuration that provides the importer, measures and gates. */
     readonly host: Host;
+    /** The directory of the file store that the run is written to. */
     readonly store: string;
+    /** The ID of the run to create. */
     readonly run: string;
+    /** The ID of the importer that reads the result files. */
     readonly importer: string;
+    /** The path of the suite's JSON file. */
     readonly suite: string;
+    /** The path of the case set's JSON file. */
     readonly caseSet: string;
+    /** The path of the cases' JSON Lines file, one case per line; blank lines are skipped. */
     readonly cases: string;
+    /** The arms, each with its name, role and the path of its configuration's JSON file. */
     readonly arms: ReadonlyArray<{
         readonly name: string;
         readonly role: "base" | "candidate" | "reference";
         readonly configuration: string;
     }>;
+    /** The other runner's result files that the importer reads. */
     readonly files: readonly string[];
+    /** The kind of change that the run evaluates. */
     readonly trigger: Plan["trigger"];
     /** Factor keys the change varies beyond what its trigger varies by kind (REQ-15). */
     readonly varies?: readonly string[];
+    /** The plan's seed, a non-negative integer. */
     readonly seed: number;
+    /** The ISO 8601 timestamp recorded as the plan's creation and the run's start and end. */
     readonly now: string;
+    /**
+     * The Ichnaea version, a semantic version, recorded in the plan, the run's environment and its
+     * lineage.
+     */
     readonly ichnaea: string;
 }
 /**
@@ -29,6 +45,7 @@ export interface ImportRunInput {
 export declare const NOT_CAPTURED = "not-captured";
 /** Thrown when an importer's records cannot be stored. The message names the record. */
 export declare class ImportError extends Error {
+    /** The error's name, for `instanceof`-free checks. */
     readonly name = "ImportError";
 }
 /**

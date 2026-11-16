@@ -1,20 +1,31 @@
 import type { CommandDefinition, Config, EgressRequest, GateDefinition, HookContext, HookRunner, Hooks, Importer, MeasureDefinition, Plugin } from "./plugin.ts";
 /** Thrown when a configuration cannot load. The message names the plugin. */
 export declare class HostError extends Error {
+    /** The error's name, for `instanceof`-free checks. */
     readonly name = "HostError";
 }
 /** The versions a host offers to plugins' peer ranges. */
 export interface HostVersions {
+    /** The version of the core, checked against each plugin's `requires.core` range. */
     readonly core: string;
+    /**
+     * The version of the record contracts, checked against each plugin's `requires.contracts` range.
+     */
     readonly contracts: string;
 }
 /** A loaded configuration. */
 export interface Host extends HookRunner {
+    /** The loaded plugins in hook order: `pre` plugins first, then the unplaced ones, then `post`. */
     readonly plugins: readonly Plugin[];
+    /** The plugins' measures, by card ID. */
     readonly measures: ReadonlyMap<string, MeasureDefinition>;
+    /** The plugins' gates, by gate ID. */
     readonly gates: ReadonlyMap<string, GateDefinition>;
+    /** The plugins' importers, by importer ID. */
     readonly importers: ReadonlyMap<string, Importer>;
+    /** The plugins' commands, by command name; the core commands are not in it. */
     readonly commands: ReadonlyMap<string, CommandDefinition>;
+    /** The warnings from loading, such as one for each deprecated plugin. */
     readonly warnings: readonly string[];
 }
 /** Commands the core defines; a plugin cannot replace them. */

@@ -5,10 +5,12 @@ import { canonicalize, Decision, GateResult, MeasureValue, Plan, Run, Trial, } f
 import * as z from "zod";
 /** Thrown when a write would change a record that already exists. */
 export class AppendOnlyError extends Error {
+    /** The error's name, for `instanceof`-free checks. */
     name = "AppendOnlyError";
 }
 /** Thrown when stored or offered records break the store's rules. The message names the record. */
 export class StoreError extends Error {
+    /** The error's name, for `instanceof`-free checks. */
     name = "StoreError";
 }
 const IndexLine = z.strictObject({
@@ -93,6 +95,7 @@ const lines = (records, schema) => records.map((r) => `${canonicalize(schema.par
  * so every contract-valid ID is storable and none can leave `runs/`.
  */
 export class FileStore {
+    /** The store's root directory. */
     root;
     constructor(root) {
         this.root = root;

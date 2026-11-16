@@ -7,8 +7,11 @@ import * as z from "zod";
 
 /** One booking in the monthly call ledger. */
 export interface LedgerBooking {
+  /** The ID of the run that books the calls. */
   readonly run: string;
+  /** The number of calls booked, a non-negative integer. */
   readonly calls: number;
+  /** The ISO 8601 timestamp of the booking; its `YYYY-MM` prefix selects the month's file. */
   readonly at: string;
 }
 
@@ -23,6 +26,7 @@ const LedgerLine = z.looseObject({ run: z.string(), calls: z.int().min(0) });
  * ledger that cannot be read never counts as 0 calls, so one corrupt line cannot lift the cap.
  */
 export class LedgerError extends Error {
+  /** The error's name, for `instanceof`-free checks. */
   override readonly name = "LedgerError";
 }
 
@@ -38,6 +42,7 @@ export const STALE_LOCK_MS = 30_000;
 
 /** Thrown when a run would exceed an endpoint's monthly cap. The run makes no call. */
 export class MonthlyCapError extends Error {
+  /** The error's name, for `instanceof`-free checks. */
   override readonly name = "MonthlyCapError";
 }
 
@@ -49,6 +54,7 @@ export class MonthlyCapError extends Error {
  * cannot together exceed the cap.
  */
 export class CallLedger {
+  /** The directory that holds the `ledger/` folder. */
   readonly root: string;
 
   constructor(root: string) {

@@ -8,6 +8,7 @@
  */
 /** Thrown when a value has no JSON representation. */
 export declare class NonJsonValueError extends Error {
+    /** The error's name, for `instanceof`-free checks. */
     readonly name = "NonJsonValueError";
     /** The JSON pointer of the offending value. */
     readonly path: string;

@@ -2,6 +2,7 @@ import { caseDigest, caseSetDigest, configurationIdentity, digest, Plan, } from 
 import { testMeasure } from "./measures.js";
 /** Thrown when a suite cannot be resolved into a valid plan. The message names the fix. */
 export class PlanError extends Error {
+    /** The error's name, for `instanceof`-free checks. */
     name = "PlanError";
 }
 /** Fewest cases a fixed-cases decision is validated for (VALIDATED_FIXED_CASES in stats). */

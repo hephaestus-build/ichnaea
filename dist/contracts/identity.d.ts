@@ -1,6 +1,7 @@
 import type { ConfigurationIdentity, Digest } from "./primitives.ts";
 /** Thrown when a record cannot have a well-defined identity. */
 export declare class IdentityError extends Error {
+    /** The error's name, for `instanceof`-free checks. */
     readonly name = "IdentityError";
 }
 /** What one digest projection hashes, and what it leaves out with the reason. */
@@ -58,9 +59,16 @@ export declare function caseSetDigest(entries: readonly unknown[]): Promise<Dige
  * why).
  */
 export interface LinkError {
+    /**
+     * The JSON pointer of the value that does not match, or of the configuration that cannot be
+     * checked.
+     */
     readonly path: string;
+    /** The identity or digest that the record stores. */
     readonly stored: string;
+    /** The value computed from the record, or null when it cannot be computed. */
     readonly computed: string | null;
+    /** Why the value cannot be computed; present only when `computed` is null. */
     readonly problem?: string;
 }
 /**

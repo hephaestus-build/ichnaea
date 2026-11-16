@@ -13,6 +13,7 @@ const validity = (limitations) => ({
 });
 /** Thrown when the data cannot support the estimand. The decision then runs estimate-only. */
 export class EstimandError extends Error {
+    /** The error's name, for `instanceof`-free checks. */
     name = "EstimandError";
 }
 /** The fixed-cases domain the simulation studies cover (VALIDATION.md, decision 0009). */

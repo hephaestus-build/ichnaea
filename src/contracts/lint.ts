@@ -51,7 +51,9 @@ function isJsonValue(node: z.ZodType): boolean {
 
 /** One violation of the contract rules. */
 export interface ContractViolation {
+  /** Where the violation is: `$` for the root schema, then `.`-separated child labels. */
   readonly path: string;
+  /** The rule that the schema breaks, in words. */
   readonly rule: string;
 }
 

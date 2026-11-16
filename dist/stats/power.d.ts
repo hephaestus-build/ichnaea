@@ -21,10 +21,15 @@ export interface FixedCasesMdeInput {
     readonly rates: readonly number[];
     /** Trials per case and arm: one count for every case, or one per case. */
     readonly replicates: number | readonly number[];
+    /** The one-sided level of the non-inferiority test. Default 0.05. */
     readonly alpha?: number;
+    /** The power at which the margin must pass. Default 0.8. */
     readonly power?: number;
+    /** The number of simulated runs. Default 2000. */
     readonly simulations?: number;
+    /** The seeded generator that draws the simulated trials. */
     readonly rng: Rng;
+    /** Options of the score method; the weights default to `equal`. */
     readonly options?: ScoreOptions;
 }
 /**
