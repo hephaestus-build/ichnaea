@@ -1,6 +1,6 @@
 import * as z from "zod";
 
-import { none } from "../data-class.ts";
+import { CLOSED_KEY, none } from "../data-class.ts";
 import { PlanDigest, RunId, SemVer, Text, Timestamp, TrialId } from "../primitives.ts";
 import { Arm, LineageItem } from "./plan.ts";
 import { Outcome } from "./trial.ts";
@@ -9,7 +9,7 @@ import { Outcome } from "./trial.ts";
 export const LedgerEntry = z.strictObject({
   trial: none(TrialId),
   state: none(z.enum(["planned", "running", "recorded"])),
-  outcome: none(Outcome).optional(),
+  outcome: none(Outcome, { [CLOSED_KEY]: true }).optional(),
 });
 
 /**

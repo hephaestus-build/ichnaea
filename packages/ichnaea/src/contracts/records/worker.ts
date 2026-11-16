@@ -15,7 +15,7 @@ import {
   Unit,
 } from "../primitives.ts";
 import { ScriptedTurn } from "./case.ts";
-import { Usage } from "./trial.ts";
+import { type Outcome, Usage } from "./trial.ts";
 
 /**
  * Which trial a request asks for and a result answers: the identity that resume uses. A result
@@ -108,6 +108,17 @@ export const TrialFailure = z.strictObject({
 });
 /** A trial failure. */
 export type TrialFailure = z.infer<typeof TrialFailure>;
+
+/**
+ * The trial outcome of each failure class, one to one. `protocol_failure` is the outcome of a
+ * `protocol` failure and of nothing else.
+ */
+export const FAILURE_OUTCOME = {
+  infrastructure: "infrastructure_failure",
+  system: "system_failure",
+  not_run: "not_run",
+  protocol: "protocol_failure",
+} as const satisfies Record<TrialFailure["class"], Outcome>;
 
 /** The commit of the system's code, as 40 hexadecimal characters. */
 const Commit = none(z.string().regex(/^[0-9a-f]{40}$/));

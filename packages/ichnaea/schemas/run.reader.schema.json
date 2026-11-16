@@ -750,6 +750,17 @@
           },
           "outcome": {
             "type": "string",
+            "enum": [
+              "completed",
+              "abstained",
+              "system_failure",
+              "infrastructure_failure",
+              "budget_exceeded",
+              "invalid_configuration",
+              "not_run",
+              "protocol_failure"
+            ],
+            "x-ichnaea-closed": true,
             "x-ichnaea-data": {
               "class": "none",
               "identifier": "none",
@@ -757,16 +768,7 @@
                 "*"
               ],
               "retention": "record"
-            },
-            "x-ichnaea-known": [
-              "completed",
-              "abstained",
-              "system_failure",
-              "infrastructure_failure",
-              "budget_exceeded",
-              "invalid_configuration",
-              "not_run"
-            ]
+            }
           }
         },
         "required": [

@@ -84,7 +84,13 @@ export type Compare = (input: ComparisonInput) => Comparison;
 type FactorPartName = z.infer<typeof FactorPart>;
 
 /** Outcomes that leave a planned trial without a value: they are missing, never a failure. */
-const MISSING = new Set(["infrastructure_failure", "not_run", "invalid_configuration"]);
+const MISSING = new Set([
+  "infrastructure_failure",
+  "not_run",
+  "invalid_configuration",
+  // The run is INVALID; the trial gives no value, and it is never a failure or a pass.
+  "protocol_failure",
+]);
 /**
  * Outcomes that score as a failed trial on a binary measure whatever value a record carries
  * (REQ-20): the system failed, so the trial cannot pass.
@@ -638,6 +644,11 @@ async function recordChecks(input: DecideInput): Promise<string[]> {
   const plannedIds = new Set(plan.trials.map((t) => t.id as string));
   if (plannedIds.size !== plan.trials.length) invalid.push("the plan has duplicate trial IDs");
   invalid.push(...recordProblems(input));
+  const protocol = input.trials.filter((t) => t.outcome === "protocol_failure");
+  for (const kind of new Set(protocol.map((t) => t.error?.kind ?? "unknown")))
+    invalid.push(
+      `a worker reported a protocol failure (${kind}): the harness, not the system, failed`,
+    );
   const unplannedTrial = input.trials.find((t) => !plannedIds.has(t.id));
   if (unplannedTrial) invalid.push(`trial '${unplannedTrial.id}' is not in the plan`);
   const unplannedValue = input.values.find((v) => !plannedIds.has(v.trial));
