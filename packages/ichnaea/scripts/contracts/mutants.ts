@@ -403,8 +403,8 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "template digest of the trimmed text",
     file: "src/contracts/identity.ts",
-    from: "const computed = await sha256(prompt.template);",
-    to: "const computed = await sha256(prompt.template.trim());",
+    from: "const computed = sha256(prompt.template);",
+    to: "const computed = sha256(prompt.template.trim());",
   },
   {
     id: "template with a lone surrogate not reported",
