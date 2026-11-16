@@ -33,13 +33,17 @@ points.
 
 ## Run it
 
-Install once at the repository root. There is no build. The commands need Node 24.3 or later.
+Install and build once at the repository root. The commands need Node 24.3 or later.
 
 ```sh
 pnpm install
+pnpm --filter @hephaestus-build/ichnaea build
 ```
 
-Then run the example from this directory. `pnpm exec ichnaea` runs the CLI of the workspace.
+Then run the example from this directory. `pnpm exec ichnaea` runs the CLI of the workspace
+package, `@hephaestus-build/ichnaea`, from its build. In your own project, install a build commit
+as the [README](../../README.md#use-ichnaea-from-a-typescript-project) shows, and the same
+commands run there.
 
 ### A candidate that answers as well as the base
 
@@ -55,7 +59,7 @@ pnpm exec ichnaea report --run same # exit 0
 
 INCONCLUSIVE is the expected result today. It does not mean that the setup is broken. A PASS needs
 the candidate shown non-inferior, and that result is validated only from a smallest margin, the
-validated margin floor. The statistics package has not set that floor yet, so no candidate can
+validated margin floor. The statistics have not set that floor yet, so no candidate can
 PASS. A drop beyond run-to-run noise can still be shown, as the next scenario does. The suite
 reports an INCONCLUSIVE verdict and does not block, so `decide` exits with 0. The report gives the
 same reason next to the verdict, and it labels the lower bound of the difference "not validated".

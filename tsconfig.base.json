@@ -19,6 +19,8 @@
     "erasableSyntaxOnly": true,
     "rewriteRelativeImportExtensions": true,
     "types": ["node"],
-    "paths": { "@hephaestus-build/ichnaea-*": ["./packages/*/src/index.ts"] }
+    // Resolve the Ichnaea package to its TypeScript sources inside the repository, so that type checks
+    // need no build. The shipped manifest has no such condition.
+    "customConditions": ["ichnaea-source"]
   }
 }

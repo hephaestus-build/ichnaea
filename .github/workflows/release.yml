@@ -1,10 +1,11 @@
 name: Release
 
-# Releases are paused: consumers pin a commit of this repository as a git submodule (README § Use
-# Ichnaea from a TypeScript project). The packages ship TypeScript sources, and Node does not strip
-# types from files under node_modules, so the tarballs that the steps below pack and attest do not
-# run once installed. The build job's first step fails every run until a release design replaces
-# this one. The rest of this comment describes that paused design.
+# Releases are paused until 1.0: consumers pin a commit of the `build` branch (README § Use Ichnaea
+# from a TypeScript project, decision 0019). The build job's first step fails every run. At 1.0 the
+# same build tree that the build branch holds is packed and published to npm with provenance, and a
+# new decision record replaces this design. The `release` environment has no deploy key now, and
+# the release tag ruleset lets nobody create a v* tag. The rest of this comment describes the
+# paused design of decision 0013.
 #
 # A maintainer starts a pre-release by hand, on main, with its tag `v0.<minor>.<patch>`. The
 # workflow creates the tag itself: no pushed tag starts a release. The build job has read access

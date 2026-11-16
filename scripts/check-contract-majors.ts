@@ -1,10 +1,10 @@
 // A major contract change ships with a migration (REQ-07): every record's current major is
-// listed in packages/contracts/majors.json, and every major beyond 1 names a migration module that
+// listed in packages/ichnaea/majors.json, and every major beyond 1 names a migration module that
 // exists. A release cannot carry a new major without one.
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { RECORD_CONTRACTS } from "../packages/contracts/src/index.ts";
+import { RECORD_CONTRACTS } from "../packages/ichnaea/src/contracts/index.ts";
 
 /** Returns one problem per record whose majors and migrations do not line up. */
 export function majorProblems(
@@ -37,7 +37,7 @@ export function majorProblems(
 }
 
 if (import.meta.main) {
-  const root = join(import.meta.dirname, "..", "packages", "contracts");
+  const root = join(import.meta.dirname, "..", "packages", "ichnaea");
   const majors = (
     JSON.parse(readFileSync(join(root, "majors.json"), "utf8")) as {
       records: Record<string, Record<string, string | null>>;

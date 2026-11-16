@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    // zod is the authoring source of the contracts. Under isolatedDeclarations every exported
+    // schema would need its full zod type written out by hand: a second copy of each schema. So
+    // the exemption covers the schema modules only (src/contracts/primitives.ts and
+    // src/contracts/records/): scripts/typecheck.ts runs every other module with
+    // isolatedDeclarations and fails on any error there (decision 0001). The committed API reports
+    // gate every declaration change.
+    "isolatedDeclarations": false
+  },
+  "include": ["src", "test", "scripts"]
+}

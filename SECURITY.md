@@ -39,19 +39,22 @@ its tags or its releases to show it.
 
 ## Supported versions
 
-Releases are paused. You pin a commit of this repository as a git submodule, as the
+There are no releases before 1.0. You pin a commit of the `build` branch, as the
 [README](README.md#use-ichnaea-from-a-typescript-project) shows. **Only the latest commit on `main`
-receives security fixes.** A fix ships as a new commit on `main`. Update your pin to take it.
+receives security fixes.** A fix ships as a new commit on `main`, and the build workflow writes
+its build commit. Update your pin to take it.
 
-Every commit on every branch is signed. Check the signature of the commit that you pin, as the
-[README](README.md#why-the-pin-is-the-integrity) shows.
+Every commit on `main` is signed. A build commit names its `main` commit and is reproducible from
+it: rebuild the commit that you pin, as the [README](README.md#check-a-build-commit) shows.
 
 ## Scope
 
 Ichnaea is a library and a CLI that run on your machine. In scope:
 
 - the code of the packages in this repository, the CLI included;
-- the release process: the release workflow, the attestations, the SBOM and the checksums;
+- the build branch: the build workflow, the build tree, its manifest and its SBOM, and the
+  reproducibility check;
+- the paused release process: the release workflow, the attestations, the SBOM and the checksums;
 - the GitHub Actions workflows in this repository.
 
 Trust model: Ichnaea runs plugins and configuration files as trusted code and does not sandbox
@@ -66,7 +69,8 @@ Out of scope:
 - the application under evaluation, its model providers and the services that it calls;
 - vulnerabilities in third-party dependencies, zod included, without an Ichnaea-specific exploit
   path: report those upstream;
-- code that does not come from a signed commit of this repository;
+- code that does not come from a signed commit on `main`, or from a build commit that is
+  reproducible from one;
 - denial of service through input that you control, and scanner output without a demonstrated
   impact;
 - social engineering or phishing of maintainers or users.
@@ -91,7 +95,11 @@ Independent of this reporting channel, the repository has:
   an earlier version of the same package ([`pnpm-workspace.yaml`](pnpm-workspace.yaml)).
 - **Workflow audit in CI:** actionlint and zizmor check every workflow on each pull request
   ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
-- **Release integrity:** build provenance and SBOM attestations on every tarball, release tags
-  that only the release deploy key can create and nobody can move, and immutable releases
+- **Build integrity:** only the build workflow's deploy key, held by a main-only environment,
+  writes the `build` branch, and nobody force-pushes it. Each build commit has an SBOM and a
+  manifest without install scripts, and CI rebuilds it byte for byte from its source commit
+  ([MAINTAINERS.md § The build branch](MAINTAINERS.md#the-build-branch)).
+- **Release integrity, at 1.0:** nobody creates a release tag while releases are paused, nobody
+  moves one, and releases are immutable
   ([MAINTAINERS.md § Repository settings](MAINTAINERS.md#repository-settings)).
 - **Native alerts:** GitHub secret scanning with push protection, and Dependabot alerts.

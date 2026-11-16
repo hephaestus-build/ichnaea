@@ -1,6 +1,6 @@
 name: Confirmation sweep
 
-# The confirmation sweep of the non-inferiority floor (packages/stats/scripts/README.md): the exact
+# The confirmation sweep of the non-inferiority floor (packages/ichnaea/scripts/stats/README.md): the exact
 # phases A, B and C, one job per margin; the simulation of their skipped structures (D); and the
 # large suites and the embedded worst structures (E). The collector checks every output and writes
 # summary.json. Started by hand only; nothing here writes to the repository.
@@ -82,7 +82,7 @@ jobs:
           SWEEP_E_LARGE: ${{ inputs.e-large }}
           SWEEP_E_EMBEDDED: ${{ inputs.e-embedded }}
           MARGINS: ${{ inputs.margins }}
-        run: node packages/stats/scripts/sweep-job.ts plan ${MARGINS:+--margins "$MARGINS"}
+        run: node packages/ichnaea/scripts/stats/sweep-job.ts plan ${MARGINS:+--margins "$MARGINS"}
 
   exact:
     name: ${{ matrix.artifact }}
@@ -105,7 +105,7 @@ jobs:
           PHASE: ${{ matrix.phase }}
           MARGIN: ${{ matrix.margin }}
         run: >-
-          node packages/stats/scripts/sweep-job.ts exact --phase "$PHASE" --margin "$MARGIN"
+          node packages/ichnaea/scripts/stats/sweep-job.ts exact --phase "$PHASE" --margin "$MARGIN"
           --out "$RUNNER_TEMP/out"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -138,7 +138,7 @@ jobs:
           SET: ${{ matrix.set }}
           JOB: ${{ matrix.job }}
         run: >-
-          node packages/stats/scripts/sweep-job.ts simulate --set "$SET" --job "$JOB"
+          node packages/ichnaea/scripts/stats/sweep-job.ts simulate --set "$SET" --job "$JOB"
           --in "$RUNNER_TEMP/in" --out "$RUNNER_TEMP/out"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -160,7 +160,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
       - name: The large suites, with the generator's sha256
-        run: node packages/stats/scripts/sweep-job.ts structures --out "$RUNNER_TEMP/out"
+        run: node packages/ichnaea/scripts/stats/sweep-job.ts structures --out "$RUNNER_TEMP/out"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: sweep-structures
@@ -192,7 +192,7 @@ jobs:
           SET: ${{ matrix.set }}
           JOB: ${{ matrix.job }}
         run: >-
-          node packages/stats/scripts/sweep-job.ts simulate --set "$SET" --job "$JOB"
+          node packages/ichnaea/scripts/stats/sweep-job.ts simulate --set "$SET" --job "$JOB"
           --in "$RUNNER_TEMP/in" --out "$RUNNER_TEMP/out"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -219,7 +219,7 @@ jobs:
           path: ${{ runner.temp }}/in
       - name: B's worst structures, embedded at K 20, 30 and 60
         run: >-
-          node packages/stats/scripts/sweep-job.ts embed --in "$RUNNER_TEMP/in"
+          node packages/ichnaea/scripts/stats/sweep-job.ts embed --in "$RUNNER_TEMP/in"
           --out "$RUNNER_TEMP/out"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -252,7 +252,7 @@ jobs:
           SET: ${{ matrix.set }}
           JOB: ${{ matrix.job }}
         run: >-
-          node packages/stats/scripts/sweep-job.ts simulate --set "$SET" --job "$JOB"
+          node packages/ichnaea/scripts/stats/sweep-job.ts simulate --set "$SET" --job "$JOB"
           --in "$RUNNER_TEMP/in" --out "$RUNNER_TEMP/out"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -284,7 +284,7 @@ jobs:
           PHASES: ${{ needs.plan.outputs.phases }}
           MARGINS: ${{ needs.plan.outputs.margins }}
         run: >-
-          node packages/stats/scripts/collect-sweep.ts --in "$RUNNER_TEMP/in"
+          node packages/ichnaea/scripts/stats/collect-sweep.ts --in "$RUNNER_TEMP/in"
           --out "$RUNNER_TEMP/summary" --phases "$PHASES" --margins "$MARGINS"
       # The archive's bytes depend only on the artifacts: sorted names, no times, no owners.
       - name: The archive of every artifact, and the checksums

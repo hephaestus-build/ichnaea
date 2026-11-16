@@ -11,7 +11,7 @@ afterAll(() => {
   for (const root of roots) rmSync(root, { recursive: true, force: true });
 });
 
-/** A repository with one package, `packages/contracts`, that holds the given source files. */
+/** A repository with the package, `packages/ichnaea`, whose contracts hold the given source files. */
 function repository(files: Record<string, string>): string {
   const root = mkdtempSync(join(tmpdir(), "isolated-declarations-"));
   roots.push(root);
@@ -20,13 +20,14 @@ function repository(files: Record<string, string>): string {
     writeFileSync(join(root, path), text);
   };
   write(
-    "packages/contracts/tsconfig.json",
+    "packages/ichnaea/tsconfig.json",
     JSON.stringify({
       compilerOptions: { target: "es2022", module: "esnext", noEmit: true, types: [] },
       include: ["src"],
     }),
   );
-  for (const [path, text] of Object.entries(files)) write(`packages/contracts/src/${path}`, text);
+  for (const [path, text] of Object.entries(files))
+    write(`packages/ichnaea/src/contracts/${path}`, text);
   return root;
 }
 
@@ -36,15 +37,15 @@ const NO_RETURN_TYPE = "export function double(n: number) { return n * 2; }\n";
 describe("the isolatedDeclarations check", () => {
   it("fails on an exported constant with an inferred type in a logic module", () => {
     const root = repository({ "walk.ts": INFERRED });
-    expect(checkIsolatedDeclarations("packages/contracts", root)).toEqual([
-      expect.stringContaining("packages/contracts/src/walk.ts"),
+    expect(checkIsolatedDeclarations("packages/ichnaea", root)).toEqual([
+      expect.stringContaining("packages/ichnaea/src/contracts/walk.ts"),
     ]);
   });
 
   it("fails on an exported function without a return type in a logic module", () => {
     const root = repository({ "egress.ts": NO_RETURN_TYPE });
-    expect(checkIsolatedDeclarations("packages/contracts", root)).toEqual([
-      expect.stringContaining("packages/contracts/src/egress.ts"),
+    expect(checkIsolatedDeclarations("packages/ichnaea", root)).toEqual([
+      expect.stringContaining("packages/ichnaea/src/contracts/egress.ts"),
     ]);
   });
 
@@ -54,36 +55,34 @@ describe("the isolatedDeclarations check", () => {
       "records/plan.ts": INFERRED,
       "records/deep/other.ts": NO_RETURN_TYPE,
     });
-    expect(checkIsolatedDeclarations("packages/contracts", root)).toEqual([]);
+    expect(checkIsolatedDeclarations("packages/ichnaea", root)).toEqual([]);
   });
 
   it("passes code with explicit types", () => {
     const root = repository({
       "walk.ts": "export const list: number[] = [1, 2];\nexport const n: number = 1;\n",
     });
-    expect(checkIsolatedDeclarations("packages/contracts", root)).toEqual([]);
+    expect(checkIsolatedDeclarations("packages/ichnaea", root)).toEqual([]);
   });
 
   it("does not read a file with a similar name as a schema module", () => {
     const root = repository({ "primitives-extra.ts": INFERRED, "recordsx/a.ts": INFERRED });
-    expect(checkIsolatedDeclarations("packages/contracts", root)).toHaveLength(2);
+    expect(checkIsolatedDeclarations("packages/ichnaea", root)).toHaveLength(2);
   });
 
   it("fails when the compiler does not start, instead of reading it as no errors", () => {
-    expect(() =>
-      checkIsolatedDeclarations("packages/contracts", "/nonexistent-directory"),
-    ).toThrow();
+    expect(() => checkIsolatedDeclarations("packages/ichnaea", "/nonexistent-directory")).toThrow();
   });
 
   it("keeps only compiler errors under a package's src", () => {
     const output = [
-      "packages/contracts/src/walk.ts(1,14): error TS9017: Only const arrays can be inferred.",
-      "packages/contracts/src/records/plan.ts(1,14): error TS9010: Variable must have an explicit type.",
-      "packages/contracts/test/a.test.ts(1,1): error TS2322: Not assignable.",
+      "packages/ichnaea/src/contracts/walk.ts(1,14): error TS9017: Only const arrays can be inferred.",
+      "packages/ichnaea/src/contracts/records/plan.ts(1,14): error TS9010: Variable must have an explicit type.",
+      "packages/ichnaea/test/contracts/a.test.ts(1,1): error TS2322: Not assignable.",
       "Found 3 errors.",
     ].join("\n");
     expect(isolatedDeclarationProblems(output)).toEqual([
-      "packages/contracts/src/walk.ts(1,14): error TS9017: Only const arrays can be inferred.",
+      "packages/ichnaea/src/contracts/walk.ts(1,14): error TS9017: Only const arrays can be inferred.",
     ]);
   });
 });

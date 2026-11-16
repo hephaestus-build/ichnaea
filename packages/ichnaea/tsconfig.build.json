@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  // The build: ESM JavaScript, declarations, declaration maps and source maps in dist/. The source
+  // maps name the sources by relative paths, and src/ ships beside dist/.
+  "compilerOptions": {
+    "noEmit": false,
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "include": ["src"]
+}

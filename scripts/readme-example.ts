@@ -1,26 +1,29 @@
-// Reads the install and the five-minute example of the README: the install's workspace file and
-// shell block, the example's shell block, and the table of the verdict line and exit code that each
-// scenario expects. The submodule consumer test installs with the install blocks, runs the example
-// block and checks the table, so the README is the only place that states how to install and what
-// the example gives.
+// Reads the install and the five-minute example of the README: the install's shell block, the
+// example's shell block, and the table of the verdict line and exit code that each scenario
+// expects. The build consumer test (scripts/build-consumer.ts) installs with the install block, runs
+// the example block and checks the table, so the README is the only place that states how to
+// install and what the example gives.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-export const WORKSPACE_MARKER = "<!-- The submodule consumer test writes this file. -->";
-export const INSTALL_MARKER = "<!-- The submodule consumer test runs this install. -->";
-export const BLOCK_MARKER = "<!-- The submodule consumer test runs this example. -->";
+export const INSTALL_MARKER = "<!-- The build consumer test runs this install. -->";
+export const BLOCK_MARKER = "<!-- The build consumer test runs this example. -->";
 export const TABLE_MARKER =
-  "<!-- The submodule consumer test checks these verdict lines and exit codes. -->";
+  "<!-- The build consumer test checks these verdict lines and exit codes. -->";
+
+/** The package, and the specifier of a build commit that the README's install adds it by. */
+export const PACKAGE_NAME = "@hephaestus-build/ichnaea";
+export const BUILD_SPEC = "github:hephaestus-build/ichnaea#<build-commit>";
 
 /**
- * The zod version that the workspace builds and tests with: the contracts package's development
- * dependency. A consumer installs the same version.
+ * The zod version that the workspace builds and tests with: the package's development dependency.
+ * A consumer installs the same version.
  */
 export function workspaceZod(): string {
-  const contracts = JSON.parse(
-    readFileSync(join(import.meta.dirname, "..", "packages", "contracts", "package.json"), "utf8"),
+  const manifest = JSON.parse(
+    readFileSync(join(import.meta.dirname, "..", "packages", "ichnaea", "package.json"), "utf8"),
   ) as { devDependencies: { zod: string } };
-  return contracts.devDependencies.zod;
+  return manifest.devDependencies.zod;
 }
 
 export interface Scenario {
@@ -109,8 +112,6 @@ export function decides(command: string, run: string): boolean {
 }
 
 export interface Install {
-  /** The text of `pnpm-workspace.yaml`, as written. */
-  readonly workspace: string;
   /** The commands of the install block, as written. */
   readonly commands: readonly string[];
   /** The packages that the `pnpm add` commands add, by name, without a version or protocol. */
@@ -120,16 +121,16 @@ export interface Install {
 /** Reads the install from the text of README.md. */
 export function readmeInstall(readme: string): Install {
   const lines = readme.split("\n");
-  const workspace = `${blockAfter(lines, WORKSPACE_MARKER, "yaml").join("\n")}\n`;
   const commands = commandsOf(blockAfter(lines, INSTALL_MARKER, "sh"));
   const added = commands
     .filter((c) => /^pnpm add\b/.test(c))
     .flatMap((c) => c.replace(/\\\n/g, " ").split(/\s+/).slice(2))
     .filter((arg) => arg !== "" && !arg.startsWith("-"))
-    // A package with its version or protocol, quoted where a shell would expand it: `zod@4.6.7`
-    // or `'@scope/name@workspace:*'`.
-    .map((arg) => arg.replace(/^'(.*)'$/, "$1").replace(/(.)@[^@]*$/, "$1"));
-  return { workspace, commands, added };
+    // A package with its version, quoted where a shell would expand it: `zod@4.6.7`, or the build
+    // commit of this package, `'github:hephaestus-build/ichnaea#<build-commit>'`.
+    .map((arg) => arg.replace(/^'(.*)'$/, "$1"))
+    .map((arg) => (arg === BUILD_SPEC ? PACKAGE_NAME : arg.replace(/(.)@[^@]*$/, "$1")));
+  return { commands, added };
 }
 
 /** The files of the example that its block copies into the project: the `$example/<file>.ts`. */

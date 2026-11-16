@@ -1,9 +1,0 @@
-{
-  "extends": "./tsconfig.json",
-  // The declarations that the API report reads (scripts/api-report.ts gives the output folder).
-  "compilerOptions": {
-    "noEmit": false,
-    "rootDir": "src"
-  },
-  "include": ["src"]
-}

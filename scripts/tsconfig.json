@@ -1,5 +1,5 @@
 {
   "extends": "../tsconfig.base.json",
   "compilerOptions": { "noEmit": true, "isolatedDeclarations": false },
-  "include": ["*.ts", "../vitest.workspace-alias.ts"]
+  "include": ["*.ts", "../vitest.config.ts"]
 }

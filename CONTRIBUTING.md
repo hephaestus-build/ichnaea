@@ -20,17 +20,21 @@ Thank you for helping. Ichnaea is a general framework: it must work for any GenA
 1. Open an issue first for anything larger than a fix.
 2. Branch from `main`. Use [Conventional Commits](https://www.conventionalcommits.org/) with a scope
    from `commitlint.config.ts`, for example `feat(contracts): case sets record their pools`.
-3. Run `pnpm check` before you push.
-4. Add a changeset (`pnpm changeset`) for every change to a published package, written for its users.
-5. Open a pull request. Its title and body become the squash commit on `main`, so the title
-   follows the same commit rule; the `pull request text` check lints it. CI must be green and a maintainer must
+3. Run `pnpm check` before you push. A change to the package also runs
+   `node scripts/build-consumer.ts`, which builds it, installs the build and runs the README's
+   example.
+4. Open a pull request. Its title and body become the squash commit on `main`, so the title
+   follows the same commit rule; the `pull request text` check lints it. The titles on `main` are
+   the change log: write the title for the package's users. CI must be green and a maintainer must
    approve it.
 
 ## Signed commits
 
 A commit pushed to a branch in this repository must be signed. Its commit email must be an address
 verified on your GitHub account, so set `git config user.email` to one before you commit. The
-repository refuses a push that carries an unsigned commit.
+repository refuses a push that carries an unsigned commit. The `build` branch is the exception:
+only the build workflow writes it, and its commits are reproducible from signed commits on `main`
+instead (decision 0019).
 
 A pull request from a fork needs none of this. GitHub creates and signs the commit that enters
 `main`.

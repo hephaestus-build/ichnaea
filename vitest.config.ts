@@ -1,7 +1,9 @@
 import { defineConfig } from "vitest/config";
 
+import { UNIT_PROJECTS } from "./packages/ichnaea/vitest.projects.ts";
+
 export default defineConfig({
   test: {
-    projects: ["packages/*", "examples/*", "scripts"],
+    projects: [...UNIT_PROJECTS, "examples/*", "scripts"],
   },
 });

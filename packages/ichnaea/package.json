@@ -1,0 +1,66 @@
+{
+  "name": "@hephaestus-build/ichnaea",
+  "version": "0.0.0",
+  "description": "Ichnaea: statistically sound evaluation of GenAI applications. Record contracts, statistics, plugin host, decision rule, reports and CLI.",
+  "keywords": [
+    "confidence-interval",
+    "evaluation",
+    "genai",
+    "json-schema",
+    "llm",
+    "non-inferiority",
+    "statistics",
+    "zod"
+  ],
+  "homepage": "https://github.com/hephaestus-build/ichnaea#readme",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hephaestus-build/ichnaea.git",
+    "directory": "packages/ichnaea"
+  },
+  "bin": {
+    "ichnaea": "./dist/core/bin.js"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "ichnaea-source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./contracts": {
+      "ichnaea-source": "./src/contracts/index.ts",
+      "types": "./dist/contracts/index.d.ts",
+      "default": "./dist/contracts/index.js"
+    },
+    "./stats": {
+      "ichnaea-source": "./src/stats/index.ts",
+      "types": "./dist/stats/index.d.ts",
+      "default": "./dist/stats/index.js"
+    },
+    "./schemas/*.json": "./schemas/*.json",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "generate": "node scripts/contracts/generate-schemas.ts && node scripts/contracts/write-fixtures.ts",
+    "api": "node scripts/api-report.ts --local",
+    "check:api": "node scripts/api-report.ts",
+    "test:sim:stats": "vitest run --config vitest.sim.config.ts --project stats-sim --silent=false",
+    "test:sim:decide": "vitest run --config vitest.sim.config.ts --project decide-sim --silent=false"
+  },
+  "devDependencies": {
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
+    "canonicalize": "5.1.0",
+    "zod": "4.6.7"
+  },
+  "peerDependencies": {
+    "zod": "^4.6.0"
+  },
+  "engines": {
+    "node": ">=24.3"
+  }
+}

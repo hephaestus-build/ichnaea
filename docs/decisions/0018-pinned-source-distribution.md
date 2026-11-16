@@ -1,6 +1,6 @@
 # 0018. Distribution by pinned source commit; releases paused
 
-Status: Accepted
+Status: Superseded by 0019
 Date: 2026-11-16
 
 ## Context

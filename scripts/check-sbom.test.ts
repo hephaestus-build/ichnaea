@@ -1,8 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { checkSbom, type Shipped } from "./check-sbom.ts";
+import { checkBuildSbom, checkSbom, type Shipped } from "./check-sbom.ts";
 import { PROJECT } from "./tarball-project.ts";
-import { tagArgument, UNTAGGED, withDownloadUrls } from "./release-sbom.ts";
+import {
+  buildBom,
+  buildSerialNumber,
+  tagArgument,
+  UNTAGGED,
+  uuidV5,
+  withDownloadUrls,
+} from "./release-sbom.ts";
 
 const tag = "v0.1.0";
 const download = (t: string, file: string) =>
@@ -240,5 +247,103 @@ describe("release SBOM", () => {
     expect(tagArgument("v0.1.0")).toBe("v0.1.0");
     expect(() => tagArgument("")).toThrow("release tag  is not v0.x.y");
     expect(() => tagArgument(UNTAGGED)).toThrow("is not v0.x.y");
+  });
+});
+
+describe("build SBOM", () => {
+  const commit = "a".repeat(40);
+  const date = "2026-11-16T10:17:00Z";
+  const pkg = { name: "@scope/a", version: "0.0.0", peerDependencies: { zod: "^4.6.0" } };
+  const own = {
+    type: "library",
+    group: "@scope",
+    name: "a",
+    version: "0.0.0",
+    purl: "pkg:npm/%40scope/a@0.0.0",
+    "bom-ref": "pkg:npm/%40scope/a@0.0.0",
+    externalReferences: [
+      { type: "distribution", url: "file:../scope-a-0.0.0.tgz", hashes: [] },
+      { type: "vcs", url: "git+https://example.org/a.git" },
+    ],
+  };
+  const zod = { type: "library", name: "zod", version: "4.6.7", "bom-ref": "pkg:npm/zod@4.6.7" };
+  const scratch = { type: "library", name: "release", "bom-ref": "pkg:npm/release@0.0.0" };
+  // What `pnpm sbom` writes for the scratch project that installs the packed tree.
+  const scratchSbom = () => ({
+    bomFormat: "CycloneDX",
+    serialNumber: "urn:uuid:826b7c1f-90a2-498c-8c76-df81c9d35f20",
+    metadata: { timestamp: "2026-11-16T09:35:24.360Z", component: scratch },
+    components: [zod, own],
+    dependencies: [
+      { ref: "pkg:npm/release@0.0.0", dependsOn: ["pkg:npm/zod@4.6.7", own["bom-ref"]] },
+      { ref: "pkg:npm/zod@4.6.7", dependsOn: [] },
+      { ref: own["bom-ref"], dependsOn: ["pkg:npm/zod@4.6.7"] },
+    ],
+  });
+  const built = () => buildBom(scratchSbom(), pkg, commit, date);
+
+  it("computes UUID version 5 as RFC 9562 gives it", () => {
+    expect(uuidV5("www.example.com", "6ba7b810-9dad-11d1-80b4-00c04fd430c8")).toBe(
+      "2ed6657d-e927-568b-95e1-2665a8aea6a2",
+    );
+  });
+
+  it("derives the serial number and the timestamp from the source commit, not from the time", () => {
+    const bom = built();
+    expect(bom["serialNumber"]).toBe(buildSerialNumber(commit));
+    expect(bom["serialNumber"]).toMatch(/^urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab]/);
+    expect(buildSerialNumber("b".repeat(40))).not.toBe(bom["serialNumber"]);
+    expect((bom["metadata"] as { timestamp: string }).timestamp).toBe(date);
+    expect(JSON.stringify(buildBom(scratchSbom(), pkg, commit, date))).toBe(JSON.stringify(bom));
+  });
+
+  it("makes the package the top-level component, names the commit and drops the scratch project", () => {
+    const bom = built() as {
+      metadata: { component: { externalReferences: Array<{ type: string; url: string }> } };
+      components: unknown[];
+      dependencies: Array<{ ref: string }>;
+    };
+    expect(bom.metadata.component.externalReferences).toEqual([
+      { type: "vcs", url: "git+https://example.org/a.git" },
+      { type: "vcs", url: `git+https://github.com/hephaestus-build/ichnaea.git#${commit}` },
+    ]);
+    expect(bom.components).toEqual([zod]);
+    expect(bom.dependencies.map((d) => d.ref)).toEqual([own["bom-ref"], "pkg:npm/zod@4.6.7"]);
+    expect(checkBuildSbom(bom, pkg, commit, date)).toEqual([]);
+  });
+
+  it("fails a build SBOM of another commit, of another time or with a path on the machine", () => {
+    const bom = built();
+    expect(checkBuildSbom(bom, pkg, "b".repeat(40), date)).toEqual([
+      `the SBOM's serial number is not ${buildSerialNumber("b".repeat(40))}`,
+      `the SBOM's top-level component does not name the source commit ${"b".repeat(40)}`,
+    ]);
+    expect(checkBuildSbom(bom, pkg, commit, "2026-11-17T00:00:00Z")).toEqual([
+      "the SBOM's timestamp is not 2026-11-17T00:00:00Z",
+    ]);
+    const local = { ...bom, components: [{ ...zod, description: "/home/runner/work/x" }] };
+    expect(checkBuildSbom(local, pkg, commit, date)).toEqual([
+      "the SBOM has a path on the build machine: /home/runner/work/x",
+    ]);
+    expect(checkBuildSbom(scratchSbom(), pkg, commit, date)).toContain(
+      "the SBOM has a path on the build machine: file:../scope-a-0.0.0.tgz",
+    );
+  });
+
+  it("fails a build SBOM without the peer dependency or with unsorted lists", () => {
+    const bom = built() as Record<string, unknown>;
+    expect(checkBuildSbom({ ...bom, components: [] }, pkg, commit, date)).toEqual([
+      "the SBOM misses zod, a peer dependency of @scope/a",
+    ]);
+    const unsorted = { ...bom, components: [zod, { ...zod, "bom-ref": "pkg:npm/a@1" }] };
+    expect(checkBuildSbom(unsorted, pkg, commit, date)).toEqual([
+      "the SBOM's components are not sorted",
+    ]);
+  });
+
+  it("refuses a pnpm SBOM that does not list the package", () => {
+    expect(() => buildBom({ components: [zod] }, pkg, commit, date)).toThrow(
+      "the SBOM does not list @scope/a@0.0.0",
+    );
   });
 });
