@@ -1,0 +1,85 @@
+{
+  "schema": "ichnaea.trialResult/1",
+  "dataClass": "none",
+  "trial": {
+    "id": "refund-window-de/b/r0",
+    "suite": "support-assistant",
+    "case": "refund-window-de",
+    "arm": "b",
+    "replicate": 0,
+    "attempt": 1
+  },
+  "output": {
+    "text": "Nein, die Frist beträgt 30 Tage.",
+    "sources": [
+      "policy.md"
+    ]
+  },
+  "events": [
+    {
+      "stage": "search",
+      "iteration": 0,
+      "ran": true,
+      "output": {
+        "pages": [
+          "policy.md"
+        ]
+      },
+      "startedAt": "2026-11-15T10:01:00.120Z",
+      "endedAt": "2026-11-15T10:01:00.480Z",
+      "stop": {
+        "reason": "completed"
+      }
+    },
+    {
+      "stage": "answer",
+      "iteration": 0,
+      "ran": true,
+      "stop": {
+        "reason": "end_turn"
+      }
+    }
+  ],
+  "stop": {},
+  "calls": 3,
+  "usage": {
+    "calls": 3,
+    "inputTokens": 812,
+    "outputTokens": 64,
+    "cacheReadTokens": 512,
+    "responseIds": [
+      "resp_01",
+      "resp_02",
+      "resp_03"
+    ],
+    "throttled": {
+      "count": 0,
+      "ms": 0,
+      "firstAcceptedAt": "2026-11-15T10:01:00.100Z"
+    }
+  },
+  "timing": {
+    "startedAt": "2026-11-15T10:01:00.050Z",
+    "firstChunkAt": "2026-11-15T10:01:01.200Z",
+    "endedAt": "2026-11-15T10:01:02.000Z",
+    "waitedMs": 0
+  },
+  "observed": {
+    "code": {
+      "commit": "0123456789abcdef0123456789abcdef01234567"
+    },
+    "model": "example-model-2026-10",
+    "route": "sha256:e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1",
+    "parameters": {
+      "temperature": 0
+    },
+    "configuration": "sha256:c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+    "configurationRead": [
+      "answer.prompt",
+      "answer.temperature"
+    ],
+    "environment": {
+      "helpCentreIndex": "snapshot-2026-11-01"
+    }
+  }
+}

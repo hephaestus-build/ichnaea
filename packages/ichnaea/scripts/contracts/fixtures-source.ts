@@ -248,12 +248,42 @@ export const VALID: Record<string, Record<string, unknown>> = {
       attempt: 1,
     },
     output: { text: "Nein, die Frist beträgt 30 Tage.", sources: ["policy.md"] },
+    events: [
+      {
+        stage: "search",
+        iteration: 0,
+        ran: true,
+        output: { pages: ["policy.md"] },
+        startedAt: "2026-11-15T10:01:00.120Z",
+        endedAt: "2026-11-15T10:01:00.480Z",
+        stop: { reason: "completed" },
+      },
+      { stage: "answer", iteration: 0, ran: true, stop: { reason: "end_turn" } },
+    ],
+    stop: { reason: "end_turn" },
     calls: 3,
+    usage: {
+      calls: 3,
+      inputTokens: 812,
+      outputTokens: 64,
+      cacheReadTokens: 512,
+      responseIds: ["resp_01", "resp_02", "resp_03"],
+      throttled: { count: 0, ms: 0, firstAcceptedAt: "2026-11-15T10:01:00.100Z" },
+    },
+    timing: {
+      startedAt: "2026-11-15T10:01:00.050Z",
+      firstChunkAt: "2026-11-15T10:01:01.200Z",
+      endedAt: "2026-11-15T10:01:02.000Z",
+      waitedMs: 0,
+    },
     observed: {
       code: { commit: "0123456789abcdef0123456789abcdef01234567" },
       model: "example-model-2026-10",
       route: d("e1"),
       parameters: { temperature: 0 },
+      configuration: d("c3"),
+      configurationRead: ["answer.prompt", "answer.temperature"],
+      environment: { helpCentreIndex: "snapshot-2026-11-01" },
     },
   },
   workerError: { schema: "ichnaea.workerError/1", dataClass: "none", kind: "bad-json" },
@@ -619,6 +649,33 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
   trialResult: {
     "missing-calls": (r) => delete r["calls"],
     "negative-calls": (r) => (r["calls"] = -1),
+    "event-without-ran": (r) => delete (r["events"] as Array<Record<string, unknown>>)[0]!["ran"],
+    "event-negative-iteration": (r) =>
+      ((r["events"] as Array<Record<string, unknown>>)[0]!["iteration"] = -1),
+    "event-replayed-not-a-digest": (r) =>
+      ((r["events"] as Array<Record<string, unknown>>)[0]!["replayed"] = "frozen-search"),
+    "stop-without-reason": (r) => (r["stop"] = {}),
+    "artifact-without-path": (r) => (r["artifacts"] = [{ name: "a", mediaType: "text/plain" }]),
+    "artifact-media-type-not-a-type": (r) =>
+      (r["artifacts"] = [{ name: "a", path: "/tmp/a", mediaType: "plain text" }]),
+    "usage-without-response-ids": (r) =>
+      delete (r["usage"] as Record<string, unknown>)["responseIds"],
+    "usage-without-calls": (r) => delete (r["usage"] as Record<string, unknown>)["calls"],
+    "usage-fractional-cost": (r) => ((r["usage"] as Record<string, unknown>)["costMicros"] = 1.5),
+    "throttled-negative-wait": (r) =>
+      ((r["usage"] as Record<string, unknown>)["throttled"] = { count: 1, ms: -5 }),
+    "timing-without-waits": (r) => delete (r["timing"] as Record<string, unknown>)["waitedMs"],
+    "timing-non-finite-wait": (r) =>
+      ((r["timing"] as Record<string, unknown>)["waitedMs"] = { nonFinite: "inf" }),
+    "observed-without-keys-read": (r) =>
+      delete (r["observed"] as Record<string, unknown>)["configurationRead"],
+    "observed-configuration-as-path": (r) =>
+      ((r["observed"] as Record<string, unknown>)["configuration"] = "configs/answer-short.json"),
+    "observed-without-environment": (r) =>
+      delete (r["observed"] as Record<string, unknown>)["environment"],
+    "trace-without-ids": (r) => (r["trace"] = { ids: [], complete: true }),
+    "trace-id-too-short": (r) => (r["trace"] = { ids: ["4bf92f35"], complete: true }),
+    "trace-without-complete": (r) => (r["trace"] = { ids: ["4bf92f3577b34da6a3ce929d0e0e4736"] }),
     "route-as-url": (r) =>
       ((r["observed"] as Record<string, unknown>)["route"] = "https://api.example.com/v1"),
     "short-commit": (r) =>
@@ -719,6 +776,11 @@ const REFUSED_PLANNING = {
 };
 
 /** Further valid records: shapes the main valid fixture does not show. */
+/** Removes what only a delivered result carries, for a result that reports a failure. */
+const withoutDelivery = (r: Record<string, unknown>): void => {
+  for (const member of ["output", "events", "stop", "usage", "timing"]) delete r[member];
+};
+
 export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
   plan: {
     "one-trial-schedule-and-aa": (r) => {
@@ -780,7 +842,7 @@ export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
   },
   trialResult: {
     "infrastructure-failure": (r) => {
-      delete r["output"];
+      withoutDelivery(r);
       r["failure"] = {
         class: "infrastructure",
         kind: "rate-limited",
@@ -795,17 +857,61 @@ export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
         commit: "0123456789abcdef0123456789abcdef01234567",
         image: d("b2"),
       }),
-    "with-usage": (r) => (r["usage"] = { inputTokens: 812, outputTokens: 64 }),
+    // Usage and timing are optional: absent means unknown, never zero.
+    "without-usage-or-timing": (r) => {
+      delete r["usage"];
+      delete r["timing"];
+    },
+    "with-cost-and-reasoning": (r) =>
+      Object.assign(r["usage"] as Record<string, unknown>, {
+        reasoningTokens: 210,
+        costMicros: 1840,
+        throttled: { count: 2, ms: 3100 },
+      }),
     "output-behind-pointer": (r) => {
       delete r["output"];
       r["pointer"] = "trace://composer/8f2c";
     },
     // A malformed request is the harness's fault: class protocol, never a system failure.
     "bad-request": (r) => {
-      delete r["output"];
+      withoutDelivery(r);
       r["failure"] = { class: "protocol", kind: "bad-request" };
       r["calls"] = 0;
     },
+    // A trial that delivers a directory instead of an inline output.
+    "artifacts-only": (r) => {
+      delete r["output"];
+      r["artifacts"] = [
+        {
+          name: "exercise",
+          path: "/tmp/ichnaea/run-2026-11-15-a/trial-0001/exercise",
+          mediaType: "inode/directory",
+        },
+        {
+          name: "transcript",
+          path: "/tmp/ichnaea/run-2026-11-15-a/trial-0001/transcript.json",
+          mediaType: "application/json",
+          class: "pseudonymous",
+        },
+      ];
+      (r["events"] as Array<Record<string, unknown>>)[1]!["artifact"] = "exercise";
+    },
+    traced: (r) =>
+      (r["trace"] = { ids: ["4bf92f3577b34da6a3ce929d0e0e4736"], spans: 7, complete: true }),
+    "replayed-stage": (r) => {
+      const search = (r["events"] as Array<Record<string, unknown>>)[0]!;
+      delete search["output"];
+      search["replayed"] = d("a9");
+    },
+    "code-from-outside-the-arm": (r) =>
+      ((r["observed"] as Record<string, unknown>)["modules"] = [
+        "/work/support-assistant/lib/rag.py",
+      ]),
+    "stage-not-run": (r) =>
+      (r["events"] = [
+        { stage: "search", iteration: 0, ran: false },
+        ...(r["events"] as unknown[]).slice(1),
+      ]),
   },
   workerError: {
     "with-message": (r) => (r["message"] = "line 3 is not JSON: unexpected end of input"),
@@ -868,6 +974,14 @@ export const READER_ONLY: Record<string, Record<string, Mutation>> = {
     // The base suite scores the output: a worker sends no score, and a reader ignores one.
     "worker-score": (r) => (r["values"] = { "support/facts-stated": true }),
     "future-failure-class": (r) => (r["failure"] = { class: "quality", kind: "wrong-answer" }),
+    // The base derives a stage's status: a worker sends none, and a reader ignores one.
+    "event-with-status": (r) =>
+      ((r["events"] as Array<Record<string, unknown>>)[0]!["status"] = "ok"),
+    // The base maps a stop reason to its class: a reader ignores a class that a worker sends.
+    "stop-with-class": (r) => (r["stop"] = { reason: "end_turn", class: "completed" }),
+    // Ichnaea hashes artifacts itself: a reader ignores a digest that a worker sends.
+    "artifact-with-digest": (r) =>
+      (r["artifacts"] = [{ name: "a", path: "/tmp/a", mediaType: "text/plain", digest: d("a1") }]),
   },
   workerError: {
     // A worker never guesses which trial an unreadable line was for: a writer refuses a trial

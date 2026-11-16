@@ -18,6 +18,14 @@
     "route": "sha256:e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1",
     "parameters": {
       "temperature": 0
+    },
+    "configuration": "sha256:c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+    "configurationRead": [
+      "answer.prompt",
+      "answer.temperature"
+    ],
+    "environment": {
+      "helpCentreIndex": "snapshot-2026-11-01"
     }
   },
   "failure": {

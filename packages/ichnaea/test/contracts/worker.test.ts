@@ -133,4 +133,81 @@ describe("the worker protocol", () => {
     ])
       expect(TrialRequest.safeParse({ ...request, trace: { traceparent } }).success).toBe(false);
   });
+
+  it("reports raw stage events, and never a stage status of the system's own", () => {
+    const result = TrialResult.parse(fixture("valid", "trialResult.json"));
+    expect(result.events?.map((e) => [e.stage, e.ran])).toEqual([
+      ["search", true],
+      ["answer", true],
+    ]);
+    const withStatus = fixture("valid", "trialResult.json");
+    (withStatus["events"] as Array<Record<string, unknown>>)[0]!["status"] = "ok";
+    expect(TrialResult.safeParse(withStatus).success).toBe(false);
+    expect(readRecord(contractFor("ichnaea.trialResult/1")!, withStatus).ok).toBe(true);
+  });
+
+  it("keeps the system's raw stop reason apart from a failure class", () => {
+    const result = TrialResult.parse(fixture("valid", "trialResult.json"));
+    expect(result.stop).toEqual({ reason: "end_turn" });
+    expect(result.failure).toBeUndefined();
+    // The stop reason is the system's words; the base maps it to a class, so none is sent.
+    const classed = {
+      ...fixture("valid", "trialResult.json"),
+      stop: { reason: "x", class: "system" },
+    };
+    expect(TrialResult.safeParse(classed).success).toBe(false);
+  });
+
+  it("delivers artifacts by path and media type, with only their class to declare", () => {
+    const result = TrialResult.parse(fixture("valid-extra", "trialResult/artifacts-only.json"));
+    expect(result.output).toBeUndefined();
+    expect(result.artifacts?.[0]).toMatchObject({ name: "exercise", mediaType: "inode/directory" });
+    const unhashed = fixture("valid-extra", "trialResult/artifacts-only.json");
+    (unhashed["artifacts"] as Array<Record<string, unknown>>)[0]!["digest"] =
+      `sha256:${"a".repeat(64)}`;
+    // Ichnaea hashes every artifact itself, so a writer never sends a digest of its own.
+    expect(TrialResult.safeParse(unhashed).success).toBe(false);
+  });
+
+  it("records every response ID and the calls of the attempt in its usage", () => {
+    const result = TrialResult.parse(fixture("valid", "trialResult.json"));
+    expect(result.usage?.calls).toBe(result.calls);
+    expect(result.usage?.responseIds).toHaveLength(3);
+    const usage = result.usage as Record<string, unknown>;
+    for (const member of ["calls", "responseIds"]) {
+      const without = { ...usage };
+      delete without[member];
+      expect(TrialResult.safeParse({ ...result, usage: without }).success, member).toBe(false);
+    }
+  });
+
+  it("reports what the process read: the configuration's digest, its keys and the factors", () => {
+    const result = fixture("valid", "trialResult.json");
+    const observed = result["observed"] as Record<string, unknown>;
+    expect(observed["configurationRead"]).toEqual(["answer.prompt", "answer.temperature"]);
+    for (const member of ["configuration", "configurationRead", "environment"]) {
+      const without = { ...observed };
+      delete without[member];
+      expect(TrialResult.safeParse({ ...result, observed: without }).success, member).toBe(false);
+    }
+  });
+
+  it("names the traces that the trial produced, and whether the system ended them all", () => {
+    const result = TrialResult.parse(fixture("valid-extra", "trialResult/traced.json"));
+    expect(result.trace).toEqual({
+      ids: ["4bf92f3577b34da6a3ce929d0e0e4736"],
+      spans: 7,
+      complete: true,
+    });
+  });
+
+  it("takes no non-finite number anywhere, as strict JSON cannot hold one", () => {
+    const result = fixture("valid", "trialResult.json");
+    const timing = result["timing"] as Record<string, unknown>;
+    expect(TrialResult.safeParse({ ...result, timing: { ...timing } }).success).toBe(true);
+    for (const waitedMs of [Number.NaN, Number.POSITIVE_INFINITY, { nonFinite: "inf" }])
+      expect(TrialResult.safeParse({ ...result, timing: { ...timing, waitedMs } }).success).toBe(
+        false,
+      );
+  });
 });
