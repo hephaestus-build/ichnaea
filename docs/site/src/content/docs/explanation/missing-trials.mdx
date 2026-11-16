@@ -11,17 +11,18 @@ Ichnaea keeps those trials in the record as missing. It does not drop them, and 
 
 ## Missing or failed
 
-| What happened                                       | Ichnaea records                             | Counted in the comparison                                               |
-| --------------------------------------------------- | ------------------------------------------- | ----------------------------------------------------------------------- |
-| The system answered, and the answer is right        | A passed trial                              | Yes, as a pass                                                          |
-| The system answered, and the answer is wrong        | A failed trial                              | Yes, as a failure                                                       |
-| The system crashed, or the run went over its budget | A failed trial                              | Yes, as a failure                                                       |
-| The system declined to answer                       | A trial with a value: the measure scores it | Yes                                                                     |
-| The call timed out                                  | A missing trial                             | No. The check below tests it.                                           |
-| The endpoint was not reachable                      | A missing trial                             | No. The check below tests it.                                           |
-| The answer was not captured                         | A missing trial                             | No. The check below tests it.                                           |
-| The trial never ran                                 | A missing trial                             | No. The check below tests it.                                           |
-| A case has no completed trial in one arm            | An excluded case                            | No. The decision counts it, and the result leaves the validated domain. |
+| What happened                                | Ichnaea records                              | Counted in the comparison                                                                                |
+| -------------------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| The system answered, and the answer is right | A passed trial                               | Yes, as a pass                                                                                           |
+| The system answered, and the answer is wrong | A failed trial                               | Yes, as a failure                                                                                        |
+| The system crashed                           | A failed trial                               | Yes, as a failure                                                                                        |
+| The run went over its budget                 | A failed trial, and the whole run is INVALID | Yes, as a failure                                                                                        |
+| The system declined to answer                | A trial with a value: the measure scores it  | Yes                                                                                                      |
+| The call timed out                           | A missing trial                              | No. The check below tests it.                                                                            |
+| The endpoint was not reachable               | A missing trial                              | No. The check below tests it.                                                                            |
+| The answer was not captured                  | A missing trial                              | No. The check below tests it.                                                                            |
+| The trial never ran                          | A missing trial                              | No. The check below tests it.                                                                            |
+| A case has no completed trial in one arm     | An excluded case                             | No. The decision counts it. The result leaves the validated domain, so it gives no validated REGRESSION. |
 
 A capture failure says nothing about your system. Counting it as a failure would blame your change for a broken pipe.
 
@@ -40,11 +41,12 @@ The card states the observed result and what would change it.
 
 ## An example
 
-Each of 60 cases has 3 trials per arm. The base passes every trial.
-In 6 cases, the candidate fails 2 of 3 trials, and exactly those trials are lost.
+Each of 60 cases has 3 trials per arm.
+In 10 cases, 1 of the 3 base trials is lost, and the candidate fails 1 of 3 trials in exactly those cases.
 
-Without the check, the candidate looks unchanged.
-With the check, the missing trials could hide a REGRESSION, so the verdict is INCONCLUSIVE.
+As recorded, the decrease is beyond run-to-run noise (p = 0.0055), so the verdict would be REGRESSION.
+If the lost base trials had failed, the arms would be equal in those cases.
+That imputation works against REGRESSION and changes it, so the verdict is INCONCLUSIVE.
 
 ## Limits
 
