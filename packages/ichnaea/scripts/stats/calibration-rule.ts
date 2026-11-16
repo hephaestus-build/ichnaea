@@ -13,7 +13,15 @@ export interface RuleSettings {
   readonly rateTolerance: number;
   /** Case resamples per study. */
   readonly resamples: number;
+  /**
+   * The rater floor, a precondition: the one-sided 95 % lower bound of rater–rater agreement must
+   * reach it (AC1 for yes/no labels, ordinal alpha for levels).
+   */
+  readonly raterFloor?: { readonly ac1: number; readonly alpha: number };
 }
+
+/** The registered rater floor: AC1 ≥ 0.60 (yes/no) or ordinal alpha ≥ 0.667 (levels). */
+export const RATER_FLOOR = { ac1: 0.6, alpha: 0.667 } as const;
 
 export const DEFAULT_SETTINGS: RuleSettings = {
   agreementTolerance: 0.15,
@@ -23,11 +31,18 @@ export const DEFAULT_SETTINGS: RuleSettings = {
 
 /**
  * The conditions this rule reports, all status conditions:
+ * - `ratersFloor`, the precondition: rater–rater agreement reaches RATER_FLOOR;
  * - yes/no judges: `ac1` (the agreement gap D with AC1), `sensitivity` and `specificity`;
  * - level judges: `alphaOrdinal` (the agreement gap D with ordinal alpha).
- * Alpha's absolute benchmarks (0.667, 0.800) are context only and are never applied here.
+ * Alpha's absolute benchmark applies to the raters (the floor), never to the judge's own alpha.
  */
-export const CONDITIONS = ["ac1", "sensitivity", "specificity", "alphaOrdinal"] as const;
+export const CONDITIONS = [
+  "ratersFloor",
+  "ac1",
+  "sensitivity",
+  "specificity",
+  "alphaOrdinal",
+] as const;
 
 /** R's type-7 quantile of a sorted array. */
 function quantile(sorted: readonly number[], p: number): number {
@@ -207,6 +222,9 @@ export function calibrationRule(settings: RuleSettings = DEFAULT_SETTINGS): Cali
     const gaps: Record<string, number[]> = Object.fromEntries(status.map((k) => [k, []]));
 
     const biases: number[] = [];
+    const raterAgreement: number[] = [];
+    const raterStatistic = study.scale === "levels" ? alpha : weightedAc1;
+    const floor = (settings.raterFloor ?? RATER_FLOOR)[study.scale === "levels" ? "alpha" : "ac1"];
     // The slope on the base against known-worse pair, when the study has known-worse answers.
     const hasPair = study.scale === "binary" && study.configurationOf.includes(2);
     const judgeLabel = (i: number): number => study.judge[i]!;
@@ -223,6 +241,7 @@ export function calibrationRule(settings: RuleSettings = DEFAULT_SETTINGS): Cali
         }
       }
       biases.push(bias(study, answers, value));
+      raterAgreement.push(raterStatistic(study.first, study.second, answers, study.weight));
       if (hasPair) {
         const human = pairChange(study, answers, raterLabel);
         const judgeChange = pairChange(study, answers, judgeLabel);
@@ -238,9 +257,13 @@ export function calibrationRule(settings: RuleSettings = DEFAULT_SETTINGS): Cali
       }
       if (undefinedStatus) nanReplicates += 1;
     }
-    const conditions = Object.fromEntries(
-      Object.entries(gaps).map(([name, values]) => [name, holds(values, tolerance(name))]),
-    );
+    const agreements = sorted(raterAgreement);
+    const conditions: Record<string, boolean> = {
+      ratersFloor: agreements.length > 0 && quantile(agreements, 0.05) >= floor,
+      ...Object.fromEntries(
+        Object.entries(gaps).map(([name, values]) => [name, holds(values, tolerance(name))]),
+      ),
+    };
     const sortedBiases = biases.filter((x) => !Number.isNaN(x)).toSorted((x, y) => x - y);
     const lower = quantile(sortedBiases, 0.05);
     const upper = quantile(sortedBiases, 0.95);
@@ -259,7 +282,7 @@ export function calibrationRule(settings: RuleSettings = DEFAULT_SETTINGS): Cali
         })()
       : undefined;
     return {
-      pass: status.every((name) => conditions[name] === true),
+      pass: conditions["ratersFloor"] === true && status.every((name) => conditions[name] === true),
       conditions,
       shownBound: Math.max(Math.abs(lower), Math.abs(upper)),
       armBias,

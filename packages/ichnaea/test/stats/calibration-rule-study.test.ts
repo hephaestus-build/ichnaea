@@ -52,11 +52,12 @@ describe("the judge calibration rule study, smoke run", () => {
     },
   );
 
-  it("passes a judge as good as a rater far more often than a clearly worse one", () => {
-    expect(smoke("binary-equal-oversampled-n150").pass).toBeGreaterThan(
-      smoke("binary-worse-oversampled-n150").pass + 0.4,
+  it("holds a judge as good as a rater to its conditions far more often than a clearly worse one", () => {
+    // The judge's own conditions: the pass also needs the rater floor, which depends on the raters.
+    expect(holds("binary-equal", "ac1")).toBeGreaterThan(holds("binary-worse", "ac1") + 0.4);
+    expect(holds("levels-equal", "alphaOrdinal")).toBeGreaterThan(
+      holds("levels-much-noisier", "alphaOrdinal") + 0.5,
     );
-    expect(smoke("levels-equal").pass).toBeGreaterThan(smoke("levels-much-noisier").pass + 0.5);
   });
 
   it("refuses uninformative yes/no judges whose AC1 gap alone would pass at low prevalence", () => {
@@ -74,7 +75,8 @@ describe("the judge calibration rule study, smoke run", () => {
   it("reports each scale's own conditions, and NA for the other's", () => {
     expect(holds("levels-equal", "sensitivity")).toBeNaN();
     expect(holds("binary-equal", "alphaOrdinal")).toBeNaN();
-    expect(smoke("levels-equal").pass).toBe(holds("levels-equal", "alphaOrdinal"));
+    // The pass needs the rater floor as well, so it is at most the alpha condition's rate.
+    expect(smoke("levels-equal").pass).toBeLessThanOrEqual(holds("levels-equal", "alphaOrdinal"));
   });
 
   it("sees the bias between the two configurations in its direction and size", () => {

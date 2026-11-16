@@ -9,7 +9,7 @@
 import { parseArgs } from "node:util";
 
 import { createRng } from "../../src/stats/index.ts";
-import { calibrationRule } from "./calibration-rule.ts";
+import { CONDITIONS, calibrationRule } from "./calibration-rule.ts";
 import { runCell, type Cell, type DrawDesign } from "./calibration-rule-study.ts";
 
 /** The registered targets: the good judge passes at least this often, the worse one at most this. */
@@ -66,6 +66,8 @@ export interface SizeResult {
   readonly goodSlopeLower: number;
   readonly dropShown: number;
   readonly passable: number;
+  /** P(the rater floor holds): the precondition, from the raters alone. */
+  readonly floorMet: number;
   readonly meets: boolean;
 }
 
@@ -103,6 +105,7 @@ export function sizeDraw(
       goodSlopeLower: good.meanSlopeLower,
       dropShown: good.dropShown,
       passable: good.passable,
+      floorMet: good.conditions[CONDITIONS.indexOf("ratersFloor")]!,
       meets: good.pass >= TARGET_GOOD && worse.pass <= TARGET_WORSE,
     };
   });
@@ -152,7 +155,9 @@ if (import.meta.main) {
     resamples: Number(values.resamples),
   });
   console.log(
-    ["size", "good", "worse", "goodSlopeLower", "dropShown", "passable", "meets"].join("\t"),
+    ["size", "good", "worse", "goodSlopeLower", "dropShown", "passable", "floorMet", "meets"].join(
+      "\t",
+    ),
   );
   for (const r of results) {
     console.log(
@@ -163,6 +168,7 @@ if (import.meta.main) {
         r.goodSlopeLower.toFixed(3),
         r.dropShown.toFixed(3),
         r.passable.toFixed(3),
+        r.floorMet.toFixed(3),
         r.meets,
       ].join("\t"),
     );
