@@ -151,7 +151,8 @@
         "infrastructure_failure",
         "budget_exceeded",
         "invalid_configuration",
-        "not_run"
+        "not_run",
+        "protocol_failure"
       ],
       "x-ichnaea-data": {
         "class": "none",

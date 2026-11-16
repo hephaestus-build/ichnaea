@@ -810,7 +810,8 @@
               "infrastructure_failure",
               "budget_exceeded",
               "invalid_configuration",
-              "not_run"
+              "not_run",
+              "protocol_failure"
             ],
             "x-ichnaea-data": {
               "class": "none",
@@ -853,43 +854,6 @@
           "*"
         ],
         "retention": "record"
-      }
-    },
-    "protocolFailures": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "trial": {
-            "type": "string",
-            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
-            "x-ichnaea-data": {
-              "class": "none",
-              "identifier": "none",
-              "egress": [
-                "*"
-              ],
-              "retention": "record"
-            }
-          },
-          "kind": {
-            "type": "string",
-            "minLength": 1,
-            "x-ichnaea-data": {
-              "class": "none",
-              "identifier": "none",
-              "egress": [
-                "*"
-              ],
-              "retention": "record"
-            }
-          }
-        },
-        "required": [
-          "trial",
-          "kind"
-        ],
-        "additionalProperties": false
       }
     }
   },

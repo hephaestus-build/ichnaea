@@ -310,8 +310,8 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "invalid configuration not missing",
     file: D,
-    from: 'const MISSING = new Set(["infrastructure_failure", "not_run", "invalid_configuration"]);',
-    to: 'const MISSING = new Set(["infrastructure_failure", "not_run"]);',
+    from: '  "not_run",\n  "invalid_configuration",\n',
+    to: '  "not_run",\n',
   },
   {
     id: "not applicable counted as planned",

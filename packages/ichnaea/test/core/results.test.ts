@@ -8,6 +8,7 @@ import {
   ScoreError,
   type TimedResult,
 } from "../../src/core/index.ts";
+import { Outcome, Trial } from "../../src/contracts/index.ts";
 import { createPlan } from "../../src/decide/index.ts";
 import { answer, COMMIT, configuration, SUITE } from "./support/library.ts";
 
@@ -255,16 +256,33 @@ describe("importResults", () => {
     );
   });
 
-  it("records a protocol failure in the run, never as a trial, and warns", () => {
+  it("records a protocol failure as its own outcome, once per trial, and warns", () => {
     const bad = answer(first, undefined, { failure: { class: "protocol", kind: "bad-request" } });
     const { records, summary } = importResults(plan, replace(0, { result: bad }));
-    expect(records.run.protocolFailures).toEqual([{ trial: FIRST, kind: "bad-request" }]);
-    expect(records.trials.some((t) => t.id === FIRST)).toBe(false);
-    expect(records.values.some((v) => v.trial === FIRST)).toBe(false);
+    expect(records.trials[0]).toMatchObject({
+      id: FIRST,
+      outcome: "protocol_failure",
+      error: { kind: "bad-request" },
+    });
+    expect(records.run.ledger[0]).toEqual({
+      trial: FIRST,
+      state: "recorded",
+      outcome: "protocol_failure",
+    });
+    expect(records.values.some((v) => v.trial === FIRST && v.applicable)).toBe(false);
+    expect(summary.outcomes).toEqual({ completed: 23, protocol_failure: 1 });
     expect(summary.notRun).toBe(0);
     expect(summary.warnings).toEqual([
       `1 result(s) reported a protocol failure, for example '${FIRST}' (bad-request); the harness failed, so the run is INVALID`,
     ]);
+  });
+
+  it("fails closed: a reader of the earlier outcomes refuses a protocol failure", () => {
+    const bad = answer(first, undefined, { failure: { class: "protocol", kind: "bad-request" } });
+    const [trial] = importResults(plan, replace(0, { result: bad })).records.trials;
+    const earlier = Trial.extend({ outcome: Outcome.exclude(["protocol_failure"]) });
+    expect(earlier.safeParse(trial).success).toBe(false);
+    expect(Trial.safeParse(trial).success).toBe(true);
   });
 
   it("refuses a failure class this version does not know", () => {

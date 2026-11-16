@@ -19,6 +19,10 @@ import {
 /**
  * Outcome classes of a trial (REQ-20). A capture failure is never a verdict:
  * `infrastructure_failure` and `not_run` count as missing, never as a quality failure.
+ * `protocol_failure` is the harness's fault, never the system's (a worker could not read its
+ * request): it is never a failure or a pass, and any one makes the run INVALID. It is an outcome,
+ * not a member of the run, so a reader that does not know it refuses the record instead of
+ * deciding the run.
  */
 export const Outcome = z.enum([
   "completed",
@@ -28,6 +32,7 @@ export const Outcome = z.enum([
   "budget_exceeded",
   "invalid_configuration",
   "not_run",
+  "protocol_failure",
 ]);
 /** A trial outcome. */
 export type Outcome = z.infer<typeof Outcome>;
