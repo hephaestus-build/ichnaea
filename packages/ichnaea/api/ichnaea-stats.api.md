@@ -33,6 +33,61 @@ export interface CaseScores {
 }
 
 // @public
+export function clusterBootstrap(input: readonly ClusterObservation[], options: ClusterBootstrapOptions): ClusterBootstrapResult;
+
+// @public
+export type ClusterBootstrapOptions = {
+    readonly level?: number;
+} & ({
+    readonly rng: Rng;
+    readonly resamples: number;
+    readonly schedule?: never;
+} | {
+    readonly schedule: ClusterSchedule;
+    readonly rng?: never;
+    readonly resamples?: never;
+});
+
+// @public
+export interface ClusterBootstrapResult {
+    readonly available: number;
+    readonly clusters: number;
+    readonly estimate: number;
+    readonly estimateOnly: true;
+    readonly intervalStatus: "regular" | "degenerate";
+    readonly level: number;
+    readonly limitations: readonly string[];
+    readonly lower: number;
+    readonly method: "cluster-percentile";
+    readonly missing: number;
+    readonly observations: number;
+    readonly omittedResamples: number;
+    readonly quantile: "R-type-7";
+    readonly resamples: number;
+    readonly sampling: {
+        readonly mode: "native" | "replay";
+        readonly algorithm: string;
+        readonly seed: number;
+    };
+    readonly upper: number;
+    readonly validated: false;
+}
+
+// @public
+export interface ClusterObservation {
+    readonly cluster: string;
+    readonly value: number | null;
+}
+
+// @public
+export interface ClusterSchedule {
+    readonly algorithm: string;
+    readonly clusterIds: readonly string[];
+    readonly draws: readonly (readonly number[])[];
+    readonly seed: number;
+}
+
+// @public
 export function compareCounts(input: ComparisonInput): Comparison;
 
 // @public
