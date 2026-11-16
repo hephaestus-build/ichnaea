@@ -17,19 +17,16 @@ statistics, and says plainly when the cases cannot decide.
   resolve to one record with an identity. Any change to it is a trigger.
 - **Decides with paired statistics.** A change is compared with its base on the same cases, with
   intervals, per-case flips and a stated estimand. The verdict is PASS, REGRESSION, INCONCLUSIVE or
-  INVALID. Before a run, the planner prints the smallest change the suite can detect.
+  INVALID. Before a run, the planner prints a power statement for the suite.
 - **Keeps every planned trial.** Failures, abstentions and missing data stay visible. A skipped or
   over-budget run is never a pass.
-- **Treats a model judge as an instrument.** A judge gates only when it agrees with people on the
-  task, and its uncertainty carries into the result.
-- **Keeps data where it lives.** Every record field has a data class and a purpose allow-list.
-  Commands that move data are built to let only data classed `none` leave by default.
-- **Measures systems, never people.** No measure has a person as its subject. Agreement per rater
-  exists only inside calibration records, under pseudonyms.
+- **Keeps data where it lives.** Ichnaea opens no network port and makes no network call of its
+  own. It writes only to the store you name (`.ichnaea` by default), and every record field carries
+  a data class.
+- **Measures systems, never people.** No measure has a person as its subject.
 
-Ichnaea is a TypeScript library and CLI. It runs in your CI and inside your deployment, and listens
-on no network port. It reuses proven tools (OpenTelemetry, Prometheus and Grafana, Langfuse,
-Inspect's log format) instead of building its own store, dashboard or labelling server.
+Ichnaea is a TypeScript library and CLI. It runs in your CI and inside your deployment. Its records
+are plain JSON files, and it runs no server, dashboard or labelling tool.
 
 ## Packages
 
