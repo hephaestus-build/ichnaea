@@ -13,3 +13,4 @@ __pycache__/
 packages/*/src/**/*.js
 packages/*/src/**/*.d.ts
 packages/*/src/**/*.map
+.astro/

@@ -164,6 +164,7 @@
               "schema": {
                 "type": "string",
                 "const": "ichnaea.configuration/1",
+                "description": "The record type and its major version.",
                 "x-ichnaea-data": {
                   "class": "none",
                   "identifier": "none",
@@ -176,6 +177,7 @@
               "description": {
                 "type": "string",
                 "minLength": 1,
+                "description": "What the configuration is, for people.",
                 "x-ichnaea-data": {
                   "class": "none",
                   "identifier": "none",
@@ -194,6 +196,7 @@
                     "role": {
                       "type": "string",
                       "minLength": 1,
+                      "description": "The role that the model plays, for example answer or rerank.",
                       "x-ichnaea-data": {
                         "class": "none",
                         "identifier": "none",
@@ -209,6 +212,7 @@
                         "value": {
                           "type": "string",
                           "minLength": 1,
+                          "description": "The value. It is never empty.",
                           "x-ichnaea-data": {
                             "class": "none",
                             "identifier": "none",
@@ -224,6 +228,7 @@
                             "pinned",
                             "declared"
                           ],
+                          "description": "Whether the value is pinned or only declared.",
                           "x-ichnaea-data": {
                             "class": "none",
                             "identifier": "none",
@@ -238,7 +243,8 @@
                         "value",
                         "status"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": false,
+                      "description": "The model provider."
                     },
                     "id": {
                       "type": "object",
@@ -246,6 +252,7 @@
                         "value": {
                           "type": "string",
                           "minLength": 1,
+                          "description": "The value. It is never empty.",
                           "x-ichnaea-data": {
                             "class": "none",
                             "identifier": "none",
@@ -261,6 +268,7 @@
                             "pinned",
                             "declared"
                           ],
+                          "description": "Whether the value is pinned or only declared.",
                           "x-ichnaea-data": {
                             "class": "none",
                             "identifier": "none",
@@ -275,7 +283,8 @@
                         "value",
                         "status"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": false,
+                      "description": "The model ID."
                     },
                     "version": {
                       "type": "object",
@@ -283,6 +292,7 @@
                         "value": {
                           "type": "string",
                           "minLength": 1,
+                          "description": "The value. It is never empty.",
                           "x-ichnaea-data": {
                             "class": "none",
                             "identifier": "none",
@@ -298,6 +308,7 @@
                             "pinned",
                             "declared"
                           ],
+                          "description": "Whether the value is pinned or only declared.",
                           "x-ichnaea-data": {
                             "class": "none",
                             "identifier": "none",
@@ -312,7 +323,8 @@
                         "value",
                         "status"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": false,
+                      "description": "The model version, when the provider names one."
                     },
                     "route": {
                       "type": "object",
@@ -320,6 +332,7 @@
                         "value": {
                           "type": "string",
                           "minLength": 1,
+                          "description": "The value. It is never empty.",
                           "x-ichnaea-data": {
                             "class": "none",
                             "identifier": "none",
@@ -335,6 +348,7 @@
                             "pinned",
                             "declared"
                           ],
+                          "description": "Whether the value is pinned or only declared.",
                           "x-ichnaea-data": {
                             "class": "none",
                             "identifier": "none",
@@ -349,7 +363,8 @@
                         "value",
                         "status"
                       ],
-                      "additionalProperties": false
+                      "additionalProperties": false,
+                      "description": "The route that the calls take, such as a deployment or a gateway route."
                     }
                   },
                   "required": [
@@ -358,7 +373,8 @@
                     "id"
                   ],
                   "additionalProperties": false
-                }
+                },
+                "description": "The models that the system uses. At least one."
               },
               "parameters": {
                 "minItems": 1,
@@ -369,6 +385,7 @@
                     "name": {
                       "type": "string",
                       "minLength": 1,
+                      "description": "The parameter's name.",
                       "x-ichnaea-data": {
                         "class": "none",
                         "identifier": "none",
@@ -396,6 +413,7 @@
                         "declared",
                         "uncontrollable"
                       ],
+                      "description": "The control status of the value.",
                       "x-ichnaea-data": {
                         "class": "none",
                         "identifier": "none",
@@ -411,6 +429,7 @@
                         "explicit",
                         "default"
                       ],
+                      "description": "explicit when the system sets the value, default when the provider applies it.",
                       "x-ichnaea-data": {
                         "class": "none",
                         "identifier": "none",
@@ -428,7 +447,8 @@
                     "origin"
                   ],
                   "additionalProperties": false
-                }
+                },
+                "description": "Every generation parameter, whether the system sets it or the provider applies a default. At least one."
               },
               "prompts": {
                 "type": "array",
@@ -438,6 +458,7 @@
                     "name": {
                       "type": "string",
                       "minLength": 1,
+                      "description": "The template's name.",
                       "x-ichnaea-data": {
                         "class": "none",
                         "identifier": "none",
@@ -450,6 +471,7 @@
                     "digest": {
                       "type": "string",
                       "pattern": "^sha256:[0-9a-f]{64}$",
+                      "description": "The SHA-256 of the template's UTF-8 bytes.",
                       "x-ichnaea-data": {
                         "class": "none",
                         "identifier": "none",
@@ -467,6 +489,7 @@
                         "declared",
                         "uncontrollable"
                       ],
+                      "description": "The control status of the template.",
                       "x-ichnaea-data": {
                         "class": "none",
                         "identifier": "none",
@@ -478,6 +501,7 @@
                     },
                     "template": {
                       "type": "string",
+                      "description": "The template text. It does not enter the identity.",
                       "x-ichnaea-data": {
                         "class": "none",
                         "identifier": "none",
@@ -490,6 +514,7 @@
                     "uri": {
                       "type": "string",
                       "minLength": 1,
+                      "description": "Where the template is kept. It does not enter the identity.",
                       "x-ichnaea-data": {
                         "class": "none",
                         "identifier": "none",
@@ -506,7 +531,8 @@
                     "status"
                   ],
                   "additionalProperties": false
-                }
+                },
+                "description": "The prompt templates that the system uses, by digest."
               },
               "factors": {
                 "type": "object",
@@ -536,6 +562,7 @@
                         "declared",
                         "uncontrollable"
                       ],
+                      "description": "The control status of the value: pinned, observed, declared or uncontrollable.",
                       "x-ichnaea-data": {
                         "class": "none",
                         "identifier": "none",
@@ -558,6 +585,7 @@
                         "data",
                         "other"
                       ],
+                      "description": "The part of the system that the factor belongs to.",
                       "x-ichnaea-data": {
                         "class": "none",
                         "identifier": "none",
@@ -574,10 +602,12 @@
                     "part"
                   ],
                   "additionalProperties": false
-                }
+                },
+                "description": "Everything else that decides behavior, under dotted names such as code.commit or tool.retrieval.topK."
               },
               "label": {
                 "type": "string",
+                "description": "A short name for people.",
                 "x-ichnaea-data": {
                   "class": "none",
                   "identifier": "none",
@@ -596,6 +626,7 @@
                 "additionalProperties": {
                   "$ref": "#/$defs/JsonValue"
                 },
+                "description": "Values that do not decide behavior and never enter the identity, such as a provider fingerprint.",
                 "x-ichnaea-data": {
                   "class": "none",
                   "identifier": "none",
