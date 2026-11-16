@@ -79,7 +79,7 @@ Run it with the Node version that the build commit's `build.json` names. The scr
 1. In the Ichnaea checkout, build on every change:
 
    ```sh
-   pnpm --filter @hephaestus-build/ichnaea build --watch
+   pnpm --filter @tumaet/ichnaea build --watch
    ```
 
 2. In your project, link the package of that checkout:
@@ -91,7 +91,7 @@ Run it with the Node version that the build commit's `build.json` names. The scr
 3. When you are done, remove the link and install the pinned commit again:
 
    ```sh
-   pnpm unlink @hephaestus-build/ichnaea
+   pnpm unlink @tumaet/ichnaea
    pnpm install
    ```
 

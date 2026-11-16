@@ -9,7 +9,7 @@ import { dirname, join } from "node:path";
  * this module elsewhere, so a path relative to this file would break.
  */
 export const SCHEMA_DIR = dirname(
-  createRequire(import.meta.url).resolve("@hephaestus-build/ichnaea/schemas/case.schema.json"),
+  createRequire(import.meta.url).resolve("@tumaet/ichnaea/schemas/case.schema.json"),
 );
 
 type Node = { readonly [key: string]: unknown };

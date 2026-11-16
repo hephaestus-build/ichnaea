@@ -1,4 +1,4 @@
-import { REASON_CODES } from "@hephaestus-build/ichnaea/contracts";
+import { REASON_CODES } from "@tumaet/ichnaea/contracts";
 import { describe, expect, it } from "vitest";
 
 import { reasonSections, SLOT_NOTES, templateParts } from "../src/reference/reasons.ts";

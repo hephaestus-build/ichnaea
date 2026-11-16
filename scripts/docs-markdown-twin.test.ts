@@ -17,7 +17,7 @@ describe("Markdown twin", () => {
 
   it("leaves fenced code untouched, even an import, a tag or a comment in it", () => {
     const body =
-      'Use it:\n\n```ts\nimport { compare } from "@hephaestus-build/ichnaea";\n<Card title="x">\n{/* kept */}\n<Tag />\n```\n\nDone.';
+      'Use it:\n\n```ts\nimport { compare } from "@tumaet/ichnaea";\n<Card title="x">\n{/* kept */}\n<Tag />\n```\n\nDone.';
     expect(markdownTwin(body)).toBe(body);
   });
 

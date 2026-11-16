@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@astrojs/starlight": "0.42.8",
-    "@hephaestus-build/ichnaea": "workspace:*",
+    "@tumaet/ichnaea": "workspace:*",
     "astro": "7.4.5",
     "es-module-lexer": "3.0.4",
     "hast-util-from-html": "2.1.0",
