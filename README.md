@@ -30,16 +30,16 @@ are plain JSON files, and it runs no server, dashboard or labelling tool.
 
 ## Packages
 
-Ichnaea is one package, `@hephaestus-build/ichnaea`. Its subpaths:
+Ichnaea is one package, `@tumaet/ichnaea`. Its subpaths:
 
-| Import                                                   | Content                                                                                                                                | State     |
-| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| `@hephaestus-build/ichnaea`                              | Plugin host, lifecycle, planner, import mode, file store, call ledger and CLI; the decision rule with its power statement; the reports | available |
-| `@hephaestus-build/ichnaea/contracts`                    | zod schemas, RFC 8785 canonical hashing, configuration identity, data classes                                                          | available |
-| `@hephaestus-build/ichnaea/stats`                        | Intervals, paired and stratified tests, power. The regression test is validated; non-inferiority is not, until the margin floor is set | available |
-| `@hephaestus-build/ichnaea/calibration`                  | Judge calibration against two human raters. A calibrated judge's measures are secondary: shown, never deciding                         | available |
-| `@hephaestus-build/ichnaea/schemas/<record>.schema.json` | The normative JSON Schema 2020-12 file of each record                                                                                  | available |
-| Runner and conformance kits                              |                                                                                                                                        | planned   |
+| Import                                         | Content                                                                                                                                | State     |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| `@tumaet/ichnaea`                              | Plugin host, lifecycle, planner, import mode, file store, call ledger and CLI; the decision rule with its power statement; the reports | available |
+| `@tumaet/ichnaea/contracts`                    | zod schemas, RFC 8785 canonical hashing, configuration identity, data classes                                                          | available |
+| `@tumaet/ichnaea/stats`                        | Intervals, paired and stratified tests, power. The regression test is validated; non-inferiority is not, until the margin floor is set | available |
+| `@tumaet/ichnaea/calibration`                  | Judge calibration against two human raters. A calibrated judge's measures are secondary: shown, never deciding                         | available |
+| `@tumaet/ichnaea/schemas/<record>.schema.json` | The normative JSON Schema 2020-12 file of each record                                                                                  | available |
+| Runner and conformance kits                    |                                                                                                                                        | planned   |
 
 The package ships JavaScript and declarations, built from its TypeScript sources, and the sources
 too. It needs Node 24.3 or later. zod 4 (4.6 or later) is a peer dependency. The package has no
@@ -68,7 +68,7 @@ pnpm add zod@4.6.7 'github:hephaestus-build/ichnaea#<build-commit>'
 ```
 
 Your `package.json` then has
-`"@hephaestus-build/ichnaea": "github:hephaestus-build/ichnaea#<build-commit>"`, and your lockfile
+`"@tumaet/ichnaea": "github:hephaestus-build/ichnaea#<build-commit>"`, and your lockfile
 pins it. zod at the root is the one copy that Ichnaea uses. Run the CLI with Node 24.3 or later:
 `pnpm exec ichnaea <command>`. Installing the package runs no script: its `package.json` has none.
 
@@ -106,7 +106,7 @@ commit.
 In the Ichnaea checkout, build on every change:
 
 ```sh
-pnpm --filter @hephaestus-build/ichnaea build --watch
+pnpm --filter @tumaet/ichnaea build --watch
 ```
 
 In your project, link the package of that checkout instead of the build commit:
@@ -115,7 +115,7 @@ In your project, link the package of that checkout instead of the build commit:
 pnpm link <path to the Ichnaea checkout>/packages/ichnaea
 ```
 
-To undo it, run `pnpm unlink @hephaestus-build/ichnaea` and then `pnpm install`, so that your
+To undo it, run `pnpm unlink @tumaet/ichnaea` and then `pnpm install`, so that your
 lockfile's build commit is installed again. Stop the watch with Ctrl-C. Never commit the link: it
 changes your `package.json` and lockfile to a path on your machine.
 
@@ -175,7 +175,7 @@ INCONCLUSIVE and does not block, so `decide` exits with 0.
 
 Records cross every boundary as JSON. The JSON Schema files in
 [`packages/ichnaea/schemas`](packages/ichnaea/schemas) are the normative contract, and the package
-exports them as `@hephaestus-build/ichnaea/schemas/<record>.schema.json`. They are
+exports them as `@tumaet/ichnaea/schemas/<record>.schema.json`. They are
 generated from the zod sources. CI runs a shared fixture set and generated records through zod and
 ajv, for the writer and the reader schemas, and checks digests against an implementation in another
 language. An application in any language can write records that validate against them.
@@ -188,7 +188,7 @@ sources. The CLI and the example run the build.
 ```sh
 pnpm install
 pnpm check                                    # format, lint, type check, tests, generated files current
-pnpm --filter @hephaestus-build/ichnaea build # dist/, for the CLI and the example
+pnpm --filter @tumaet/ichnaea build # dist/, for the CLI and the example
 node scripts/build-package.ts <directory>     # the tree that the build branch holds for this commit
 node scripts/build-consumer.ts                # that tree, built twice, installed and run as the README says
 ```

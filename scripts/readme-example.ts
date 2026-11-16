@@ -12,7 +12,7 @@ export const TABLE_MARKER =
   "<!-- The build consumer test checks these verdict lines and exit codes. -->";
 
 /** The package, and the specifier of a build commit that the README's install adds it by. */
-export const PACKAGE_NAME = "@hephaestus-build/ichnaea";
+export const PACKAGE_NAME = "@tumaet/ichnaea";
 export const BUILD_SPEC = "github:hephaestus-build/ichnaea#<build-commit>";
 
 /**

@@ -197,7 +197,7 @@ describe("release SBOM check", () => {
   });
 
   it("names the release project in the release's own npm scope by default", () => {
-    expect(PROJECT).toBe("@hephaestus-build/ichnaea-release");
+    expect(PROJECT).toBe("@tumaet/ichnaea-release");
   });
 });
 

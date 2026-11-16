@@ -1,4 +1,4 @@
-import { decidePlugin, defineConfig, reportPlugin } from "@hephaestus-build/ichnaea";
+import { decidePlugin, defineConfig, reportPlugin } from "@tumaet/ichnaea";
 
 import { support } from "./plugin.ts";
 

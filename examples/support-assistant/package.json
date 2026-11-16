@@ -7,7 +7,7 @@
     "generate": "node --conditions=ichnaea-source scripts/generate.ts"
   },
   "dependencies": {
-    "@hephaestus-build/ichnaea": "workspace:*"
+    "@tumaet/ichnaea": "workspace:*"
   },
   "devDependencies": {
     "zod": "4.6.7"

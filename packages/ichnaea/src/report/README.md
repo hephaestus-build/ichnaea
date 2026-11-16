@@ -1,4 +1,4 @@
-# Reports: `@hephaestus-build/ichnaea`
+# Reports: `@tumaet/ichnaea`
 
 The `report` plugin renders a stored decision as a CI summary in Markdown (`summary.md`) and a
 static HTML report (`report.html`). `report(decision, { format })` renders one as Markdown, HTML

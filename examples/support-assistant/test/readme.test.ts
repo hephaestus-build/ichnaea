@@ -6,7 +6,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import { join } from "node:path";
 
-import { FLOOR_NOT_SET_REASON, main } from "@hephaestus-build/ichnaea";
+import { FLOOR_NOT_SET_REASON, main } from "@tumaet/ichnaea";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const here = join(import.meta.dirname, "..");

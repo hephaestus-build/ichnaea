@@ -1,4 +1,4 @@
-# Statistics: `@hephaestus-build/ichnaea/stats`
+# Statistics: `@tumaet/ichnaea/stats`
 
 Statistics for Ichnaea decisions on binary measures: score intervals for differences of proportions
 (stratified over cases with equal case weights for the `fixed-cases` estimand, paired for
@@ -24,7 +24,7 @@ are checked against an independent implementation and by simulation: see
 [VALIDATION.md](VALIDATION.md), which also lists the methods that are not yet validated.
 
 ```ts
-import { compareCounts } from "@hephaestus-build/ichnaea/stats";
+import { compareCounts } from "@tumaet/ichnaea/stats";
 
 // Each case: the completed binary trials that passed, of all completed trials, per arm.
 const cases = ["a", "b", "c", "d", "e", "f"].map((id, i) => ({
@@ -52,7 +52,7 @@ resampling. It supports numeric outcomes and null values, which remain missing. 
 not a validated decision method. It never makes a non-inferiority or population claim.
 
 ```ts
-import { clusterBootstrap, createRng } from "@hephaestus-build/ichnaea/stats";
+import { clusterBootstrap, createRng } from "@tumaet/ichnaea/stats";
 
 const estimate = clusterBootstrap(
   [
@@ -83,7 +83,7 @@ missing, and a label outside the declared categories throws. `krippendorffAlpha`
 item, with any number of raters and null for a missing value.
 
 ```ts
-import { confusionTable, gwetAc1, krippendorffAlpha } from "@hephaestus-build/ichnaea/stats";
+import { confusionTable, gwetAc1, krippendorffAlpha } from "@tumaet/ichnaea/stats";
 
 const { table, skipped } = confusionTable(
   ["yes", "no", null, "no"],

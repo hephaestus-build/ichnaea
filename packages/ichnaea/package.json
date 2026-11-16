@@ -1,5 +1,5 @@
 {
-  "name": "@hephaestus-build/ichnaea",
+  "name": "@tumaet/ichnaea",
   "version": "0.0.0",
   "description": "Ichnaea: statistically sound evaluation of GenAI applications. Record contracts, statistics, plugin host, decision rule, reports and CLI.",
   "keywords": [

@@ -37,11 +37,11 @@ Install and build once at the repository root. The commands need Node 24.3 or la
 
 ```sh
 pnpm install
-pnpm --filter @hephaestus-build/ichnaea build
+pnpm --filter @tumaet/ichnaea build
 ```
 
 Then run the example from this directory. `pnpm exec ichnaea` runs the CLI of the workspace
-package, `@hephaestus-build/ichnaea`, from its build. In your own project, install a build commit
+package, `@tumaet/ichnaea`, from its build. In your own project, install a build commit
 as the [README](../../README.md#use-ichnaea-from-a-typescript-project) shows, and the same
 commands run there.
 

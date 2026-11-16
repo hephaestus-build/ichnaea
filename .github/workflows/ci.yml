@@ -107,9 +107,9 @@ jobs:
       - name: Coverage and type-I error studies (6,000 repetitions per point)
         env:
           ICHNAEA_SIM_REPS: "6000"
-        run: pnpm --filter @hephaestus-build/ichnaea run test:sim:stats
+        run: pnpm --filter @tumaet/ichnaea run test:sim:stats
       - name: False REGRESSION verdicts of the decision rule under no change (REQ-51)
-        run: pnpm --filter @hephaestus-build/ichnaea run test:sim:decide
+        run: pnpm --filter @tumaet/ichnaea run test:sim:decide
 
   oracle:
     name: oracle

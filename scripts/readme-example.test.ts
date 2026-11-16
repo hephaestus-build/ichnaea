@@ -71,8 +71,8 @@ describe("the README's install", () => {
     const broken = readme.replace(` '${BUILD_SPEC}'`, "");
     expect(broken).not.toBe(readme);
     expect(missingFromInstall(broken, exampleFile)).toEqual([
-      "ichnaea.config.ts imports @hephaestus-build/ichnaea, which the README's pnpm add leaves out",
-      "plugin.ts imports @hephaestus-build/ichnaea, which the README's pnpm add leaves out",
+      "ichnaea.config.ts imports @tumaet/ichnaea, which the README's pnpm add leaves out",
+      "plugin.ts imports @tumaet/ichnaea, which the README's pnpm add leaves out",
     ]);
   });
 

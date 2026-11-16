@@ -1,4 +1,4 @@
-# Core: `@hephaestus-build/ichnaea`
+# Core: `@tumaet/ichnaea`
 
 The core of Ichnaea: the plugin host, the planner, import mode, the record store and the CLI.
 

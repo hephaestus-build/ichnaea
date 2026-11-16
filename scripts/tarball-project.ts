@@ -13,9 +13,9 @@ import { workspaceZod } from "./readme-example.ts";
  * The project's name. The SBOM names it as its top-level component, so it is a name in the
  * release's own npm scope: an unscoped name such as `ichnaea` is another author's package.
  */
-export const PROJECT = "@hephaestus-build/ichnaea-release";
+export const PROJECT = "@tumaet/ichnaea-release";
 
-const TARBALL = /^hephaestus-build-(.+)-(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)\.tgz$/;
+const TARBALL = /^tumaet-(.+)-(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)\.tgz$/;
 
 export interface Tarball {
   readonly file: string;
@@ -30,7 +30,7 @@ export function tarballsIn(dir: string): Tarball[] {
     .map((file) => {
       const match = TARBALL.exec(file);
       if (!match) throw new Error(`${file} is not a packed Ichnaea package`);
-      return { file: join(dir, file), name: `@hephaestus-build/${match[1]}`, version: match[2]! };
+      return { file: join(dir, file), name: `@tumaet/${match[1]}`, version: match[2]! };
     });
   if (tarballs.length === 0) throw new Error(`no tarballs in ${dir}`);
   return tarballs;

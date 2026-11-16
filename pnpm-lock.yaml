@@ -178,7 +178,7 @@ importers:
 
   examples/support-assistant:
     dependencies:
-      '@hephaestus-build/ichnaea':
+      '@tumaet/ichnaea':
         specifier: workspace:*
         version: link:../../packages/ichnaea
     devDependencies:

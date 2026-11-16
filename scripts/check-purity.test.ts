@@ -17,8 +17,7 @@ describe("framework purity check", () => {
   });
 
   it.each([
-    ["the npm scope", '"@hephaestus-build/ichnaea-contracts"'],
-    ["a tarball name", "hephaestus-build-ichnaea-core-0.1.0.tgz"],
+    ["a pin of the build branch", "github:hephaestus-build/ichnaea#<build-commit>"],
     ["the organisation in a URL", "https://github.com/hephaestus-build/ichnaea"],
   ])("allows %s", (_, line) => {
     expect(findViolations([{ path: "p.json", text: line }])).toEqual([]);
