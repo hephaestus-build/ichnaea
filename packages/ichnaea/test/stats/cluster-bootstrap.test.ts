@@ -91,10 +91,39 @@ describe("descriptive cluster percentile bootstrap", () => {
     ).toEqual(native);
   });
 
+  it("replays a schedule in its own cluster order, such as R's locale collation", () => {
+    const input: ClusterObservation[] = [
+      { cluster: "A", value: 1 },
+      { cluster: "b", value: 0 },
+      { cluster: "c", value: 0 },
+      { cluster: "c", value: 0 },
+    ];
+    // Index 1 is "A" in the schedule's order ["b", "A", "c"]; in code-unit order it would be "b".
+    const result = clusterBootstrap(input, {
+      schedule: {
+        clusterIds: ["b", "A", "c"],
+        draws: [[1, 1, 1]],
+        algorithm: "R-Mersenne-Twister/Inversion/Rejection",
+        seed: 7,
+      },
+    });
+    expect([result.lower, result.upper]).toEqual([1, 1]);
+  });
+
+  it("accepts any safe integer seed, as R's set.seed does, and refuses others", () => {
+    const result = clusterBootstrap(observations, { schedule: { ...schedule, seed: -1 } });
+    expect(result.sampling.seed).toBe(-1);
+    for (const seed of [0.5, NaN, Number.MAX_SAFE_INTEGER + 1])
+      expect(() => clusterBootstrap(observations, { schedule: { ...schedule, seed } })).toThrow(
+        /seed/,
+      );
+  });
+
   it("refuses mismatched cluster identities, malformed draws, and invalid numeric input", () => {
-    expect(() =>
-      clusterBootstrap(observations, { schedule: { ...schedule, clusterIds: ["b", "a"] } }),
-    ).toThrow(/ordered clusters/);
+    for (const clusterIds of [["a"], ["a", "a"], ["a", "b", "c"], ["a", "c"]])
+      expect(() =>
+        clusterBootstrap(observations, { schedule: { ...schedule, clusterIds } }),
+      ).toThrow(/cluster/);
     for (const draws of [[[0]], [[0, 2]], [[-1, 0]], [[0, 0.5]], []]) {
       expect(() => clusterBootstrap(observations, { schedule: { ...schedule, draws } })).toThrow();
     }

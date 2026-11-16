@@ -9,7 +9,8 @@ export interface ClusterObservation {
 
 /**
  * A recorded resampling schedule. Each draw selects as many clusters as the input has, with
- * replacement. Indices are zero-based and refer to the sorted, explicit cluster list.
+ * replacement. Indices are zero-based and refer to `clusterIds` in the schedule's own order, which
+ * lists each input cluster exactly once. The seed is any safe integer, as R's set.seed accepts.
  */
 export interface ClusterSchedule {
   readonly clusterIds: readonly string[];
@@ -62,14 +63,14 @@ function quantile(sorted: readonly number[], p: number): number {
   return lower + (upper - lower) * (position - Math.floor(position));
 }
 
-function checkSchedule(schedule: ClusterSchedule, ids: readonly string[]): void {
-  if (
-    schedule.clusterIds.length !== ids.length ||
-    ids.some((id, i) => id !== schedule.clusterIds[i])
-  )
-    throw new RangeError("the replay schedule's ordered clusters do not match the input");
-  if (!schedule.algorithm.trim() || !Number.isSafeInteger(schedule.seed) || schedule.seed < 0)
-    throw new RangeError("a replay schedule needs its algorithm and a non-negative integer seed");
+function checkSchedule(schedule: ClusterSchedule, input: ReadonlySet<string>): void {
+  const ids = schedule.clusterIds;
+  if (new Set(ids).size !== ids.length)
+    throw new RangeError("the replay schedule lists a cluster more than once");
+  if (ids.length !== input.size || ids.some((id) => !input.has(id)))
+    throw new RangeError("the replay schedule's clusters do not match the input's clusters");
+  if (!schedule.algorithm.trim() || !Number.isSafeInteger(schedule.seed))
+    throw new RangeError("a replay schedule needs its algorithm and a safe integer seed");
   for (const draw of schedule.draws) {
     if (
       draw.length !== ids.length ||
@@ -110,13 +111,15 @@ export function clusterBootstrap(
     groups.set(row.cluster, group);
   }
   if (available === 0) throw new RangeError("cluster bootstrap has no observed value");
-  const ids = [...groups.keys()].toSorted();
-  const clusters = ids.map((id) => groups.get(id)!);
   const schedule = options.schedule;
+  if (schedule) checkSchedule(schedule, new Set(groups.keys()));
+  // Native draws index the clusters in UTF-16 code-unit order; a replay keeps its schedule's order,
+  // because R, for example, sorts by its locale's collation.
+  const ids = schedule ? schedule.clusterIds : [...groups.keys()].toSorted();
+  const clusters = ids.map((id) => groups.get(id)!);
   const resamples = schedule?.draws.length ?? options.resamples;
   if (resamples === undefined || !Number.isSafeInteger(resamples) || resamples < 1)
     throw new RangeError("cluster bootstrap resamples must be a positive safe integer");
-  if (schedule) checkSchedule(schedule, ids);
 
   const estimates: number[] = [];
   for (let draw = 0; draw < resamples; draw++) {
