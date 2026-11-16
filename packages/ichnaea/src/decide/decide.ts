@@ -258,10 +258,10 @@ interface OneTrialRecords {
  * coverage floor decides how many may be lost. The plan must state its schedule and cite at least
  * two clean A/A decisions (`aaLimitations`), unless it is itself an A/A plan.
  */
-async function oneTrialRecords(
+function oneTrialRecords(
   input: DecideInput,
   pair: { readonly base: string; readonly candidate: string },
-): Promise<OneTrialRecords> {
+): OneTrialRecords {
   const { plan } = input;
   const limitations: string[] = [];
   const unpaired = new Set<string>();
@@ -305,7 +305,7 @@ async function oneTrialRecords(
     plan.arms.find((a) => a.name === name)?.identity;
   // An A/A plan is the evidence itself, so it waives its own A/A precondition and nothing else.
   if (identity(pair.base) !== identity(pair.candidate))
-    limitations.push(...(await aaLimitations(plan, input.aa ?? [])));
+    limitations.push(...aaLimitations(plan, input.aa ?? []));
   return {
     unpaired,
     checks: { checksPassed: limitations.length === 0, limitations },
@@ -328,7 +328,7 @@ function baseModels(plan: Plan): string {
  * REGRESSION; and it ran this plan's base model and schedule. Each failure is one limitation that
  * names the check and the run.
  */
-async function aaLimitations(plan: Plan, given: readonly AaEvidence[]): Promise<string[]> {
+function aaLimitations(plan: Plan, given: readonly AaEvidence[]): string[] {
   const cited = new Map((plan.aa?.decisions ?? []).map((c) => [c.run as string, c.digest]));
   const out: string[] = [];
   if (cited.size < 2)
@@ -344,11 +344,9 @@ async function aaLimitations(plan: Plan, given: readonly AaEvidence[]): Promise<
     }
     // Records that do not match their digests prove nothing, so no other check reads them.
     const before = out.length;
-    if ((await digest(e.decision)) !== cite)
-      fail("its decision record does not match the cited digest");
-    if (e.decision.plan !== (await digest(e.plan)))
-      fail("its decision does not belong to the given plan");
-    if (e.decision.runDigest !== (await digest(e.run)))
+    if (digest(e.decision) !== cite) fail("its decision record does not match the cited digest");
+    if (e.decision.plan !== digest(e.plan)) fail("its decision does not belong to the given plan");
+    if (e.decision.runDigest !== digest(e.run))
       fail("its decision does not belong to the given run");
     if (out.length > before) continue;
     const arms = e.plan.arms.filter((a) => a.role === "base" || a.role === "candidate");
@@ -661,13 +659,13 @@ function attemptChecks(input: DecideInput): string[] {
 }
 
 /** Checks of the records themselves. Each problem makes the run INVALID. */
-async function recordChecks(input: DecideInput): Promise<string[]> {
+function recordChecks(input: DecideInput): string[] {
   const { plan, run } = input;
   const invalid: string[] = [];
-  const planDigest = await digest(plan);
+  const planDigest = digest(plan);
   if (run.plan !== planDigest)
     invalid.push(`the run belongs to plan ${run.plan}, not to this plan (${planDigest})`);
-  for (const error of await verifyArms(plan.arms))
+  for (const error of verifyArms(plan.arms))
     invalid.push(`stored configuration at ${error.path} does not match (${error.computed})`);
   const names = plan.arms.map((a) => a.name);
   if (new Set(names).size !== names.length) invalid.push("the plan has duplicate arm names");
@@ -1254,7 +1252,7 @@ function inconclusiveReason(open: readonly { measure: string; cause: Cause }[]):
  * tested against the imputation that works against it, and a verdict that changes is INCONCLUSIVE
  * (decision 0010).
  */
-export function decide(input: DecideInput): Promise<Decision> {
+export function decide(input: DecideInput): Decision {
   return decideWith(input, compareCounts);
 }
 
@@ -1262,9 +1260,9 @@ export function decide(input: DecideInput): Promise<Decision> {
  * `decide` with the comparison given, so a test can decide from results of its own. Not exported
  * by the package: every decision Ichnaea makes uses `compareCounts`.
  */
-export async function decideWith(input: DecideInput, compare: Compare): Promise<Decision> {
+export function decideWith(input: DecideInput, compare: Compare): Decision {
   const { plan, run } = input;
-  const invalid = await recordChecks(input);
+  const invalid = recordChecks(input);
   const trials = new Map(input.trials.map((t) => [t.id as string, t]));
   const values = new Map(input.values.map((v) => [`${v.measure}\u0000${v.trial}`, v]));
   const baseArm = plan.arms.find((a) => a.role === "base")?.name;
@@ -1280,7 +1278,7 @@ export async function decideWith(input: DecideInput, compare: Compare): Promise<
   if (pair) invalid.push(...triggerCheck(plan, pair, input.trials));
   // At one trial per case and arm, the checks of the records decide which pairs hold and whether
   // a regression result can be validated (VALIDATION.md, "One trial per case").
-  const one = pair && oneTrialPlan(plan) ? await oneTrialRecords(input, pair) : undefined;
+  const one = pair && oneTrialPlan(plan) ? oneTrialRecords(input, pair) : undefined;
   const unpaired = one?.unpaired ?? NO_CASES;
   const pairNote =
     one?.concurrency !== undefined && unpaired.size > 0
@@ -1553,9 +1551,9 @@ export async function decideWith(input: DecideInput, compare: Compare): Promise<
     verdict,
     reason,
     scope,
-    plan: await digest(plan),
+    plan: digest(plan),
     run: run.id,
-    runDigest: await digest(run),
+    runDigest: digest(run),
     arms: plan.arms.map((a) => ({ name: a.name, role: a.role, identity: a.identity })),
     differingFactors: pair ? differences(plan, pair.base, pair.candidate).map((d) => d.key) : [],
     alpha: plan.alpha,

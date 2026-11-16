@@ -1,6 +1,8 @@
 # Decision rule: `@hephaestus-build/ichnaea`
 
 The decision rule of Ichnaea, as the `decide` plugin and the `decide()` function.
+`compare(plan, records, { decidedAt })` decides a plan's run from its records. Like `decide`, it is
+synchronous and pure: the same records and `decidedAt` give the same decision, byte for byte.
 
 A run verdict is reached in this order (decision 0011):
 

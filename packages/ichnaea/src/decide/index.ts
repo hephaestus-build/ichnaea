@@ -10,3 +10,4 @@ export {
 } from "./decide.ts";
 export { describeCounts, plannedTrialsPerCase, planningPower } from "./planning.ts";
 export * from "./plugin.ts";
+export { compare } from "./compare.ts";

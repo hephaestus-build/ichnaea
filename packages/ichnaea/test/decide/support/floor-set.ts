@@ -24,8 +24,7 @@ export function floorSet(input: ComparisonInput): Comparison {
 /** Decides a scenario as if the floor were set. */
 export const decideFloorSet = (
   s: Scenario | Omit<DecideInput, "decidedAt" | "ichnaea">,
-): Promise<Decision> =>
-  decideWith({ ...s, decidedAt: "2026-11-15T12:00:00Z", ichnaea: "0.0.0" }, floorSet);
+): Decision => decideWith({ ...s, decidedAt: "2026-11-15T12:00:00Z", ichnaea: "0.0.0" }, floorSet);
 
 /** The reason of a run that does not regress while the floor is not set. */
 export { FLOOR_NOT_SET_REASON as FLOOR_REASON } from "../../../src/decide/index.ts";

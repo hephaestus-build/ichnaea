@@ -1,5 +1,5 @@
 // The pure modules run in a browser: the static import closure of the record contracts, the
-// statistics, the decision rule and the report renderers holds no Node built-in, no package but
+// statistics, compare and report holds no Node built-in, no package but
 // zod, no dynamic import of a computed specifier, and no Node-only global.
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -13,9 +13,8 @@ const src = join(import.meta.dirname, "..", "..", "src");
 const ENTRIES = [
   "contracts/index.ts",
   "stats/index.ts",
-  "decide/decide.ts",
-  "report/render.ts",
-  "report/view.ts",
+  "decide/compare.ts",
+  "report/report.ts",
 ].map((f) => join(src, f));
 
 describe("the pure modules", () => {

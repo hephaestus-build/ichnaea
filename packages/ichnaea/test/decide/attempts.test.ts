@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { decide } from "../../src/decide/index.ts";
 import { type Scenario, scenario } from "./support/scenario.ts";
 
-const run = (s: Scenario): Promise<Decision> =>
+const run = (s: Scenario): Decision =>
   decide({ ...s, decidedAt: "2026-11-15T12:00:00Z", ichnaea: "0.0.0" });
 const first = (t: { case: string; arm: string; replicate: number }): boolean =>
   t.case === "case-000" && t.arm === "candidate" && t.replicate === 0;

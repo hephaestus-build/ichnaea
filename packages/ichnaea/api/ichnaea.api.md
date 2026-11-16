@@ -57,6 +57,12 @@ export interface CommandHost {
 }
 
 // @public
+export function compare(plan: Plan, records: Omit<RunRecords, "plan">, options: {
+    readonly decidedAt: string;
+    readonly aa?: readonly AaEvidence[];
+}): Decision;
+
+// @public
 export interface Config<Plugins extends readonly Plugin[] = readonly Plugin[]> {
     readonly allowStability?: readonly Exclude<Stability, "stable">[];
     readonly governance?: string;
@@ -77,7 +83,7 @@ export function createHost(config: Config, versions: HostVersions, log?: (messag
 export function createPlan(input: PlanInput): Promise<Plan>;
 
 // @public
-export function decide(input: DecideInput): Promise<Decision>;
+export function decide(input: DecideInput): Decision;
 
 // @public
 export function decideEgress(request: EgressRequest, hooks: ReadonlyArray<[Plugin, NonNullable<Hooks["beforeEgress"]>]>, ctx: HookContext, governance?: string): Promise<{
@@ -558,7 +564,7 @@ export function recompute(records: {
         plan: Plan;
         run: Run;
     }[];
-}): Promise<RecomputeResult>;
+}): RecomputeResult;
 
 // @public
 export interface RecomputeResult {
@@ -574,6 +580,21 @@ export function renderHtml(view: DecisionView): string;
 
 // @public
 export function renderMarkdown(view: DecisionView): string;
+
+// @public
+export function report(decision: Decision, options: ReportOptions): string;
+
+// @public
+export class ReportError extends Error {
+    readonly name = "ReportError";
+}
+
+// @public
+export interface ReportOptions {
+    readonly format: "markdown" | "html" | "json";
+    readonly lineage?: Run["lineage"];
+    readonly suite?: string;
+}
 
 // @public
 export function reportPlugin(): Plugin<"report">;
