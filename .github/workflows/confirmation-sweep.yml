@@ -31,6 +31,10 @@ on:
         description: "E: B's worst structures embedded at K 20, 30 and 60 (needs B)"
         type: boolean
         default: true
+      margins:
+        description: "Margin indices 0-50, comma-separated, for a pre-check (A, B, C and E-large only); empty runs every margin"
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -52,6 +56,7 @@ jobs:
     timeout-minutes: 10
     outputs:
       phases: ${{ steps.plan.outputs.phases }}
+      margins: ${{ steps.plan.outputs.margins }}
       exact: ${{ steps.plan.outputs.exact }}
       exact_count: ${{ steps.plan.outputs.exact_count }}
       skips: ${{ steps.plan.outputs.skips }}
@@ -76,7 +81,8 @@ jobs:
           SWEEP_D: ${{ inputs.d }}
           SWEEP_E_LARGE: ${{ inputs.e-large }}
           SWEEP_E_EMBEDDED: ${{ inputs.e-embedded }}
-        run: node packages/stats/scripts/sweep-job.ts plan
+          MARGINS: ${{ inputs.margins }}
+        run: node packages/stats/scripts/sweep-job.ts plan ${MARGINS:+--margins "$MARGINS"}
 
   exact:
     name: ${{ matrix.artifact }}
@@ -276,9 +282,10 @@ jobs:
       - name: Completeness, provenance and digests; summary.json
         env:
           PHASES: ${{ needs.plan.outputs.phases }}
+          MARGINS: ${{ needs.plan.outputs.margins }}
         run: >-
           node packages/stats/scripts/collect-sweep.ts --in "$RUNNER_TEMP/in"
-          --out "$RUNNER_TEMP/summary" --phases "$PHASES"
+          --out "$RUNNER_TEMP/summary" --phases "$PHASES" --margins "$MARGINS"
       # The archive's bytes depend only on the artifacts: sorted names, no times, no owners.
       - name: The archive of every artifact, and the checksums
         if: ${{ !cancelled() }}
