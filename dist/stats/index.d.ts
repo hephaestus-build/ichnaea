@@ -1,0 +1,13 @@
+export * from "./compare.ts";
+export * from "./exact-conditional.ts";
+export * from "./multiplicity.ts";
+export * from "./normal.ts";
+export * from "./power.ts";
+export * from "./randomisation.ts";
+export * from "./rng.ts";
+export * from "./score-difference.ts";
+export * from "./score-permutation.ts";
+export * from "./tango.ts";
+export * from "./types.ts";
+export * from "./wilson.ts";
+//# sourceMappingURL=index.d.ts.map

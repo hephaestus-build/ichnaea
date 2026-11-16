@@ -1,0 +1,49 @@
+{
+  "bin": {
+    "ichnaea": "./dist/core/bin.js"
+  },
+  "description": "Ichnaea: statistically sound evaluation of GenAI applications. Record contracts, statistics, plugin host, decision rule, reports and CLI.",
+  "engines": {
+    "node": ">=24.3"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./contracts": {
+      "types": "./dist/contracts/index.d.ts",
+      "default": "./dist/contracts/index.js"
+    },
+    "./stats": {
+      "types": "./dist/stats/index.d.ts",
+      "default": "./dist/stats/index.js"
+    },
+    "./schemas/*.json": "./schemas/*.json",
+    "./package.json": "./package.json"
+  },
+  "homepage": "https://github.com/hephaestus-build/ichnaea#readme",
+  "keywords": [
+    "confidence-interval",
+    "evaluation",
+    "genai",
+    "json-schema",
+    "llm",
+    "non-inferiority",
+    "statistics",
+    "zod"
+  ],
+  "license": "MIT",
+  "name": "@hephaestus-build/ichnaea",
+  "peerDependencies": {
+    "zod": "^4.6.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hephaestus-build/ichnaea.git",
+    "directory": "packages/ichnaea"
+  },
+  "sideEffects": false,
+  "type": "module",
+  "version": "0.0.0"
+}

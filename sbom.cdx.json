@@ -1,0 +1,112 @@
+{
+  "$schema": "http://cyclonedx.org/schema/bom-1.7.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.7",
+  "serialNumber": "urn:uuid:32f00afb-6cb9-5b1a-9646-6567b2415e0f",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-11-16T10:36:39Z",
+    "lifecycles": [
+      {
+        "phase": "build"
+      }
+    ],
+    "tools": {
+      "components": [
+        {
+          "type": "application",
+          "name": "pnpm",
+          "version": "12.3.4"
+        }
+      ]
+    },
+    "component": {
+      "type": "library",
+      "name": "ichnaea",
+      "version": "0.0.0",
+      "purl": "pkg:npm/%40hephaestus-build/ichnaea@0.0.0",
+      "bom-ref": "pkg:npm/%40hephaestus-build/ichnaea@0.0.0",
+      "group": "@hephaestus-build",
+      "description": "Ichnaea: statistically sound evaluation of GenAI applications. Record contracts, statistics, plugin host, decision rule, reports and CLI.",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://github.com/hephaestus-build/ichnaea#readme"
+        },
+        {
+          "type": "vcs",
+          "url": "git+https://github.com/hephaestus-build/ichnaea.git"
+        },
+        {
+          "type": "vcs",
+          "url": "git+https://github.com/hephaestus-build/ichnaea.git#455d11a9b995c648981e23bd7fda30dbd683317e"
+        }
+      ]
+    }
+  },
+  "components": [
+    {
+      "type": "library",
+      "name": "zod",
+      "version": "4.6.7",
+      "purl": "pkg:npm/zod@4.6.7",
+      "bom-ref": "pkg:npm/zod@4.6.7",
+      "description": "TypeScript-first schema declaration and validation library with static type inference",
+      "authors": [
+        {
+          "name": "Colin McDonnell <zod@colinhacks.com>"
+        }
+      ],
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/zod/-/zod-4.6.7.tgz",
+          "hashes": [
+            {
+              "alg": "SHA-512",
+              "content": "83c5b60f6914e9af2e9ed734e777d7d6e5412b333bcaa0315bfdf3c24f37fba472176f9228eb95f9cd30043854c335753da19aa66647fab99c5333dffb7086c2"
+            }
+          ]
+        },
+        {
+          "type": "website",
+          "url": "https://zod.dev"
+        },
+        {
+          "type": "vcs",
+          "url": "git+https://github.com/colinhacks/zod.git"
+        },
+        {
+          "type": "issue-tracker",
+          "url": "https://github.com/colinhacks/zod/issues"
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "pkg:npm/%40hephaestus-build/ichnaea@0.0.0",
+      "dependsOn": [
+        "pkg:npm/zod@4.6.7"
+      ]
+    },
+    {
+      "ref": "pkg:npm/zod@4.6.7",
+      "dependsOn": []
+    }
+  ]
+}
