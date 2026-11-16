@@ -1,3 +1,4 @@
+export * from "./cluster-bootstrap.ts";
 export * from "./compare.ts";
 export * from "./exact-conditional.ts";
 export * from "./multiplicity.ts";

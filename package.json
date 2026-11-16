@@ -12,14 +12,16 @@
     "typecheck": "node scripts/typecheck.ts",
     "test": "vitest run",
     "test:types": "vitest run --typecheck.only",
-    "lint": "oxlint --deny-warnings . && node scripts/check-purity.ts && node scripts/check-ai-sdk-boundary.ts && node scripts/check-contract-majors.ts",
+    "lint": "oxlint --deny-warnings . && node scripts/check-purity.ts && node scripts/check-prose.ts && node scripts/check-ai-sdk-boundary.ts && node scripts/check-contract-majors.ts",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
     "generate": "pnpm -r --filter './packages/*' run generate",
     "check": "pnpm run format:check && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run check:generated",
     "check:generated": "pnpm run generate && git status --porcelain -- packages && test -z \"$(git status --porcelain -- packages/*/schemas packages/*/fixtures)\"",
     "check:api": "pnpm -r --filter './packages/*' --if-present run check:api",
-    "build": "pnpm --filter @hephaestus-build/ichnaea build"
+    "build": "pnpm --filter @hephaestus-build/ichnaea build",
+    "docs:build": "pnpm --filter ichnaea-docs build",
+    "docs:dev": "pnpm --filter ichnaea-docs dev"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "0.18.5",

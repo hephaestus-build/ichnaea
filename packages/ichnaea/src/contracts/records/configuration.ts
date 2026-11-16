@@ -26,25 +26,33 @@ export type FactorPart = z.infer<typeof FactorPart>;
 /** One element of a configuration with its value and control status (REQ-14). */
 export const Factor = z.strictObject({
   value: none(Json),
-  status: none(FactorStatus),
-  part: none(FactorPart),
+  status: none(
+    FactorStatus.describe(
+      "The control status of the value: pinned, observed, declared or uncontrollable.",
+    ),
+  ),
+  part: none(FactorPart.describe("The part of the system that the factor belongs to.")),
 });
 /** A factor. */
 export type Factor = z.infer<typeof Factor>;
 
 /** A named value of the model's identity with its control status. Never empty. */
 export const IdentityFactor = z.strictObject({
-  value: none(Text),
-  status: none(z.enum(["pinned", "declared"])),
+  value: none(Text.describe("The value. It is never empty.")),
+  status: none(
+    z.enum(["pinned", "declared"]).describe("Whether the value is pinned or only declared."),
+  ),
 });
 
 /** One model the system uses, under a role name (for example `answer` or `rerank`). */
 export const ModelBinding = z.strictObject({
-  role: none(Text),
-  provider: IdentityFactor,
-  id: IdentityFactor,
-  version: IdentityFactor.optional(),
-  route: IdentityFactor.optional(),
+  role: none(Text.describe("The role that the model plays, for example answer or rerank.")),
+  provider: IdentityFactor.describe("The model provider."),
+  id: IdentityFactor.describe("The model ID."),
+  version: IdentityFactor.describe("The model version, when the provider names one.").optional(),
+  route: IdentityFactor.describe(
+    "The route that the calls take, such as a deployment or a gateway route.",
+  ).optional(),
 });
 
 /**
@@ -52,10 +60,16 @@ export const ModelBinding = z.strictObject({
  * provider applies, so all parameters are recorded, set or not (REQ-14).
  */
 export const Parameter = z.strictObject({
-  name: none(Text),
+  name: none(Text.describe("The parameter's name.")),
   value: none(Json),
-  status: none(z.enum(["pinned", "declared", "uncontrollable"])),
-  origin: none(z.enum(["explicit", "default"])),
+  status: none(
+    z.enum(["pinned", "declared", "uncontrollable"]).describe("The control status of the value."),
+  ),
+  origin: none(
+    z
+      .enum(["explicit", "default"])
+      .describe("explicit when the system sets the value, default when the provider applies it."),
+  ),
 });
 
 /**
@@ -63,11 +77,15 @@ export const Parameter = z.strictObject({
  * template text and its uri may be recorded; they do not enter the identity (`DIGEST_RULES`).
  */
 export const PromptBinding = z.strictObject({
-  name: none(Text),
-  digest: none(Digest),
-  status: none(FactorStatus),
-  template: none(z.string()).optional(),
-  uri: none(Text).optional(),
+  name: none(Text.describe("The template's name.")),
+  digest: none(Digest.describe("The SHA-256 of the template's UTF-8 bytes.")),
+  status: none(FactorStatus.describe("The control status of the template.")),
+  template: none(
+    z.string().describe("The template text. It does not enter the identity."),
+  ).optional(),
+  uri: none(
+    Text.describe("Where the template is kept. It does not enter the identity."),
+  ).optional(),
 });
 
 /**
@@ -82,19 +100,36 @@ export const PromptBinding = z.strictObject({
  * belong in trial records, never here, so they never change the identity.
  */
 export const Configuration = z.strictObject({
-  schema: none(z.literal("ichnaea.configuration/1")),
-  description: none(Text),
-  models: z.array(ModelBinding).min(1),
-  parameters: z.array(Parameter).min(1),
-  prompts: z.array(PromptBinding),
-  factors: z.record(Text, Factor),
-  label: none(z.string()).optional(),
+  schema: none(
+    z.literal("ichnaea.configuration/1").describe("The record type and its major version."),
+  ),
+  description: none(Text.describe("What the configuration is, for people.")),
+  models: z.array(ModelBinding).min(1).describe("The models that the system uses. At least one."),
+  parameters: z
+    .array(Parameter)
+    .min(1)
+    .describe(
+      "Every generation parameter, whether the system sets it or the provider applies a default. At least one.",
+    ),
+  prompts: z.array(PromptBinding).describe("The prompt templates that the system uses, by digest."),
+  factors: z
+    .record(Text, Factor)
+    .describe(
+      "Everything else that decides behavior, under dotted names such as code.commit or tool.retrieval.topK.",
+    ),
+  label: none(z.string().describe("A short name for people.")).optional(),
   /**
    * Informational values that do not decide behaviour and never enter the identity, for example a
    * provider fingerprint seen when the configuration was resolved. Per-trial fingerprints belong in
    * `Trial.observed`.
    */
-  informational: none(z.record(Text, Json)).optional(),
+  informational: none(
+    z
+      .record(Text, Json)
+      .describe(
+        "Values that do not decide behavior and never enter the identity, such as a provider fingerprint.",
+      ),
+  ).optional(),
 });
 /** A resolved system configuration. */
 export type Configuration = z.infer<typeof Configuration>;
