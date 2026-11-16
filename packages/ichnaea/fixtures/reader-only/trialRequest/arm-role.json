@@ -18,11 +18,11 @@
       "question": "Kann ich nach 40 Tagen noch zurückgeben?"
     }
   },
-  "arm": {
-    "name": "candidate",
-    "role": "reference"
-  },
   "limits": {
     "calls": 12
+  },
+  "arm": {
+    "name": "candidate",
+    "role": "candidate"
   }
 }

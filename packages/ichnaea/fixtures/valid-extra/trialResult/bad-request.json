@@ -19,7 +19,7 @@
     }
   },
   "failure": {
-    "class": "system",
+    "class": "protocol",
     "kind": "bad-request"
   }
 }

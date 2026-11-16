@@ -27,7 +27,7 @@ export const TrialIdentity = z.strictObject({
   suite: none(SuiteId),
   /** The case the trial runs. */
   case: none(CaseId),
-  /** The arm the trial runs under. */
+  /** The arm the trial runs under, as an opaque name: never whether it is the base or the candidate. */
   arm: none(ArmName),
   /** The replicate of the case under the arm, from 0. */
   replicate: none(z.int().min(0)),
@@ -40,7 +40,8 @@ export type TrialIdentity = z.infer<typeof TrialIdentity>;
 /**
  * What Ichnaea sends a worker for one trial: one JSON line on its standard input (REQ-22). The case
  * comes from the base suite, never from the worker's own root, and carries no references: the worker
- * runs the system and never scores it.
+ * runs the system and never scores it. The request does not say whether its arm is the base or the
+ * candidate: `trial.arm` is an opaque name, so a system cannot behave differently per side.
  */
 export const TrialRequest = z.strictObject({
   schema: none(z.literal("ichnaea.trialRequest/1")),
@@ -65,13 +66,6 @@ export const TrialRequest = z.strictObject({
     /** Fixtures the case needs, by digest. */
     fixtures: z.array(DigestRef).optional(),
   }),
-  /** The arm, for information: the arm's root and configuration are the worker's own. */
-  arm: z.strictObject({
-    /** The arm's name in the plan. */
-    name: none(ArmName),
-    /** The arm's role. */
-    role: none(z.enum(["base", "candidate"])),
-  }),
   /** Bounds for this trial. */
   limits: z.strictObject({
     /**
@@ -88,13 +82,16 @@ export type TrialRequest = z.infer<typeof TrialRequest>;
  * Why a trial produced no usable output, by class. Retries depend on the class alone:
  * - `infrastructure`: an endpoint or sandbox failure. Ichnaea retries it, and it counts as missing;
  * - `system`: the system's own failure. Ichnaea does not retry it, and the trial counts as failed;
- * - `not_run`: the worker never reached the case. Ichnaea retries it, and it counts as missing.
+ * - `not_run`: the worker never reached the case. Ichnaea retries it, and it counts as missing;
+ * - `protocol`: the request was malformed or broke the protocol, for example kind `bad-request`.
+ *   That is a fault of Ichnaea or the harness, never of the system: Ichnaea does not retry it, never
+ *   counts it as a pass or a failure, and makes the whole run INVALID on the first one.
  *
- * A malformed request is answered with class `system` and kind `bad-request`, never with a guess.
+ * A worker answers a request it cannot read with class `protocol`, never with a guess.
  */
 export const TrialFailure = z.strictObject({
   /** The failure's class. */
-  class: none(z.enum(["infrastructure", "system", "not_run"])),
+  class: none(z.enum(["infrastructure", "system", "not_run", "protocol"])),
   /** A short, stable kind, such as `timeout`, `rate-limited` or `bad-request`. */
   kind: none(Text),
   /** A human-readable message. It may contain content from the system. */

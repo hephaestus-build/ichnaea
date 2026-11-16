@@ -291,42 +291,6 @@
         "input"
       ]
     },
-    "arm": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
-          "x-ichnaea-data": {
-            "class": "none",
-            "identifier": "none",
-            "egress": [
-              "*"
-            ],
-            "retention": "record"
-          }
-        },
-        "role": {
-          "type": "string",
-          "x-ichnaea-data": {
-            "class": "none",
-            "identifier": "none",
-            "egress": [
-              "*"
-            ],
-            "retention": "record"
-          },
-          "x-ichnaea-known": [
-            "base",
-            "candidate"
-          ]
-        }
-      },
-      "required": [
-        "name",
-        "role"
-      ]
-    },
     "limits": {
       "type": "object",
       "properties": {
@@ -352,7 +316,6 @@
     "plan",
     "trial",
     "case",
-    "arm",
     "limits"
   ],
   "$defs": {

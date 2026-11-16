@@ -229,7 +229,6 @@ export const VALID: Record<string, Record<string, unknown>> = {
       unit: "session",
       input: { question: "Kann ich nach 40 Tagen noch zurückgeben?" },
     },
-    arm: { name: "candidate", role: "candidate" },
     limits: { calls: 12 },
   },
   trialResult: {
@@ -754,9 +753,10 @@ export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
       delete r["output"];
       r["pointer"] = "trace://composer/8f2c";
     },
+    // A malformed request is the harness's fault: class protocol, never a system failure.
     "bad-request": (r) => {
       delete r["output"];
-      r["failure"] = { class: "system", kind: "bad-request" };
+      r["failure"] = { class: "protocol", kind: "bad-request" };
       r["calls"] = 0;
     },
   },
@@ -807,7 +807,8 @@ export const READER_ONLY: Record<string, Record<string, Mutation>> = {
     // Scoring comes from the base suite: a writer never sends a case's references.
     "case-with-references": (r) =>
       ((r["case"] as Record<string, unknown>)["references"] = { answer: "30 Tage" }),
-    "future-arm-role": (r) => ((r["arm"] as Record<string, unknown>)["role"] = "reference"),
+    // The request never says which side an arm is; a reader ignores a role if one is sent.
+    "arm-role": (r) => (r["arm"] = { name: "candidate", role: "candidate" }),
   },
   trialResult: {
     // Ichnaea measures the times itself (REQ-25): a worker never sends them, and a reader ignores
