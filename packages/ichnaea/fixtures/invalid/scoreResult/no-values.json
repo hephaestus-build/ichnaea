@@ -1,5 +1,6 @@
 {
   "schema": "ichnaea.scoreResult/1",
+  "request": "score-0001",
   "dataClass": "none",
   "values": []
 }

@@ -1,8 +1,16 @@
 import * as z from "zod";
 
 import { attribute, content, none } from "../data-class.ts";
-import { CaseId, Duration, Json, RecordDataClass, Text, TrialId } from "../primitives.ts";
-import { StageEvent, TrialFailure } from "./worker.ts";
+import {
+  CaseId,
+  Duration,
+  Json,
+  RecordDataClass,
+  ScoreRequestId,
+  Text,
+  TrialId,
+} from "../primitives.ts";
+import { StageEvent } from "./worker.ts";
 
 /**
  * One trial to score: its delivered output, a writable copy of its artifacts and its stage events.
@@ -40,6 +48,8 @@ export type ScoreUnit = z.infer<typeof ScoreUnit>;
  */
 export const ScoreRequest = z.strictObject({
   schema: none(z.literal("ichnaea.scoreRequest/1")),
+  /** The request's ID, unique in the run. Its result echoes it, and a `cancel` names it. */
+  id: none(ScoreRequestId),
   /** The data class of the request's content: at least the case's. */
   dataClass: none(RecordDataClass),
   /** The instrument's ID in the suite. */
@@ -113,6 +123,27 @@ export const ScoreObserved = z.strictObject({
 /** What a scorer observed. */
 export type ScoreObserved = z.infer<typeof ScoreObserved>;
 
+/**
+ * Why an instrument failed, by class:
+ * - `infrastructure`: the instrument's endpoint or sandbox failed. Ichnaea retries it, then the
+ *   value is missing;
+ * - `protocol`: the request broke the protocol, for example kind `bad-request`. The run is INVALID.
+ *
+ * The worker classes `system` and `not_run` do not apply: the system's own failure is a value
+ * (`ok`, `false`, with a `why`), and an instrument that cannot give a value and must not be
+ * retried returns `missing`. Whoever reads a result treats any other class as a protocol failure.
+ */
+export const ScoreFailure = z.strictObject({
+  /** The failure's class. */
+  class: none(z.enum(["infrastructure", "protocol"])),
+  /** A short, stable kind, such as `timeout` or `bad-request`. */
+  kind: none(Text),
+  /** A human-readable message. It may contain content from the instrument. */
+  message: content(z.string()).optional(),
+});
+/** A scorer failure. */
+export type ScoreFailure = z.infer<typeof ScoreFailure>;
+
 const unit = {
   /** The trial that the value belongs to. */
   trial: none(TrialId),
@@ -126,9 +157,9 @@ const unit = {
  * One value for one trial and one measure, by status:
  * - `ok`: the value;
  * - `not_applicable`: the measure does not apply to the trial. It is neither a zero nor missing;
- * - `error`: the instrument failed, with a class. An `infrastructure` error is retried, then
- *   missing. When the request's unit identities parse but the request is wrong, the scorer echoes
- *   each unit with class `protocol` and kind `bad-request`, and the run is INVALID;
+ * - `error`: the instrument failed, with class `infrastructure` (retried, then missing) or
+ *   `protocol` (the run is INVALID). When the request's unit identities parse but the request is
+ *   wrong, the scorer echoes each unit with class `protocol` and kind `bad-request`;
  * - `missing`: the instrument gave no value and must not be retried, with a reason, such as a
  *   judge reply that does not parse.
  *
@@ -153,7 +184,7 @@ export const UnitScore = z.discriminatedUnion("status", [
     ...unit,
     status: none(z.literal("error")),
     /** Why the instrument failed, by class. */
-    failure: TrialFailure,
+    failure: ScoreFailure,
   }),
   z.strictObject({
     ...unit,
@@ -169,12 +200,14 @@ export type UnitScore = z.infer<typeof UnitScore>;
 
 /**
  * What a scorer answers for one score request: one JSON line on its standard output, with a value
- * per trial and measure. Ichnaea matches the values to the request by trial and measure, never by
- * position. For a request line without readable unit identities, the scorer writes an
+ * per trial and measure. Ichnaea matches the result to its request by `request`, and each value by
+ * trial and measure, never by position. For a request line without readable unit identities, the scorer writes an
  * `ichnaea.workerError/1` line instead, and the run stops.
  */
 export const ScoreResult = z.strictObject({
   schema: none(z.literal("ichnaea.scoreResult/1")),
+  /** The `id` of the request that this answers. */
+  request: none(ScoreRequestId),
   /** The data class of the result's content: at least the request's. */
   dataClass: none(RecordDataClass),
   /** One entry per trial and measure of the request. */

@@ -270,7 +270,7 @@ export const Calibration: z.ZodObject<{
 export type Calibration = z.infer<typeof Calibration>;
 
 // @public
-export const Cancel: z.ZodObject<{
+export const Cancel: z.ZodXor<readonly [z.ZodObject<{
     schema: z.ZodLiteral<"ichnaea.cancel/1">;
     trial: z.ZodObject<{
         id: z.core.$ZodBranded<z.ZodString, "TrialId", "out">;
@@ -280,7 +280,10 @@ export const Cancel: z.ZodObject<{
         replicate: z.ZodInt;
         attempt: z.ZodInt;
     }, z.core.$strict>;
-}, z.core.$strict>;
+}, z.core.$strict>, z.ZodObject<{
+    schema: z.ZodLiteral<"ichnaea.cancel/1">;
+    request: z.core.$ZodBranded<z.ZodString, "ScoreRequestId", "out">;
+}, z.core.$strict>]>;
 
 // @public
 export type Cancel = z.infer<typeof Cancel>;
@@ -3005,6 +3008,19 @@ export const ScoredValue: z.ZodUnion<readonly [z.ZodBoolean, z.ZodNumber, z.ZodS
 export type ScoredValue = z.infer<typeof ScoredValue>;
 
 // @public
+export const ScoreFailure: z.ZodObject<{
+    class: z.ZodEnum<{
+        infrastructure: "infrastructure";
+        protocol: "protocol";
+    }>;
+    kind: z.ZodString;
+    message: z.ZodOptional<z.ZodString>;
+}, z.core.$strict>;
+
+// @public
+export type ScoreFailure = z.infer<typeof ScoreFailure>;
+
+// @public
 export const ScoreObserved: z.ZodObject<{
     model: z.ZodOptional<z.ZodString>;
     responseIds: z.ZodArray<z.ZodString>;
@@ -3016,6 +3032,7 @@ export type ScoreObserved = z.infer<typeof ScoreObserved>;
 // @public
 export const ScoreRequest: z.ZodObject<{
     schema: z.ZodLiteral<"ichnaea.scoreRequest/1">;
+    id: z.core.$ZodBranded<z.ZodString, "ScoreRequestId", "out">;
     dataClass: z.ZodEnum<{
         none: "none";
         personal: "personal";
@@ -3062,8 +3079,15 @@ export const ScoreRequest: z.ZodObject<{
 export type ScoreRequest = z.infer<typeof ScoreRequest>;
 
 // @public
+export const ScoreRequestId: z.core.$ZodBranded<z.ZodString, "ScoreRequestId", "out">;
+
+// @public
+export type ScoreRequestId = z.infer<typeof ScoreRequestId>;
+
+// @public
 export const ScoreResult: z.ZodObject<{
     schema: z.ZodLiteral<"ichnaea.scoreResult/1">;
+    request: z.core.$ZodBranded<z.ZodString, "ScoreRequestId", "out">;
     dataClass: z.ZodEnum<{
         none: "none";
         personal: "personal";
@@ -3103,9 +3127,7 @@ export const ScoreResult: z.ZodObject<{
         failure: z.ZodObject<{
             class: z.ZodEnum<{
                 infrastructure: "infrastructure";
-                not_run: "not_run";
                 protocol: "protocol";
-                system: "system";
             }>;
             kind: z.ZodString;
             message: z.ZodOptional<z.ZodString>;
@@ -3821,9 +3843,7 @@ export const UnitScore: z.ZodDiscriminatedUnion<[z.ZodObject<{
     failure: z.ZodObject<{
         class: z.ZodEnum<{
             infrastructure: "infrastructure";
-            not_run: "not_run";
             protocol: "protocol";
-            system: "system";
         }>;
         kind: z.ZodString;
         message: z.ZodOptional<z.ZodString>;

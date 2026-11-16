@@ -10,6 +10,7 @@ import {
   Json,
   PlanDigest,
   RecordDataClass,
+  ScoreRequestId,
   Seed,
   SuiteId,
   Text,
@@ -541,14 +542,23 @@ export const WorkerEvent = z.discriminatedUnion("kind", [
 export type WorkerEvent = z.infer<typeof WorkerEvent>;
 
 /**
- * What Ichnaea sends to stop one trial in flight, at its deadline or on an interrupt. The worker
- * tears the trial down and answers with its result. Without a result in the grace period, Ichnaea
- * stops the process group. The process's other trials are retried on a new process.
+ * What Ichnaea sends to stop work in flight, at its deadline or on an interrupt. It names exactly
+ * one of a worker's `trial` or a scorer's `request`, for the writer and the reader alike: a
+ * process never guesses which of two it was asked to stop. The process tears the work down and answers
+ * with its result. Without a result in the grace period, Ichnaea stops the process group, and the
+ * process's other work in flight is retried on a new process.
  */
-export const Cancel = z.strictObject({
-  schema: none(z.literal("ichnaea.cancel/1")),
-  /** The trial to stop. */
-  trial: TrialIdentity,
-});
+export const Cancel = z.xor([
+  z.strictObject({
+    schema: none(z.literal("ichnaea.cancel/1")),
+    /** The worker's trial to stop. */
+    trial: TrialIdentity,
+  }),
+  z.strictObject({
+    schema: none(z.literal("ichnaea.cancel/1")),
+    /** The `id` of the scorer's request to stop. */
+    request: none(ScoreRequestId),
+  }),
+]);
 /** A cancel line. */
 export type Cancel = z.infer<typeof Cancel>;

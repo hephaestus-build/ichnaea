@@ -18,6 +18,18 @@
         "retention": "record"
       }
     },
+    "request": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
+      }
+    },
     "dataClass": {
       "type": "string",
       "x-ichnaea-data": {
@@ -371,8 +383,6 @@
                     },
                     "x-ichnaea-known": [
                       "infrastructure",
-                      "system",
-                      "not_run",
                       "protocol"
                     ]
                   },
@@ -537,6 +547,7 @@
   },
   "required": [
     "schema",
+    "request",
     "dataClass",
     "values"
   ]

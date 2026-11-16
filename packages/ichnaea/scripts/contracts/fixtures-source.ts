@@ -315,6 +315,7 @@ export const VALID: Record<string, Record<string, unknown>> = {
   },
   scoreRequest: {
     schema: "ichnaea.scoreRequest/1",
+    id: "score-0001",
     dataClass: "none",
     instrument: "quality-judge",
     deadline: "PT120S",
@@ -342,6 +343,7 @@ export const VALID: Record<string, Record<string, unknown>> = {
   },
   scoreResult: {
     schema: "ichnaea.scoreResult/1",
+    request: "score-0001",
     dataClass: "none",
     values: [
       {
@@ -813,8 +815,15 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
   cancel: {
     "missing-trial": (r) => delete r["trial"],
     "trial-as-id": (r) => (r["trial"] = "refund-window-de/a/r1"),
+    "trial-and-request": (r) => (r["request"] = "score-0001"),
+    "request-not-an-id": (r) => {
+      delete r["trial"];
+      r["request"] = "";
+    },
   },
   scoreRequest: {
+    "missing-id": (r) => delete r["id"],
+    "id-with-a-space": (r) => (r["id"] = "score 0001"),
     "missing-deadline": (r) => delete r["deadline"],
     "missing-scratch": (r) => delete r["scratch"],
     "no-units": (r) => (r["units"] = []),
@@ -827,6 +836,7 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
     "deadline-in-minutes": (r) => (r["deadline"] = "PT2M"),
   },
   scoreResult: {
+    "missing-request": (r) => delete r["request"],
     "no-values": (r) => (r["values"] = []),
     "ok-without-value": (r) => delete (r["values"] as Array<Record<string, unknown>>)[0]!["value"],
     "non-finite-score": (r) =>
@@ -1089,6 +1099,13 @@ export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
   workerError: {
     "with-message": (r) => (r["message"] = "line 3 is not JSON: unexpected end of input"),
   },
+  cancel: {
+    // A scorer's request, by the `id` that the request carries.
+    "score-request": (r) => {
+      delete r["trial"];
+      r["request"] = "score-0001";
+    },
+  },
   workerReady: {
     "one-at-a-time": (r) => (r["capacity"] = 1),
     scorer: (r) => (r["protocol"] = "ichnaea.scoreRequest/1"),
@@ -1295,6 +1312,16 @@ export const READER_ONLY: Record<string, Record<string, Mutation>> = {
     "future-status": (r) =>
       (r["values"] = [
         { trial: "refund-window-de/b/r0", measure: "correct", status: "deferred", until: "later" },
+      ]),
+    // A worker class does not apply to a scorer: a writer refuses it, a reader reports it.
+    "worker-class-system": (r) =>
+      (r["values"] = [
+        {
+          trial: "refund-window-de/b/r0",
+          measure: "correct",
+          status: "error",
+          failure: { class: "system", kind: "crashed" },
+        },
       ]),
     "future-error-class": (r) =>
       (r["values"] = [

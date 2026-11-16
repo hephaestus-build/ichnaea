@@ -1,0 +1,12 @@
+{
+  "schema": "ichnaea.cancel/1",
+  "trial": {
+    "id": "refund-window-de/a/r1",
+    "suite": "support-assistant",
+    "case": "refund-window-de",
+    "arm": "a",
+    "replicate": 1,
+    "attempt": 2
+  },
+  "request": "score-0001"
+}

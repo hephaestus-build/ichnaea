@@ -21,6 +21,10 @@ export type CaseId = z.infer<typeof CaseId>;
 export const TrialId = id().brand<"TrialId">();
 /** A trial identifier. */
 export type TrialId = z.infer<typeof TrialId>;
+/** A score request identifier, unique within a run. */
+export const ScoreRequestId = id().brand<"ScoreRequestId">();
+/** A score request identifier. */
+export type ScoreRequestId = z.infer<typeof ScoreRequestId>;
 /** A run identifier. */
 export const RunId = id().brand<"RunId">();
 /** A run identifier. */

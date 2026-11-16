@@ -1,5 +1,6 @@
 {
   "schema": "ichnaea.scoreRequest/1",
+  "id": "score-0001",
   "dataClass": "none",
   "instrument": "quality-judge",
   "deadline": "PT120S",

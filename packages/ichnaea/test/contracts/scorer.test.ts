@@ -6,8 +6,10 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  Cancel,
   contractFor,
   readRecord,
+  ScoreFailure,
   ScoreRequest,
   ScoreResult,
   WorkerError,
@@ -90,5 +92,47 @@ describe("the scorer protocol", () => {
     expect(ScoreResult.safeParse(later).success).toBe(false);
     const read = readRecord(contractFor("ichnaea.scoreResult/1")!, later);
     expect(read.ok && read.unknownValues.length).toBeGreaterThan(0);
+  });
+
+  it("names each request, and its result echoes the name", () => {
+    const request = ScoreRequest.parse(fixture("valid", "scoreRequest.json"));
+    const result = ScoreResult.parse(fixture("valid", "scoreResult.json"));
+    expect(result.request).toBe(request.id);
+    const withoutId = fixture("valid", "scoreRequest.json");
+    delete withoutId["id"];
+    expect(ScoreRequest.safeParse(withoutId).success).toBe(false);
+    const withoutEcho = fixture("valid", "scoreResult.json");
+    delete withoutEcho["request"];
+    expect(ScoreResult.safeParse(withoutEcho).success).toBe(false);
+  });
+
+  it("cancels a score request by its name, and a worker's trial by its identity", () => {
+    const byRequest = Cancel.parse(fixture("valid-extra", "cancel/score-request.json"));
+    expect(byRequest).toEqual({ schema: "ichnaea.cancel/1", request: "score-0001" });
+    const byTrial = fixture("valid", "cancel.json");
+    expect(Cancel.safeParse(byTrial).success).toBe(true);
+    // A cancel names exactly one of the two.
+    expect(Cancel.safeParse({ ...byTrial, request: "score-0001" }).success).toBe(false);
+    expect(Cancel.safeParse({ schema: "ichnaea.cancel/1" }).success).toBe(false);
+  });
+
+  it("fails as infrastructure or protocol only: the system's own failure is a value", () => {
+    expect(ScoreFailure.shape.class.options).toEqual(["infrastructure", "protocol"]);
+    const record = fixture("valid", "scoreResult.json");
+    const failing = (cls: string): Record<string, unknown> => ({
+      ...record,
+      values: [
+        { trial: "t-1", measure: "correct", status: "error", failure: { class: cls, kind: "k" } },
+      ],
+    });
+    for (const cls of ["infrastructure", "protocol"])
+      expect(ScoreResult.safeParse(failing(cls)).success, cls).toBe(true);
+    // A writer refuses the worker classes; a reader reports them, and Ichnaea treats the value as
+    // a protocol failure.
+    for (const cls of ["system", "not_run"]) {
+      expect(ScoreResult.safeParse(failing(cls)).success, cls).toBe(false);
+      const read = readRecord(contractFor("ichnaea.scoreResult/1")!, failing(cls));
+      expect(read.ok && read.unknownValues.map((v) => v.value), cls).toEqual([cls]);
+    }
   });
 });
