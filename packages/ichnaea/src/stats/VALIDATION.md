@@ -29,7 +29,7 @@ true 0.936 and 0.937 fail and 0.9395 passes after confirmation; a grid mean of 0
 screened points at 0.9465 fail on the grid mean (3·SE of the mean, the SEs added in quadrature) and
 nine at 0.949 pass; exact type-I 0.0501 fails; a true 0.0527 fails and 0.0505 passes; confirmation
 uses the seed plus 100,000.
-`scripts/stats/mutants.ts` changes each threshold, the confirmation and the cap, 16 changes in all, and
+`scripts/stats/mutants.ts` changes each threshold, the confirmation and the cap: 16 mutants (those named `rule:`), and
 the unit suite detects each one.
 
 ## Reference values
@@ -93,7 +93,7 @@ neighbouring doubles wobble by up to 2.4 ε·|v|), and that `qnorm(pnorm(x)) = x
 median, where p keeps its full relative precision.
 
 `scripts/stats/mutants.ts` changes coefficients, every branch bound and cutoff, the tail bounds and the
-generator: 49 mutants of the statistics, and the tests detect every one. One change is not detectable: a change to the fifth-order
+generator: 22 mutants of `normal.ts`, `normal-coefficients.ts`, `mt19937.ts` and `rng.ts`, and the tests detect every one. One change is not detectable: a change to the fifth-order
 term of the subnormal expansion moves the result by at most 0.84 ε·|v|. That is below rounding.
 
 ## fixed-cases: what counts
@@ -122,7 +122,7 @@ primary measure, and at the latest for 1.0.
 
 The estimand is the mean of the per-case differences, every case with the same weight whatever its
 trial count (decision 0004). Mantel–Haenszel weights (n1·n2/(n1+n2)) give another estimand as soon as trial
-counts differ. `test/decision-values` pins a two-case example.
+counts differ. `test/stats/decision-values.test.ts` pins a two-case example.
 
 The interval is the stratified Miettinen–Nurminen score interval with the N/(N−1) factor and no
 skewness correction (decision 0004), chosen by a 252-point study at 10,000 repetitions
@@ -240,7 +240,7 @@ fixed-cases comparison of a suite means by "no change". **The validated domain i
 case for the regression result, under the conditions below (decision 0020).** This study is its
 evidence. Non-inferiority at one trial per case is not validated.
 
-`scripts/study-binary-one-trial.ts` computes the type-I error exactly. Cases are independent, so a
+`scripts/stats/study-binary-one-trial.ts` computes the type-I error exactly. Cases are independent, so a
 dynamic programme over (n, c) gives the distribution of the discordant counts, and the rejection
 region comes from the decision path itself: `compareCounts` gives the p-value of every (n, c), and
 the region c ≤ c\*(n) is checked to equal the exact McNemar test's for every n up to 300. A unit
@@ -565,10 +565,10 @@ and the same table always takes the same path. The limit counts work, not the si
 limit of 5·10⁷ on the support times the number of cases let 146 cases of 3-decimal scores with 3
 trials run for over a minute.
 
-`scripts/benchmark-score-permutation.ts` times the exact path against W on tables like real suites
+`scripts/stats/benchmark-score-permutation.ts` times the exact path against W on tables like real suites
 (1–5 ratings, proportions of 20 items, 2- and 3-decimal scores, 1 to 9 trials, 12 to 300 cases).
 The time per unit of W is about 4–40 ns on an Apple M3 Max under heavy load from other jobs. The
-`simulation` CI job (`test/score-permutation-work.sim.test.ts`) takes, for five shapes, the
+`simulation` CI job (`test/stats/score-permutation-work.sim.test.ts`) takes, for five shapes, the
 largest table whose W is within the limit, runs it exactly on the CI runner, prints its time and
 fails above 3 seconds. The limit aims at about 1 second there. On the CI runner (`ubuntu-latest`,
 image 20261103.629, Node 24) the largest exact tables took:
@@ -585,7 +585,7 @@ The slowest is 0.36 s, so the limit stays at 5·10⁷.
 
 ### Reference values
 
-`test/reference-score-permutation-tables.json` holds 248 tables (`scripts/score-permutation-tables.ts`,
+`test/stats/reference-score-permutation-tables.json` holds 248 tables (`scripts/stats/score-permutation-tables.ts`,
 seed 20261116):
 
 - 1–5 ratings with k from 1 to 146 and 1 to 3 trials, mixed counts, arm-unequal and one-trial
@@ -618,51 +618,105 @@ off a multiple of 1/1,000 is off the lattice; values whose products with D fall 
 integer (0.57, 0.58 and 0.29 at D = 100) round to it; a case with 100,000 labellings enumerates and
 one with 100,001 does not; the largest table within the work limit enumerates and the next runs
 Monte Carlo; the rerun seed at the wrap; and that the reported p is the rerun's, equal to a fresh
-run at the rerun's seed. `scripts/mutants.ts` changes the test in 19 ways (ties, weights, tails, the
+run at the rerun's seed. `scripts/stats/mutants.ts` changes the test in 19 ways, mutants S1 to S19 (ties, weights, tails, the
 +1, sampling with replacement, the range check, the case count, the recomputation near a level, the
 enumeration cap, the lattice size, tolerance and rounding, the work limit, the rerun seed and the p
 it reports), and the unit suite detects every one.
 
 ### The type-I study (fixed before it runs; it has not run)
 
-The study judges the test on the two-stage rule above, at one-sided α = 0.05, at a true difference
-of 0. Inside the simulation the test runs Monte Carlo with 99 resamples: (B + 1)·α is a whole
-number, so it keeps its level. Seeds are MT19937: 2,000,000 + 1,000·g + c for generator g and cell
-c when screening, and 3,000,000 + 1,000·g + c when confirming. Every output records its commit,
-script sha256, seeds, arguments, Node version and runner.
+The study judges the test at a true difference of 0, at one-sided α = 0.05 and at the Holm levels
+α/m for m = 2, 3 and 4 (0.025, 0.05/3 and 0.0125). A REGRESSION verdict compares Holm-adjusted
+p-values across the primary measures, so the test must keep each level. Every point records its
+rejections at the four levels from the same repetitions, and the rule below applies at each.
 
+- **Inside the simulation** the test runs Monte Carlo with 239 resamples. (1 + B)·level is then a
+  whole number at every level (12, 6, 4 and 3), so the test's size under exchangeability is exactly
+  the level. With 99 resamples it would be 0.02, 0.01 and 0.01 at the three Holm levels, and a
+  check at those levels would let the test exceed them by 20–40% unseen. The comparison with a
+  level allows a relative 1e-9, because p = (1 + count)/240 lands on the levels exactly.
+- **The rule, at each level:** a point screens at 6,000 repetitions. It is confirmed if its
+  estimate is above level − 2·SE at any level, with SE = √(p̂(1 − p̂)/n) from the estimate itself.
+  A confirmation draws from the point's confirmation seed in batches until the SE is at most 0.0005
+  at every level, and runs at least 190,000 repetitions, so an estimate of 0 cannot stop it. A
+  confirmed point fails if its estimate − 3·SE is above the level at any level.
+- **Exact computation is not used.** The rejection rate of the 239-resample test needs every joint
+  outcome of a cell enumerated, and the smallest grid cells are already too large (a bimodal judge
+  at k = 5 with 2 trials has 81⁵ ≈ 3.5·10⁹ outcomes), so every point is simulated.
+- **Seeds**, MT19937, each point with its own generator. Uniqueness holds within this study, and
+  the harness asserts the bounds below. Seeds may repeat across studies: each study's claim stands
+  on its own, and two older studies use seeds inside the 2,000,000, 10,000,000 and 20,000,000
+  ranges.
+  - Generator g (not G2), cell c < 1,000: screen 2,000,000 + 1,000·g + c, confirmation
+    3,000,000 + 1,000·g + c, re-check 4,000,000 + 1,000·g + c.
+  - G2 cell c′ < 1,000, structure s < 1,000: screen 10,000,000 + 1,000·c′ + s, confirmation
+    20,000,000 + …, re-check 25,000,000 + …. The cell's random structures and its perturbations
+    come from the stream 2,002,000 + c′, which c′ < 1,000 keeps below generator 3's seeds.
+  - Every output records its commit, script sha256, seeds, arguments, runtime and runner.
 - **Generators**, each at a true difference of 0:
   - per-case beta scores, Beta(μν, (1 − μ)ν) with μ from {0.05, 0.2, 0.5, 0.8, 0.95} and ν ∈
     {2, 10, 50};
   - heterogeneous per-case effects with mean 0, in two families: most cases near the top (μ = 0.95)
     drop slightly and 1–3 noisy cases rise to offset them; and its mirror, most cases near the floor
     (μ = 0.05) rise slightly and the noisy cases carry the drop, so the long tail of the per-case
-    differences lies on the side the test looks at. 500 random structures per cell, with
-    refinement around the worst 5, and symmetric ±d with d ∈ {0.05, 0.1, 0.2}. Structure s of G2
-    cell c′ uses seed 10,000,000 + 1,000·c′ + s (confirmation 20,000,000 + …), and every cell
-    asserts s < 1,000;
+    differences lies on the side the test looks at. ν ∈ {2, 10}, and 500 random structures per
+    cell. Then hill-climbing from the worst 5: each chain tries 4 rounds of 5 perturbations (scale
+    the stable effects by 0.7–1.3, move the noisy base by up to ±0.1) and moves to one that is
+    worse, the largest estimate/level over the levels. That is 100 refinement structures per cell,
+    s = 500–599, where step t of chain h is s = 500 + 20·h + t whether or not its perturbation
+    stays inside [0.01, 0.99]. Every structure's true mean difference is 0 to 1e-12.
+  - **The space the random structures search:** 1–3 noisy cases offset the drops of all the stable
+    cases, and the noisy case's means must stay inside [0.01, 0.99]. At large k this keeps the
+    stable drops small: at k = 300 with one trial most structures have 3 noisy cases and drops of at
+    most about 0.02; at k = 146 with 2 trials the floor family's drops reach about 0.04. Larger
+    drops at large k need more noisy cases, which the generator does not draw.
+  - symmetric ±d with d ∈ {0.05, 0.1, 0.2}: bases 0.2, 0.5 and 0.8 in turn, half the cases rise by
+    d and half drop. At d = 0.2 some means are exactly 0 or 1, and those arms are point masses, not
+    beta draws; the mean difference is still 0;
   - unequal variances in the two arms at the same mean (ν 2 against 50, either way);
   - run-level shocks per replicate and arm, with SD 0, 0.01, 0.02, 0.05 and 0.10, shared across
-    arms (interleaved) or not; with one trial per case only shared shocks, because a separate shock
-    cannot be told apart from an effect;
+    arms (interleaved) or not. With one trial per case, shared shocks count and separate shocks are
+    reported, because a separate shock cannot be told apart from an effect;
   - proportions from a beta-binomial with 3, 5, 10 or 20 items and intra-output correlation 0, 0.2
     or 0.5;
   - a bimodal judge: 0 or 1, and 0.5 with probability 0.1 or 0.3;
   - 1–5 ratings from a latent normal with even or skewed thresholds.
 - **Grid:** k ∈ {5, 8, 10, 12, 17, 20, 30, 60, 146} with 2 or 3 trials per case and arm, equal or
   mixed across cases, up to 10% of cells with one trial; and one trial per case and arm at
-  k ∈ {12, 17, 30, 60, 100, 146, 300}. Arm-unequal cells (3 against 2) run and are reported, outside
-  the domain.
+  k ∈ {12, 17, 20, 30, 60, 100, 146, 200, 300}. Arm-unequal cells (3 against 2) run and are
+  reported, outside the domain. G2 has 307 cells: 4 random-structure settings and 3 symmetric ones
+  on each of the 43 shapes, and 6 reported cells below the grid.
 - **Reported, outside the grid:** the top family with one trial per case at k = 5, 8 and 10. A
   prototype found the sign flip above the bar there: 0.0575 ± 0.0016 at k = 5 and 0.0585 ± 0.0017
   at k = 8, the case-level form of the sign flip's known failure with few clusters. These points
   never set the domain.
-- **Re-check with the shipped test:** every point that is confirmed or fails, and the 10 worst of
-  each generator, run again with the shipped test (exact, or 10,000 resamples with the rerun) at
-  20,000 repetitions, a standard error of about 0.0015 at 0.05. A point fails if its estimate −
-  3·SE is above 0.05. Over all re-checked points, the mean of (shipped − study) must lie within 3
-  pooled standard errors of 0. The validity claim rests on the study's own points at SE ≤ 0.0005;
-  the re-check shows that the shipped path behaves as the study's.
+- **Holm across correlated primaries, reported:** six cells with four primary measures on the same
+  cases and no change, each through the shipped test, Holm across the four, at 20,000
+  repetitions. Three take G2 structures (one noisy case pair, d = 0.05): per trial a shared
+  x ~ Beta(mean, ν), and each measure a beta of mean x and its own precision (2, 5, 10 or 50).
+  Three take G5 proportions: per trial a shared rate from the beta of ICC ρ, and each measure its
+  own binomial items at that rate. They report the familywise rate and each measure's rate. They
+  are evidence only: Holm holds under any dependence when each test holds at its level, which the
+  four-level rule checks.
+- **Re-check with the shipped test:** every point that is confirmed or fails, whatever its role,
+  the 10 worst type-I points of each generator, and, apart, the 10 worst reported points of each
+  generator, ranked by the largest estimate/level. Each runs at 20,000 repetitions from its
+  re-check seed: every repetition draws one data set and runs both the shipped test (exact, or
+  10,000 resamples with the rerun near each level) and the study's 239-resample test on it.
+  - A point fails if the shipped test's estimate − 3·SE is above a level, at any level; the SE is
+    about 0.0015 at 0.05.
+  - **The pooled check**, per level, over the re-checked type-I points: the mean of (shipped −
+    study) must not exceed 3 pooled standard errors. The standard error comes from the paired
+    differences: per point (n₁₀ + n₀₁ − (n₁₀ − n₀₁)²/n)/n², with n₁₀ the repetitions where only the
+    shipped test rejects and n₀₁ those where only the study's does, pooled as √Σ/N. The estimates
+    are fresh, never the screening estimates that selected the worst points. The check is
+    one-sided: the claim is about the shipped test, and on a lattice the shipped exact test and the
+    study's Monte Carlo test differ by design, so a negative mean (the shipped test more
+    conservative) is reported, not failed. Points where the shipped test took the exact path in
+    every repetition, in none, and in some are pooled apart, and each pool is reported.
+  - The re-checks of reported points are reported, outside the pooled check.
+  - The validity claim rests on the study's own points at SE ≤ 0.0005; the re-check shows that the
+    shipped path behaves as the study's.
 - **What decides:**
   - The validated domain will need equal completed counts in the two arms of every case. A
     variant fills missing trials as the sensitivity analysis does against a drop (a missing
@@ -680,6 +734,11 @@ script sha256, seeds, arguments, Node version and runner.
   family; and, with one trial per case, the paired t-test at k = 5 under the top family. A
   permutation across cases is reported, not used as a must-fail: pooling adds the spread between
   cases, so it is conservative (0.000–0.016 in a prototype) and cannot fail.
+- **The collector** (`scripts/stats/collect-score-type-i.ts`) applies the rule again to every count:
+  a stage or a fail flag that the counts do not give, a confirmation that stopped early, a
+  must-fail that does not fail, or a failing pool fails the study. It derives the re-check list
+  again from the screen and refuses a list or a shard that differs. A smoke run never passes. The
+  summary prints the thresholds in effect.
 
 ## Score measures: non-inferiority
 
