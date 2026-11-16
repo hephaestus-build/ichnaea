@@ -103,6 +103,7 @@ export function createPlan<const S extends SuiteDefinition>(
             margin: limit.margin,
             marginStatus: limit.status ?? "registered",
             marginReason: limit.reason,
+            marginOwner: limit.owner,
           },
         ],
   );

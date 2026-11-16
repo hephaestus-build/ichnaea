@@ -714,6 +714,12 @@ export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
     },
   },
   suite: {
+    "margin-with-its-owner": (r) => {
+      r["primary"] = (r["primary"] as Array<Record<string, unknown>>).map((p) => ({
+        ...p,
+        marginOwner: "support maintainer",
+      }));
+    },
     "more-trials-for-a-slice": (r) => {
       r["replicates"] = 2;
       r["replicatesFor"] = [

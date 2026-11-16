@@ -35,6 +35,14 @@ describe("createPlan", () => {
       "composer/declines",
     ]);
     expect(record.power.map((p) => p.computed)).toEqual([true, true]);
+    // Each limit's registration record, as the suite gives it.
+    expect(record.primary[0]).toEqual({
+      measure: "composer/answered",
+      margin: 0.3,
+      marginStatus: "registered",
+      marginReason: "Six cases at two trials see only drops above 0.23.",
+      marginOwner: "composer maintainer",
+    });
     expect(record.trigger).toBe("manual");
     expect(record.varies).toEqual(["prompt.composer"]);
     expect(record.ichnaea).toBe(CORE_VERSION);
@@ -102,7 +110,7 @@ describe("createPlan", () => {
     expect(() => createPlan(SUITE, { ...comparison, run: "" })).toThrow(/comparison is not valid/);
     const tight = {
       ...SUITE,
-      policy: { ...SUITE.policy, primary: { answered: { margin: 0.01, reason: "r" } } },
+      policy: { ...SUITE.policy, primary: { answered: { margin: 0.01, owner: "o", reason: "r" } } },
     };
     expect(() => createPlan(tight, comparison)).toThrow(/below the validated margin floor/);
   });
@@ -113,7 +121,12 @@ describe("createPlan", () => {
       policy: {
         ...SUITE.policy,
         primary: {
-          answered: { margin: 0.3, reason: "not set yet", status: "placeholder" as const },
+          answered: {
+            margin: 0.3,
+            owner: "o",
+            reason: "not set yet",
+            status: "placeholder" as const,
+          },
         },
       },
     };

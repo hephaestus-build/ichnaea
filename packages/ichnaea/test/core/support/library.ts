@@ -92,8 +92,16 @@ export const DEFINITION = {
   measures: { answered, declines },
   policy: {
     primary: {
-      answered: { margin: 0.3, reason: "Six cases at two trials see only drops above 0.23." },
-      declines: { margin: 0.3, reason: "Six cases at two trials see only drops above 0.23." },
+      answered: {
+        margin: 0.3,
+        owner: "composer maintainer",
+        reason: "Six cases at two trials see only drops above 0.23.",
+      },
+      declines: {
+        margin: 0.3,
+        owner: "composer maintainer",
+        reason: "Six cases at two trials see only drops above 0.23.",
+      },
     },
     onRegression: "block",
     onInconclusive: "report",

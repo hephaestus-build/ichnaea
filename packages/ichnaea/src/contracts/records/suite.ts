@@ -50,6 +50,11 @@ export const PrimaryMeasure = z.strictObject({
   margin: none(z.number().min(0)),
   marginStatus: none(MarginStatus),
   marginReason: none(Text),
+  /**
+   * The role that registered the margin, for example "composer maintainer", never a person's
+   * name. Together with the margin and its reason it is the margin's registration record.
+   */
+  marginOwner: none(Text).optional(),
   safetyMargin: none(z.number().min(0)).optional(),
   coverageFloor: none(Probability).optional(),
 });

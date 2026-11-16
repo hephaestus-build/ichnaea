@@ -111,12 +111,15 @@ export interface SuiteCard {
 }
 
 /**
- * The limit of a primary measure: the largest drop in its pass rate that still counts as no
- * regression, with the reason it was set to this value. The records call it the margin.
+ * The limit of a primary measure, as a registration record: the largest drop in its pass rate that
+ * still counts as no regression, the role that registered it, and why it has this value. The
+ * records call the limit the margin. The plan carries the record as it is.
  */
 export interface Limit {
-  /** The largest accepted drop, as a proportion below 1, for example 0.1. */
+  /** The largest accepted drop, as a proportion above 0 and below 1, for example 0.1. */
   readonly margin: number;
+  /** The role that registered the limit, for example "composer maintainer", never a person. */
+  readonly owner: string;
   /** Why the limit has this value, in one sentence. */
   readonly reason: string;
   /**
@@ -250,8 +253,12 @@ const Definition = z
       primary: z.record(
         Key,
         z.strictObject({
-          margin: z.number().min(0).lt(1, "a limit is a proportion below 1"),
-          reason: Text,
+          margin: z
+            .number()
+            .gt(0, "a limit is a proportion above 0")
+            .lt(1, "a limit is a proportion below 1"),
+          owner: z.string().trim().min(1, "a limit names the role that registered it"),
+          reason: z.string().trim().min(1, "a limit states why it has this value"),
           status: z.enum(["registered", "placeholder"]).optional(),
         }),
       ),

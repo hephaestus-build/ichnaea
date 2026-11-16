@@ -97,8 +97,16 @@ const suite = defineSuite({
   },
   policy: {
     primary: {
-      answers: { margin: 0.3, reason: "Six cases at two trials see only drops above 0.23." },
-      declines: { margin: 0.3, reason: "Six cases at two trials see only drops above 0.23." },
+      answers: {
+        margin: 0.3,
+        owner: "review maintainer",
+        reason: "Six cases at two trials see only drops above 0.23.",
+      },
+      declines: {
+        margin: 0.3,
+        owner: "review maintainer",
+        reason: "Six cases at two trials see only drops above 0.23.",
+      },
     },
     onRegression: "block",
     onInconclusive: "report",

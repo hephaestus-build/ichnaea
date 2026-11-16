@@ -36,14 +36,30 @@ describe("defineSuite", () => {
   it("refuses a limit for a measure the suite does not define", () => {
     const policy = {
       ...DEFINITION.policy,
-      primary: { ...DEFINITION.policy.primary, missing: { margin: 0.1, reason: "r" } },
+      primary: { ...DEFINITION.policy.primary, missing: { margin: 0.1, owner: "o", reason: "r" } },
     };
     expect(refused({ policy })).toMatch(/'missing' is not a measure of the suite/);
   });
 
   it("refuses a limit of 1 or more", () => {
-    const policy = { ...DEFINITION.policy, primary: { answered: { margin: 1, reason: "r" } } };
+    const policy = {
+      ...DEFINITION.policy,
+      primary: { answered: { margin: 1, owner: "o", reason: "r" } },
+    };
     expect(refused({ policy })).toMatch(/a limit is a proportion below 1/);
+  });
+
+  it.each([
+    ["a margin of 0", { margin: 0, owner: "o", reason: "r" }, "a limit is a proportion above 0"],
+    ["no owner", { margin: 0.3, reason: "r" }, "primary.answered.owner"],
+    ["a blank owner", { margin: 0.3, owner: " ", reason: "r" }, "a limit names the role"],
+    ["a blank reason", { margin: 0.3, owner: "o", reason: "" }, "a limit states why"],
+  ])("refuses a limit with %s", (_name, limit, message) => {
+    const policy = {
+      ...DEFINITION.policy,
+      primary: { ...DEFINITION.policy.primary, answered: limit },
+    };
+    expect(refused({ policy })).toContain(message);
   });
 
   it("refuses a primary measure without known-good and known-bad examples", () => {

@@ -428,6 +428,7 @@ export class LedgerError extends Error {
 // @public
 export interface Limit {
     readonly margin: number;
+    readonly owner: string;
     readonly reason: string;
     readonly status?: "registered" | "placeholder";
 }

@@ -16,7 +16,7 @@ describe("defineSuite", () => {
       policy: {
         ...DEFINITION.policy,
         // @ts-expect-error: 'missing' is not a measure of the suite
-        primary: { missing: { margin: 0.1, reason: "r" } },
+        primary: { missing: { margin: 0.1, owner: "o", reason: "r" } },
       },
     });
   });

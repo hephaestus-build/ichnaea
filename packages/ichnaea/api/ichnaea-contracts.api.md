@@ -2305,6 +2305,7 @@ export const Plan: z.ZodObject<{
             registered: "registered";
         }>;
         marginReason: z.ZodString;
+        marginOwner: z.ZodOptional<z.ZodString>;
         safetyMargin: z.ZodOptional<z.ZodNumber>;
         coverageFloor: z.ZodOptional<z.ZodNumber>;
     }, z.core.$strict>>;
@@ -2478,6 +2479,7 @@ export const PrimaryMeasure: z.ZodObject<{
         registered: "registered";
     }>;
     marginReason: z.ZodString;
+    marginOwner: z.ZodOptional<z.ZodString>;
     safetyMargin: z.ZodOptional<z.ZodNumber>;
     coverageFloor: z.ZodOptional<z.ZodNumber>;
 }, z.core.$strict>;
@@ -2925,6 +2927,7 @@ export const Suite: z.ZodObject<{
             registered: "registered";
         }>;
         marginReason: z.ZodString;
+        marginOwner: z.ZodOptional<z.ZodString>;
         safetyMargin: z.ZodOptional<z.ZodNumber>;
         coverageFloor: z.ZodOptional<z.ZodNumber>;
     }, z.core.$strict>>;

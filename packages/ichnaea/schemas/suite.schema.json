@@ -330,6 +330,18 @@
               "retention": "record"
             }
           },
+          "marginOwner": {
+            "type": "string",
+            "minLength": 1,
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
+            }
+          },
           "safetyMargin": {
             "type": "number",
             "minimum": 0,
