@@ -11,9 +11,13 @@ export const BLOCK_MARKER = "<!-- The build consumer test runs this example. -->
 export const TABLE_MARKER =
   "<!-- The build consumer test checks these verdict lines and exit codes. -->";
 
-/** The package, and the specifier of a build commit that the README's install adds it by. */
+/**
+ * The package, and the URL of its tarball on a release that the README's install adds it by. The
+ * shell expands `$TAG`, the release's tag, and `${TAG#v}`, its version.
+ */
 export const PACKAGE_NAME = "@hephaestus-build/ichnaea";
-export const BUILD_SPEC = "github:hephaestus-build/ichnaea#<build-commit>";
+export const RELEASE_SPEC =
+  "https://github.com/hephaestus-build/ichnaea/releases/download/$TAG/hephaestus-build-ichnaea-${TAG#v}.tgz";
 
 /**
  * The zod version that the workspace builds and tests with: the package's development dependency.
@@ -114,6 +118,11 @@ export function decides(command: string, run: string): boolean {
 export interface Install {
   /** The commands of the install block, as written. */
   readonly commands: readonly string[];
+  /**
+   * The block's one `pnpm add` command, which installs the package and zod. The commands before it
+   * find, download and verify the release, and need the network and a published release.
+   */
+  readonly add: string;
   /** The packages that the `pnpm add` commands add, by name, without a version or protocol. */
   readonly added: readonly string[];
 }
@@ -122,15 +131,20 @@ export interface Install {
 export function readmeInstall(readme: string): Install {
   const lines = readme.split("\n");
   const commands = commandsOf(blockAfter(lines, INSTALL_MARKER, "sh"));
-  const added = commands
-    .filter((c) => /^pnpm add\b/.test(c))
-    .flatMap((c) => c.replace(/\\\n/g, " ").split(/\s+/).slice(2))
+  const adds = commands.filter((c) => /^pnpm add\b/.test(c));
+  const [add] = adds;
+  if (add === undefined || adds.length > 1)
+    throw new Error(`the install block has ${adds.length} pnpm add commands, not one`);
+  const added = add
+    .replace(/\\\n/g, " ")
+    .split(/\s+/)
+    .slice(2)
     .filter((arg) => arg !== "" && !arg.startsWith("-"))
-    // A package with its version, quoted where a shell would expand it: `zod@4.6.7`, or the build
-    // commit of this package, `'github:hephaestus-build/ichnaea#<build-commit>'`.
-    .map((arg) => arg.replace(/^'(.*)'$/, "$1"))
-    .map((arg) => (arg === BUILD_SPEC ? PACKAGE_NAME : arg.replace(/(.)@[^@]*$/, "$1")));
-  return { commands, added };
+    // A package with its version, `zod@4.6.7`, or the release URL of this package, in double
+    // quotes so that the shell expands the tag in it and nothing else.
+    .map((arg) => arg.replace(/^'(.*)'$|^"(.*)"$/, "$1$2"))
+    .map((arg) => (arg === RELEASE_SPEC ? PACKAGE_NAME : arg.replace(/(.)@[^@]*$/, "$1")));
+  return { commands, add, added };
 }
 
 /** The files of the example that its block copies into the project: the `$example/<file>.ts`. */

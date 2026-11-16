@@ -4,7 +4,6 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
-  BUILD_SPEC,
   copiedSources,
   decides,
   importedPackages,
@@ -12,6 +11,7 @@ import {
   PACKAGE_NAME,
   readmeExample,
   readmeInstall,
+  RELEASE_SPEC,
   workspaceZod,
 } from "./readme-example.ts";
 
@@ -54,12 +54,24 @@ describe("the README's five-minute example", () => {
 describe("the README's install", () => {
   const install = readmeInstall(readme);
 
-  it("adds zod and a build commit of the package", () => {
+  it("finds the latest release, downloads and verifies its tarball, and adds it with zod", () => {
+    const add = `pnpm add zod@${workspaceZod()} "${RELEASE_SPEC}"`;
     expect(install.commands).toEqual([
-      "pnpm pkg set type=module",
-      `pnpm add zod@${workspaceZod()} '${BUILD_SPEC}'`,
+      "TAG=$(gh release view -R hephaestus-build/ichnaea --json tagName -q .tagName)",
+      `gh release download "$TAG" -R hephaestus-build/ichnaea -p 'hephaestus-build-ichnaea-*.tgz'`,
+      'gh attestation verify "hephaestus-build-ichnaea-${TAG#v}.tgz" -R hephaestus-build/ichnaea \\\n' +
+        "  --signer-workflow hephaestus-build/ichnaea/.github/workflows/release.yml",
+      add,
     ]);
+    expect(install.add).toBe(add);
     expect(install.added).toEqual(["zod", PACKAGE_NAME]);
+  });
+
+  it("has exactly one pnpm add, the command that the consumer test runs", () => {
+    const twice = readme.replace(install.add, `${install.add}\npnpm add left-pad@1.3.0`);
+    expect(() => readmeInstall(twice)).toThrow(
+      "the install block has 2 pnpm add commands, not one",
+    );
   });
 
   it("adds every package that the copied files of the example import", () => {
@@ -68,7 +80,7 @@ describe("the README's install", () => {
   });
 
   it("fails when its pnpm add leaves out a package that the example imports", () => {
-    const broken = readme.replace(` '${BUILD_SPEC}'`, "");
+    const broken = readme.replace(` "${RELEASE_SPEC}"`, "");
     expect(broken).not.toBe(readme);
     expect(missingFromInstall(broken, exampleFile)).toEqual([
       "ichnaea.config.ts imports @hephaestus-build/ichnaea, which the README's pnpm add leaves out",
@@ -81,7 +93,8 @@ describe("the README's install", () => {
     expect(importedPackages(source)).toEqual(["@scope/b", "c"]);
   });
 
-  it("quotes the build commit's specifier, so that a shell does not read its # or < > as syntax", () => {
-    expect(install.commands.join(" ")).toContain(`'${BUILD_SPEC}'`);
+  it("double-quotes the release URL, so that a shell expands its tag and nothing else", () => {
+    expect(install.add).toContain(`"${RELEASE_SPEC}"`);
+    expect(RELEASE_SPEC).toContain("/releases/download/$TAG/hephaestus-build-ichnaea-${TAG#v}.tgz");
   });
 });

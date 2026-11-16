@@ -4,7 +4,10 @@
 // By default it assembles the build tree of the working tree (scripts/build-package.ts), and a second
 // one from a clone of the working tree at another path, and fails unless the two are byte-identical.
 // It checks the tree's manifest and SBOM, packs exactly that tree, and installs the tarball into a
-// new pnpm project outside the repository, with the README's install block. Then it fails unless:
+// new pnpm project outside the repository with the README's `pnpm add` command, its release URL
+// replaced by the tarball. The install block's other commands find, download and verify a published
+// release, so they need the network and a release, and the test does not run them. Then it fails
+// unless:
 // - installing runs no script, and one zod is installed;
 // - each subpath (`.`, `./contracts`, `./stats`, `./schemas/<record>.schema.json`) loads in Node;
 // - a consumer file type-checks under each consumer compiler profile with `skipLibCheck: false`,
@@ -41,11 +44,11 @@ import {
 } from "./build-package.ts";
 import { checkBuildTree } from "./check-sbom.ts";
 import {
-  BUILD_SPEC,
   decides,
   PACKAGE_NAME,
   readmeExample,
   readmeInstall,
+  RELEASE_SPEC,
   type Scenario,
 } from "./readme-example.ts";
 
@@ -227,10 +230,10 @@ function consume(spec: string, work: string): void {
     join(project, "package.json"),
     `${JSON.stringify({ private: true, packageManager: root.packageManager }, null, 2)}\n`,
   );
-  const commands = install.commands.map((c) => c.replaceAll(`'${BUILD_SPEC}'`, `'${spec}'`));
-  if (!commands.some((c) => c.includes(spec)))
-    throw new Error(`the README's install does not add '${BUILD_SPEC}'`);
-  const installed = spawnSync("sh", ["-ec", commands.join("\n")], {
+  if (!install.add.includes(`"${RELEASE_SPEC}"`))
+    throw new Error(`the README's pnpm add does not add "${RELEASE_SPEC}"`);
+  const add = install.add.replaceAll(`"${RELEASE_SPEC}"`, `'${spec}'`);
+  const installed = spawnSync("sh", ["-ec", add], {
     cwd: project,
     encoding: "utf8",
   });
