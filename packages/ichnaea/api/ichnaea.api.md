@@ -415,6 +415,12 @@ export class MonthlyCapError extends Error {
 export function neutralView(view: DecisionView): DecisionView;
 
 // @public
+export const NO_BOUND = "no bound";
+
+// @public
+export function noBoundReason(difference: Decision["measures"][number]["comparisons"][number]["difference"]): string;
+
+// @public
 export const NOT_CAPTURED = "not-captured";
 
 // @public
