@@ -133,10 +133,11 @@ describe("score permutation test: definition", () => {
   it("leaves out a case without a completed trial in an arm", () => {
     const table = units(4, [
       { candidate: [4, 3], base: [2, 3] },
-      { candidate: [2, 3], base: [3, 4] },
+      { candidate: [4, 4], base: [1, 2] },
     ]);
     const withMissing = [...table, { id: "gone", candidate: [], base: [0.5] }];
     expect(scorePermutationTest(withMissing)).toEqual(scorePermutationTest(table));
+    expect(scorePermutationTest(withMissing).statistic).toBeCloseTo((0.25 + 0.625) / 2, 15);
   });
 
   it("is 1 when every case is constant, and counts ties as at most the observed statistic", () => {
@@ -179,8 +180,19 @@ describe("score permutation test: the exact and the Monte Carlo path", () => {
     expect(first.resamples).toBe(SCORE_PERMUTATION_RESAMPLES);
     expect(first.seed).toBe(5);
     expect(scorePermutationTest(offLattice, { rng: createRng(5) })).toEqual(first);
-    // p = (1 + count) / (1 + B), so it is never 0.
-    expect(first.p).toBeGreaterThanOrEqual(1 / (1 + SCORE_PERMUTATION_RESAMPLES));
+    // p = (1 + count) / (1 + B): a multiple of 1/(1 + B), never 0.
+    const count = first.p * (1 + SCORE_PERMUTATION_RESAMPLES);
+    expect(Math.abs(count - Math.round(count))).toBeLessThan(1e-6);
+    // Every case drops as far as its values allow, so only the observed labelling (1 in 6^6) has
+    // T at most T observed, and 9 resamples find none: p = 1/10.
+    const floor = units(
+      1_000_000,
+      Array.from({ length: 6 }, (_, i) => ({
+        candidate: [100_001 + i, 200_003 + i],
+        base: [900_001 + i, 800_003 + i],
+      })),
+    );
+    expect(scorePermutationTest(floor, { rng: createRng(5), resamples: 9 }).p).toBe(0.1);
   });
 
   it("runs Monte Carlo when one case has more than 100,000 labellings", () => {
@@ -206,7 +218,16 @@ describe("score permutation test: the exact and the Monte Carlo path", () => {
     const far = scorePermutationTest(offLattice, { rng: createRng(5), levels: [0.0001] });
     expect(far.resamples).toBe(SCORE_PERMUTATION_RESAMPLES);
     const plain = scorePermutationTest(offLattice, { rng: createRng(5) });
-    const near = scorePermutationTest(offLattice, { rng: createRng(5), levels: [plain.p] });
+    const se = plain.monteCarloSE as number;
+    // 2.9 standard errors away is near; 3.1 is not.
+    expect(
+      scorePermutationTest(offLattice, { rng: createRng(5), levels: [plain.p + 3.1 * se] })
+        .resamples,
+    ).toBe(SCORE_PERMUTATION_RESAMPLES);
+    const near = scorePermutationTest(offLattice, {
+      rng: createRng(5),
+      levels: [0.0001, plain.p - 2.9 * se],
+    });
     expect(near.resamples).toBe(SCORE_PERMUTATION_RESAMPLES_NEAR_LEVEL);
     expect(near.seed).not.toBe(5);
     expect(near.monteCarloSE as number).toBeLessThan(plain.monteCarloSE as number);
