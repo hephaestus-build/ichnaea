@@ -351,14 +351,16 @@ Two workflows run the studies with `pnpm --filter @hephaestus-build/ichnaea run 
 - The `Nightly` workflow (`.github/workflows/nightly.yml`), job `simulation`: every day at 02:17
   UTC and on demand, with `ICHNAEA_SIM_REPS=10000` and a limit of 120 minutes.
 
-`test:sim` runs eight study files in parallel: `test/stats/coverage.sim.test.ts`,
+`test:sim` runs nine study files in parallel: `test/stats/coverage.sim.test.ts`,
 `test/stats/checks-coverage.sim.test.ts`, `test/stats/type-i-exact.sim.test.ts`,
 `test/stats/type-i-permutation-17.sim.test.ts`, `test/stats/type-i-permutation-60.sim.test.ts`,
 `test/stats/score-permutation-work.sim.test.ts`, which times the score permutation test at its work
-limit and judges no grid, and `test/stats/score-ni-equivalence.sim.test.ts`, which checks the score
-non-inferiority study's decision against the root-finder and judges no grid, and
-`test/stats/sentinel.sim.test.ts`, which checks the drift guard's simulated power against its exact
-power and judges no grid. Candidates are confirmed in the same run.
+limit and judges no grid, `test/stats/score-ni-equivalence.sim.test.ts`, which checks the score
+non-inferiority study's decision against the root-finder and judges no grid,
+`test/stats/score-ni-points.sim.test.ts`, which checks the roles, the reported points and the seeds
+of that study's points and judges no grid, and `test/stats/sentinel.sim.test.ts`, which checks the
+drift guard's simulated power against its exact power and judges no grid. Candidates are confirmed
+in the same run.
 
 The results at 6,000 repetitions, by the grid title that the CI log prints. Each study compares its
 result with its row here and fails if they differ, so a change to a grid or to its results changes
