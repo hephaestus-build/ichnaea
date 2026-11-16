@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:ichnaea:schema:cancel:1:reader",
   "title": "ichnaea.cancel/1 (reader)",
-  "description": "What Ichnaea sends to stop one trial in flight.",
+  "description": "What Ichnaea sends to stop one trial or one score request in flight.",
   "x-ichnaea-stability": "alpha",
   "oneOf": [
     {
@@ -106,7 +106,8 @@
             "replicate",
             "attempt"
           ]
-        }
+        },
+        "request": false
       },
       "required": [
         "schema",
@@ -139,7 +140,8 @@
             ],
             "retention": "record"
           }
-        }
+        },
+        "trial": false
       },
       "required": [
         "schema",

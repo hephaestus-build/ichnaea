@@ -125,7 +125,7 @@ export const RECORD_CONTRACTS: readonly RecordContract[] = [
     id: "ichnaea.cancel/1",
     schema: Cancel,
     stability: "alpha",
-    description: "What Ichnaea sends to stop one trial in flight.",
+    description: "What Ichnaea sends to stop one trial or one score request in flight.",
   },
   {
     name: "scoreRequest",

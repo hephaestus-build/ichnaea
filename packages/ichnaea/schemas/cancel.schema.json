@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:ichnaea:schema:cancel:1",
   "title": "ichnaea.cancel/1",
-  "description": "What Ichnaea sends to stop one trial in flight.",
+  "description": "What Ichnaea sends to stop one trial or one score request in flight.",
   "x-ichnaea-stability": "alpha",
   "oneOf": [
     {

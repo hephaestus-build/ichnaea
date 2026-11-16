@@ -339,6 +339,26 @@ describe("the worker protocol", () => {
     expect(nested.ok && nested.unknownMembers).toEqual([["observed", "code", "signed"]]);
   });
 
+  it("refuses, for the reader too, a cancel that names both a trial and a score request", () => {
+    const contract = contractFor("ichnaea.cancel/1")!;
+    expect(contract.description).toBe(
+      "What Ichnaea sends to stop one trial or one score request in flight.",
+    );
+    const trial = fixture("valid", "cancel.json")["trial"];
+    // Whether or not either member is valid, a process never guesses which one to stop.
+    for (const both of [
+      { schema: "ichnaea.cancel/1", trial: {}, request: "score-0001" },
+      { schema: "ichnaea.cancel/1", trial, request: "bad id" },
+      { schema: "ichnaea.cancel/1", trial, request: "score-0001" },
+    ]) {
+      expect(Cancel.safeParse(both).success).toBe(false);
+      expect(readRecord(contract, both).ok, JSON.stringify(both)).toBe(false);
+    }
+    expect(readRecord(contract, { schema: "ichnaea.cancel/1", request: "score-0001" }).ok).toBe(
+      true,
+    );
+  });
+
   it("cancels one trial by its identity, and says nothing else", () => {
     const cancel = Cancel.parse(fixture("valid", "cancel.json"));
     expect(Object.keys(cancel).toSorted()).toEqual(["schema", "trial"]);

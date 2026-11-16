@@ -123,6 +123,7 @@ function relax(node: unknown): unknown {
   const tagged = out["oneOf"];
   if (Array.isArray(tagged)) {
     const discriminator = discriminatorOf(tagged as Array<Record<string, unknown>>);
+    if (!discriminator) exclusiveMembers(tagged as Array<Record<string, unknown>>);
     if (discriminator) {
       // A kind added later still reads: any object with a string discriminator. With the fallback
       // more than one option can match, so the reader uses anyOf.
@@ -156,6 +157,24 @@ function relax(node: unknown): unknown {
 function notOneOf(values: readonly unknown[]): string {
   const escaped = values.map((v) => String(v).replaceAll(/[.*+?^${}()|[\]\\/-]/g, "\\$&"));
   return `^(?!(?:${escaped.join("|")})$)`;
+}
+
+/**
+ * In an exclusive union without a tag (zod's `xor`), each option refuses the members that only a
+ * sibling option defines. The reader ignores unknown members, so without this a value with a
+ * member of each option would read as the one option whose member is valid. A member of another
+ * option is a conflict, not a member that a later minor version added.
+ */
+function exclusiveMembers(options: ReadonlyArray<Record<string, unknown>>): void {
+  const members = options.map(
+    (o) => new Set(Object.keys((o["properties"] as Record<string, unknown> | undefined) ?? {})),
+  );
+  options.forEach((option, i) => {
+    const props = option["properties"] as Record<string, unknown> | undefined;
+    if (!props) return;
+    for (const [j, other] of members.entries())
+      for (const key of other) if (j !== i && !members[i]!.has(key)) props[key] = false;
+  });
 }
 
 /** The members that every option of a tagged union requires and fixes to one same constant. */
