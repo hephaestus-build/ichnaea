@@ -113,3 +113,28 @@ Its sha256 in `SHA256SUMS` identifies the copy.
 
 `sweep-job.ts` and `collect-sweep.ts` take `--margins i,j` and `--jobs n` to run a small subset of the matrix on one machine.
 The scripts refuse to run with uncommitted changes to tracked files.
+
+## Sharded studies of the score methods
+
+`.github/workflows/stats-study.yml` runs one study per dispatch: `score-type-i` (the score
+permutation test's type-I study) or `score-ni` (the non-inferiority study). `study-plan.ts` holds
+the table of each study's scripts and plans the jobs.
+
+1. **prepare** (only `score-ni`): `score-ni-seeds.ts` checks the seeds and writes the seed manifest,
+   and `collect-score-ni.ts structures` checks the structures. The manifest is kept as an artifact.
+2. **screen:** J jobs (`jobs`, default 40). Job j runs shards 4j to 4j + 3 of 4J, one process each.
+3. **select:** the collector checks every screen output and writes the points to rerun.
+4. **recheck** or **confirm:** R jobs (`second_jobs`) over those points.
+5. **verdict:** the collector writes `summary.json` and `summary.md` and fails when the study fails.
+   It runs when a job before it failed too, so that the summary names what is missing.
+
+A pilot lists screen shards in `pilot`, for example `0,57`, and stops after the screen. Each pilot
+shard runs as its own job at the full screen's shard count, so its rows and time are the full run's.
+
+```sh
+gh workflow run stats-study.yml --ref main -f study=score-ni -f pilot=0,57
+gh workflow run stats-study.yml --ref main -f study=score-ni -f jobs=40 -f second_jobs=40
+```
+
+No ICHNAEA_* variable is set. Any override makes a smoke run, which the collectors refuse without
+`--smoke`. The plan refuses more than 256 jobs in one matrix.
