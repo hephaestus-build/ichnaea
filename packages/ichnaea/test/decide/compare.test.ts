@@ -152,6 +152,32 @@ describe("compare", () => {
     );
   });
 
+  it("at one trial per case, never validates a REGRESSION from results without times", () => {
+    const one = createPlan(
+      { ...SUITE, trials: { default: 1 } },
+      {
+        run: "one",
+        seed: 1,
+        createdAt: "2026-11-16T12:00:00Z",
+        base,
+        candidate,
+        intendedChanges: ["/prompts/composer"],
+      },
+    );
+    const untimed = one.record.trials.map((t) => ({
+      result: answer(t, { text: roleOf(one, t.arm) === "base" ? "answer" : "", declined: true }),
+    }));
+    const decision = compare(one, importResults(one, untimed).records, { decidedAt });
+    expect(decision.mode).toBe("decision");
+    expect(decision.verdict).toBe("INCONCLUSIVE");
+    const answered = decision.measures.find((m) => m.measure === "composer/answered")!;
+    expect(answered.verdict).toBe("INCONCLUSIVE");
+    expect(answered.comparisons[0]?.regression.validated).toBe(false);
+    expect(answered.comparisons[0]?.regression.limitations).toContain(
+      "the records do not show when the arms ran",
+    );
+  });
+
   it("is INVALID when the records belong to another plan", () => {
     const other = createPlan(SUITE, {
       run: "run-2",

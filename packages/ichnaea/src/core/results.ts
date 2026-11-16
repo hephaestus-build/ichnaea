@@ -28,15 +28,26 @@ import { type SuitePlan, suiteMeasures, suiteRecords } from "./suite.ts";
 /**
  * A worker's answer for one trial, `ichnaea.trialResult/1`, with the times of the trial when the
  * importer knows them. The result itself carries no times: Ichnaea measures them when it runs the
- * trial, and an importer of results that already exist passes them beside the result. A trial at
- * one trial per case and arm needs both times to check its pair's order.
+ * trial, and an importer of results that already exist passes them beside the result.
+ *
+ * Without both times, a result is still imported and scored. What the times change:
+ *
+ * - At one trial per case and arm, `compare` checks each pair's order and adjacency from the times
+ *   (VALIDATION.md, "One trial per case"). If any trial that ran lacks `startedAt` or `endedAt`,
+ *   that check fails with the reason "the records do not show when the arms ran": the regression
+ *   result is not validated, so every primary measure is INCONCLUSIVE, never REGRESSION or PASS.
+ *   The plan stays in decision mode, and the reason is in each comparison's
+ *   `regression.limitations`. A trial not run needs no time.
+ * - At two or more trials per case and arm, `compare` reads no trial time. The times only set the
+ *   run's `startedAt` and `completedAt`: the earliest start and the latest end, or the plan's
+ *   `createdAt` when no result has a time.
  */
 export interface TimedResult {
   /** The worker's answer, as the worker wrote it. */
   readonly result: TrialResult;
-  /** When the trial started, ISO 8601. */
+  /** When the trial started, ISO 8601. At one trial per case, a validated REGRESSION needs it. */
   readonly startedAt?: string;
-  /** When the trial ended, ISO 8601. */
+  /** When the trial ended, ISO 8601. At one trial per case, a validated REGRESSION needs it. */
   readonly endedAt?: string;
 }
 

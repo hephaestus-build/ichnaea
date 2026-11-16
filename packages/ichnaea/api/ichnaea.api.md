@@ -8,11 +8,8 @@ import * as z from 'zod';
 
 // @public
 export interface AaEvidence {
-    // Warning: (ae-forgotten-export) The symbol "Decision" needs to be exported by the entry point index.d.ts
     readonly decision: Decision;
-    // Warning: (ae-forgotten-export) The symbol "Plan" needs to be exported by the entry point index.d.ts
     readonly plan: Plan;
-    // Warning: (ae-forgotten-export) The symbol "Run" needs to be exported by the entry point index.d.ts
     readonly run: Run;
 }
 
@@ -20,6 +17,9 @@ export interface AaEvidence {
 export class AppendOnlyError extends Error {
     readonly name = "AppendOnlyError";
 }
+
+// @public
+export type ArmCounts = Count;
 
 // @public
 export function binary(options: BinaryOptions): BinaryMeasure;
@@ -49,7 +49,6 @@ export interface BinaryMeasure extends BinaryOptions {
 
 // @public
 export interface BinaryOptions {
-    // Warning: (ae-forgotten-export) The symbol "Case" needs to be exported by the entry point index.d.ts
     readonly appliesTo?: (c: Case) => boolean;
     readonly card?: BinaryCardText;
     readonly examples?: {
@@ -78,6 +77,172 @@ export class CallLedger {
     }>;
     readonly root: string;
     used(endpoint: string, at: string): Promise<number>;
+}
+
+// @public
+export const Case: z.ZodObject<{
+    schema: z.ZodLiteral<"ichnaea.case/1">;
+    id: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
+    caseSet: z.ZodOptional<z.core.$ZodBranded<z.ZodString, "CaseSetId", "out">>;
+    unit: z.ZodEnum<{
+        episode: "episode";
+        session: "session";
+        trace: "trace";
+        turn: "turn";
+    }>;
+    dataClass: z.ZodEnum<{
+        none: "none";
+        personal: "personal";
+        pseudonymous: "pseudonymous";
+        special: "special";
+    }>;
+    input: z.ZodRecord<z.ZodString, z.ZodJSONSchema>;
+    turns: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        role: z.ZodEnum<{
+            assistant: "assistant";
+            system: "system";
+            tool: "tool";
+            user: "user";
+        }>;
+        content: z.ZodJSONSchema;
+    }, z.core.$strict>>>;
+    fixtures: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        name: z.ZodString;
+        digest: z.ZodString;
+        uri: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>>>;
+    references: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodJSONSchema>>;
+    family: z.ZodOptional<z.ZodString>;
+    slices: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+    criticality: z.ZodOptional<z.ZodEnum<{
+        critical: "critical";
+        high: "high";
+        low: "low";
+        normal: "normal";
+    }>>;
+    provenance: z.ZodDiscriminatedUnion<[z.ZodObject<{
+        selection: z.ZodEnum<{
+            curated: "curated";
+            generated: "generated";
+            promoted: "promoted";
+            random: "random";
+        }>;
+        author: z.ZodOptional<z.ZodString>;
+        created: z.ZodISODate;
+        collected: z.ZodOptional<z.ZodISODate>;
+        licence: z.ZodString;
+        exposure: z.ZodEnum<{
+            private: "private";
+            public: "public";
+            sealed: "sealed";
+        }>;
+        source: z.ZodLiteral<"authored">;
+    }, z.core.$strict>, z.ZodObject<{
+        selection: z.ZodEnum<{
+            curated: "curated";
+            generated: "generated";
+            promoted: "promoted";
+            random: "random";
+        }>;
+        author: z.ZodOptional<z.ZodString>;
+        created: z.ZodISODate;
+        collected: z.ZodOptional<z.ZodISODate>;
+        licence: z.ZodString;
+        exposure: z.ZodEnum<{
+            private: "private";
+            public: "public";
+            sealed: "sealed";
+        }>;
+        source: z.ZodLiteral<"generated">;
+        generator: z.ZodObject<{
+            method: z.ZodString;
+            model: z.ZodOptional<z.ZodString>;
+            seedSource: z.ZodOptional<z.ZodString>;
+        }, z.core.$strict>;
+    }, z.core.$strict>, z.ZodObject<{
+        selection: z.ZodEnum<{
+            curated: "curated";
+            generated: "generated";
+            promoted: "promoted";
+            random: "random";
+        }>;
+        author: z.ZodOptional<z.ZodString>;
+        created: z.ZodISODate;
+        collected: z.ZodOptional<z.ZodISODate>;
+        licence: z.ZodString;
+        exposure: z.ZodEnum<{
+            private: "private";
+            public: "public";
+            sealed: "sealed";
+        }>;
+        source: z.ZodLiteral<"reused">;
+        reusedDataset: z.ZodObject<{
+            name: z.ZodString;
+            version: z.ZodOptional<z.ZodString>;
+            limits: z.ZodString;
+        }, z.core.$strict>;
+    }, z.core.$strict>, z.ZodObject<{
+        selection: z.ZodEnum<{
+            curated: "curated";
+            generated: "generated";
+            promoted: "promoted";
+            random: "random";
+        }>;
+        author: z.ZodOptional<z.ZodString>;
+        created: z.ZodISODate;
+        licence: z.ZodString;
+        exposure: z.ZodEnum<{
+            private: "private";
+            public: "public";
+            sealed: "sealed";
+        }>;
+        source: z.ZodLiteral<"collected">;
+        collected: z.ZodISODate;
+    }, z.core.$strict>, z.ZodObject<{
+        selection: z.ZodEnum<{
+            curated: "curated";
+            generated: "generated";
+            promoted: "promoted";
+            random: "random";
+        }>;
+        author: z.ZodOptional<z.ZodString>;
+        created: z.ZodISODate;
+        collected: z.ZodOptional<z.ZodISODate>;
+        licence: z.ZodString;
+        exposure: z.ZodEnum<{
+            private: "private";
+            public: "public";
+            sealed: "sealed";
+        }>;
+        source: z.ZodLiteral<"promoted">;
+        finding: z.core.$ZodBranded<z.ZodString, "FindingId", "out">;
+    }, z.core.$strict>], "source">;
+    pool: z.ZodEnum<{
+        development: "development";
+        promoted: "promoted";
+        sealed: "sealed";
+        validation: "validation";
+    }>;
+    validation: z.ZodOptional<z.ZodObject<{
+        status: z.ZodEnum<{
+            draft: "draft";
+            reviewed: "reviewed";
+            suspect: "suspect";
+            validated: "validated";
+        }>;
+        note: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>>;
+}, z.core.$strict>;
+
+// @public
+export type Case = z.infer<typeof Case>;
+
+// @public
+export interface CaseCounts {
+    readonly base: ArmCounts;
+    readonly candidate: ArmCounts;
+    readonly family?: string;
+    readonly id: string;
 }
 
 // @public @deprecated
@@ -110,6 +275,19 @@ export function compare(plan: SuitePlan, records: RunRecords, options: {
     readonly aa?: readonly AaEvidence[];
 }): Decision;
 
+// @public
+export interface Comparison {
+    readonly difference: Interval;
+    readonly estimand: StatsEstimand;
+    readonly excludedCases: number;
+    readonly nonInferiority: Validity;
+    readonly nonInferiorityP: number;
+    readonly regression: Validity;
+    readonly regressionMethod: string;
+    readonly regressionP: number;
+    readonly usedCases: number;
+}
+
 // @public @deprecated
 export interface Config<Plugins extends readonly Plugin[] = readonly Plugin[]> {
     readonly allowStability?: readonly Exclude<Stability, "stable">[];
@@ -118,17 +296,116 @@ export interface Config<Plugins extends readonly Plugin[] = readonly Plugin[]> {
     readonly store?: string;
 }
 
+// @public
+export const Configuration: z.ZodObject<{
+    schema: z.ZodLiteral<"ichnaea.configuration/1">;
+    description: z.ZodString;
+    models: z.ZodArray<z.ZodObject<{
+        role: z.ZodString;
+        provider: z.ZodObject<{
+            value: z.ZodString;
+            status: z.ZodEnum<{
+                declared: "declared";
+                pinned: "pinned";
+            }>;
+        }, z.core.$strict>;
+        id: z.ZodObject<{
+            value: z.ZodString;
+            status: z.ZodEnum<{
+                declared: "declared";
+                pinned: "pinned";
+            }>;
+        }, z.core.$strict>;
+        version: z.ZodOptional<z.ZodObject<{
+            value: z.ZodString;
+            status: z.ZodEnum<{
+                declared: "declared";
+                pinned: "pinned";
+            }>;
+        }, z.core.$strict>>;
+        route: z.ZodOptional<z.ZodObject<{
+            value: z.ZodString;
+            status: z.ZodEnum<{
+                declared: "declared";
+                pinned: "pinned";
+            }>;
+        }, z.core.$strict>>;
+    }, z.core.$strict>>;
+    parameters: z.ZodArray<z.ZodObject<{
+        name: z.ZodString;
+        value: z.ZodJSONSchema;
+        status: z.ZodEnum<{
+            declared: "declared";
+            pinned: "pinned";
+            uncontrollable: "uncontrollable";
+        }>;
+        origin: z.ZodEnum<{
+            default: "default";
+            explicit: "explicit";
+        }>;
+    }, z.core.$strict>>;
+    prompts: z.ZodArray<z.ZodObject<{
+        name: z.ZodString;
+        digest: z.ZodString;
+        status: z.ZodEnum<{
+            declared: "declared";
+            observed: "observed";
+            pinned: "pinned";
+            uncontrollable: "uncontrollable";
+        }>;
+        template: z.ZodOptional<z.ZodString>;
+        uri: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>>;
+    factors: z.ZodRecord<z.ZodString, z.ZodObject<{
+        value: z.ZodJSONSchema;
+        status: z.ZodEnum<{
+            declared: "declared";
+            observed: "observed";
+            pinned: "pinned";
+            uncontrollable: "uncontrollable";
+        }>;
+        part: z.ZodEnum<{
+            code: "code";
+            data: "data";
+            model: "model";
+            other: "other";
+            parameter: "parameter";
+            prompt: "prompt";
+            runtime: "runtime";
+            setting: "setting";
+            tool: "tool";
+        }>;
+    }, z.core.$strict>>;
+    label: z.ZodOptional<z.ZodString>;
+    informational: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodJSONSchema>>;
+}, z.core.$strict>;
+
+// @public
+export type Configuration = z.infer<typeof Configuration>;
+
 // @public @deprecated
 export const CORE_COMMANDS: readonly string[];
 
 // @public
 export const CORE_VERSION: string;
 
+// @public
+export interface Count {
+    readonly successes: number;
+    readonly trials: number;
+}
+
 // @public @deprecated
 export function createHost(config: Config, versions: HostVersions, log?: (message: string) => void): Host;
 
 // @public
 export function createPlan<const S extends SuiteDefinition>(suite: S, comparison: PlanComparison): SuitePlan<S>;
+
+// @public
+export const DATA_CLASSES: readonly ["none", "pseudonymous", "personal", "special"];
+
+// @public
+export type DataClass = (typeof DATA_CLASSES)[number];
 
 // @public @deprecated
 export function decide(input: DecideInput): Decision;
@@ -143,14 +420,11 @@ export function decideEgress(request: EgressRequest, hooks: ReadonlyArray<[Plugi
 export interface DecideInput {
     readonly aa?: readonly AaEvidence[];
     readonly decidedAt: string;
-    // Warning: (ae-forgotten-export) The symbol "GateResult" needs to be exported by the entry point index.d.ts
     readonly gates: readonly GateResult[];
     readonly ichnaea: string;
     readonly plan: Plan;
     readonly run: Run;
-    // Warning: (ae-forgotten-export) The symbol "Trial" needs to be exported by the entry point index.d.ts
     readonly trials: readonly Trial[];
-    // Warning: (ae-forgotten-export) The symbol "MeasureValue" needs to be exported by the entry point index.d.ts
     readonly values: readonly MeasureValue[];
 }
 
@@ -159,6 +433,350 @@ export function decidePlugin(): Plugin<"decide">;
 
 // @public
 export function decidePrimaries(input: PrimariesInput): Map<string, PrimaryVerdict>;
+
+// @public
+export const Decision: z.ZodObject<{
+    schema: z.ZodLiteral<"ichnaea.decision/1">;
+    mode: z.ZodEnum<{
+        decision: "decision";
+        "estimate-only": "estimate-only";
+    }>;
+    verdict: z.ZodNullable<z.ZodEnum<{
+        INCONCLUSIVE: "INCONCLUSIVE";
+        INVALID: "INVALID";
+        PASS: "PASS";
+        REGRESSION: "REGRESSION";
+    }>>;
+    reason: z.ZodString;
+    scope: z.ZodString;
+    plan: z.core.$ZodBranded<z.ZodString, "PlanDigest", "out">;
+    run: z.core.$ZodBranded<z.ZodString, "RunId", "out">;
+    runDigest: z.ZodString;
+    arms: z.ZodArray<z.ZodObject<{
+        name: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
+        role: z.ZodEnum<{
+            base: "base";
+            candidate: "candidate";
+            reference: "reference";
+        }>;
+        identity: z.core.$ZodBranded<z.ZodString, "ConfigurationIdentity", "out">;
+    }, z.core.$strict>>;
+    differingFactors: z.ZodArray<z.ZodString>;
+    alpha: z.ZodNumber;
+    measures: z.ZodArray<z.ZodObject<{
+        measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+        version: z.ZodString;
+        tier: z.ZodEnum<{
+            primary: "primary";
+            secondary: "secondary";
+        }>;
+        estimand: z.ZodEnum<{
+            "fixed-cases": "fixed-cases";
+            "sampled-cases": "sampled-cases";
+        }>;
+        arms: z.ZodArray<z.ZodObject<{
+            arm: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
+            rate: z.ZodObject<{
+                estimate: z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
+                    nonFinite: z.ZodEnum<{
+                        "-inf": "-inf";
+                        inf: "inf";
+                        nan: "nan";
+                    }>;
+                }, z.core.$strict>]>;
+                lower: z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
+                    nonFinite: z.ZodEnum<{
+                        "-inf": "-inf";
+                        inf: "inf";
+                        nan: "nan";
+                    }>;
+                }, z.core.$strict>]>;
+                upper: z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
+                    nonFinite: z.ZodEnum<{
+                        "-inf": "-inf";
+                        inf: "inf";
+                        nan: "nan";
+                    }>;
+                }, z.core.$strict>]>;
+                level: z.ZodNumber;
+                sided: z.ZodEnum<{
+                    lower: "lower";
+                    two: "two";
+                    upper: "upper";
+                }>;
+                method: z.ZodString;
+            }, z.core.$strict>;
+            availability: z.ZodObject<{
+                planned: z.ZodInt;
+                available: z.ZodInt;
+                notApplicable: z.ZodInt;
+                missing: z.ZodInt;
+            }, z.core.$strict>;
+        }, z.core.$strict>>;
+        comparisons: z.ZodArray<z.ZodObject<{
+            base: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
+            candidate: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
+            difference: z.ZodObject<{
+                estimate: z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
+                    nonFinite: z.ZodEnum<{
+                        "-inf": "-inf";
+                        inf: "inf";
+                        nan: "nan";
+                    }>;
+                }, z.core.$strict>]>;
+                lower: z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
+                    nonFinite: z.ZodEnum<{
+                        "-inf": "-inf";
+                        inf: "inf";
+                        nan: "nan";
+                    }>;
+                }, z.core.$strict>]>;
+                upper: z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
+                    nonFinite: z.ZodEnum<{
+                        "-inf": "-inf";
+                        inf: "inf";
+                        nan: "nan";
+                    }>;
+                }, z.core.$strict>]>;
+                level: z.ZodNumber;
+                sided: z.ZodEnum<{
+                    lower: "lower";
+                    two: "two";
+                    upper: "upper";
+                }>;
+                method: z.ZodString;
+            }, z.core.$strict>;
+            margin: z.ZodNumber;
+            safetyMargin: z.ZodNumber;
+            nonInferiorityP: z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
+                nonFinite: z.ZodEnum<{
+                    "-inf": "-inf";
+                    inf: "inf";
+                    nan: "nan";
+                }>;
+            }, z.core.$strict>]>;
+            regressionP: z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
+                nonFinite: z.ZodEnum<{
+                    "-inf": "-inf";
+                    inf: "inf";
+                    nan: "nan";
+                }>;
+            }, z.core.$strict>]>;
+            regressionPAdjusted: z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
+                nonFinite: z.ZodEnum<{
+                    "-inf": "-inf";
+                    inf: "inf";
+                    nan: "nan";
+                }>;
+            }, z.core.$strict>]>;
+            regressionMethod: z.ZodString;
+            regression: z.ZodDiscriminatedUnion<[z.ZodObject<{
+                validated: z.ZodLiteral<true>;
+                limitations: z.ZodArray<z.ZodString>;
+            }, z.core.$strict>, z.ZodObject<{
+                validated: z.ZodLiteral<false>;
+                limitations: z.ZodArray<z.ZodString>;
+            }, z.core.$strict>], "validated">;
+            nonInferiority: z.ZodDiscriminatedUnion<[z.ZodObject<{
+                validated: z.ZodLiteral<true>;
+                limitations: z.ZodArray<z.ZodString>;
+            }, z.core.$strict>, z.ZodObject<{
+                validated: z.ZodLiteral<false>;
+                limitations: z.ZodArray<z.ZodString>;
+            }, z.core.$strict>], "validated">;
+            flips: z.ZodArray<z.ZodObject<{
+                case: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
+                direction: z.ZodEnum<{
+                    negative: "negative";
+                    positive: "positive";
+                }>;
+                base: z.ZodNumber;
+                candidate: z.ZodNumber;
+            }, z.core.$strict>>;
+        }, z.core.$strict>>;
+        verdict: z.ZodEnum<{
+            "ESTIMATE-ONLY": "ESTIMATE-ONLY";
+            INCONCLUSIVE: "INCONCLUSIVE";
+            "NON-INFERIOR": "NON-INFERIOR";
+            REGRESSION: "REGRESSION";
+        }>;
+        coverage: z.ZodNumber;
+        sensitivity: z.ZodArray<z.ZodObject<{
+            imputation: z.ZodEnum<{
+                "against-non-inferiority": "against-non-inferiority";
+                "against-regression": "against-regression";
+            }>;
+            difference: z.ZodObject<{
+                estimate: z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
+                    nonFinite: z.ZodEnum<{
+                        "-inf": "-inf";
+                        inf: "inf";
+                        nan: "nan";
+                    }>;
+                }, z.core.$strict>]>;
+                lower: z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
+                    nonFinite: z.ZodEnum<{
+                        "-inf": "-inf";
+                        inf: "inf";
+                        nan: "nan";
+                    }>;
+                }, z.core.$strict>]>;
+                upper: z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
+                    nonFinite: z.ZodEnum<{
+                        "-inf": "-inf";
+                        inf: "inf";
+                        nan: "nan";
+                    }>;
+                }, z.core.$strict>]>;
+                level: z.ZodNumber;
+                sided: z.ZodEnum<{
+                    lower: "lower";
+                    two: "two";
+                    upper: "upper";
+                }>;
+                method: z.ZodString;
+            }, z.core.$strict>;
+            nonInferiorityP: z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
+                nonFinite: z.ZodEnum<{
+                    "-inf": "-inf";
+                    inf: "inf";
+                    nan: "nan";
+                }>;
+            }, z.core.$strict>]>;
+            regressionPAdjusted: z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
+                nonFinite: z.ZodEnum<{
+                    "-inf": "-inf";
+                    inf: "inf";
+                    nan: "nan";
+                }>;
+            }, z.core.$strict>]>;
+            regression: z.ZodDiscriminatedUnion<[z.ZodObject<{
+                validated: z.ZodLiteral<true>;
+                limitations: z.ZodArray<z.ZodString>;
+            }, z.core.$strict>, z.ZodObject<{
+                validated: z.ZodLiteral<false>;
+                limitations: z.ZodArray<z.ZodString>;
+            }, z.core.$strict>], "validated">;
+            nonInferiority: z.ZodDiscriminatedUnion<[z.ZodObject<{
+                validated: z.ZodLiteral<true>;
+                limitations: z.ZodArray<z.ZodString>;
+            }, z.core.$strict>, z.ZodObject<{
+                validated: z.ZodLiteral<false>;
+                limitations: z.ZodArray<z.ZodString>;
+            }, z.core.$strict>], "validated">;
+            verdict: z.ZodEnum<{
+                "ESTIMATE-ONLY": "ESTIMATE-ONLY";
+                INCONCLUSIVE: "INCONCLUSIVE";
+                "NON-INFERIOR": "NON-INFERIOR";
+                REGRESSION: "REGRESSION";
+            }>;
+            changesVerdict: z.ZodBoolean;
+        }, z.core.$strict>>;
+        notes: z.ZodArray<z.ZodString>;
+    }, z.core.$strict>>;
+    gates: z.ZodArray<z.ZodObject<{
+        gate: z.core.$ZodBranded<z.ZodString, "GateId", "out">;
+        passed: z.ZodBoolean;
+        failures: z.ZodInt;
+        detail: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>>;
+    power: z.ZodObject<{
+        planning: z.ZodArray<z.ZodDiscriminatedUnion<[z.ZodObject<{
+            computed: z.ZodLiteral<true>;
+            measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+            applicableCases: z.ZodInt;
+            replicates: z.ZodInt;
+            margin: z.ZodNumber;
+            mde: z.ZodNumber;
+            floor: z.ZodNumber;
+            sampledCasesFloor: z.ZodOptional<z.ZodNumber>;
+            assumption: z.ZodString;
+            decidable: z.ZodBoolean;
+        }, z.core.$strict>, z.ZodDiscriminatedUnion<[z.ZodObject<{
+            computed: z.ZodLiteral<false>;
+            measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+            applicableCases: z.ZodInt;
+            replicates: z.ZodInt;
+            margin: z.ZodNumber;
+            reason: z.ZodEnum<{
+                "fixed-cases needs at least 2 trials per case and arm": "fixed-cases needs at least 2 trials per case and arm";
+                "no applicable case with a base value": "no applicable case with a base value";
+                "run invalid": "run invalid";
+                "the plan carries no planning statement, and none can be computed from it": "the plan carries no planning statement, and none can be computed from it";
+            }>;
+        }, z.core.$strict>, z.ZodObject<{
+            computed: z.ZodLiteral<false>;
+            measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+            applicableCases: z.ZodInt;
+            replicates: z.ZodInt;
+            margin: z.ZodNumber;
+            reason: z.ZodLiteral<"the plan carries no planning statement, and its margin is refused">;
+            refusal: z.ZodString;
+        }, z.core.$strict>], "reason">], "computed">>;
+        run: z.ZodArray<z.ZodDiscriminatedUnion<[z.ZodObject<{
+            computed: z.ZodLiteral<true>;
+            measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+            applicableCases: z.ZodInt;
+            replicates: z.ZodInt;
+            margin: z.ZodNumber;
+            mde: z.ZodNumber;
+            floor: z.ZodNumber;
+            sampledCasesFloor: z.ZodOptional<z.ZodNumber>;
+            assumption: z.ZodString;
+            decidable: z.ZodBoolean;
+        }, z.core.$strict>, z.ZodDiscriminatedUnion<[z.ZodObject<{
+            computed: z.ZodLiteral<false>;
+            measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+            applicableCases: z.ZodInt;
+            replicates: z.ZodInt;
+            margin: z.ZodNumber;
+            reason: z.ZodEnum<{
+                "fixed-cases needs at least 2 trials per case and arm": "fixed-cases needs at least 2 trials per case and arm";
+                "no applicable case with a base value": "no applicable case with a base value";
+                "run invalid": "run invalid";
+                "the plan carries no planning statement, and none can be computed from it": "the plan carries no planning statement, and none can be computed from it";
+            }>;
+        }, z.core.$strict>, z.ZodObject<{
+            computed: z.ZodLiteral<false>;
+            measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+            applicableCases: z.ZodInt;
+            replicates: z.ZodInt;
+            margin: z.ZodNumber;
+            reason: z.ZodLiteral<"the plan carries no planning statement, and its margin is refused">;
+            refusal: z.ZodString;
+        }, z.core.$strict>], "reason">], "computed">>;
+    }, z.core.$strict>;
+    missingness: z.ZodObject<{
+        byArm: z.ZodArray<z.ZodObject<{
+            arm: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
+            missing: z.ZodInt;
+            planned: z.ZodInt;
+        }, z.core.$strict>>;
+        differs: z.ZodBoolean;
+        sensitivity: z.ZodEnum<{
+            "changes-verdict": "changes-verdict";
+            "not-needed": "not-needed";
+            unchanged: "unchanged";
+        }>;
+    }, z.core.$strict>;
+    invalidReasons: z.ZodArray<z.ZodString>;
+    limitations: z.ZodArray<z.ZodString>;
+    seed: z.ZodObject<{
+        algorithm: z.ZodString;
+        value: z.ZodString;
+    }, z.core.$strict>;
+    decidedAt: z.ZodISODateTime;
+    ichnaea: z.ZodString;
+    dataClass: z.ZodEnum<{
+        none: "none";
+        personal: "personal";
+        pseudonymous: "pseudonymous";
+        special: "special";
+    }>;
+}, z.core.$strict>;
+
+// @public
+export type Decision = z.infer<typeof Decision>;
 
 // @public
 export interface DecisionView {
@@ -228,24 +846,46 @@ export type EgressAnswer = {
 
 // @public @deprecated
 export interface EgressRequest {
-    // Warning: (ae-forgotten-export) The symbol "DataClass" needs to be exported by the entry point index.d.ts
     readonly dataClass: DataClass;
     readonly destination: string;
     readonly operation: "sample" | "label-publish" | "promote" | "export" | "share" | "model-call";
     readonly pointers: readonly string[];
-    // Warning: (ae-forgotten-export) The symbol "Purpose" needs to be exported by the entry point index.d.ts
     readonly purpose: Purpose;
 }
+
+// @public
+export const Estimand: z.ZodEnum<{
+    "fixed-cases": "fixed-cases";
+    "sampled-cases": "sampled-cases";
+}>;
+
+// @public
+export type Estimand = z.infer<typeof Estimand>;
 
 // @public
 export function exitCode(decision: Decision, policy: Plan["policy"]): number;
 
 // @public
 export interface ExplainedValue {
-    // Warning: (ae-forgotten-export) The symbol "MeasuredValue" needs to be exported by the entry point index.d.ts
     readonly value: MeasuredValue | undefined;
     readonly why?: string;
 }
+
+// @public
+export const FactorPart: z.ZodEnum<{
+    code: "code";
+    data: "data";
+    model: "model";
+    other: "other";
+    parameter: "parameter";
+    prompt: "prompt";
+    runtime: "runtime";
+    setting: "setting";
+    tool: "tool";
+}>;
+
+// @public
+export type FactorPart = z.infer<typeof FactorPart>;
 
 // @public
 export class FileStore {
@@ -281,6 +921,17 @@ export interface GateDefinition<Id extends string = string> {
 export type GateIdsOf<Plugins extends readonly Plugin[]> = Plugins[number] extends infer P ? P extends {
     readonly gates: readonly GateDefinition<infer Id>[];
 } ? Id : never : never;
+
+// @public
+export const GateResult: z.ZodObject<{
+    gate: z.core.$ZodBranded<z.ZodString, "GateId", "out">;
+    passed: z.ZodBoolean;
+    failures: z.ZodInt;
+    detail: z.ZodOptional<z.ZodString>;
+}, z.core.$strict>;
+
+// @public
+export type GateResult = z.infer<typeof GateResult>;
 
 // @public @deprecated
 export const HOOK_MODES: {
@@ -407,13 +1058,23 @@ export interface ImportRunInput {
 export interface ImportSummary {
     readonly earlierAttempts: readonly EarlierAttempt[];
     readonly notRun: number;
-    // Warning: (ae-forgotten-export) The symbol "Outcome" needs to be exported by the entry point index.d.ts
     readonly outcomes: Readonly<Partial<Record<Outcome, number>>>;
     readonly rows: number;
     readonly trials: number;
     readonly unused: readonly string[];
     readonly values: number;
     readonly warnings: readonly string[];
+}
+
+// @public
+export interface Interval {
+    readonly estimand?: "fixed-cases" | "sampled-cases";
+    readonly estimate: number;
+    readonly level: number;
+    readonly lower: number;
+    readonly method: string;
+    readonly sided: Sided;
+    readonly upper: number;
 }
 
 // @public
@@ -446,9 +1107,70 @@ export function loadConfig(path: string, load?: ModuleLoader): Promise<Config>;
 export function main(argv: readonly string[], out?: (text: string) => void, load?: ModuleLoader): Promise<number>;
 
 // @public
+export const MeasureCard: z.ZodObject<{
+    schema: z.ZodLiteral<"ichnaea.measureCard/1">;
+    id: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+    version: z.ZodString;
+    construct: z.ZodString;
+    operationalDefinition: z.ZodString;
+    valueType: z.ZodEnum<{
+        binary: "binary";
+        level: "level";
+        preference: "preference";
+        proportion: "proportion";
+        score: "score";
+    }>;
+    levels: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    unit: z.ZodString;
+    direction: z.ZodEnum<{
+        higher: "higher";
+        lower: "lower";
+    }>;
+    scale: z.ZodOptional<z.ZodObject<{
+        min: z.ZodNumber;
+        max: z.ZodNumber;
+    }, z.core.$strict>>;
+    justification: z.ZodString;
+    errorModel: z.ZodString;
+    applicability: z.ZodString;
+    tier: z.ZodEnum<{
+        diagnostic: "diagnostic";
+        primary: "primary";
+        secondary: "secondary";
+    }>;
+    composite: z.ZodOptional<z.ZodBoolean>;
+    unitOfEvaluation: z.ZodEnum<{
+        episode: "episode";
+        session: "session";
+        trace: "trace";
+        turn: "turn";
+    }>;
+    establishes: z.ZodString;
+    computedBy: z.ZodEnum<{
+        application: "application";
+        ichnaea: "ichnaea";
+        judge: "judge";
+    }>;
+    judge: z.ZodOptional<z.core.$ZodBranded<z.ZodString, "JudgeId", "out">>;
+    validation: z.ZodOptional<z.ZodObject<{
+        tester: z.ZodOptional<z.ZodObject<{
+            status: z.ZodEnum<{
+                failed: "failed";
+                passed: "passed";
+            }>;
+            digest: z.ZodString;
+            ranAt: z.ZodISODateTime;
+        }, z.core.$strict>>;
+        calibration: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>>;
+}, z.core.$strict>;
+
+// @public
+export type MeasureCard = z.infer<typeof MeasureCard>;
+
+// @public
 export interface MeasureDefinition<Id extends string = string> {
     readonly appliesTo?: (c: Case) => boolean;
-    // Warning: (ae-forgotten-export) The symbol "MeasureCard" needs to be exported by the entry point index.d.ts
     readonly card: Omit<MeasureCard, "schema" | "id"> & {
         readonly id: Id;
     };
@@ -459,6 +1181,40 @@ export interface MeasureDefinition<Id extends string = string> {
     readonly items?: (c: Case) => number;
     readonly score?: (trial: Trial, c: Case) => MeasuredValue | ExplainedValue | undefined;
 }
+
+// @public
+export const MeasuredValue: z.ZodDiscriminatedUnion<[z.ZodObject<{
+    type: z.ZodLiteral<"binary">;
+    pass: z.ZodBoolean;
+}, z.core.$strict>, z.ZodObject<{
+    type: z.ZodLiteral<"score">;
+    value: z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
+        nonFinite: z.ZodEnum<{
+            "-inf": "-inf";
+            inf: "inf";
+            nan: "nan";
+        }>;
+    }, z.core.$strict>]>;
+}, z.core.$strict>, z.ZodObject<{
+    type: z.ZodLiteral<"proportion">;
+    successes: z.ZodInt;
+    trials: z.ZodInt;
+}, z.core.$strict>, z.ZodObject<{
+    type: z.ZodLiteral<"level">;
+    level: z.ZodString;
+}, z.core.$strict>, z.ZodObject<{
+    type: z.ZodLiteral<"preference">;
+    preferred: z.ZodEnum<{
+        first: "first";
+        second: "second";
+        tie: "tie";
+    }>;
+}, z.core.$strict>, z.ZodObject<{
+    type: z.ZodLiteral<"unknown">;
+}, z.core.$strict>], "type">;
+
+// @public
+export type MeasuredValue = z.infer<typeof MeasuredValue>;
 
 // @public
 export interface MeasureExample {
@@ -504,6 +1260,62 @@ export interface MeasureRow {
 }
 
 // @public
+export const MeasureValue: z.ZodObject<{
+    schema: z.ZodLiteral<"ichnaea.measureValue/1">;
+    trial: z.core.$ZodBranded<z.ZodString, "TrialId", "out">;
+    turn: z.ZodOptional<z.ZodInt>;
+    measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+    version: z.ZodString;
+    applicable: z.ZodBoolean;
+    value: z.ZodOptional<z.ZodDiscriminatedUnion<[z.ZodObject<{
+        type: z.ZodLiteral<"binary">;
+        pass: z.ZodBoolean;
+    }, z.core.$strict>, z.ZodObject<{
+        type: z.ZodLiteral<"score">;
+        value: z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
+            nonFinite: z.ZodEnum<{
+                "-inf": "-inf";
+                inf: "inf";
+                nan: "nan";
+            }>;
+        }, z.core.$strict>]>;
+    }, z.core.$strict>, z.ZodObject<{
+        type: z.ZodLiteral<"proportion">;
+        successes: z.ZodInt;
+        trials: z.ZodInt;
+    }, z.core.$strict>, z.ZodObject<{
+        type: z.ZodLiteral<"level">;
+        level: z.ZodString;
+    }, z.core.$strict>, z.ZodObject<{
+        type: z.ZodLiteral<"preference">;
+        preferred: z.ZodEnum<{
+            first: "first";
+            second: "second";
+            tie: "tie";
+        }>;
+    }, z.core.$strict>, z.ZodObject<{
+        type: z.ZodLiteral<"unknown">;
+    }, z.core.$strict>], "type">>;
+    source: z.ZodEnum<{
+        application: "application";
+        human: "human";
+        ichnaea: "ichnaea";
+        judge: "judge";
+    }>;
+    detail: z.ZodOptional<z.ZodString>;
+    why: z.ZodOptional<z.ZodString>;
+    dataClass: z.ZodEnum<{
+        none: "none";
+        personal: "personal";
+        pseudonymous: "pseudonymous";
+        special: "special";
+    }>;
+}, z.core.$strict>;
+
+// @public
+export type MeasureValue = z.infer<typeof MeasureValue>;
+
+// @public
 export const MIN_DECISION_CASES = 5;
 
 // @public
@@ -530,12 +1342,264 @@ export const NOT_CAPTURED = "not-captured";
 export const NOT_VALIDATED = "(not validated)";
 
 // @public
+export interface OneTrialChecks {
+    readonly checksPassed: boolean;
+    readonly limitations: readonly string[];
+}
+
+// @public
+export const Outcome: z.ZodEnum<{
+    abstained: "abstained";
+    budget_exceeded: "budget_exceeded";
+    completed: "completed";
+    infrastructure_failure: "infrastructure_failure";
+    invalid_configuration: "invalid_configuration";
+    not_run: "not_run";
+    protocol_failure: "protocol_failure";
+    system_failure: "system_failure";
+}>;
+
+// @public
+export type Outcome = z.infer<typeof Outcome>;
+
+// @public
 export function packageVersion(from: string): string;
 
-// Warning: (ae-forgotten-export) The symbol "Real" needs to be exported by the entry point index.d.ts
-//
 // @public
 export function percent(value: Real | number): string;
+
+// @public
+export const Plan: z.ZodObject<{
+    schema: z.ZodLiteral<"ichnaea.plan/1">;
+    suite: z.core.$ZodBranded<z.ZodString, "SuiteId", "out">;
+    suiteVersion: z.ZodString;
+    suiteDigest: z.ZodString;
+    caseSet: z.core.$ZodBranded<z.ZodString, "CaseSetId", "out">;
+    caseSetDigest: z.ZodString;
+    trigger: z.ZodEnum<{
+        "case-set": "case-set";
+        code: "code";
+        configuration: "configuration";
+        "configuration-outside": "configuration-outside";
+        data: "data";
+        dependency: "dependency";
+        framework: "framework";
+        judge: "judge";
+        manual: "manual";
+        "new-model": "new-model";
+        "production-signal": "production-signal";
+        "silent-change": "silent-change";
+    }>;
+    varies: z.ZodArray<z.ZodString>;
+    mode: z.ZodEnum<{
+        decision: "decision";
+        "estimate-only": "estimate-only";
+    }>;
+    modeReasons: z.ZodArray<z.ZodString>;
+    estimand: z.ZodEnum<{
+        "fixed-cases": "fixed-cases";
+        "sampled-cases": "sampled-cases";
+    }>;
+    alpha: z.ZodNumber;
+    replicates: z.ZodInt;
+    arms: z.ZodArray<z.ZodObject<{
+        name: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
+        role: z.ZodEnum<{
+            base: "base";
+            candidate: "candidate";
+            reference: "reference";
+        }>;
+        identity: z.core.$ZodBranded<z.ZodString, "ConfigurationIdentity", "out">;
+        configuration: z.ZodObject<{
+            schema: z.ZodLiteral<"ichnaea.configuration/1">;
+            description: z.ZodString;
+            models: z.ZodArray<z.ZodObject<{
+                role: z.ZodString;
+                provider: z.ZodObject<{
+                    value: z.ZodString;
+                    status: z.ZodEnum<{
+                        declared: "declared";
+                        pinned: "pinned";
+                    }>;
+                }, z.core.$strict>;
+                id: z.ZodObject<{
+                    value: z.ZodString;
+                    status: z.ZodEnum<{
+                        declared: "declared";
+                        pinned: "pinned";
+                    }>;
+                }, z.core.$strict>;
+                version: z.ZodOptional<z.ZodObject<{
+                    value: z.ZodString;
+                    status: z.ZodEnum<{
+                        declared: "declared";
+                        pinned: "pinned";
+                    }>;
+                }, z.core.$strict>>;
+                route: z.ZodOptional<z.ZodObject<{
+                    value: z.ZodString;
+                    status: z.ZodEnum<{
+                        declared: "declared";
+                        pinned: "pinned";
+                    }>;
+                }, z.core.$strict>>;
+            }, z.core.$strict>>;
+            parameters: z.ZodArray<z.ZodObject<{
+                name: z.ZodString;
+                value: z.ZodJSONSchema;
+                status: z.ZodEnum<{
+                    declared: "declared";
+                    pinned: "pinned";
+                    uncontrollable: "uncontrollable";
+                }>;
+                origin: z.ZodEnum<{
+                    default: "default";
+                    explicit: "explicit";
+                }>;
+            }, z.core.$strict>>;
+            prompts: z.ZodArray<z.ZodObject<{
+                name: z.ZodString;
+                digest: z.ZodString;
+                status: z.ZodEnum<{
+                    declared: "declared";
+                    observed: "observed";
+                    pinned: "pinned";
+                    uncontrollable: "uncontrollable";
+                }>;
+                template: z.ZodOptional<z.ZodString>;
+                uri: z.ZodOptional<z.ZodString>;
+            }, z.core.$strict>>;
+            factors: z.ZodRecord<z.ZodString, z.ZodObject<{
+                value: z.ZodJSONSchema;
+                status: z.ZodEnum<{
+                    declared: "declared";
+                    observed: "observed";
+                    pinned: "pinned";
+                    uncontrollable: "uncontrollable";
+                }>;
+                part: z.ZodEnum<{
+                    code: "code";
+                    data: "data";
+                    model: "model";
+                    other: "other";
+                    parameter: "parameter";
+                    prompt: "prompt";
+                    runtime: "runtime";
+                    setting: "setting";
+                    tool: "tool";
+                }>;
+            }, z.core.$strict>>;
+            label: z.ZodOptional<z.ZodString>;
+            informational: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodJSONSchema>>;
+        }, z.core.$strict>;
+    }, z.core.$strict>>;
+    measures: z.ZodArray<z.ZodObject<{
+        kind: z.ZodEnum<{
+            featureGate: "featureGate";
+            gate: "gate";
+            judge: "judge";
+            measure: "measure";
+            package: "package";
+            plugin: "plugin";
+            preset: "preset";
+        }>;
+        id: z.ZodString;
+        version: z.ZodString;
+        digest: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>>;
+    primary: z.ZodArray<z.ZodObject<{
+        measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+        margin: z.ZodNumber;
+        marginStatus: z.ZodEnum<{
+            placeholder: "placeholder";
+            registered: "registered";
+        }>;
+        marginReason: z.ZodString;
+        marginOwner: z.ZodOptional<z.ZodString>;
+        safetyMargin: z.ZodOptional<z.ZodNumber>;
+        coverageFloor: z.ZodOptional<z.ZodNumber>;
+    }, z.core.$strict>>;
+    secondary: z.ZodArray<z.core.$ZodBranded<z.ZodString, "MeasureId", "out">>;
+    hardGates: z.ZodArray<z.core.$ZodBranded<z.ZodString, "GateId", "out">>;
+    policy: z.ZodObject<{
+        onRegression: z.ZodEnum<{
+            block: "block";
+            report: "report";
+        }>;
+        onInconclusive: z.ZodEnum<{
+            block: "block";
+            report: "report";
+        }>;
+        onEstimateOnly: z.ZodEnum<{
+            block: "block";
+            report: "report";
+        }>;
+    }, z.core.$strict>;
+    power: z.ZodArray<z.ZodDiscriminatedUnion<[z.ZodObject<{
+        computed: z.ZodLiteral<true>;
+        measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+        applicableCases: z.ZodInt;
+        replicates: z.ZodInt;
+        margin: z.ZodNumber;
+        mde: z.ZodNumber;
+        floor: z.ZodNumber;
+        sampledCasesFloor: z.ZodOptional<z.ZodNumber>;
+        assumption: z.ZodString;
+        decidable: z.ZodBoolean;
+    }, z.core.$strict>, z.ZodDiscriminatedUnion<[z.ZodObject<{
+        computed: z.ZodLiteral<false>;
+        measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+        applicableCases: z.ZodInt;
+        replicates: z.ZodInt;
+        margin: z.ZodNumber;
+        reason: z.ZodEnum<{
+            "fixed-cases needs at least 2 trials per case and arm": "fixed-cases needs at least 2 trials per case and arm";
+            "no applicable case with a base value": "no applicable case with a base value";
+            "run invalid": "run invalid";
+            "the plan carries no planning statement, and none can be computed from it": "the plan carries no planning statement, and none can be computed from it";
+        }>;
+    }, z.core.$strict>, z.ZodObject<{
+        computed: z.ZodLiteral<false>;
+        measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+        applicableCases: z.ZodInt;
+        replicates: z.ZodInt;
+        margin: z.ZodNumber;
+        reason: z.ZodLiteral<"the plan carries no planning statement, and its margin is refused">;
+        refusal: z.ZodString;
+    }, z.core.$strict>], "reason">], "computed">>;
+    budget: z.ZodObject<{
+        worstCaseCalls: z.ZodInt;
+        maxCalls: z.ZodInt;
+        monthlyRemaining: z.ZodOptional<z.ZodInt>;
+    }, z.core.$strict>;
+    trials: z.ZodArray<z.ZodObject<{
+        id: z.core.$ZodBranded<z.ZodString, "TrialId", "out">;
+        case: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
+        family: z.ZodOptional<z.ZodString>;
+        arm: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
+        replicate: z.ZodInt;
+        batch: z.ZodInt;
+    }, z.core.$strict>>;
+    schedule: z.ZodOptional<z.ZodObject<{
+        concurrency: z.ZodInt;
+        endpoint: z.ZodString;
+    }, z.core.$strict>>;
+    aa: z.ZodOptional<z.ZodObject<{
+        decisions: z.ZodArray<z.ZodObject<{
+            run: z.core.$ZodBranded<z.ZodString, "RunId", "out">;
+            digest: z.ZodString;
+        }, z.core.$strict>>;
+    }, z.core.$strict>>;
+    seed: z.ZodObject<{
+        algorithm: z.ZodString;
+        value: z.ZodString;
+    }, z.core.$strict>;
+    createdAt: z.ZodISODateTime;
+    ichnaea: z.ZodString;
+}, z.core.$strict>;
+
+// @public
+export type Plan = z.infer<typeof Plan>;
 
 // @public @deprecated
 export type PlanAdditions = Partial<Pick<Plan, "power" | "modeReasons">> & {
@@ -546,7 +1610,6 @@ export type PlanAdditions = Partial<Pick<Plan, "power" | "modeReasons">> & {
 // @public
 export interface PlanComparison {
     readonly aa?: Plan["aa"];
-    // Warning: (ae-forgotten-export) The symbol "Configuration" needs to be exported by the entry point index.d.ts
     readonly base: Configuration;
     readonly candidate: Configuration;
     readonly createdAt: string;
@@ -611,14 +1674,12 @@ export interface PrimariesInput {
     readonly alpha: number;
     readonly estimand: Plan["estimand"];
     readonly measures: readonly PrimaryCounts[];
-    // Warning: (ae-forgotten-export) The symbol "OneTrialChecks" needs to be exported by the entry point index.d.ts
     readonly oneTrial?: OneTrialChecks;
     readonly seed: number;
 }
 
 // @public
 export interface PrimaryCounts {
-    // Warning: (ae-forgotten-export) The symbol "CaseCounts" needs to be exported by the entry point index.d.ts
     readonly cases: readonly CaseCounts[];
     readonly margin: number;
     readonly measure: string;
@@ -629,12 +1690,29 @@ export interface PrimaryCounts {
 // @public
 export interface PrimaryVerdict {
     readonly cause?: "cannot-tell" | "unvalidated" | "non-inferiority-unvalidated" | "no-comparison";
-    // Warning: (ae-forgotten-export) The symbol "Comparison" needs to be exported by the entry point index.d.ts
     readonly comparison?: Comparison;
     readonly notes: readonly string[];
     readonly regressionPAdjusted?: number;
     readonly verdict: "NON-INFERIOR" | "REGRESSION" | "INCONCLUSIVE";
 }
+
+// @public
+export type Purpose = (typeof PURPOSES)[number];
+
+// @public
+export const PURPOSES: readonly ["PU-1", "PU-2", "PU-3", "PU-4", "PU-5", "PU-6"];
+
+// @public
+export const Real: z.ZodUnion<readonly [z.ZodNumber, z.ZodObject<{
+    nonFinite: z.ZodEnum<{
+        "-inf": "-inf";
+        inf: "inf";
+        nan: "nan";
+    }>;
+}, z.core.$strict>]>;
+
+// @public
+export type Real = z.infer<typeof Real>;
 
 // @public
 export function recompute(records: {
@@ -685,6 +1763,155 @@ export interface ReportOptions {
 export function reportPlugin(): Plugin<"report">;
 
 // @public
+export const Run: z.ZodObject<{
+    schema: z.ZodLiteral<"ichnaea.run/1">;
+    id: z.core.$ZodBranded<z.ZodString, "RunId", "out">;
+    plan: z.core.$ZodBranded<z.ZodString, "PlanDigest", "out">;
+    exploratory: z.ZodBoolean;
+    environment: z.ZodObject<{
+        node: z.ZodString;
+        platform: z.ZodString;
+        ichnaea: z.ZodString;
+        ci: z.ZodOptional<z.ZodString>;
+        arch: z.ZodOptional<z.ZodString>;
+        runtime: z.ZodOptional<z.ZodObject<{
+            name: z.ZodString;
+            version: z.ZodString;
+            platform: z.ZodString;
+            arch: z.ZodString;
+        }, z.core.$strict>>;
+    }, z.core.$strict>;
+    arms: z.ZodArray<z.ZodObject<{
+        name: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
+        role: z.ZodEnum<{
+            base: "base";
+            candidate: "candidate";
+            reference: "reference";
+        }>;
+        identity: z.core.$ZodBranded<z.ZodString, "ConfigurationIdentity", "out">;
+        configuration: z.ZodObject<{
+            schema: z.ZodLiteral<"ichnaea.configuration/1">;
+            description: z.ZodString;
+            models: z.ZodArray<z.ZodObject<{
+                role: z.ZodString;
+                provider: z.ZodObject<{
+                    value: z.ZodString;
+                    status: z.ZodEnum<{
+                        declared: "declared";
+                        pinned: "pinned";
+                    }>;
+                }, z.core.$strict>;
+                id: z.ZodObject<{
+                    value: z.ZodString;
+                    status: z.ZodEnum<{
+                        declared: "declared";
+                        pinned: "pinned";
+                    }>;
+                }, z.core.$strict>;
+                version: z.ZodOptional<z.ZodObject<{
+                    value: z.ZodString;
+                    status: z.ZodEnum<{
+                        declared: "declared";
+                        pinned: "pinned";
+                    }>;
+                }, z.core.$strict>>;
+                route: z.ZodOptional<z.ZodObject<{
+                    value: z.ZodString;
+                    status: z.ZodEnum<{
+                        declared: "declared";
+                        pinned: "pinned";
+                    }>;
+                }, z.core.$strict>>;
+            }, z.core.$strict>>;
+            parameters: z.ZodArray<z.ZodObject<{
+                name: z.ZodString;
+                value: z.ZodJSONSchema;
+                status: z.ZodEnum<{
+                    declared: "declared";
+                    pinned: "pinned";
+                    uncontrollable: "uncontrollable";
+                }>;
+                origin: z.ZodEnum<{
+                    default: "default";
+                    explicit: "explicit";
+                }>;
+            }, z.core.$strict>>;
+            prompts: z.ZodArray<z.ZodObject<{
+                name: z.ZodString;
+                digest: z.ZodString;
+                status: z.ZodEnum<{
+                    declared: "declared";
+                    observed: "observed";
+                    pinned: "pinned";
+                    uncontrollable: "uncontrollable";
+                }>;
+                template: z.ZodOptional<z.ZodString>;
+                uri: z.ZodOptional<z.ZodString>;
+            }, z.core.$strict>>;
+            factors: z.ZodRecord<z.ZodString, z.ZodObject<{
+                value: z.ZodJSONSchema;
+                status: z.ZodEnum<{
+                    declared: "declared";
+                    observed: "observed";
+                    pinned: "pinned";
+                    uncontrollable: "uncontrollable";
+                }>;
+                part: z.ZodEnum<{
+                    code: "code";
+                    data: "data";
+                    model: "model";
+                    other: "other";
+                    parameter: "parameter";
+                    prompt: "prompt";
+                    runtime: "runtime";
+                    setting: "setting";
+                    tool: "tool";
+                }>;
+            }, z.core.$strict>>;
+            label: z.ZodOptional<z.ZodString>;
+            informational: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodJSONSchema>>;
+        }, z.core.$strict>;
+    }, z.core.$strict>>;
+    lineage: z.ZodArray<z.ZodObject<{
+        kind: z.ZodEnum<{
+            featureGate: "featureGate";
+            gate: "gate";
+            judge: "judge";
+            measure: "measure";
+            package: "package";
+            plugin: "plugin";
+            preset: "preset";
+        }>;
+        id: z.ZodString;
+        version: z.ZodString;
+        digest: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>>;
+    ledger: z.ZodArray<z.ZodObject<{
+        trial: z.core.$ZodBranded<z.ZodString, "TrialId", "out">;
+        state: z.ZodEnum<{
+            planned: "planned";
+            recorded: "recorded";
+            running: "running";
+        }>;
+        outcome: z.ZodOptional<z.ZodEnum<{
+            abstained: "abstained";
+            budget_exceeded: "budget_exceeded";
+            completed: "completed";
+            infrastructure_failure: "infrastructure_failure";
+            invalid_configuration: "invalid_configuration";
+            not_run: "not_run";
+            protocol_failure: "protocol_failure";
+            system_failure: "system_failure";
+        }>>;
+    }, z.core.$strict>>;
+    startedAt: z.ZodISODateTime;
+    completedAt: z.ZodOptional<z.ZodISODateTime>;
+}, z.core.$strict>;
+
+// @public
+export type Run = z.infer<typeof Run>;
+
+// @public
 export interface RunIndexEntry {
     readonly decidedAt: string;
     readonly plan: string;
@@ -701,6 +1928,17 @@ export interface RunRecords {
     readonly trials: readonly Trial[];
     readonly values: readonly MeasureValue[];
 }
+
+// @public
+export const Runtime: z.ZodObject<{
+    name: z.ZodString;
+    version: z.ZodString;
+    platform: z.ZodString;
+    arch: z.ZodString;
+}, z.core.$strict>;
+
+// @public
+export type Runtime = z.infer<typeof Runtime>;
 
 // @public
 export function satisfies(version: string, range: string): boolean;
@@ -724,11 +1962,17 @@ export interface SensitivityRow {
     readonly verdict: string;
 }
 
+// @public
+export type Sided = "two" | "lower" | "upper";
+
 // @public @deprecated
 export type Stability = "development" | "alpha" | "beta" | "stable";
 
 // @public
 export const STALE_LOCK_MS = 30000;
+
+// @public
+export type StatsEstimand = "fixed-cases" | "sampled-cases";
 
 // @public
 export interface StoredRun extends RunRecords {
@@ -813,21 +2057,181 @@ export function testMeasure(measure: MeasureDefinition): TesterResult;
 // @public
 export interface TimedResult {
     readonly endedAt?: string;
-    // Warning: (ae-forgotten-export) The symbol "TrialResult" needs to be exported by the entry point index.d.ts
     readonly result: TrialResult;
     readonly startedAt?: string;
 }
 
-// Warning: (ae-forgotten-export) The symbol "FactorPart" needs to be exported by the entry point index.d.ts
-//
+// @public
+export const Trial: z.ZodObject<{
+    schema: z.ZodLiteral<"ichnaea.trial/1">;
+    id: z.core.$ZodBranded<z.ZodString, "TrialId", "out">;
+    source: z.ZodEnum<{
+        offline: "offline";
+        online: "online";
+    }>;
+    run: z.ZodOptional<z.core.$ZodBranded<z.ZodString, "RunId", "out">>;
+    case: z.ZodNullable<z.core.$ZodBranded<z.ZodString, "CaseId", "out">>;
+    caseDigest: z.ZodOptional<z.ZodString>;
+    unit: z.ZodEnum<{
+        episode: "episode";
+        session: "session";
+        trace: "trace";
+        turn: "turn";
+    }>;
+    configuration: z.core.$ZodBranded<z.ZodString, "ConfigurationIdentity", "out">;
+    arm: z.ZodOptional<z.core.$ZodBranded<z.ZodString, "ArmName", "out">>;
+    replicate: z.ZodInt;
+    outcome: z.ZodEnum<{
+        abstained: "abstained";
+        budget_exceeded: "budget_exceeded";
+        completed: "completed";
+        infrastructure_failure: "infrastructure_failure";
+        invalid_configuration: "invalid_configuration";
+        not_run: "not_run";
+        protocol_failure: "protocol_failure";
+        system_failure: "system_failure";
+    }>;
+    dataClass: z.ZodEnum<{
+        none: "none";
+        personal: "personal";
+        pseudonymous: "pseudonymous";
+        special: "special";
+    }>;
+    input: z.ZodOptional<z.ZodJSONSchema>;
+    output: z.ZodOptional<z.ZodJSONSchema>;
+    pointer: z.ZodOptional<z.ZodString>;
+    steps: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        kind: z.ZodEnum<{
+            model_call: "model_call";
+            other: "other";
+            retrieval: "retrieval";
+            tool_call: "tool_call";
+            user_turn: "user_turn";
+        }>;
+        name: z.ZodOptional<z.ZodString>;
+        model: z.ZodOptional<z.ZodString>;
+        outcome: z.ZodOptional<z.ZodEnum<{
+            error: "error";
+            ok: "ok";
+            refused: "refused";
+            timeout: "timeout";
+        }>>;
+        inputTokens: z.ZodOptional<z.ZodInt>;
+        outputTokens: z.ZodOptional<z.ZodInt>;
+        durationMs: z.ZodOptional<z.ZodNumber>;
+        detail: z.ZodOptional<z.ZodJSONSchema>;
+    }, z.core.$strict>>>;
+    usage: z.ZodOptional<z.ZodObject<{
+        calls: z.ZodOptional<z.ZodInt>;
+        inputTokens: z.ZodOptional<z.ZodInt>;
+        outputTokens: z.ZodOptional<z.ZodInt>;
+        cost: z.ZodOptional<z.ZodNumber>;
+        costUnit: z.ZodOptional<z.ZodString>;
+        wallMs: z.ZodOptional<z.ZodNumber>;
+    }, z.core.$strict>>;
+    observed: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        name: z.ZodString;
+        value: z.ZodJSONSchema;
+        expected: z.ZodOptional<z.ZodJSONSchema>;
+    }, z.core.$strict>>>;
+    signals: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodJSONSchema>>;
+    cache: z.ZodOptional<z.ZodObject<{
+        hit: z.ZodBoolean;
+        from: z.ZodOptional<z.core.$ZodBranded<z.ZodString, "TrialId", "out">>;
+    }, z.core.$strict>>;
+    evidence: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        name: z.ZodString;
+        digest: z.ZodString;
+        uri: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>>>;
+    joinKeys: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+    error: z.ZodOptional<z.ZodObject<{
+        kind: z.ZodString;
+        message: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>>;
+    startedAt: z.ZodOptional<z.ZodISODateTime>;
+    endedAt: z.ZodOptional<z.ZodISODateTime>;
+    inputDigest: z.ZodOptional<z.ZodString>;
+    attempts: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        attempt: z.ZodInt;
+        failure: z.ZodObject<{
+            class: z.ZodEnum<{
+                infrastructure: "infrastructure";
+                not_run: "not_run";
+            }>;
+            kind: z.ZodString;
+        }, z.core.$strict>;
+        calls: z.ZodInt;
+    }, z.core.$strict>>>;
+}, z.core.$strict>;
+
+// @public
+export type Trial = z.infer<typeof Trial>;
+
+// @public
+export const TrialResult: z.ZodObject<{
+    schema: z.ZodLiteral<"ichnaea.trialResult/1">;
+    dataClass: z.ZodEnum<{
+        none: "none";
+        personal: "personal";
+        pseudonymous: "pseudonymous";
+        special: "special";
+    }>;
+    trial: z.ZodObject<{
+        id: z.core.$ZodBranded<z.ZodString, "TrialId", "out">;
+        suite: z.core.$ZodBranded<z.ZodString, "SuiteId", "out">;
+        case: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
+        arm: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
+        replicate: z.ZodInt;
+        attempt: z.ZodInt;
+    }, z.core.$strict>;
+    output: z.ZodOptional<z.ZodJSONSchema>;
+    pointer: z.ZodOptional<z.ZodString>;
+    failure: z.ZodOptional<z.ZodObject<{
+        class: z.ZodEnum<{
+            infrastructure: "infrastructure";
+            not_run: "not_run";
+            protocol: "protocol";
+            system: "system";
+        }>;
+        kind: z.ZodString;
+        message: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>>;
+    calls: z.ZodInt;
+    usage: z.ZodOptional<z.ZodObject<{
+        calls: z.ZodOptional<z.ZodInt>;
+        inputTokens: z.ZodOptional<z.ZodInt>;
+        outputTokens: z.ZodOptional<z.ZodInt>;
+        cost: z.ZodOptional<z.ZodNumber>;
+        costUnit: z.ZodOptional<z.ZodString>;
+        wallMs: z.ZodOptional<z.ZodNumber>;
+    }, z.core.$strict>>;
+    observed: z.ZodObject<{
+        code: z.ZodUnion<readonly [z.ZodObject<{
+            commit: z.ZodString;
+            image: z.ZodOptional<z.ZodString>;
+        }, z.core.$strict>, z.ZodObject<{
+            image: z.ZodString;
+        }, z.core.$strict>]>;
+        model: z.ZodString;
+        route: z.ZodString;
+        parameters: z.ZodRecord<z.ZodString, z.ZodJSONSchema>;
+    }, z.core.$strict>;
+}, z.core.$strict>;
+
+// @public
+export type TrialResult = z.infer<typeof TrialResult>;
+
 // @public
 export const TRIGGER_VARIES: {
     readonly [K in Plan["trigger"]]: readonly FactorPart[] | null;
 };
 
-// Warnings were encountered during analysis:
-//
-// src/core/results.ts:221:5 - (ae-forgotten-export) The symbol "Runtime" needs to be exported by the entry point index.d.ts
+// @public
+export interface Validity {
+    readonly limitations: readonly string[];
+    readonly validated: boolean;
+}
 
 // (No @packageDocumentation comment for this package)
 

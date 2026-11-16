@@ -7,12 +7,168 @@
 import * as z from 'zod';
 
 // @public
+export const Case: z.ZodObject<{
+    schema: z.ZodLiteral<"ichnaea.case/1">;
+    id: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
+    caseSet: z.ZodOptional<z.core.$ZodBranded<z.ZodString, "CaseSetId", "out">>;
+    unit: z.ZodEnum<{
+        episode: "episode";
+        session: "session";
+        trace: "trace";
+        turn: "turn";
+    }>;
+    dataClass: z.ZodEnum<{
+        none: "none";
+        personal: "personal";
+        pseudonymous: "pseudonymous";
+        special: "special";
+    }>;
+    input: z.ZodRecord<z.ZodString, z.ZodJSONSchema>;
+    turns: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        role: z.ZodEnum<{
+            assistant: "assistant";
+            system: "system";
+            tool: "tool";
+            user: "user";
+        }>;
+        content: z.ZodJSONSchema;
+    }, z.core.$strict>>>;
+    fixtures: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        name: z.ZodString;
+        digest: z.ZodString;
+        uri: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>>>;
+    references: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodJSONSchema>>;
+    family: z.ZodOptional<z.ZodString>;
+    slices: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+    criticality: z.ZodOptional<z.ZodEnum<{
+        critical: "critical";
+        high: "high";
+        low: "low";
+        normal: "normal";
+    }>>;
+    provenance: z.ZodDiscriminatedUnion<[z.ZodObject<{
+        selection: z.ZodEnum<{
+            curated: "curated";
+            generated: "generated";
+            promoted: "promoted";
+            random: "random";
+        }>;
+        author: z.ZodOptional<z.ZodString>;
+        created: z.ZodISODate;
+        collected: z.ZodOptional<z.ZodISODate>;
+        licence: z.ZodString;
+        exposure: z.ZodEnum<{
+            private: "private";
+            public: "public";
+            sealed: "sealed";
+        }>;
+        source: z.ZodLiteral<"authored">;
+    }, z.core.$strict>, z.ZodObject<{
+        selection: z.ZodEnum<{
+            curated: "curated";
+            generated: "generated";
+            promoted: "promoted";
+            random: "random";
+        }>;
+        author: z.ZodOptional<z.ZodString>;
+        created: z.ZodISODate;
+        collected: z.ZodOptional<z.ZodISODate>;
+        licence: z.ZodString;
+        exposure: z.ZodEnum<{
+            private: "private";
+            public: "public";
+            sealed: "sealed";
+        }>;
+        source: z.ZodLiteral<"generated">;
+        generator: z.ZodObject<{
+            method: z.ZodString;
+            model: z.ZodOptional<z.ZodString>;
+            seedSource: z.ZodOptional<z.ZodString>;
+        }, z.core.$strict>;
+    }, z.core.$strict>, z.ZodObject<{
+        selection: z.ZodEnum<{
+            curated: "curated";
+            generated: "generated";
+            promoted: "promoted";
+            random: "random";
+        }>;
+        author: z.ZodOptional<z.ZodString>;
+        created: z.ZodISODate;
+        collected: z.ZodOptional<z.ZodISODate>;
+        licence: z.ZodString;
+        exposure: z.ZodEnum<{
+            private: "private";
+            public: "public";
+            sealed: "sealed";
+        }>;
+        source: z.ZodLiteral<"reused">;
+        reusedDataset: z.ZodObject<{
+            name: z.ZodString;
+            version: z.ZodOptional<z.ZodString>;
+            limits: z.ZodString;
+        }, z.core.$strict>;
+    }, z.core.$strict>, z.ZodObject<{
+        selection: z.ZodEnum<{
+            curated: "curated";
+            generated: "generated";
+            promoted: "promoted";
+            random: "random";
+        }>;
+        author: z.ZodOptional<z.ZodString>;
+        created: z.ZodISODate;
+        licence: z.ZodString;
+        exposure: z.ZodEnum<{
+            private: "private";
+            public: "public";
+            sealed: "sealed";
+        }>;
+        source: z.ZodLiteral<"collected">;
+        collected: z.ZodISODate;
+    }, z.core.$strict>, z.ZodObject<{
+        selection: z.ZodEnum<{
+            curated: "curated";
+            generated: "generated";
+            promoted: "promoted";
+            random: "random";
+        }>;
+        author: z.ZodOptional<z.ZodString>;
+        created: z.ZodISODate;
+        collected: z.ZodOptional<z.ZodISODate>;
+        licence: z.ZodString;
+        exposure: z.ZodEnum<{
+            private: "private";
+            public: "public";
+            sealed: "sealed";
+        }>;
+        source: z.ZodLiteral<"promoted">;
+        finding: z.core.$ZodBranded<z.ZodString, "FindingId", "out">;
+    }, z.core.$strict>], "source">;
+    pool: z.ZodEnum<{
+        development: "development";
+        promoted: "promoted";
+        sealed: "sealed";
+        validation: "validation";
+    }>;
+    validation: z.ZodOptional<z.ZodObject<{
+        status: z.ZodEnum<{
+            draft: "draft";
+            reviewed: "reviewed";
+            suspect: "suspect";
+            validated: "validated";
+        }>;
+        note: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>>;
+}, z.core.$strict>;
+
+// @public
+export type Case = z.infer<typeof Case>;
+
+// @public
 export class CasesError extends Error {
     readonly name = "CasesError";
 }
 
-// Warning: (ae-forgotten-export) The symbol "Case" needs to be exported by the entry point index.d.ts
-//
 // @public
 export function loadCases(file: URL | string): Case[];
 
