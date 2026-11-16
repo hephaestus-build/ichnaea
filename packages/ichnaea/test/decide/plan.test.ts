@@ -6,6 +6,7 @@ import {
   candidateRunsFirst,
   caseDigest,
   digest,
+  sha256,
   TrialRequest,
 } from "../../src/contracts/index.ts";
 import { CORE_VERSION, PlanError } from "../../src/core/index.ts";
@@ -25,6 +26,10 @@ const comparison: PlanComparison = {
 
 /** How decide seeds its generator: seed mod (2^32 - 1) + 1, so 0 and 2^32 - 1 would collide. */
 const seedOf = (seed: number): number => (seed % 4294967295) + 1;
+
+/** The lowest bit of the first byte of the SHA-256 of a value's canonical form. */
+const hash = (value: unknown): number =>
+  Number.parseInt(sha256(canonicalize(value)).slice(7, 9), 16) & 1;
 
 /** The arm names of the test plan seeded with `seed`, by role. */
 const namesOf = (seed: number): Record<string, string> =>
@@ -75,6 +80,44 @@ describe("createPlan", () => {
     }
     const bases = new Set(Array.from({ length: 32 }, (_, seed) => namesOf(seed)["base"]));
     expect(bases).toEqual(new Set(["a", "b"]));
+  });
+
+  it("orders each case's pair in every replicate by a seeded coin, so the order never names the side", () => {
+    let pairs = 0;
+    let baseFirst = 0;
+    const rolesByBatch = new Map<number, Set<string>>();
+    for (let seed = 0; seed < 40; seed++) {
+      const { record } = createPlan({ ...SUITE, trials: { default: 3 } }, { ...comparison, seed });
+      const roleOf = new Map(record.arms.map((a) => [a.name as string, a.role]));
+      for (const t of record.trials) {
+        const set = rolesByBatch.get(t.batch) ?? new Set<string>();
+        set.add(roleOf.get(t.arm) ?? "");
+        rolesByBatch.set(t.batch, set);
+      }
+      for (let i = 0; i < record.trials.length; i += 2) {
+        const [first, second] = [record.trials[i]!, record.trials[i + 1]!];
+        expect([second.case, second.replicate]).toEqual([first.case, first.replicate]);
+        expect(first.batch).toBe(first.replicate * 2);
+        expect(second.batch).toBe(first.replicate * 2 + 1);
+        const candidateFirst = candidateRunsFirst(record.seed, first.case, first.replicate);
+        expect(roleOf.get(first.arm)).toBe(candidateFirst ? "candidate" : "base");
+        pairs++;
+        if (roleOf.get(first.arm) === "base") baseFirst++;
+      }
+    }
+    expect(baseFirst / pairs).toBeGreaterThan(0.4);
+    expect(baseFirst / pairs).toBeLessThan(0.6);
+    for (const roles of rolesByBatch.values())
+      expect(roles).toEqual(new Set(["base", "candidate"]));
+  });
+
+  it("keeps the case coin at replicate 0, and draws a new coin for each later replicate", () => {
+    const seed = { algorithm: "mt19937", value: "7" };
+    for (const id of Array.from({ length: 20 }, (_, i) => `c${i}`)) {
+      expect(candidateRunsFirst(seed, id, 0)).toBe(candidateRunsFirst(seed, id));
+      expect(candidateRunsFirst(seed, id)).toBe(hash({ seed, case: id }) === 1);
+      expect(candidateRunsFirst(seed, id, 2)).toBe(hash({ seed, case: id, replicate: 2 }) === 1);
+    }
   });
 
   it("gives no trial request a word that names its side", () => {

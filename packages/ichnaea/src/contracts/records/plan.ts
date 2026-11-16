@@ -111,9 +111,10 @@ export const PlannedTrial = z.strictObject({
   replicate: none(z.int().min(0)),
   /**
    * The trial's batch (REQ-25). At two or more trials per case and arm, replicate r runs every case
-   * under every arm before r + 1, and the batch numbers each replicate's arm. At one trial per case
-   * and arm, it numbers the pairs: both trials of a case carry the case's index, and the plan lists
-   * them in the order `candidateRunsFirst` chose, which is the run order.
+   * under every arm before r + 1; each case's pair runs in the order `candidateRunsFirst` chose for
+   * that case and replicate, and the batch numbers the position in it: 2r for the first trial, 2r + 1
+   * for the second. At one trial per case and arm, it numbers the pairs: both trials of a case carry
+   * the case's index, and the plan lists them in the coin's order, which is the run order.
    */
   batch: none(z.int().min(0)),
 });

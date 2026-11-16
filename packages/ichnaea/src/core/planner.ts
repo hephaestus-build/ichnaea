@@ -292,11 +292,11 @@ export function resolvePlan(input: PlanInput): Plan {
     batch,
   });
   const seed = seedRecord(input.seed);
+  const base = arms.find((a) => a.role === "base");
+  const candidate = arms.find((a) => a.role === "candidate");
   if (oneTrial) {
     // One pair per case, in the coin's order, so the plan's order is the run order. An arm that is
     // neither base nor candidate runs after the pair.
-    const base = arms.find((a) => a.role === "base");
-    const candidate = arms.find((a) => a.role === "candidate");
     for (const [i, entry] of selected.entries()) {
       const c = selectedCases[i] as Case;
       const pair =
@@ -314,7 +314,15 @@ export function resolvePlan(input: PlanInput): Plan {
         const c = selectedCases[i] as Case;
         if (replicate >= (counts[i] as number)) continue;
         // Alternating batches: replicate r runs every case under every arm before r + 1 (REQ-25).
-        for (const [k, arm] of arms.entries())
+        // Within a replicate, each case's pair runs in the order of its own coin, so the order
+        // never says which arm is the base. An arm that is neither runs after the pair.
+        const pair =
+          base && candidate
+            ? candidateRunsFirst(seed, c.id, replicate)
+              ? [candidate, base]
+              : [base, candidate]
+            : [];
+        for (const [k, arm] of [...pair, ...arms.filter((a) => !pair.includes(a))].entries())
           trials.push(planned(c, entry, arm, replicate, replicate * arms.length + k));
       }
     }

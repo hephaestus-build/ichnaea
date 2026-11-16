@@ -266,7 +266,7 @@ export type Calibration = z.infer<typeof Calibration>;
 export function candidateRunsFirst(seed: {
     readonly algorithm: string;
     readonly value: string;
-}, caseId: string): boolean;
+}, caseId: string, replicate?: number): boolean;
 
 // @public
 export function canonicalize(value: unknown): string;

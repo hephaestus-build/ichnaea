@@ -228,7 +228,19 @@ export async function scenario(o: ScenarioOptions): Promise<Scenario> {
   const rng = createRng(o.seed ?? 7);
   const trials: Trial[] = [];
   const values: MeasureValue[] = [];
-  for (const t of plan.trials) {
+  // The draws follow a fixed order, by replicate, case and arm, so a scenario's data does not
+  // depend on the order in which each replicate's pairs run. At one trial per case, the plan's
+  // own order is that order.
+  const armIndex = new Map(plan.arms.map((a, i) => [a.name as string, i]));
+  const order = plan.trials.some((t) => t.replicate > 0)
+    ? plan.trials.toSorted(
+        (a, b) =>
+          a.replicate - b.replicate ||
+          Number(a.case.slice(5)) - Number(b.case.slice(5)) ||
+          (armIndex.get(a.arm) ?? 0) - (armIndex.get(b.arm) ?? 0),
+      )
+    : plan.trials;
+  for (const t of order) {
     const index = Number(t.case.slice(5));
     const outcome =
       o.outcome?.({ case: t.case, arm: t.arm, replicate: t.replicate }) ?? "completed";
