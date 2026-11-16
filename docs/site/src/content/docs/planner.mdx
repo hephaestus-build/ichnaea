@@ -17,6 +17,11 @@ Enter the size of your suite. The explorer simulates comparisons with Ichnaea's 
 - **No change between the arms.** Every alarm here is false. Compare Ichnaea with a rule that blocks whenever the mean falls by 3 points.
 - **Chance of PASS when nothing changes.** How often the bound would clear your margin. PASS is not validated yet, so today no run can pass.
 
+## Where these numbers come from
+
+This page computes them in your browser. It calls the library's own tests on simulated trials.
+The command line tool's planner does not print them today. It prints a power statement for each primary measure.
+
 ## What the simulation assumes
 
 - Cases are independent. Each trial passes with its case's pass rate.
