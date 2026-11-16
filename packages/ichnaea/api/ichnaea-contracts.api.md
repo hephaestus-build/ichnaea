@@ -697,11 +697,7 @@ export function classRank(dataClass: DataClass): number;
 
 // @public
 export const Clearance: z.ZodObject<{
-    maxExposure: z.ZodEnum<{
-        private: "private";
-        public: "public";
-        sealed: "sealed";
-    }>;
+    maxExposure: z.ZodLiteral<"private">;
     purpose: z.ZodString;
     reason: z.ZodString;
 }, z.core.$strict>;
@@ -1671,6 +1667,9 @@ export const GovernedEndpoint: z.ZodObject<{
     purposes: z.ZodArray<z.ZodString>;
     trainsOnInputs: z.ZodOptional<z.ZodBoolean>;
 }, z.core.$strict>;
+
+// @public
+export const HttpsPath: z.ZodString;
 
 // @public
 export const HttpsSource: z.ZodObject<{
@@ -3278,11 +3277,7 @@ export const ProjectConfig: z.ZodObject<{
         }, z.core.$strict>, z.ZodObject<{
             kind: z.ZodLiteral<"github">;
             clearance: z.ZodOptional<z.ZodObject<{
-                maxExposure: z.ZodEnum<{
-                    private: "private";
-                    public: "public";
-                    sealed: "sealed";
-                }>;
+                maxExposure: z.ZodLiteral<"private">;
                 purpose: z.ZodString;
                 reason: z.ZodString;
             }, z.core.$strict>>;
@@ -3305,11 +3300,7 @@ export const ProjectConfig: z.ZodObject<{
                 fromEnv: z.ZodString;
             }, z.core.$strict>;
             clearance: z.ZodOptional<z.ZodObject<{
-                maxExposure: z.ZodEnum<{
-                    private: "private";
-                    public: "public";
-                    sealed: "sealed";
-                }>;
+                maxExposure: z.ZodLiteral<"private">;
                 purpose: z.ZodString;
                 reason: z.ZodString;
             }, z.core.$strict>>;
@@ -3994,11 +3985,7 @@ export const SinkSettings: z.ZodDiscriminatedUnion<[z.ZodObject<{
 }, z.core.$strict>, z.ZodObject<{
     kind: z.ZodLiteral<"github">;
     clearance: z.ZodOptional<z.ZodObject<{
-        maxExposure: z.ZodEnum<{
-            private: "private";
-            public: "public";
-            sealed: "sealed";
-        }>;
+        maxExposure: z.ZodLiteral<"private">;
         purpose: z.ZodString;
         reason: z.ZodString;
     }, z.core.$strict>>;
@@ -4021,11 +4008,7 @@ export const SinkSettings: z.ZodDiscriminatedUnion<[z.ZodObject<{
         fromEnv: z.ZodString;
     }, z.core.$strict>;
     clearance: z.ZodOptional<z.ZodObject<{
-        maxExposure: z.ZodEnum<{
-            private: "private";
-            public: "public";
-            sealed: "sealed";
-        }>;
+        maxExposure: z.ZodLiteral<"private">;
         purpose: z.ZodString;
         reason: z.ZodString;
     }, z.core.$strict>>;

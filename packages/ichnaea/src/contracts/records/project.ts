@@ -5,7 +5,6 @@ import { Probability, Text } from "../primitives.ts";
 import {
   Duration,
   Endpoint,
-  Exposure,
   FromEnv,
   ConfigName,
   RunLimits,
@@ -53,14 +52,19 @@ export const Baselines = z.strictObject({
     .optional(),
 });
 
-/** A grant that lets a sink receive private content: exposure, purpose and reason. */
+/**
+ * A grant that lets a sink receive private content: the exposure, the purpose and the reason. No
+ * sink ever receives sealed content, so `private` is the only exposure a grant can name.
+ */
 export const Clearance = z.strictObject({
-  maxExposure: none(Exposure.describe("The highest exposure that the sink may receive.")),
+  maxExposure: none(
+    z.literal("private").describe("The highest exposure that the sink may receive."),
+  ),
   purpose: none(PurposeId.describe("The purpose under which it receives it.")),
   reason: none(Text.describe("Why the sink needs it.")),
 });
 
-const sinkUrl = FromEnv.describe("The sink's URL, a bearer secret, from the environment.");
+const sinkUrl = FromEnv.describe("The sink's URL, which is a secret, from the environment.");
 const sinkClearance = Clearance.describe("A grant above the sink's default clearance.");
 
 /**

@@ -32,6 +32,8 @@ const ajv = createAjv();
 const suite = (): Rec => structuredClone(fixture("suite.2"));
 const project = (): Rec => structuredClone(fixture("project"));
 const file = (id: string): string => schemaFileName(contractFor(id)!);
+// Synthetic token bodies, built here so that no token-shaped literal sits in the source.
+const body = (n: number): string => "x0".repeat(n).slice(0, n);
 const measures = (s: Rec): Record<string, Rec> => s["measures"] as Record<string, Rec>;
 
 /** zod and ajv must give the same answer, so every claim is checked in both. */
@@ -122,7 +124,7 @@ describe("the authored files", () => {
     const s = suite();
     s["version"] = undefined;
     expect(SuiteV2.safeParse(s).success).toBe(true);
-    expect(plainDataProblems(s)).toEqual(["/version: undefined"]);
+    expect(plainDataProblems(s)).toEqual(['"/version": undefined']);
   });
 
   it("digest a suite and a project config without $schema, so the TS and JSONC forms agree", async () => {
@@ -184,6 +186,10 @@ describe("the authored files", () => {
     ],
     ["a user and password", "https://user:secret@example.com/o/r.git"],
     ["a query", "https://github.com/o/r.git?token=abc"],
+    ["a password in an ssh URL", "ssh://git:secret@github.com/o/r.git"],
+    ["a password in the scp form", "git:secret@github.com:o/r.git"],
+    ["a token in the scp form", `git@github.com:o/ghp_${"x0".repeat(18)}`],
+    ["an https URL read as the scp form", "https://user:secret@github.com/o/r.git"],
   ])("refuse a git repository URL with %s, in a dataset and in a suite", (_, repo) => {
     const p = project();
     (p["datasets"] as Record<string, { git: Rec }>)["answers-public"]!.git["repo"] = repo;
@@ -198,6 +204,10 @@ describe("the authored files", () => {
     "https://github.com/example/answers-eval",
     "git@github.com:example/answers-eval-private.git",
     "ssh://git@github.com/example/answers-eval.git",
+    "git@github.com:/abs/repo",
+    "github.com:a/b",
+    "ssh://git@host/a@b",
+    "ssh://git@github.com:2222/o/r.git",
   ])("accept the git repository %s", (repo) => {
     const p = project();
     (p["datasets"] as Record<string, { git: Rec }>)["answers-public"]!.git["repo"] = repo;
@@ -205,28 +215,49 @@ describe("the authored files", () => {
   });
 
   it.each([
-    ["a GitHub token", "ghp_abcdefghij0123456789"],
-    ["a fine-grained GitHub token", "github_pat_11ABCDEFG0123456789"],
-    ["a GitHub OAuth token", "--token=gho_abcdefghij0123456789"],
-    ["a Slack token", "xoxb-1234-5678-abcdef"],
-    ["a GitLab token", ["glpat", "abcdefghij0123456789"].join("-")],
-    ["an API key", "sk-ant-api03-abcdef"],
+    ["a GitHub token", `ghp_${body(36)}`],
+    ["a GitHub OAuth token after =", `--token=gho_${body(36)}`],
+    ["a fine-grained GitHub token", `github_pat_${body(22)}`],
+    ["a GitLab personal token", `glpat-${body(20)}`],
+    ["a GitLab pipeline trigger token", `glptt-${body(20)}`],
+    ["a GitLab deploy token", `gldt-${body(20)}`],
+    ["a Slack bot token", ["xoxb", "1234567890", "1234567890", body(24)].join("-")],
+    ["a Slack app token", ["xapp", "1", "A0123BCDE", "1234567890123", body(32)].join("-")],
+    ["a Hugging Face token", `hf_${body(34)}`],
+    ["an OpenAI or Anthropic key", `sk-ant-api03-${body(20)}`],
+    ["a Langfuse public key", `pk-lf-${body(20)}`],
+    ["an AWS access key", `AKIA${"ABCDEFGHIJKLMNOP"}`],
+    ["an AWS temporary key", `ASIA${"ABCDEFGHIJKLMNOP"}`],
     ["an authorization header", "Authorization: token abc"],
-    ["a bearer token", "Bearer abc.def.ghi"],
+    ["an authorization header in capitals", "AUTHORIZATION: x"],
+    ["an authorization header with a tab", "authorization\t:x"],
+    ["a bearer value", "Bearer abc.def.ghi"],
+    ["a bearer value after a tab", "bearer\tabc"],
   ])("refuse a command argument that holds %s", (_, argument) => {
     const p = project();
     (p["workers"] as Record<string, Rec>)["chatbot"]!["command"] = ["worker", argument];
     expect(accepts("project", p)).toBe(false);
   });
 
-  it.each(["--task-id", "max_tokens=800", "--disk-cache", "skip-tests", "bearer.ts"])(
-    "accept the ordinary command argument %s",
-    (argument) => {
-      const p = project();
-      (p["workers"] as Record<string, Rec>)["chatbot"]!["command"] = ["worker", argument];
-      expect(accepts("project", p)).toBe(true);
-    },
-  );
+  it.each([
+    "--task-id",
+    "max_tokens=800",
+    "--disk-cache",
+    "skip-tests",
+    "bearer.ts",
+    "--sk-learn",
+    "sk-1",
+    "--seed=sk-1",
+    "run-sk-2",
+    "-sk-model",
+    "hf_datasets/cache",
+    `--model=my-sk-${body(24)}`,
+    `cache-ghp_${body(36)}`,
+  ])("accept the ordinary command argument %s", (argument) => {
+    const p = project();
+    (p["workers"] as Record<string, Rec>)["chatbot"]!["command"] = ["worker", argument];
+    expect(accepts("project", p)).toBe(true);
+  });
 
   it("refuse an import module outside the suite's tree", () => {
     const s = suite();
@@ -318,6 +349,7 @@ describe("the arm configuration and the lock", () => {
   it.each([
     ["a host with user information", { host: "user:pw@example.com", path: "/cases.jsonl" }],
     ["a path with a query", { host: "example.com", path: "/cases.jsonl?sig=abc" }],
+    ["a token in the path", { host: "example.com", path: `/t/hf_${"x0".repeat(17)}/cases.jsonl` }],
   ])("a lock refuses an https origin with %s", (_, https) => {
     const lock = fixture("suite.lock");
     (lock["sources"] as Rec[])[0]!["origin"] = { https };

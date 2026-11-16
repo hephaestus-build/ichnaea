@@ -34,21 +34,43 @@ export const Duration = z.string().regex(new RegExp(`^P(?:${DATE}(?:${TIME})?|${
 /** A full git commit: 40 hexadecimal digits (SHA-1), or 64 (SHA-256). Never a branch or a tag. */
 export const CommitSha = z.string().regex(/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/);
 
-/**
- * Known token formats, each at the start of a word: GitHub (`ghp_`, `gho_`, `ghu_`, `ghs_`, `ghr_`,
- * `github_pat_`), GitLab (`glpat-`), Slack (`xoxa-`, `xoxb-`, `xoxp-`, `xoxr-`, `xoxs-`), Hugging
- * Face (`hf_`), OpenAI, Anthropic and Langfuse keys (`sk-`, `pk-lf-`), AWS access keys (`AKIA`), and
- * an `Authorization:` or `Bearer ` header value.
- */
-const TOKEN =
-  "(?:^|[^A-Za-z0-9_])(?:gh[pousr]_[A-Za-z0-9]|github_pat_|glpat-|xox[abprs]-|hf_[A-Za-z0-9]{8}|sk-[A-Za-z0-9]|pk-lf-|AKIA[0-9A-Z]{16})|[Aa]uthorization:|[Bb]earer ";
+/** Where a token may start: the start of the text, or a character that is no letter, digit, _ or -. */
+const START = "(?:^|[^A-Za-z0-9_-])";
 
 /**
- * One argument of a command: non-empty, and not in a known token format (GitHub, GitLab, Slack,
- * Hugging Face, OpenAI, Anthropic, Langfuse and AWS keys, or an `Authorization:` or `Bearer `
- * header value). A secret belongs in the environment allow-list (`env`), never in an argument.
+ * Known token formats, each with its real minimum length and starting where a word starts:
+ * - GitHub: `ghp_`, `gho_`, `ghu_`, `ghs_` or `ghr_` and 36 letters or digits, or `github_pat_`
+ *   and 22 or more;
+ * - GitLab: `glpat-`, `glptt-`, `gldt-` or `glrt-` and 20 or more;
+ * - Slack: `xoxa-`, `xoxb-`, `xoxp-`, `xoxr-` or `xoxs-` with its numeric segments and a secret, or
+ *   an app token `xapp-1-…`;
+ * - Hugging Face: `hf_` and 34;
+ * - OpenAI, Anthropic and Langfuse secret keys: `sk-` and 20 or more; Langfuse `pk-lf-` and 20 or
+ *   more;
+ * - AWS: `AKIA` or `ASIA` and 16 capitals or digits;
+ * - an `Authorization` header in any letter case, or a `Bearer` value after any whitespace.
  */
-export const Argument = z.string().regex(new RegExp(`^(?![\\s\\S]*(?:${TOKEN}))[\\s\\S]+$`));
+const TOKEN = [
+  `${START}(?:gh[pousr]_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{22}|gl(?:pat|ptt|dt|rt)-[A-Za-z0-9_-]{20}|xox[abprs]-[0-9]{6,}-[0-9A-Za-z-]{10}|xapp-[0-9]+-[A-Za-z0-9]+-[0-9]+-[A-Za-z0-9]{20}|hf_[A-Za-z0-9]{34}|sk-[A-Za-z0-9_-]{20}|pk-lf-[A-Za-z0-9-]{20}|(?:AKIA|ASIA)[A-Z0-9]{16})`,
+  "[Aa][Uu][Tt][Hh][Oo][Rr][Ii][Zz][Aa][Tt][Ii][Oo][Nn]\\s*:",
+  `${START}[Bb][Ee][Aa][Rr][Ee][Rr]\\s+\\S`,
+].join("|");
+
+/** A pattern that matches text holding no known token format and matching `body`. */
+const tokenFree = (body: string): RegExp => new RegExp(`^(?![\\s\\S]*(?:${TOKEN}))(?:${body})$`);
+
+/**
+ * One argument of a command: non-empty, and holding no known token format (GitHub, GitLab, Slack,
+ * Hugging Face, OpenAI, Anthropic, Langfuse and AWS keys, an `Authorization` header or a `Bearer`
+ * value). A secret belongs in the environment allow-list (`env`), never in an argument.
+ */
+export const Argument = z.string().regex(tokenFree("[\\s\\S]+"));
+
+/**
+ * The path of an HTTPS URL: it starts with `/`, and holds no whitespace, query, fragment or known
+ * token format, because it may come from a URL that the environment held.
+ */
+export const HttpsPath = z.string().regex(tokenFree("/[^\\s?#]*"));
 
 /** A command and its arguments, run without a shell. No argument holds a token. */
 export const Command = z.array(Argument).min(1);
@@ -90,16 +112,19 @@ const commandSourceShape = {
 
 /**
  * A git repository that `git clone` takes: an HTTPS URL with no user information, query or
- * fragment; an `ssh://` URL whose user has no password; or `user@host:path`. No part holds a known
- * token format. The user's credentials come from git, never from the URL.
+ * fragment; an `ssh://` URL whose user has no password; or the scp form `[user@]host:path`, whose
+ * path holds no `@`. No part holds a known token format. The user's credentials come from git, never from the URL.
  */
-export const GitRepo = z
-  .string()
-  .regex(
-    new RegExp(
-      `^(?![\\s\\S]*(?:${TOKEN}))(?:https://[^\\s/?#@]+(?:/[^\\s?#]*)?|ssh://(?:[A-Za-z0-9._-]+@)?[^\\s/?#@:]+(?::[0-9]+)?(?:/[^\\s?#@]*)?|[A-Za-z0-9._-]+@[^\\s/?#@:]+:[^\\s?#@/][^\\s?#@]*)$`,
-    ),
-  );
+export const GitRepo = z.string().regex(
+  tokenFree(
+    [
+      "https://[^\\s/?#@]+(?:/[^\\s?#]*)?",
+      "ssh://(?:[A-Za-z0-9._-]+@)?[^\\s/?#@:]+(?::[0-9]+)?(?:/[^\\s?#]*)?",
+      // The scp form; its path holds no @, and never starts with //, so a URL never reads as it.
+      "(?:[A-Za-z0-9._-]+@)?[^\\s/?#@:]+:/?[^\\s?#@/][^\\s?#@]*",
+    ].join("|"),
+  ),
+);
 
 /** A git repository at a full commit: fetched by the system `git`, with the user's credentials. */
 export const GitSource = z.strictObject({

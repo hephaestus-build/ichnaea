@@ -4,7 +4,15 @@ import { none } from "../data-class.ts";
 import { Digest, SuiteId, Text } from "../primitives.ts";
 import { Pool } from "./case.ts";
 import { PrimaryRegistration } from "./suite-v2.ts";
-import { Command, CommitSha, ConfigName, Exposure, GitRepo, JsonScalar } from "./setup.ts";
+import {
+  Command,
+  CommitSha,
+  ConfigName,
+  Exposure,
+  GitRepo,
+  HttpsPath,
+  JsonScalar,
+} from "./setup.ts";
 
 /**
  * Where a locked source came from. An HTTPS source whose URL the environment holds is recorded by
@@ -34,12 +42,7 @@ export const LockedOrigin = z.xor([
             .regex(/^[^\s/?#@]+$/)
             .describe("The host, with no user information."),
         ),
-        path: none(
-          z
-            .string()
-            .regex(/^\/[^\s?#]*$/)
-            .describe("The path, with no query or fragment."),
-        ),
+        path: none(HttpsPath.describe("The path, with no query, fragment or known token format.")),
       })
       .describe("An HTTPS source, by host and path."),
   }),

@@ -938,7 +938,9 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
     "token-in-a-command": (r) =>
       ((r["workers"] as Record<string, Record<string, unknown>>)["chatbot"]!["command"] = [
         "worker",
-        "--token=ghp_abcdefghij0123456789",
+        // The header form: refused by the header rule, and no provider's token format, so no
+        // secret scanner flags the generated fixture.
+        "Authorization: Bearer x0x0x0x0",
       ]),
     "repository-with-credentials": (r) =>
       ((r["datasets"] as Record<string, Record<string, Record<string, unknown>>>)[

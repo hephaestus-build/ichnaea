@@ -49,6 +49,14 @@ describe("delivery sinks", () => {
     expect(acceptsSink({ kind: "webhook", url, secret: signingKey })).toBe(false);
   });
 
+  it("a clearance grants private content at most, never sealed", () => {
+    const sealed = { maxExposure: "sealed", purpose: "PU-6", reason: "r" };
+    expect(acceptsSink({ kind: "github", clearance: sealed })).toBe(false);
+    expect(acceptsSink({ kind: "webhook", url, signingKey, clearance: sealed })).toBe(false);
+    const open = { maxExposure: "public", purpose: "PU-6", reason: "r" };
+    expect(acceptsSink({ kind: "github", clearance: open })).toBe(false);
+  });
+
   it("only a github or a webhook sink takes a clearance grant", () => {
     const clearance = {
       maxExposure: "private",

@@ -21,7 +21,7 @@
     "chatbot": {
       "command": [
         "worker",
-        "--token=ghp_abcdefghij0123456789"
+        "Authorization: Bearer x0x0x0x0"
       ],
       "prepare": [
         "poetry",

@@ -129,7 +129,7 @@
                     "properties": {
                       "repo": {
                         "type": "string",
-                        "pattern": "^(?![\\s\\S]*(?:(?:^|[^A-Za-z0-9_])(?:gh[pousr]_[A-Za-z0-9]|github_pat_|glpat-|xox[abprs]-|hf_[A-Za-z0-9]{8}|sk-[A-Za-z0-9]|pk-lf-|AKIA[0-9A-Z]{16})|[Aa]uthorization:|[Bb]earer ))(?:https:\\/\\/[^\\s/?#@]+(?:\\/[^\\s?#]*)?|ssh:\\/\\/(?:[A-Za-z0-9._-]+@)?[^\\s/?#@:]+(?::[0-9]+)?(?:\\/[^\\s?#@]*)?|[A-Za-z0-9._-]+@[^\\s/?#@:]+:[^\\s?#@/][^\\s?#@]*)$",
+                        "pattern": "^(?![\\s\\S]*(?:(?:^|[^A-Za-z0-9_-])(?:gh[pousr]_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{22}|gl(?:pat|ptt|dt|rt)-[A-Za-z0-9_-]{20}|xox[abprs]-[0-9]{6,}-[0-9A-Za-z-]{10}|xapp-[0-9]+-[A-Za-z0-9]+-[0-9]+-[A-Za-z0-9]{20}|hf_[A-Za-z0-9]{34}|sk-[A-Za-z0-9_-]{20}|pk-lf-[A-Za-z0-9-]{20}|(?:AKIA|ASIA)[A-Z0-9]{16})|[Aa][Uu][Tt][Hh][Oo][Rr][Ii][Zz][Aa][Tt][Ii][Oo][Nn]\\s*:|(?:^|[^A-Za-z0-9_-])[Bb][Ee][Aa][Rr][Ee][Rr]\\s+\\S))(?:https:\\/\\/[^\\s/?#@]+(?:\\/[^\\s?#]*)?|ssh:\\/\\/(?:[A-Za-z0-9._-]+@)?[^\\s/?#@:]+(?::[0-9]+)?(?:\\/[^\\s?#]*)?|(?:[A-Za-z0-9._-]+@)?[^\\s/?#@:]+:\\/?[^\\s?#@/][^\\s?#@]*)$",
                         "description": "The repository.",
                         "x-ichnaea-data": {
                           "class": "none",
@@ -199,8 +199,8 @@
                       },
                       "path": {
                         "type": "string",
-                        "pattern": "^\\/[^\\s?#]*$",
-                        "description": "The path, with no query or fragment.",
+                        "pattern": "^(?![\\s\\S]*(?:(?:^|[^A-Za-z0-9_-])(?:gh[pousr]_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{22}|gl(?:pat|ptt|dt|rt)-[A-Za-z0-9_-]{20}|xox[abprs]-[0-9]{6,}-[0-9A-Za-z-]{10}|xapp-[0-9]+-[A-Za-z0-9]+-[0-9]+-[A-Za-z0-9]{20}|hf_[A-Za-z0-9]{34}|sk-[A-Za-z0-9_-]{20}|pk-lf-[A-Za-z0-9-]{20}|(?:AKIA|ASIA)[A-Z0-9]{16})|[Aa][Uu][Tt][Hh][Oo][Rr][Ii][Zz][Aa][Tt][Ii][Oo][Nn]\\s*:|(?:^|[^A-Za-z0-9_-])[Bb][Ee][Aa][Rr][Ee][Rr]\\s+\\S))(?:\\/[^\\s?#]*)$",
+                        "description": "The path, with no query, fragment or known token format.",
                         "x-ichnaea-data": {
                           "class": "none",
                           "identifier": "none",
@@ -230,7 +230,7 @@
                     "type": "array",
                     "items": {
                       "type": "string",
-                      "pattern": "^(?![\\s\\S]*(?:(?:^|[^A-Za-z0-9_])(?:gh[pousr]_[A-Za-z0-9]|github_pat_|glpat-|xox[abprs]-|hf_[A-Za-z0-9]{8}|sk-[A-Za-z0-9]|pk-lf-|AKIA[0-9A-Z]{16})|[Aa]uthorization:|[Bb]earer ))[\\s\\S]+$"
+                      "pattern": "^(?![\\s\\S]*(?:(?:^|[^A-Za-z0-9_-])(?:gh[pousr]_[A-Za-z0-9]{36}|github_pat_[A-Za-z0-9_]{22}|gl(?:pat|ptt|dt|rt)-[A-Za-z0-9_-]{20}|xox[abprs]-[0-9]{6,}-[0-9A-Za-z-]{10}|xapp-[0-9]+-[A-Za-z0-9]+-[0-9]+-[A-Za-z0-9]{20}|hf_[A-Za-z0-9]{34}|sk-[A-Za-z0-9_-]{20}|pk-lf-[A-Za-z0-9-]{20}|(?:AKIA|ASIA)[A-Z0-9]{16})|[Aa][Uu][Tt][Hh][Oo][Rr][Ii][Zz][Aa][Tt][Ii][Oo][Nn]\\s*:|(?:^|[^A-Za-z0-9_-])[Bb][Ee][Aa][Rr][Ee][Rr]\\s+\\S))(?:[\\s\\S]+)$"
                     },
                     "description": "The command.",
                     "x-ichnaea-data": {
