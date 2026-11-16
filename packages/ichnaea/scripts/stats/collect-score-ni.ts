@@ -191,6 +191,11 @@ function verdict(dir: string, smoke: boolean): void {
     if (!confirmed.has(id)) problems.push(`${id}: selected but not confirmed`);
   for (const id of confirmed.keys())
     if (!selected.includes(id)) problems.push(`${id}: confirmed but not selected`);
+  // One runtime for every shard of both phases: outputs compare byte for byte only within one.
+  if (screen.runtime !== confirmPhase.runtime)
+    problems.push(
+      `the screen ran on ${screen.runtime} and the confirmation on ${confirmPhase.runtime}`,
+    );
   if (problems.length > 0)
     throw new Error(`the outputs fail their checks:\n${problems.join("\n")}`);
 
@@ -245,9 +250,34 @@ function verdict(dir: string, smoke: boolean): void {
   const mustFail = results
     .filter((r) => r.role === "must-fail")
     .map((r) => ({ name: r.name, failed: r.failures.length > 0 }));
+  // How close the deciding points come to their bars, for the candidate settings at truth −margin:
+  // the screen's pass line 0.94 + 2·SE, and the fail line estimate + 3·SE = 0.94 of a confirmed
+  // point. A point within 1e-6 of its bar is recomputed on a second runtime before it counts.
+  const distances = atMargin.flatMap((r) => {
+    const id = r["id"] as string;
+    const c = confirmed.get(id);
+    const reps = Number((c ?? r)["reps"]);
+    const counts = countsOf(c ?? r);
+    return SETTINGS.flatMap((s, i) => {
+      if (s.role !== "candidate") return [];
+      const p = (counts[i] as number) / reps;
+      const d = c === undefined ? p - (BAR + 2 * se(p, reps)) : p + 3 * se(p, reps) - BAR;
+      return [
+        { id, setting: s.name, stage: c === undefined ? "screen" : "confirmed", distance: d },
+      ];
+    });
+  });
+  const nearest = distances.reduce<(typeof distances)[number] | undefined>(
+    (a, d) => (a === undefined || Math.abs(d.distance) < Math.abs(a.distance) ? d : a),
+    undefined,
+  );
+  const atTheBar = distances.filter((d) => Math.abs(d.distance) < 1e-6);
   const summary = {
     commit: screen.commit,
     confirmCommit: confirmPhase.commit,
+    runtime: screen.runtime,
+    nearestToBar: nearest ?? null,
+    recomputeOnSecondRuntime: atTheBar,
     points: screen.rows.length,
     confirmed: confirmPhase.rows.length,
     chosen: chosen?.name ?? null,
@@ -265,7 +295,8 @@ function verdict(dir: string, smoke: boolean): void {
   const md = [
     `# Score non-inferiority, stage 1${smoke ? " (smoke run, not evidence)" : ""}`,
     "",
-    `Commit ${screen.commit}. ${screen.rows.length} points; ${confirmPhase.rows.length} confirmed.`,
+    `Commit ${screen.commit}, runtime ${screen.runtime}. ${screen.rows.length} points; ${confirmPhase.rows.length} confirmed.`,
+    `Nearest deciding point to its bar: ${nearest === undefined ? "none" : `${nearest.id}, ${nearest.setting} (${nearest.stage}), ${nearest.distance.toExponential(2)}`}${atTheBar.length > 0 ? `; ${atTheBar.length} within 1e-6 must be recomputed on a second runtime before they count` : ""}.`,
     "",
     "| Setting | Role | Worst coverage | Failing points | Grid mean | Median π₀ at 0.10 |",
     "| --- | --- | --- | --- | --- | --- |",

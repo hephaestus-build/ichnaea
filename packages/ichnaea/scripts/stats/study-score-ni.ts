@@ -21,6 +21,7 @@ import { createRng } from "../../src/stats/index.ts";
 import { boundSC, scoreBound } from "../../src/stats/score-interval.ts";
 import type { CaseScores } from "../../src/stats/score-permutation-core.ts";
 import { provenance, writeMeta } from "./provenance.ts";
+import { runtime } from "./study-score-type-i.ts";
 import {
   events,
   G2_NI_REFINE_WORST,
@@ -158,6 +159,7 @@ function screen(args: readonly string[]): void {
     confirmSe: CONFIRM_SE,
     guardEvery: GUARD_EVERY,
     settings: SETTINGS.map((s) => s.name),
+    runtime: runtime(),
     runner: runner(),
   });
   writeFileSync(output, `${SCREEN_COLUMNS.join("\t")}\n`);
@@ -209,6 +211,7 @@ function confirm(args: readonly string[]): void {
     confirmSe: CONFIRM_SE,
     guardEvery: GUARD_EVERY,
     settings: SETTINGS.map((s) => s.name),
+    runtime: runtime(),
     runner: runner(),
   });
   writeFileSync(output, `${CONFIRM_COLUMNS.join("\t")}\n`);

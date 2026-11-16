@@ -641,9 +641,15 @@ rounds its output to 12 decimals); the bars are 1e-10 and 1e-9.
 **The root-finder's path is shared.** The binary intervals' root-finder (`lowerRoot`, `src/stats/solve.ts`)
 and the study's decision "the bound is at most θ" (`lowerRootAtMost`) share one scan and one
 bisection. The decision follows the root-finder's own path and stops once the answer is certain, so
-it equals `lowerRoot(...) ≤ θ` for every function. A test pins every binary bound on the reference
-inputs bit for bit as the root-finder gave it before the change (2,088 bounds,
-`test/stats/reference-solver-snapshot.json`).
+it equals `lowerRoot(...) ≤ θ` for every function. On the machine that runs the tests, every
+binary bound on the reference inputs (2,088) is computed with the current root-finder and with a
+verbatim copy of the one before the change (`test/stats/support/solve-before-refactor.ts`, whose body
+a sha256 pins to the old file), and all agree bit for bit. V8's Math is not bit-identical across
+platforms: the same Node version on linux x64 and macOS arm64 moved 2 of the 2,088 bounds in their
+last bits. So the stored bounds (`test/stats/reference-solver-snapshot.json`) record the runtime
+that wrote them, Node version, platform and CPU architecture, and are compared bit for bit on that
+runtime and within 1e-9 on any other. Bit reproducibility holds for one runtime; a study's shards
+all run on one, record it, and the collectors refuse outputs from different runtimes.
 
 **A known property of the score statistic, binary or not:** Z(δ) need not be monotone. A case whose
 two arms are both all 1 (or all 0) adds no variance at δ = 0 and some next to it, so Z can rise near

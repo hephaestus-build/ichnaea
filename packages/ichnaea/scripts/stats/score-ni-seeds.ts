@@ -26,6 +26,8 @@ const BINARY_ONE_TRIAL = [1, 2].flatMap((f) =>
 );
 
 export interface SeedManifest {
+  /** The runtime that enumerated the seeds; the study's shards record theirs too. */
+  readonly runtime: { readonly node: string; readonly platform: string; readonly arch: string };
   readonly count: number;
   readonly largestCellIndex: number;
   readonly ranges: readonly {
@@ -128,6 +130,7 @@ export function manifest(): SeedManifest {
   if (ranges.reduce((a, r) => a + r.count, 0) !== sorted.length)
     throw new Error("a seed lies outside every block");
   return {
+    runtime: { node: process.version, platform: process.platform, arch: process.arch },
     count: sorted.length,
     largestCellIndex,
     ranges,
