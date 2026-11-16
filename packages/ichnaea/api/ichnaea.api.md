@@ -75,6 +75,11 @@ export class CallLedger {
 }
 
 // @public
+export class CasesError extends Error {
+    readonly name = "CasesError";
+}
+
+// @public
 export interface CommandDefinition {
     readonly description: string;
     readonly name: string;
@@ -386,6 +391,9 @@ export interface Limit {
 
 // @public
 export function lintReport(text: string): string[];
+
+// @public
+export function loadCases(file: URL | string): Case[];
 
 // @public
 export function loadConfig(path: string, load?: ModuleLoader): Promise<Config>;
