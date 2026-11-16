@@ -29,7 +29,7 @@ true 0.936 and 0.937 fail and 0.9395 passes after confirmation; a grid mean of 0
 screened points at 0.9465 fail on the grid mean (3·SE of the mean, the SEs added in quadrature) and
 nine at 0.949 pass; exact type-I 0.0501 fails; a true 0.0527 fails and 0.0505 passes; confirmation
 uses the seed plus 100,000.
-`scripts/stats/mutants.ts` changes each threshold, the confirmation and the cap, 16 changes in all, and
+`scripts/stats/mutants.ts` changes each threshold, the confirmation and the cap: 16 mutants (those named `rule:`), and
 the unit suite detects each one.
 
 ## Reference values
@@ -93,7 +93,7 @@ neighbouring doubles wobble by up to 2.4 ε·|v|), and that `qnorm(pnorm(x)) = x
 median, where p keeps its full relative precision.
 
 `scripts/stats/mutants.ts` changes coefficients, every branch bound and cutoff, the tail bounds and the
-generator: 49 mutants of the statistics, and the tests detect every one. One change is not detectable: a change to the fifth-order
+generator: 22 mutants of `normal.ts`, `normal-coefficients.ts`, `mt19937.ts` and `rng.ts`, and the tests detect every one. One change is not detectable: a change to the fifth-order
 term of the subnormal expansion moves the result by at most 0.84 ε·|v|. That is below rounding.
 
 ## fixed-cases: what counts
@@ -122,7 +122,7 @@ primary measure, and at the latest for 1.0.
 
 The estimand is the mean of the per-case differences, every case with the same weight whatever its
 trial count (decision 0004). Mantel–Haenszel weights (n1·n2/(n1+n2)) give another estimand as soon as trial
-counts differ. `test/decision-values` pins a two-case example.
+counts differ. `test/stats/decision-values.test.ts` pins a two-case example.
 
 The interval is the stratified Miettinen–Nurminen score interval with the N/(N−1) factor and no
 skewness correction (decision 0004), chosen by a 252-point study at 10,000 repetitions
@@ -240,7 +240,7 @@ fixed-cases comparison of a suite means by "no change". **The validated domain i
 case for the regression result, under the conditions below (decision 0020).** This study is its
 evidence. Non-inferiority at one trial per case is not validated.
 
-`scripts/study-binary-one-trial.ts` computes the type-I error exactly. Cases are independent, so a
+`scripts/stats/study-binary-one-trial.ts` computes the type-I error exactly. Cases are independent, so a
 dynamic programme over (n, c) gives the distribution of the discordant counts, and the rejection
 region comes from the decision path itself: `compareCounts` gives the p-value of every (n, c), and
 the region c ≤ c\*(n) is checked to equal the exact McNemar test's for every n up to 300. A unit
@@ -554,10 +554,10 @@ and the same table always takes the same path. The limit counts work, not the si
 limit of 5·10⁷ on the support times the number of cases let 146 cases of 3-decimal scores with 3
 trials run for over a minute.
 
-`scripts/benchmark-score-permutation.ts` times the exact path against W on tables like real suites
+`scripts/stats/benchmark-score-permutation.ts` times the exact path against W on tables like real suites
 (1–5 ratings, proportions of 20 items, 2- and 3-decimal scores, 1 to 9 trials, 12 to 300 cases).
 The time per unit of W is about 4–40 ns on an Apple M3 Max under heavy load from other jobs. The
-`simulation` CI job (`test/score-permutation-work.sim.test.ts`) takes, for five shapes, the
+`simulation` CI job (`test/stats/score-permutation-work.sim.test.ts`) takes, for five shapes, the
 largest table whose W is within the limit, runs it exactly on the CI runner, prints its time and
 fails above 3 seconds. The limit aims at about 1 second there. On the CI runner (`ubuntu-latest`,
 image 20261103.629, Node 24) the largest exact tables took:
@@ -574,7 +574,7 @@ The slowest is 0.36 s, so the limit stays at 5·10⁷.
 
 ### Reference values
 
-`test/reference-score-permutation-tables.json` holds 248 tables (`scripts/score-permutation-tables.ts`,
+`test/stats/reference-score-permutation-tables.json` holds 248 tables (`scripts/stats/score-permutation-tables.ts`,
 seed 20261116):
 
 - 1–5 ratings with k from 1 to 146 and 1 to 3 trials, mixed counts, arm-unequal and one-trial
@@ -607,7 +607,7 @@ off a multiple of 1/1,000 is off the lattice; values whose products with D fall 
 integer (0.57, 0.58 and 0.29 at D = 100) round to it; a case with 100,000 labellings enumerates and
 one with 100,001 does not; the largest table within the work limit enumerates and the next runs
 Monte Carlo; the rerun seed at the wrap; and that the reported p is the rerun's, equal to a fresh
-run at the rerun's seed. `scripts/mutants.ts` changes the test in 19 ways (ties, weights, tails, the
+run at the rerun's seed. `scripts/stats/mutants.ts` changes the test in 19 ways, mutants S1 to S19 (ties, weights, tails, the
 +1, sampling with replacement, the range check, the case count, the recomputation near a level, the
 enumeration cap, the lattice size, tolerance and rounding, the work limit, the rerun seed and the p
 it reports), and the unit suite detects every one.
