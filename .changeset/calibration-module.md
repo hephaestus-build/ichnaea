@@ -1,0 +1,5 @@
+---
+"@hephaestus-build/ichnaea": minor
+---
+
+The new `./calibration` subpath checks a model judge against two human raters. `analyzeCalibration` reads the labels you collected and returns `calibrated` or `diagnostic`, naming every condition that fails. The conditions are: the raters agree enough to calibrate against (AC1 at least 0.60, or ordinal alpha at least 0.667); the judge agrees with them nearly as well as they agree with each other (D at least −0.15); for yes/no labels, the judge's sensitivity and specificity are each at most 0.10 below the raters'; and the 90 % interval of the judge's bias between base and candidate lies within ±0.20 (yes/no) or ±0.15 (levels). Every bound comes from a bootstrap of whole items within their strata, and every statistic weights each answer by 1/π. With answers from a known-worse configuration, the analysis also shows the judge's slope against people. `judgePass` says whether a judge-based Pass is reachable at a limit. A calibrated judge's measures are secondary: they are shown and never decide.

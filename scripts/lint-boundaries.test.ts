@@ -54,6 +54,9 @@ describe("the boundaries between the areas of the package", () => {
     ["decide/a.ts", "../report/index.ts", "src/decide imports only"],
     ["decide/a.ts", "../index.ts", "src/decide imports only"],
     ["report/a.ts", "../stats/index.ts", "src/report imports only"],
+    ["calibration/a.ts", "../contracts/index.ts", "src/calibration imports only"],
+    ["calibration/a.ts", "../stats/rng.ts", "src/calibration imports only"],
+    ["calibration/a.ts", "node:fs", "src/calibration imports only"],
   ])("refuses an import in src/%s of %s", (path, specifier, message) => {
     const errors = lint(path, specifier);
     expect(errors).toHaveLength(1);
@@ -71,6 +74,8 @@ describe("the boundaries between the areas of the package", () => {
     ["decide/a.ts", "../stats/index.ts"],
     ["decide/a.ts", "../core/index.ts"],
     ["report/a.ts", "../decide/index.ts"],
+    ["calibration/a.ts", "../stats/index.ts"],
+    ["calibration/a.ts", "./engine.ts"],
     ["index.ts", "./report/index.ts"],
   ])("allows an import in src/%s of %s", (path, specifier) => {
     expect(lint(path, specifier)).toEqual([]);

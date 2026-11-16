@@ -7,6 +7,7 @@ export default {
       [
         "contracts",
         "stats",
+        "calibration",
         "core",
         "testkit",
         "decide",

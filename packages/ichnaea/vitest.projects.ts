@@ -4,7 +4,7 @@
 import type { TestProjectInlineConfiguration } from "vitest/config";
 
 const root = import.meta.dirname;
-const AREAS = ["contracts", "stats", "core", "decide", "report"] as const;
+const AREAS = ["contracts", "stats", "calibration", "core", "decide", "report"] as const;
 
 /** The unit suite of each area. The simulation studies (`*.sim.test.ts`) are not part of it. */
 export const UNIT_PROJECTS: TestProjectInlineConfiguration[] = AREAS.map((area) => ({
