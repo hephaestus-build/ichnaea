@@ -19,7 +19,7 @@ export interface Provenance {
   readonly script: string;
   /** `git rev-parse HEAD` when the run started. */
   readonly commit: string;
-  /** The sha256 of the script and of each local module it imports, by repository path. */
+  /** The sha256 of the script and of each local module it imports transitively, by repository path. */
   readonly files: Readonly<Record<string, string>>;
   readonly seedBase: number | null;
   /** The script's command-line arguments, as given. */
@@ -45,9 +45,32 @@ export function git(args: readonly string[], cwd: string): string {
 export const repoRoot = (file: string): string =>
   realpathSync(git(["rev-parse", "--show-toplevel"], path.dirname(realpathSync(file))));
 
+/** The relative module specifiers of a source text: static imports, re-exports and `import("…")`. */
+const SPECIFIER = /(?:\bfrom\s*|\bimport\s*\(?\s*)["'](\.{1,2}\/[^"']+)["']/g;
+
 /**
- * The provenance of a run of `script`, which imports the local modules `imports` (absolute paths).
- * Throws when a tracked file has uncommitted changes or a listed file is not tracked.
+ * Every local module that `files` import, directly or through other local modules, as sorted
+ * absolute paths, with `files` themselves. Only relative specifiers count: packages and `node:`
+ * built-ins are not part of the repository's code.
+ */
+export function localImportClosure(files: readonly string[]): string[] {
+  const seen = new Set<string>();
+  const visit = (file: string): void => {
+    const real = realpathSync(file);
+    if (seen.has(real)) return;
+    seen.add(real);
+    for (const [, specifier] of readFileSync(real, "utf8").matchAll(SPECIFIER))
+      if (specifier !== undefined) visit(path.resolve(path.dirname(real), specifier));
+  };
+  for (const file of files) visit(file);
+  return [...seen].toSorted();
+}
+
+/**
+ * The provenance of a run of `script`. It records the script, every local module it imports
+ * transitively (so a later change to the statistics it calls invalidates the output), and the
+ * extra files `imports` (absolute paths). Throws when a tracked file has uncommitted changes or a
+ * recorded file is not tracked.
  */
 export function provenance(
   script: string,
@@ -60,7 +83,7 @@ export function provenance(
   if (dirty !== "")
     throw new Error(`tracked files have uncommitted changes; commit them first:\n${dirty}`);
   const files: Record<string, string> = {};
-  for (const file of [script, ...imports]) {
+  for (const file of localImportClosure([script, ...imports])) {
     const relative = path.relative(root, realpathSync(file));
     git(["ls-files", "--error-unmatch", "--", relative], root);
     files[relative] = sha256(readFileSync(file));

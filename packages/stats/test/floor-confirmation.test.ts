@@ -1,5 +1,6 @@
 // The tooling of the margin-floor confirmation: the structure generator, the simulation runner,
 // the skip log of the sweep and the provenance check (VALIDATION.md, "The bar").
+import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -9,7 +10,14 @@ import { afterAll, describe, expect, it } from "vitest";
 import { createRng } from "../src/index.ts";
 import { checkProvenance } from "../scripts/check-sweep-provenance.ts";
 import { cells, cellStructures, generate } from "../scripts/generate-structures.ts";
-import { git, metaPath, PROVENANCE_SCHEMA, repoRoot, sha256 } from "../scripts/provenance.ts";
+import {
+  git,
+  localImportClosure,
+  metaPath,
+  PROVENANCE_SCHEMA,
+  repoRoot,
+  sha256,
+} from "../scripts/provenance.ts";
 import {
   coverageRun,
   doneIds,
@@ -285,6 +293,48 @@ describe("the structure generator", () => {
     expect(generate(0.05, 0.06, 0.005, 121, 7_000_000, true)).toEqual(a);
     expect(a).toHaveLength(3 * 22 * 121);
     expect(new Set(a.map((l) => l.id)).size).toBe(a.length);
+  });
+});
+
+describe("the provenance of a study", () => {
+  const scripts = path.join(import.meta.dirname, "../scripts");
+  const rel = (files: readonly string[]): string[] =>
+    files.map((f) => path.relative(path.join(import.meta.dirname, ".."), f));
+
+  it("records every local module a script imports, through the statistics it calls", () => {
+    const files = rel(localImportClosure([path.join(scripts, "simulate-structures.ts")]));
+    expect(files).toEqual(
+      expect.arrayContaining([
+        "scripts/simulate-structures.ts",
+        "scripts/provenance.ts",
+        "test/support/simulate.ts",
+        "src/index.ts",
+        "src/compare.ts",
+        "test/support/exact.ts",
+      ]),
+    );
+    expect(files.every((f) => !f.includes("node_modules"))).toBe(true);
+    expect(files).toEqual(files.toSorted());
+  });
+
+  it("refuses one file for both the TSV and the skip log", () => {
+    const same = path.join(dir, "same.out");
+    const run = (): string =>
+      execFileSync(
+        process.execPath,
+        [
+          path.join(scripts, "study-heterogeneous.ts"),
+          "0.05",
+          "0.05",
+          "0.005",
+          "--out",
+          same,
+          "--skip-log",
+          path.relative(process.cwd(), same),
+        ],
+        { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+      );
+    expect(run).toThrow(/name the same file/);
   });
 });
 

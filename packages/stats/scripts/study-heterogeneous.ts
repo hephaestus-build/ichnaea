@@ -459,6 +459,8 @@ function main(): void {
   if (count && (out !== undefined || skipLog !== undefined))
     throw new Error("--count writes no file; leave out --out and --skip-log");
   if (!count && out === undefined) throw new Error("give the TSV with --out");
+  if (out !== undefined && skipLog !== undefined && path.resolve(out) === path.resolve(skipLog))
+    throw new Error("--out and --skip-log name the same file; give two files");
   for (const file of [out, skipLog])
     if (file !== undefined && existsSync(file))
       throw new Error(`${file} exists already; give a new file`);

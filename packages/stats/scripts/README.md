@@ -46,14 +46,18 @@ Every row is deterministic, so a rerun gives the same bytes.
 
 ## Verify a run
 
+Run these from the repository root. `gh` puts each artifact in its own directory, so the first
+step brings the summary, the checksums and the archive together.
+
 ```sh
 gh run download <run-id> -n summary -n archive -D sweep
-cd sweep && sha256sum -c SHA256SUMS
-mkdir in && tar -xf confirmation-sweep.tar -C in
+cp sweep/summary/summary.json sweep/summary/SHA256SUMS sweep/archive/confirmation-sweep.tar sweep/
+(cd sweep && sha256sum -c SHA256SUMS)
+mkdir sweep/in && tar -xf sweep/confirmation-sweep.tar -C sweep/in
 git checkout <commit from summary.json>
-node packages/stats/scripts/check-sweep-provenance.ts $(find in -name '*.tsv' -o -name '*.jsonl')
-node packages/stats/scripts/collect-sweep.ts --in in --out again --phases A,B,C,D,E-large,E-embedded
-cmp summary.json again/summary.json
+node packages/stats/scripts/check-sweep-provenance.ts $(find sweep/in -name '*.tsv' -o -name '*.jsonl')
+node packages/stats/scripts/collect-sweep.ts --in sweep/in --out sweep/again --phases A,B,C,D,E-large,E-embedded
+cmp sweep/summary.json sweep/again/summary.json
 ```
 
 The summary depends only on the artifacts, so the rebuilt summary must be byte-identical.
