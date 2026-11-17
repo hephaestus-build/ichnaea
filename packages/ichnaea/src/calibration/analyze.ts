@@ -292,7 +292,12 @@ export function analyzeCalibration(
 }
 
 /** Why a judge-based Pass is not reachable. */
-export type PassBlocker = "notCalibrated" | "noKnownWorse" | "dropNotShown" | "slopeNotShown";
+export type PassBlocker =
+  | "notCalibrated"
+  | "unsupportedScale"
+  | "noKnownWorse"
+  | "dropNotShown"
+  | "slopeNotShown";
 
 /** Whether a judge-based Pass is reachable at a limit. */
 export interface JudgePass {
@@ -300,7 +305,10 @@ export interface JudgePass {
   readonly reachable: boolean;
   /** −(β_L · limit − B): the judge-measured change's lower bound must be at least this. */
   readonly lowerBoundAtLeast: number | undefined;
-  /** Every reason that blocks it, in this order: notCalibrated, noKnownWorse, dropNotShown, slopeNotShown. */
+  /**
+   * Every reason that blocks it, in this order: notCalibrated, unsupportedScale, noKnownWorse,
+   * dropNotShown, slopeNotShown.
+   */
   readonly blockedBy: readonly PassBlocker[];
 }
 
@@ -308,18 +316,23 @@ export interface JudgePass {
  * Whether a judge-based Pass is reachable at a measure's limit, and the bound it would need. A Pass
  * needs the judge-measured change's lower bound to be at least −(β_L · limit − B), with β_L the
  * slope's lower bound and B the bias bound on the calibration's base against known-worse pair. It
- * is blocked when the judge is not calibrated, without known-worse answers, when the human drop on
- * that pair is not shown, or when β_L · limit ≤ B. Even when it is reachable, a calibrated judge's
+ * is blocked when the judge is not calibrated, for levels (the slope needs yes/no labels, so no
+ * known-worse answers can unblock it), without known-worse answers, when the human drop on that
+ * pair is not shown, or when β_L · limit ≤ B. Even when it is reachable, a calibrated judge's
  * measures stay secondary in this version.
  */
 export function judgePass(analysis: CalibrationAnalysis, limit: number): JudgePass {
   const slope = analysis.slope;
   const blockedBy: PassBlocker[] = analysis.status === "calibrated" ? [] : ["notCalibrated"];
+  // Only yes/no analyses have a slope: for levels, no known-worse answers can unblock it.
   if (slope === undefined) {
     return {
       reachable: false,
       lowerBoundAtLeast: undefined,
-      blockedBy: [...blockedBy, "noKnownWorse"],
+      blockedBy: [
+        ...blockedBy,
+        analysis.statistic === "gwet-ac1" ? "noKnownWorse" : "unsupportedScale",
+      ],
     };
   }
   const margin = slope.lower * limit - slope.pairBound;

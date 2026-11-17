@@ -272,6 +272,7 @@ describe("the slope on the base against known-worse pair", () => {
       lowerBoundAtLeast: undefined,
     });
     expect(judgePass(analysis, 0.1).blockedBy).toContain("noKnownWorse");
+    expect(judgePass(analysis, 0.1).blockedBy).not.toContain("unsupportedScale");
   });
 });
 
@@ -310,6 +311,36 @@ describe("analyzeCalibration on levels", () => {
     expect(analysis.conditions.ratersFloor.floor).toBe(0.667);
     expect(analysis.status).toBe("calibrated");
     expect(analysis.armBias.estimate).toBe(0);
+  });
+
+  it("blocks a judge-based Pass for its scale, even with known-worse answers", () => {
+    const rng = createRng(9);
+    const quality = new Map<string, number>();
+    const analysis = analyzeCalibration(
+      {
+        scale: "levels",
+        levels: 5,
+        units: units(
+          60,
+          (item, configuration) => {
+            const key = `${item}/${configuration}`;
+            if (!quality.has(key)) {
+              const level = 1 + Math.floor(rng.uniform() * 5);
+              quality.set(key, configuration === "known-worse" ? Math.max(1, level - 2) : level);
+            }
+            return quality.get(key)!;
+          },
+          { configurations: ["base", "candidate", "known-worse"] },
+        ),
+      },
+      settings,
+    );
+    expect(analysis.status).toBe("calibrated");
+    expect(judgePass(analysis, 0.1)).toEqual({
+      reachable: false,
+      lowerBoundAtLeast: undefined,
+      blockedBy: ["unsupportedScale"],
+    });
   });
 });
 

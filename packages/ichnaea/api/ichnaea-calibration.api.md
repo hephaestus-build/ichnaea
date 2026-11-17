@@ -145,7 +145,7 @@ export interface PairedRate {
 }
 
 // @public
-export type PassBlocker = "notCalibrated" | "noKnownWorse" | "dropNotShown" | "slopeNotShown";
+export type PassBlocker = "notCalibrated" | "unsupportedScale" | "noKnownWorse" | "dropNotShown" | "slopeNotShown";
 
 // @public
 export interface Slope {
