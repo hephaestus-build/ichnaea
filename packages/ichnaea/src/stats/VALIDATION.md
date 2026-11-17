@@ -570,24 +570,25 @@ shown bias bound is at most m.
 
 Generic cells, yes/no labels, 60 cases:
 
-| Cell                   | Judge                     | Pass  | Floor | AC1   | Sensitivity | Specificity | Bias gate | Mean bias | Bias ≤ 0.10 | Bias ≤ 0.20 |
-| ---------------------- | ------------------------- | ----- | ----- | ----- | ----------- | ----------- | --------- | --------- | ----------- | ----------- |
-| Prevalence 0.2         | as good as a rater (0.90) | 0.120 | 0.474 | 0.788 | 0.479       | 0.797       | 0.825     | 0.00      | 0.039       | 0.825       |
-|                        | slightly worse (0.85)     | 0.019 | 0.506 | 0.298 | 0.309       | 0.332       | 0.708     | 0.00      | 0.004       | 0.708       |
-|                        | clearly worse (0.80)      | 0.002 | 0.467 | 0.066 | 0.220       | 0.077       | 0.571     | 0.00      | 0.000       | 0.571       |
-| Prevalence 0.1         | as good as a rater        | 0.172 | 0.730 | 0.836 | 0.381       | 0.817       | 0.836     | 0.00      | 0.036       | 0.836       |
-|                        | clearly worse             | 0.006 | 0.735 | 0.079 | 0.300       | 0.064       | 0.579     | 0.00      | 0.002       | 0.579       |
-| Prevalence 0.2, biased | as good as a rater        | 0.022 | 0.481 | 0.752 | 0.102       | 0.904       | 0.624     | −0.068    | 0.027       | 0.624       |
-|                        |                           | 0.001 | 0.469 | 0.696 | 0.012       | 0.960       | 0.267     | −0.136    | 0.006       | 0.267       |
-|                        |                           | 0.000 | 0.471 | 0.640 | 0.001       | 0.989       | 0.070     | −0.204    | 0.000       | 0.070       |
-| Prevalence 0.1         | chance                    | 0.000 | 0.729 | 0.380 | 0.000       | 0.879       | 0.625     | 0.00      | 0.002       | 0.625       |
-|                        | always no                 | 0.000 | 0.732 | 0.981 | 0.000       | 1.000       | 0.939     | 0.00      | 0.120       | 0.939       |
-| Prevalence 0.05        | chance                    | 0.004 | 0.832 | 0.973 | 0.004       | 1.000       | 0.867     | 0.00      | 0.063       | 0.867       |
-|                        | always no                 | 0.001 | 0.832 | 1.000 | 0.001       | 1.000       | 0.980     | 0.00      | 0.333       | 0.980       |
-| Prevalence 0.35        | as good as a rater        | 0.051 | 0.242 | 0.739 | 0.595       | 0.742       | 0.828     | 0.00      | 0.043       | 0.828       |
-|                        | clearly worse             | 0.000 | 0.231 | 0.053 | 0.153       | 0.097       | 0.572     | 0.00      | 0.000       | 0.572       |
-|                        | chance                    | 0.000 | 0.244 | 0.000 | 0.000       | 0.002       | 0.107     | 0.00      | 0.000       | 0.107       |
-|                        | always no                 | 0.000 | 0.252 | 0.001 | 0.000       | 1.000       | 0.675     | 0.00      | 0.001       | 0.675       |
+| Cell                    | Judge                     | Pass  | Floor | AC1   | Sensitivity | Specificity | Bias gate | Mean bias | Bias ≤ 0.10 | Bias ≤ 0.20 |
+| ----------------------- | ------------------------- | ----- | ----- | ----- | ----------- | ----------- | --------- | --------- | ----------- | ----------- |
+| Prevalence 0.2          | as good as a rater (0.90) | 0.120 | 0.474 | 0.788 | 0.479       | 0.797       | 0.825     | 0.00      | 0.039       | 0.825       |
+|                         | slightly worse (0.85)     | 0.019 | 0.506 | 0.298 | 0.309       | 0.332       | 0.708     | 0.00      | 0.004       | 0.708       |
+|                         | clearly worse (0.80)      | 0.002 | 0.467 | 0.066 | 0.220       | 0.077       | 0.571     | 0.00      | 0.000       | 0.571       |
+| Prevalence 0.1          | as good as a rater        | 0.172 | 0.730 | 0.836 | 0.381       | 0.817       | 0.836     | 0.00      | 0.036       | 0.836       |
+|                         | clearly worse             | 0.006 | 0.735 | 0.079 | 0.300       | 0.064       | 0.579     | 0.00      | 0.002       | 0.579       |
+| Prevalence 0.2, biased  | as good as a rater        | 0.019 | 0.481 | 0.643 | 0.111       | 0.821       | 0.680     | −0.048    | 0.015       | 0.680       |
+|                         |                           | 0.001 | 0.469 | 0.491 | 0.015       | 0.845       | 0.415     | −0.097    | 0.003       | 0.415       |
+|                         |                           | 0.000 | 0.471 | 0.338 | 0.002       | 0.855       | 0.196     | −0.146    | 0.000       | 0.196       |
+| Prevalence 0.1          | chance                    | 0.000 | 0.729 | 0.380 | 0.000       | 0.879       | 0.625     | 0.00      | 0.002       | 0.625       |
+|                         | always no                 | 0.000 | 0.732 | 0.981 | 0.000       | 1.000       | 0.939     | 0.00      | 0.120       | 0.939       |
+| Prevalence 0.05         | chance                    | 0.004 | 0.832 | 0.973 | 0.004       | 1.000       | 0.867     | 0.00      | 0.063       | 0.867       |
+|                         | always no                 | 0.001 | 0.832 | 1.000 | 0.001       | 1.000       | 0.980     | 0.00      | 0.333       | 0.980       |
+| Prevalence 0.35         | as good as a rater        | 0.051 | 0.242 | 0.739 | 0.595       | 0.742       | 0.828     | 0.00      | 0.043       | 0.828       |
+|                         | clearly worse             | 0.000 | 0.231 | 0.053 | 0.153       | 0.097       | 0.572     | 0.00      | 0.000       | 0.572       |
+|                         | chance                    | 0.000 | 0.244 | 0.000 | 0.000       | 0.002       | 0.107     | 0.00      | 0.000       | 0.107       |
+|                         | always no                 | 0.000 | 0.252 | 0.001 | 0.000       | 1.000       | 0.675     | 0.00      | 0.001       | 0.675       |
+| Prevalence 0.35, biased | as good as a rater        | 0.000 | 0.249 | 0.091 | 0.002       | 0.823       | 0.056     | −0.200    | 0.000       | 0.056       |
 
 Generic cells, prevalence 0.35, by study size (good judge at 0.90, worse at 0.80):
 
@@ -634,8 +635,10 @@ yes/no cells, at most 0.002 % of resamples had one.
 - **No uninformative judge passes.** At prevalence 0.05, a chance judge and an always-no judge pass
   AC1 in 97–100 % of studies, because AC1 rewards agreement on the many negatives. The sensitivity
   gap stops them: they pass the whole rule in at most 0.4 % of studies.
-- **The bias gate catches what agreement misses.** A yes/no judge with a mean bias of −0.20 passes
-  AC1 in 64 % of studies and the bias gate in 7 %.
+- **The bias gate catches what agreement misses.** A yes/no judge with a mean bias of −0.146 passes
+  AC1 in 34 % of studies and the bias gate in 20 %.
+- **The bias gate's size at its bound.** For a judge whose mean bias is −0.20, the gate's bound,
+  the gate holds in 5.6 % ± 0.5 % of studies at the bound (nominal 5 %), over 2,000 studies.
 - **The clearly worse judge stays out.** It passes in at most 0.6 % of generic studies and at most
   3.2 % of draws, below the 5 % target everywhere.
 - **The rater floor binds before the judge does.** At 60 cases, raters at raw agreement 0.82 reach
