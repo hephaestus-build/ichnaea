@@ -436,20 +436,23 @@ equally (`per-case`), or each family weighs equally and its cases share its weig
 at every true rate) or `not-validated` (no study has shown it, and the card says "coverage not
 validated").
 
-| Estimand      | Trials per case       | Values                | Weights | Interval                                | Coverage      |
-| ------------- | --------------------- | --------------------- | ------- | --------------------------------------- | ------------- |
-| `these-cases` | 1                     | binary                | equal   | Clopper–Pearson on the pooled count     | conservative  |
-| `these-cases` | 1                     | binary or score       | unequal | Hoeffding: half-width √(ln(2/α)·Σwᵢ²/2) | conservative  |
-| `these-cases` | 1                     | score                 | equal   | Wilson on the pooled mean, n = cases    | not-validated |
-| `these-cases` | 2 or more in any case | binary or score       | any     | the one-arm stratified score interval   | not-validated |
-| `population`  | any                   | binary or score       | any     | BCa over the top clusters, at least 30  | not-validated |
-| operational   | planned               | binary, equal weights | —       | Clopper–Pearson over planned trials     | conservative  |
-| operational   | planned               | otherwise             | —       | Hoeffding over planned trials           | conservative  |
+| Estimand      | Trials per case       | Values                | Weights | Interval                                   | Coverage      |
+| ------------- | --------------------- | --------------------- | ------- | ------------------------------------------ | ------------- |
+| `these-cases` | 1                     | binary                | equal   | Clopper–Pearson on the pooled count, at α′ | conservative  |
+| `these-cases` | 1                     | binary or score       | unequal | Hoeffding: half-width √(ln(2/α)·Σwᵢ²/2)    | conservative  |
+| `these-cases` | 1                     | score                 | equal   | Wilson on the pooled mean, n = cases       | not-validated |
+| `these-cases` | 2 or more in any case | binary or score       | any     | the one-arm stratified score interval      | not-validated |
+| `population`  | any                   | binary or score       | any     | BCa over the top clusters, at least 30     | not-validated |
+| operational   | planned               | binary, equal weights | —       | Clopper–Pearson over planned trials, at α′ | conservative  |
+| operational   | planned               | otherwise             | —       | Hoeffding over planned trials              | conservative  |
 
-- **Clopper–Pearson** is exact for one binomial count. The pooled count of independent trials with
-  unequal rates is Poisson-binomial. Beyond one unit from its mean, its tails are no heavier than
-  the binomial's with the same mean (Hoeffding 1956), so the interval stays conservative for the
-  mean rate of the cases.
+- **Clopper–Pearson** is exact for one binomial count. Ichnaea uses Clopper–Pearson on the pooled
+  count at the adjusted level α′ = 1 − e^{−α} per bound (1 − e^{−α/2} per tail for a two-sided
+  interval). With independent trials at unequal rates, the count is Poisson-binomial. The bound then
+  misses the mean rate with probability below α, for every set of rates (Hoeffding 1956 Theorem 4,
+  Greenberg and Mohri 2014, and Weierstrass's product inequality). Unadjusted CP can miss at a rate
+  up to −ln(1 − α), at extreme means. The proof needs α′ ≤ 1/4 per bound, and a larger one is
+  refused. At α = 0.05 the adjusted level is 0.04877.
 - **Hoeffding's bound** holds for any weighted mean of independent terms in [0, 1]. Unequal family
   sizes leave no binomial count, so it replaces Clopper–Pearson there. It is up to about 1.4 times
   wider than a normal interval at a rate of 0.5. One side uses √(ln(1/α)·Σwᵢ²/2).
@@ -517,8 +520,8 @@ docker run --rm -v "$PWD":/w -w /w \
   && python scripts/stats/estimate_oracle.py test/stats/reference-python-estimate.json"
 ```
 
-**Mutants.** `scripts/stats/mutants.ts` changes these methods in 23 ways (those named `estimate:`):
-the denominator of the weighted mean, which keeps a mean of ones at exactly 1; the tail split, the beta shape and the closed form of Clopper–Pearson; the logarithm and the half of
+**Mutants.** `scripts/stats/mutants.ts` changes these methods in 26 ways (those named `estimate:`):
+the denominator of the weighted mean, which keeps a mean of ones at exactly 1; the adjusted level of pooled Clopper–Pearson, per bound and per tail, and its limit of 1/4; the tail split, the beta shape and the closed form of Clopper–Pearson; the logarithm and the half of
 Hoeffding's bound; the squared weight and the reflection of the score interval; the two choices of
 path, the Wilson n, the worst case, the operational interval and the cluster minimum of `estimate`; the
 ties and the sign of the acceleration of BCa; pass^k, pass@k and the majority's tie; the events and

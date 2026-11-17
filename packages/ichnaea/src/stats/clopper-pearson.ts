@@ -17,9 +17,8 @@ function invert(f: (p: number) => number, target: number): number {
 /**
  * The exact Clopper–Pearson interval for one binomial proportion. Each bounded side holds its
  * share of 1 − level: (1 − level)/2 on two sides, 1 − level on one. Its coverage is at least the
- * level at every true rate. On the pooled count of independent trials with unequal rates (a
- * Poisson-binomial count), it stays conservative for the mean rate (Hoeffding 1956).
- * Zero trials give [0, 1] with an undefined (NaN) estimate.
+ * level at every true rate of one binomial. For the pooled count of independent trials at unequal
+ * rates, use `pooledClopperPearson`. Zero trials give [0, 1] with an undefined (NaN) estimate.
  */
 export function clopperPearson(count: Count, level = 0.95, sided: Sided = "two"): Interval {
   assertCount(count, "clopperPearson");
@@ -38,4 +37,29 @@ export function clopperPearson(count: Count, level = 0.95, sided: Sided = "two")
     upper =
       x === 0 ? 1 - tail ** (1 / n) : invert((p) => incompleteBeta(p, x + 1, n - x), 1 - tail);
   return { estimate: x / n, lower, upper, level, sided, method };
+}
+
+/** The largest adjusted level per bound for which the adjustment holds. */
+const MAX_ADJUSTED_TAIL = 0.25;
+
+/**
+ * Clopper–Pearson on the pooled count at the adjusted level α′ = 1 − e^{−α} per bound
+ * (1 − e^{−α/2} per tail for a two-sided interval). With independent trials at unequal rates, the
+ * count is Poisson-binomial. The bound then misses the mean rate with probability below α, for every
+ * set of rates (Hoeffding 1956 Theorem 4, Greenberg and Mohri 2014, and Weierstrass's product
+ * inequality). Unadjusted CP can miss at a rate up to −ln(1 − α), at extreme means.
+ *
+ * The proof needs α′ ≤ 1/4 per bound, so a larger one is refused. The result carries the level
+ * asked for, and the method "clopper-pearson-adjusted".
+ */
+export function pooledClopperPearson(count: Count, level = 0.95, sided: Sided = "two"): Interval {
+  assertLevel(level);
+  const alpha = 1 - level;
+  const tail = sided === "two" ? 1 - Math.exp(-alpha / 2) : 1 - Math.exp(-alpha);
+  if (tail > MAX_ADJUSTED_TAIL)
+    throw new RangeError(
+      `pooledClopperPearson: the adjusted level ${tail} per bound is above 1/4, where the bound is not proven`,
+    );
+  const adjusted = clopperPearson(count, sided === "two" ? 1 - 2 * tail : 1 - tail, sided);
+  return { ...adjusted, level, method: "clopper-pearson-adjusted" };
 }

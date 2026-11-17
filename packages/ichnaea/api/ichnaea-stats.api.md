@@ -372,6 +372,9 @@ export interface PairedTable {
 export function pnorm(x: number): number;
 
 // @public
+export function pooledClopperPearson(count: Count, level?: number, sided?: Sided): Interval;
+
+// @public
 export const POPULATION_MIN_CLUSTERS = 30;
 
 // @public

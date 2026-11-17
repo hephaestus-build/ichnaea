@@ -848,6 +848,24 @@ export const MUTANTS: readonly Mutant[] = [
     from: "    const candidateTotal = t + offset;",
     to: "    const candidateTotal = t;",
   },
+  {
+    id: "estimate: pooled Clopper–Pearson unadjusted",
+    file: "src/stats/clopper-pearson.ts",
+    from: 'const tail = sided === "two" ? 1 - Math.exp(-alpha / 2) : 1 - Math.exp(-alpha);',
+    to: 'const tail = sided === "two" ? alpha / 2 : alpha;',
+  },
+  {
+    id: "estimate: pooled Clopper–Pearson two-sided at α per tail",
+    file: "src/stats/clopper-pearson.ts",
+    from: 'const tail = sided === "two" ? 1 - Math.exp(-alpha / 2) : 1 - Math.exp(-alpha);',
+    to: 'const tail = sided === "two" ? 1 - Math.exp(-alpha) : 1 - Math.exp(-alpha);',
+  },
+  {
+    id: "estimate: pooled Clopper–Pearson past an adjusted level of 1/4",
+    file: "src/stats/clopper-pearson.ts",
+    from: "const MAX_ADJUSTED_TAIL = 0.25;",
+    to: "const MAX_ADJUSTED_TAIL = 0.5;",
+  },
 ];
 
 /**

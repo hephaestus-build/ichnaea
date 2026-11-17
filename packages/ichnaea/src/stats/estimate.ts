@@ -1,5 +1,5 @@
 import { bcaInterval, type BcaCluster } from "./bca.ts";
-import { clopperPearson } from "./clopper-pearson.ts";
+import { pooledClopperPearson } from "./clopper-pearson.ts";
 import { hoeffding } from "./hoeffding.ts";
 import { oneArmScoreInterval } from "./one-arm-score.ts";
 import type { Rng } from "./rng.ts";
@@ -163,7 +163,7 @@ const withCoverage = (interval: Interval, coverage: Coverage): EstimateInterval 
 
 /**
  * The interval of the operational estimand: binary trials of equal weight give Clopper–Pearson
- * on the pooled count over planned trials; any other case gives Hoeffding's bound over the trials.
+ * on the pooled count over planned trials, at the adjusted level (`pooledClopperPearson`); any other case gives Hoeffding's bound over the trials.
  */
 function operationalOf(
   input: EstimateInput,
@@ -176,7 +176,7 @@ function operationalOf(
   if (input.valueType === "binary" && allEqual(trialWeights)) {
     const successes = planned.reduce((a, c) => a + c.sum, 0);
     const trials = planned.reduce((a, c) => a + c.planned, 0);
-    return withCoverage(clopperPearson({ successes, trials }, level, sided), "conservative");
+    return withCoverage(pooledClopperPearson({ successes, trials }, level, sided), "conservative");
   }
   // Each planned trial is one term; a missing trial is a 0.
   const values: number[] = [];
@@ -194,7 +194,8 @@ function operationalOf(
  * A one-arm estimate, by these rules.
  *
  * `these-cases`, from within-case variance only:
- * - one trial per case, binary, equal weights: Clopper–Pearson on the pooled count, conservative;
+ * - one trial per case, binary, equal weights: Clopper–Pearson on the pooled count at the adjusted
+ *   level, conservative for any rates (`pooledClopperPearson`);
  * - one trial per case, scores, equal weights: Wilson on the pooled mean, not validated;
  * - one trial per case, unequal weights (per family, families of different sizes): Hoeffding's
  *   bound, conservative;
@@ -282,7 +283,7 @@ export function estimate(input: EstimateInput): EstimateResult {
     } else if (input.valueType === "binary") {
       const successes = observed.reduce((a, c) => a + c.sum, 0);
       interval = withCoverage(
-        clopperPearson({ successes, trials: observed.length }, level, sided),
+        pooledClopperPearson({ successes, trials: observed.length }, level, sided),
         "conservative",
       );
     } else {

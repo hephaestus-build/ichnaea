@@ -127,16 +127,20 @@ describe("the one-arm stratified score interval", () => {
   });
 });
 
+/** The two-sided 95% level at which pooled Clopper–Pearson runs: 1 − e^{−α/2} per tail. */
+const ADJUSTED_95 = 1 - 2 * (1 - Math.exp(-0.025));
+
 const ones = (k: number, passes: number): EstimateCase[] =>
   binaryCases(Array.from({ length: k }, (_, i) => [i < passes ? 1 : 0]));
 
 describe("estimate: the these-cases study", () => {
   it("uses Clopper–Pearson on the pooled count for binary values at one trial", () => {
     const result = estimate({ valueType: "binary", cases: ones(20, 7) });
-    const reference = clopperPearson({ successes: 7, trials: 20 });
+    const reference = clopperPearson({ successes: 7, trials: 20 }, ADJUSTED_95);
     expect(result.estimate).toBeCloseTo(0.35, 14);
     expect(result.interval).toMatchObject({
-      method: "clopper-pearson",
+      method: "clopper-pearson-adjusted",
+      level: 0.95,
       coverage: "conservative",
       lower: reference.lower,
       upper: reference.upper,
@@ -150,7 +154,10 @@ describe("estimate: the these-cases study", () => {
       (i) => `f${Math.floor(i / 2)}`,
     );
     const result = estimate({ valueType: "binary", weighting: "per-family", cases });
-    expect(result.interval).toMatchObject({ method: "clopper-pearson", coverage: "conservative" });
+    expect(result.interval).toMatchObject({
+      method: "clopper-pearson-adjusted",
+      coverage: "conservative",
+    });
   });
 
   it("uses Hoeffding's bound per family when the family sizes differ", () => {
@@ -246,12 +253,12 @@ describe("estimate: missing trials", () => {
 
   it("gives the operational estimand Clopper–Pearson over planned trials, missing as failure", () => {
     const result = estimate({ valueType: "binary", cases });
-    const reference = clopperPearson({ successes: 4, trials: 8 });
+    const reference = clopperPearson({ successes: 4, trials: 8 }, ADJUSTED_95);
     expect(result.operational).toMatchObject({
       estimate: 0.5,
       lower: reference.lower,
       upper: reference.upper,
-      method: "clopper-pearson",
+      method: "clopper-pearson-adjusted",
       coverage: "conservative",
     });
   });
