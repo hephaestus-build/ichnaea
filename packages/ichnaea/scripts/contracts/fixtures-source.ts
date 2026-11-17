@@ -65,7 +65,7 @@ const PROJECT = {
     },
   },
   workers: {
-    chatbot: {
+    assistant: {
       command: ["poetry", "run", "python", "-m", "evals.worker"],
       prepare: ["poetry", "install", "--no-root"],
       env: [{ name: "LLM_API_KEY", secret: true }],
@@ -106,7 +106,7 @@ const SUITE_V2 = {
     ],
     pools: { development: { label: "dev" }, validation: { label: "test", maxReads: 40 } },
   },
-  worker: "chatbot",
+  worker: "assistant",
   stages: ["search", "rank", "answer"],
   environment: {
     index: {
@@ -940,7 +940,7 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
         url: { fromEnv: "HOOK_URL" },
       }),
     "token-in-a-command": (r) =>
-      ((r["workers"] as Record<string, Record<string, unknown>>)["chatbot"]!["command"] = [
+      ((r["workers"] as Record<string, Record<string, unknown>>)["assistant"]!["command"] = [
         "worker",
         // The header form: refused by the header rule, and no provider's token format, so no
         // secret scanner flags the generated fixture.
@@ -951,7 +951,7 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
         "answers-public"
       ]!["git"]!["repo"] = "https://x-access-token:ghp_abcdefghij0123456789@github.com/o/r.git"),
     "zero-capacity": (r) =>
-      ((r["workers"] as Record<string, Record<string, unknown>>)["chatbot"]!["capacity"] = 0),
+      ((r["workers"] as Record<string, Record<string, unknown>>)["assistant"]!["capacity"] = 0),
   },
   "suite.lock": {
     "missing-measurement-digest": (r) => delete r["measurementDigest"],

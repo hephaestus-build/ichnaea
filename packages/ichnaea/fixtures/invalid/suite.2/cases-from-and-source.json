@@ -40,7 +40,7 @@
       "file": "cases.jsonl"
     }
   },
-  "worker": "chatbot",
+  "worker": "assistant",
   "stages": [
     "search",
     "rank",

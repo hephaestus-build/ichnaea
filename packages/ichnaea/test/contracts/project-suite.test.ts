@@ -237,7 +237,7 @@ describe("the authored files", () => {
     ["a bearer value after a tab", "bearer\tabc"],
   ])("refuse a command argument that holds %s", (_, argument) => {
     const p = project();
-    (p["workers"] as Record<string, Rec>)["chatbot"]!["command"] = ["worker", argument];
+    (p["workers"] as Record<string, Rec>)["assistant"]!["command"] = ["worker", argument];
     expect(accepts("project", p)).toBe(false);
   });
 
@@ -257,7 +257,7 @@ describe("the authored files", () => {
     `cache-ghp_${body(36)}`,
   ])("accept the ordinary command argument %s", (argument) => {
     const p = project();
-    (p["workers"] as Record<string, Rec>)["chatbot"]!["command"] = ["worker", argument];
+    (p["workers"] as Record<string, Rec>)["assistant"]!["command"] = ["worker", argument];
     expect(accepts("project", p)).toBe(true);
   });
 
@@ -340,7 +340,7 @@ describe("the authored files", () => {
 
   it("keep a secret out of the file: an environment entry names the variable, never its value", () => {
     const p = project();
-    const worker = (p["workers"] as Record<string, Rec>)["chatbot"]!;
+    const worker = (p["workers"] as Record<string, Rec>)["assistant"]!;
     worker["env"] = [{ name: "LLM_API_KEY", value: "sk-live-0123456789" }];
     expect(accepts("project", p)).toBe(false);
   });

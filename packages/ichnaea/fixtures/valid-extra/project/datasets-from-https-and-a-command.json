@@ -23,7 +23,7 @@
     }
   },
   "workers": {
-    "chatbot": {
+    "assistant": {
       "command": [
         "poetry",
         "run",
