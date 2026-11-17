@@ -19,6 +19,10 @@
       "types": "./dist/stats/index.d.ts",
       "default": "./dist/stats/index.js"
     },
+    "./calibration": {
+      "types": "./dist/calibration/index.d.ts",
+      "default": "./dist/calibration/index.js"
+    },
     "./schemas/*.json": "./schemas/*.json",
     "./package.json": "./package.json"
   },

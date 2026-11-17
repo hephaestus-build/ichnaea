@@ -1,0 +1,181 @@
+// The weighted calibration statistics over a set's answers. Every statistic weights each answer by
+// 1/π, its inverse inclusion probability. Ordinal alpha is the exception: it takes unweighted sets
+// only, and the analysis refuses weighted levels.
+import { krippendorffAlpha } from "../stats/index.ts";
+
+/**
+ * A labelled calibration set in columns: one entry per answer, answers grouped into items (the
+ * resampling clusters), and each item in one sampling stratum.
+ */
+export interface LabelColumns {
+  /** `binary` labels are 0 or 1 (1 is a defect); `levels` labels are 1 to `levels`. */
+  readonly scale: "binary" | "levels";
+  /** The number of levels, for the `levels` scale. */
+  readonly levels: number;
+  /** The number of items. */
+  readonly cases: number;
+  /** Per answer: its item, 0 to cases − 1. */
+  readonly caseOf: readonly number[];
+  /** Per answer: 0 is base, 1 is candidate, 2 is known-worse. */
+  readonly configurationOf: readonly number[];
+  /** Per answer: its weight, 1/π for inclusion probability π. */
+  readonly weight: readonly number[];
+  /** Per item: its stratum. The bootstrap resamples items within each stratum. */
+  readonly stratumOf: readonly number[];
+  /** Per answer: the first rater's label. */
+  readonly first: readonly number[];
+  /** Per answer: the second rater's label. */
+  readonly second: readonly number[];
+  /** Per answer: the judge's label. */
+  readonly judge: readonly number[];
+}
+
+/** The answers of a resample: indices, repeated when an item is drawn more than once. */
+export type Answers = readonly number[];
+
+/** A statistic of reader `x` against reference `y` over a resample's answers, with the weights. */
+export type Pairwise = (
+  x: readonly number[],
+  y: readonly number[],
+  answers: Answers,
+  w: readonly number[],
+) => number;
+
+/** R's type-7 quantile of a sorted array. */
+export function quantile(values: readonly number[], p: number): number {
+  const h = (values.length - 1) * p;
+  const low = Math.floor(h);
+  const high = Math.min(low + 1, values.length - 1);
+  return values[low]! + (h - low) * (values[high]! - values[low]!);
+}
+
+/** The finite values, sorted. */
+export function sorted(xs: readonly number[]): number[] {
+  return xs.filter((x) => Number.isFinite(x)).toSorted((x, y) => x - y);
+}
+
+/** The weighted share of `y`'s positives (of = 1) or negatives (of = 0) that `x` marks the same. NaN if none. */
+function rate(
+  x: readonly number[],
+  y: readonly number[],
+  answers: Answers,
+  w: readonly number[],
+  of: 0 | 1,
+): number {
+  let base = 0;
+  let hit = 0;
+  for (const i of answers) {
+    if (y[i] !== of) continue;
+    base += w[i]!;
+    if (x[i] === of) hit += w[i]!;
+  }
+  return base === 0 ? Number.NaN : hit / base;
+}
+
+/** The weighted share of the reference's defects that `x` also marks: sensitivity. */
+export const sensitivity: Pairwise = (x, y, answers, w) => rate(x, y, answers, w, 1);
+
+/** The weighted share of the reference's non-defects that `x` also marks: specificity. */
+export const specificity: Pairwise = (x, y, answers, w) => rate(x, y, answers, w, 0);
+
+/**
+ * Gwet's AC1 for two raters with answer weights: (p_o − p_e)/(1 − p_e), p_e = Σ π_k(1 − π_k)/(q − 1)
+ * with q = 2, every count weighted. With unit weights it equals `gwetAc1` of ./stats, which takes
+ * integer counts only.
+ */
+export const weightedAc1: Pairwise = (x, y, answers, w) => {
+  let total = 0;
+  let agree = 0;
+  let positive = 0;
+  for (const i of answers) {
+    total += w[i]!;
+    if (x[i] === y[i]) agree += w[i]!;
+    positive += (w[i]! * (x[i]! + y[i]!)) / 2;
+  }
+  const po = agree / total;
+  const pi = positive / total;
+  const pe = 2 * pi * (1 - pi);
+  return (po - pe) / (1 - pe);
+};
+
+/** Krippendorff's ordinal alpha of two readers. It ignores the weights: levels are unweighted. */
+export const ordinalAlpha: Pairwise = (x, y, answers) =>
+  krippendorffAlpha(
+    answers.map((i) => [x[i]!, y[i]!]),
+    "ordinal",
+  );
+
+/**
+ * The judge against each rater (their mean) minus each rater against the other (their mean). For
+ * a directional statistic such as sensitivity, the reference is the second argument, so the
+ * rater–rater value is the mean of rater 2 against rater 1 and rater 1 against rater 2.
+ */
+export function gap(set: LabelColumns, statistic: Pairwise, answers: Answers): number {
+  return judgeHuman(set, statistic, answers) - humanHuman(set, statistic, answers);
+}
+
+/** The judge against each rater, the mean of the two. */
+export function judgeHuman(set: LabelColumns, statistic: Pairwise, answers: Answers): number {
+  const w = set.weight;
+  return (
+    (statistic(set.judge, set.first, answers, w) + statistic(set.judge, set.second, answers, w)) / 2
+  );
+}
+
+/** Each rater against the other, the mean of the two directions. */
+export function humanHuman(set: LabelColumns, statistic: Pairwise, answers: Answers): number {
+  const w = set.weight;
+  return (
+    (statistic(set.second, set.first, answers, w) + statistic(set.first, set.second, answers, w)) /
+    2
+  );
+}
+
+/** A label on [0, 1]: a yes/no label as it is, a level as (level − 1)/(levels − 1). */
+export function valueOf(set: LabelColumns): (labels: readonly number[], i: number) => number {
+  const scale = set.scale === "levels" ? set.levels - 1 : 1;
+  return (labels, i) => (set.scale === "levels" ? (labels[i]! - 1) / scale : labels[i]!);
+}
+
+/**
+ * The bias between base and candidate: the weighted mean of (judge − the raters' mean) over the
+ * candidate's answers, minus the same over the base's, on [0, 1]. With one answer per
+ * configuration per item and unit weights, it equals the mean per-item difference.
+ */
+export function armBias(
+  set: LabelColumns,
+  answers: Answers,
+  value: (labels: readonly number[], i: number) => number,
+): number {
+  const sum = [0, 0];
+  const weight = [0, 0];
+  for (const i of answers) {
+    const k = set.configurationOf[i]!;
+    if (k > 1) continue;
+    const d = value(set.judge, i) - (value(set.first, i) + value(set.second, i)) / 2;
+    sum[k]! += set.weight[i]! * d;
+    weight[k]! += set.weight[i]!;
+  }
+  return sum[1]! / weight[1]! - sum[0]! / weight[0]!;
+}
+
+/**
+ * The weighted mean quality (1 − label) of `labels` on known-worse minus base: the change from the
+ * base to the known-worse configuration, on yes/no labels. Negative is a drop.
+ */
+export function pairChange(
+  set: LabelColumns,
+  answers: Answers,
+  labels: (i: number) => number,
+): number {
+  const sum = [0, 0];
+  const weight = [0, 0];
+  for (const i of answers) {
+    const k = set.configurationOf[i]!;
+    if (k === 1) continue;
+    const slot = k === 2 ? 1 : 0;
+    sum[slot]! += set.weight[i]! * (1 - labels(i));
+    weight[slot]! += set.weight[i]!;
+  }
+  return sum[1]! / weight[1]! - sum[0]! / weight[0]!;
+}
