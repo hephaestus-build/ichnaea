@@ -2,7 +2,7 @@
 // recorded by the hook of scripts/stats/record-loads.ts, and the third-party packages among them.
 // Each case runs a small study in a scratch repository, with the two scripts copied into it.
 import { spawnSync } from "node:child_process";
-import { copyFileSync, mkdirSync, readFileSync, symlinkSync } from "node:fs";
+import { copyFileSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { afterAll, describe, expect, it } from "vitest";
@@ -28,13 +28,12 @@ const installed = (name: string): string =>
     ) as { version: string }
   ).version;
 
-/** A repository with the recorder, the writer, the workspace's lockfile and its node_modules. */
+/** A repository with the recorder, the writer and the workspace's node_modules. */
 function studyRepo(files: Readonly<Record<string, string>>): string {
   const root = scratchRepo();
   mkdirSync(path.join(root, "rec"));
   for (const name of ["record-loads.ts", "provenance.ts"])
     copyFileSync(path.join(scripts, name), path.join(root, "rec", name));
-  copyFileSync(path.join(workspace, "pnpm-lock.yaml"), path.join(root, "pnpm-lock.yaml"));
   symlinkSync(path.join(workspace, "node_modules"), path.join(root, "node_modules"));
   commit(root, { ".gitignore": "node_modules\n", ...files });
   return root;
@@ -87,11 +86,11 @@ describe("the provenance of a study", () => {
       "used.ts",
     ]);
     expect(p.files["used.ts"]).toMatch(/^[0-9a-f]{64}$/);
-    expect(p.packages).toEqual([]);
+    expect(p.packages).toEqual({});
     expect(p.node).toBe(process.version);
   });
 
-  it("pins each third-party package it loads by name and installed version", () => {
+  it("pins each package it loads: its version, its importers and the bytes of its files", () => {
     const root = studyRepo({
       "study.ts": `import fc from "fast-check";
 import { provenance } from "./rec/provenance.ts";
@@ -103,8 +102,18 @@ console.log(JSON.stringify({ p: provenance(import.meta.filename, null, []), n: t
     expect(err).toBe("");
     expect(status).toBe(0);
     const { p } = JSON.parse(out) as { p: Provenance };
-    expect(p.packages).toContain(`fast-check@${installed("fast-check")}`);
-    expect(p.packages).toEqual(p.packages.toSorted());
+    const fastCheck = `fast-check@${installed("fast-check")}`;
+    expect(p.packages[fastCheck]?.importedBy).toEqual(["study.ts"]);
+    const files = Object.entries(p.packages[fastCheck]?.files ?? {});
+    expect(files.length).toBeGreaterThan(0);
+    for (const [file, hash] of files) {
+      expect(file).not.toMatch(/node_modules|^\//);
+      expect(hash).toMatch(/^[0-9a-f]{64}$/);
+    }
+    // fast-check's own dependency is pinned through fast-check, its importer.
+    const pureRand = Object.keys(p.packages).find((k) => k.startsWith("pure-rand@"));
+    expect(pureRand && p.packages[pureRand]?.importedBy).toEqual([fastCheck]);
+    expect(Object.keys(p.packages)).toEqual(Object.keys(p.packages).toSorted());
     expect(Object.keys(p.files).some((f) => f.includes("node_modules"))).toBe(false);
     expect(p.pull).toBeNull();
   });
@@ -122,6 +131,59 @@ console.log(used, provenance(import.meta.filename, null, []));
     const { status, err } = runStudy(root);
     expect(status).not.toBe(0);
     expect(err).toMatch(/barrel\.ts only re-exports/);
+  });
+
+  it("refuses a run that loads worker threads, whose modules it cannot record", () => {
+    const root = studyRepo({
+      "study.ts": `import { Worker } from "node:worker_threads";
+import { provenance } from "./rec/provenance.ts";
+
+console.log(typeof Worker, provenance(import.meta.filename, null, []));
+`,
+    });
+    const { status, err } = runStudy(root);
+    expect(status).not.toBe(0);
+    expect(err).toMatch(/a study must not compute in worker threads/);
+  });
+
+  it("pins in the merge's sidecar the modules that only a shard loaded", () => {
+    const root = studyRepo({
+      "study.ts": `import { writeFileSync } from "node:fs";
+import { mergeShards, provenance, readProvenance, writeMeta } from "./rec/provenance.ts";
+
+if (process.argv[2] === "shard") {
+  const { value } = await import(["./shard-only", "ts"].join("."));
+  const p = provenance(import.meta.filename, 7, process.argv.slice(2));
+  writeFileSync("shard.tsv", \`\${value}\\n\`);
+  writeMeta("shard.tsv", p, true);
+} else {
+  const p = provenance(import.meta.filename, 7, process.argv.slice(2), { pull: 5 });
+  writeFileSync("out.tsv", "merged\\n");
+  writeMeta("out.tsv", mergeShards(p, [readProvenance("shard.tsv")]), true);
+}
+`,
+      "shard-only.ts": "export const value = 1;\n",
+    });
+    const run = (phase: string): { status: number | null; err: string } => {
+      const r = spawnSync(
+        process.execPath,
+        ["--import", "./rec/record-loads.ts", "study.ts", phase],
+        { cwd: root, encoding: "utf8" },
+      );
+      return { status: r.status, err: r.stderr };
+    };
+    expect(run("shard")).toEqual({ status: 0, err: "" });
+    expect(run("merge")).toEqual({ status: 0, err: "" });
+    const merged = JSON.parse(
+      readFileSync(path.join(root, "out.tsv.meta.json"), "utf8"),
+    ) as Provenance;
+    expect(Object.keys(merged.files)).toEqual(["rec/provenance.ts", "shard-only.ts", "study.ts"]);
+    expect(merged.pull).toBe(5);
+    // A shard output changed after its run is refused.
+    writeFileSync(path.join(root, "shard.tsv"), "2\n");
+    const changed = run("merge");
+    expect(changed.status).not.toBe(0);
+    expect(changed.err).toMatch(/shard\.tsv is not the complete output that its sidecar records/);
   });
 
   it("refuses a run that did not record its loaded modules from the start", () => {
@@ -170,7 +232,7 @@ describe("the shards of a study", () => {
     commit: "a".repeat(40),
     pull: 3,
     files: { "s.ts": "1".repeat(64), "a.ts": "2".repeat(64) },
-    packages: ["x@1.0.0"],
+    packages: { "x@1.0.0": { importedBy: ["s.ts"], files: { "index.js": "4".repeat(64) } } },
     seedBase: 1,
     arguments: ["merge"],
     node: "v24.22.2",
@@ -179,15 +241,31 @@ describe("the shards of a study", () => {
 
   it("adds the modules and packages that each shard loaded", () => {
     const shard = { ...base, files: { "b.ts": "3".repeat(64), "s.ts": "1".repeat(64) } };
-    const merged = mergeShards(base, [{ ...shard, packages: ["y@2.0.0"] }]);
+    const y = { importedBy: ["b.ts"], files: { "y.js": "5".repeat(64) } };
+    const x = {
+      importedBy: ["b.ts"],
+      files: { "index.js": "4".repeat(64), "x.js": "6".repeat(64) },
+    };
+    const merged = mergeShards(base, [{ ...shard, packages: { "y@2.0.0": y, "x@1.0.0": x } }]);
     expect(Object.keys(merged.files)).toEqual(["a.ts", "b.ts", "s.ts"]);
-    expect(merged.packages).toEqual(["x@1.0.0", "y@2.0.0"]);
+    expect(merged.packages).toEqual({
+      "x@1.0.0": { importedBy: ["b.ts", "s.ts"], files: x.files },
+      "y@2.0.0": y,
+    });
     expect(merged.arguments).toEqual(["merge"]);
   });
 
-  it("refuses a shard of another commit or Node version, or with another sha256", () => {
+  it("refuses a shard of another run, or with another sha256", () => {
     expect(() => mergeShards(base, [{ ...base, commit: "b".repeat(40) }])).toThrow(/commit/);
     expect(() => mergeShards(base, [{ ...base, node: "v24.0.0" }])).toThrow(/Node/);
+    expect(() => mergeShards(base, [{ ...base, script: "t.ts" }])).toThrow(/script t\.ts/);
+    expect(() => mergeShards(base, [{ ...base, seedBase: 2 }])).toThrow(/seed base 2/);
+    const old = { ...base, schema: "ichnaea.stats-provenance/1" } as unknown as Provenance;
+    expect(() => mergeShards(base, [old])).toThrow(/schema/);
+    const patched = { importedBy: ["s.ts"], files: { "index.js": "7".repeat(64) } };
+    expect(() => mergeShards(base, [{ ...base, packages: { "x@1.0.0": patched } }])).toThrow(
+      /x@1\.0\.0\/index\.js/,
+    );
     expect(() => mergeShards(base, [{ ...base, files: { "a.ts": "9".repeat(64) } }])).toThrow(
       /a\.ts/,
     );

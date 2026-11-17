@@ -116,7 +116,7 @@ It records:
 
 - the commit that the study ran from, and `pull`, the pull request whose head holds that commit;
 - the sha256 of every local module that the study's process loaded, the script included;
-- `name@version` of every third-party package that it loaded;
+- every third-party package that it loaded: `name@version`, the modules that imported it, and the sha256 of each file that it loaded from the package;
 - the Node version, the seed base and the arguments;
 - the output's sha256 when the output is complete.
 
@@ -129,17 +129,21 @@ node --import ./scripts/stats/record-loads.ts scripts/stats/study-binary-one-tri
 
 A study refuses to write a sidecar without the recorder, with uncommitted changes to tracked files, or when a module that it loaded is untracked.
 It also refuses a loaded module that only re-exports: a barrel would pin every file that it re-exports.
-Inside the package, a module imports the file that defines what it uses, and a lint rule enforces that.
+Inside the package, a module imports the file that defines what it uses, never a barrel and never the package by its name, and a lint rule enforces that.
+A study refuses to run when it loads `node:worker_threads`, because the recorder cannot see what a worker thread loads.
+The sidecar pins only modules, so a study must not read a repository file as data.
+The inputs that a study reads, such as a shard's output or a list of points, are artifacts of an earlier step, and the sidecar records their sha256.
 A study whose shards run in their own processes, such as `study-calibration-rule.ts`, writes a sidecar for each shard.
-The merge then pins the modules that every shard loaded, and refuses a shard of another commit.
+The merge then pins the modules that every shard loaded, and refuses a shard of another commit, script, seed base or Node version.
 
 The `check` job of CI runs `check-sweep-provenance.ts --all` on every committed sidecar.
 It checks that the output is current: that it still describes the code at HEAD.
 
 - Every pinned file has its recorded sha256 at the run commit and at HEAD.
-- Every pinned package is in `pnpm-lock.yaml` at HEAD at its recorded version.
+- Every pinned package resolves to its recorded version from each module that imported it, in the `node_modules` that `pnpm install --frozen-lockfile` installs at HEAD.
+  Each file that the run loaded from it has its recorded sha256, so a patched package fails too.
 - The recorded Node version is the one that the study workflows pin.
-- The output has its recorded sha256.
+- The output is complete and has its recorded sha256.
 - The run commit is reachable from `refs/pull/<pull>/head`.
   The check fetches that ref, because a plain clone has no pull request refs.
 

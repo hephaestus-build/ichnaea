@@ -25,7 +25,8 @@
 //    Each record carries its source (file, line, rank, k, margin, coverage, seed), its mode, K and
 //    its truth.
 // Usage:
-//   node scripts/embed-worst.ts <sweep-0.tsv>... --out <embedded.jsonl> [--top 20] [--sizes 20,30,60]
+//   node --import ./scripts/stats/record-loads.ts scripts/stats/embed-worst.ts \
+//     <sweep-0.tsv>... --out <embedded.jsonl> [--top 20] [--sizes 20,30,60]
 // The output must not exist; its sidecar records the provenance (scripts/provenance.ts).
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";

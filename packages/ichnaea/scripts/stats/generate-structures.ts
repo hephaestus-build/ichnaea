@@ -24,7 +24,8 @@
 // Seeds: the cell j of margin index i draws from MT19937 seeded with B + 1,000·i + j, where B is
 // --seed-base (default 7,000,000). The default seeds (7,000,000 to 7,050,021) overlap no seed of
 // the sweeps or of the simulation runs.
-// Usage: node scripts/generate-structures.ts --out <structures.jsonl> [--one-trial]
+// Usage: node --import ./scripts/stats/record-loads.ts scripts/stats/generate-structures.ts \
+//     --out <structures.jsonl> [--one-trial]
 // The output must not exist; its sidecar <out>.meta.json records the provenance.
 import { appendFileSync, existsSync, writeFileSync } from "node:fs";
 import { parseArgs } from "node:util";

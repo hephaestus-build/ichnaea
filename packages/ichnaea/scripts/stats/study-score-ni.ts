@@ -1,12 +1,14 @@
 // Stage 1 of the score non-inferiority study (VALIDATION.md, "Score measures: non-inferiority"),
 // one shard at a time. Two phases, each sharded:
 //
-//   node scripts/stats/study-score-ni.ts screen --shard 3/80 --out results/
+//   node --import ./scripts/stats/record-loads.ts scripts/stats/study-score-ni.ts \
+//     screen --shard 3/80 --out results/
 //     Screens every point of the shard's cells at ICHNAEA_SIM_REPS repetitions (6,000) and refines
 //     each G2 cell around its worst structures. Every repetition evaluates all method settings on
 //     one data set. Writes screen-3-of-80.tsv.
 //
-//   node scripts/stats/study-score-ni.ts confirm --points results/confirm.json --shard 3/20 --out results/
+//   node --import ./scripts/stats/record-loads.ts scripts/stats/study-score-ni.ts \
+//     confirm --points results/confirm.json --shard 3/20 --out results/
 //     Runs the points that the collector selected from their confirmation seeds until the standard
 //     error is at most 0.0005 at 0.95 (190,000 repetitions). Writes confirm-3-of-20.tsv.
 //

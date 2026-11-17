@@ -18,7 +18,8 @@
 // confirmation seeds (+100,000) the gaps between them, so no two streams share a seed.
 //
 // Usage, one process per worker, structures i ≡ worker (mod workers):
-//   node scripts/simulate-structures.ts <input.jsonl>... --out <out.tsv> --seed-base B \
+//   node --import ./scripts/stats/record-loads.ts scripts/stats/simulate-structures.ts \
+//     <input.jsonl>... --out <out.tsv> --seed-base B \
 //     [--worker i --workers n] [--min-k K] > <log>
 // The TSV gets one row per structure, written as soon as it is judged. A run that stops resumes:
 // rerun the same command and it skips every id already in the TSV. Its sidecar <out.tsv>.meta.json

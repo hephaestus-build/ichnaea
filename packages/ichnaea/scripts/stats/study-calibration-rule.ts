@@ -22,14 +22,7 @@ import {
   runCell,
   type CellResult,
 } from "./calibration-rule-study.ts";
-import {
-  metaPath,
-  mergeShards,
-  provenance,
-  type Provenance,
-  sha256,
-  writeMeta,
-} from "./provenance.ts";
+import { mergeShards, provenance, readProvenance, writeMeta } from "./provenance.ts";
 
 export const STUDIES = 2000;
 export const RESAMPLES = 2000;
@@ -109,17 +102,6 @@ function parseShard(text: string | undefined): [number, number] {
   return [shard, shards];
 }
 
-/** The provenance that a shard's sidecar records; throws when its output has other bytes. */
-function shardProvenance(tsv: string): Provenance {
-  const meta = JSON.parse(readFileSync(metaPath(tsv), "utf8")) as Provenance & {
-    readonly complete?: boolean;
-    readonly outputSha256?: string;
-  };
-  if (meta.complete !== true || meta.outputSha256 !== sha256(readFileSync(tsv)))
-    throw new Error(`${tsv} is not the complete output that its sidecar records`);
-  return meta;
-}
-
 if (import.meta.main) {
   const [phase, ...rest] = process.argv.slice(2);
   const { values, positionals } = parseArgs({
@@ -149,7 +131,7 @@ if (import.meta.main) {
       provenance(import.meta.filename, SEED_BASE, process.argv.slice(2), {
         pull: values.pull === undefined ? undefined : Number(values.pull),
       }),
-      files.map((f) => shardProvenance(path.join(dir, f))),
+      files.map((f) => readProvenance(path.join(dir, f))),
     );
     const rows = files.flatMap((f) =>
       readFileSync(path.join(dir, f), "utf8").split("\n").filter(Boolean),

@@ -2,9 +2,12 @@
 // code at HEAD. For each output:
 //   - the sidecar has the schema ichnaea.stats-provenance/2; an older one needs a rerun;
 //   - every pinned file has its recorded sha256 at the run commit and at HEAD;
-//   - every pinned package is still in pnpm-lock.yaml at HEAD at its recorded version;
+//   - every pinned package resolves from each module that imported it to its recorded version in
+//     the installed node_modules (`pnpm install --frozen-lockfile` at HEAD), and each file the run
+//     loaded from it has its recorded sha256, so a patch counts too;
 //   - the run's Node version is the one that the study workflows pin;
-//   - a complete output still has the sha256 that the sidecar records;
+//   - a complete output still has the sha256 that the sidecar records, and a published output is
+//     complete;
 //   - for a published output, the run commit is reachable from the head of the pull request that
 //     the sidecar names (`pull`). The check fetches refs/pull/<N>/head from origin, since a plain
 //     clone has no pull request refs.
@@ -15,10 +18,21 @@
 // Never edit a sidecar by hand. Lists every failing output, with every reason.
 // Usage: node scripts/stats/check-sweep-provenance.ts <output>... | --all (every committed sidecar)
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { findPackageJSON } from "node:module";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 
-import { git, lockfileHolds, metaPath, PROVENANCE_SCHEMA, repoRoot, sha256 } from "./provenance.ts";
+import {
+  git,
+  metaPath,
+  type PinnedPackage,
+  PROVENANCE_SCHEMA,
+  packageKey,
+  readPackage,
+  repoRoot,
+  sha256,
+} from "./provenance.ts";
 
 const COMMIT = /^[0-9a-f]{40}$/;
 const RERUN = "rerun the study at the new commit; never edit the sidecar";
@@ -62,7 +76,6 @@ function pinnedNode(root: string): { readonly node: string } | { readonly proble
 interface Context {
   readonly root: string;
   readonly node: ReturnType<typeof pinnedNode>;
-  readonly lockfile: string;
   readonly remote: string;
   readonly published: boolean;
   readonly heads: Map<number, string | undefined>;
@@ -80,6 +93,56 @@ function pullHead(ctx: Context, n: number): string | undefined {
     }
   }
   return ctx.heads.get(n);
+}
+
+/**
+ * Why the pinned packages are not what the run loaded: each one is resolved again from each module
+ * that imported it, a repository path or another pinned package, in the installed node_modules.
+ */
+function checkPackages(root: string, packages: Readonly<Record<string, PinnedPackage>>): string[] {
+  const problems: string[] = [];
+  const dirs = new Map<string, string | undefined>();
+  const dirOf = (key: string): string | undefined => {
+    if (dirs.has(key)) return dirs.get(key);
+    dirs.set(key, undefined);
+    const name = key.slice(0, key.lastIndexOf("@"));
+    let dir: string | undefined;
+    for (const by of packages[key]?.importedBy ?? []) {
+      const from = by in packages ? dirOf(by) : join(root, by);
+      // An importer that does not resolve has its own failure; this one would only follow from it.
+      if (from === undefined) continue;
+      let found;
+      try {
+        const base = pathToFileURL(by in packages ? join(from, "package.json") : from);
+        found = readPackage(realpathSync(findPackageJSON(name, base) ?? ""));
+      } catch {
+        problems.push(`cannot resolve ${name} from ${by} at HEAD; ${RERUN}`);
+        continue;
+      }
+      if (packageKey(found) !== key)
+        problems.push(
+          `${name} resolves to ${packageKey(found)} from ${by} at HEAD, the run loaded ${key}; ${RERUN}`,
+        );
+      else dir ??= found.dir;
+    }
+    if ((packages[key]?.importedBy ?? []).length === 0)
+      problems.push(`${key} names no module that imported it; ${RERUN}`);
+    dirs.set(key, dir);
+    return dir;
+  };
+  for (const [key, pkg] of Object.entries(packages)) {
+    const dir = dirOf(key);
+    if (dir === undefined) continue;
+    for (const [file, recorded] of Object.entries(pkg.files)) {
+      const at = join(dir, file);
+      const now = existsSync(at) ? sha256(readFileSync(at)) : undefined;
+      if (now !== recorded)
+        problems.push(
+          `${key}/${file} has sha256 ${now ?? "(missing)"} at HEAD, the run loaded ${recorded}; ${RERUN}`,
+        );
+    }
+  }
+  return problems;
 }
 
 /** Why the output is not current, or nothing when it is. */
@@ -119,7 +182,10 @@ function checkOne(output: string, ctx: Context): string[] {
   }
   if (typeof files !== "object" || files === null || Object.keys(files).length === 0)
     return fail("the sidecar lists no file");
-  if (!Array.isArray(packages)) return fail("the sidecar lists no packages");
+  if (typeof packages !== "object" || packages === null || Array.isArray(packages))
+    return fail("the sidecar lists no packages");
+  if (ctx.published && (complete !== true || typeof outputSha256 !== "string"))
+    return fail(`a published output must be complete; ${RERUN}`);
 
   const problems: string[] = [];
   for (const [file, recorded] of Object.entries(files)) {
@@ -135,9 +201,7 @@ function checkOne(output: string, ctx: Context): string[] {
         );
     }
   }
-  for (const pkg of packages)
-    if (typeof pkg !== "string" || !lockfileHolds(ctx.lockfile, pkg))
-      problems.push(`${String(pkg)} is not in pnpm-lock.yaml at HEAD; ${RERUN}`);
+  problems.push(...checkPackages(ctx.root, packages as Record<string, PinnedPackage>));
   if ("problem" in ctx.node) problems.push(ctx.node.problem);
   else if (node !== ctx.node.node)
     problems.push(
@@ -163,11 +227,9 @@ export function checkProvenance(
   root: string,
   options: { readonly published?: boolean; readonly remote?: string } = {},
 ): string[] {
-  const lockfile = blob(root, "HEAD", "pnpm-lock.yaml");
   const ctx: Context = {
     root,
     node: pinnedNode(root),
-    lockfile: lockfile === undefined ? "" : Buffer.from(lockfile).toString(),
     remote: options.remote ?? "origin",
     published: options.published ?? true,
     heads: new Map(),

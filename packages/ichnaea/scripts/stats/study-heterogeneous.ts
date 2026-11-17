@@ -12,7 +12,8 @@
 // Structures whose enumeration would visit more than 20,000 outcome multisets are skipped and
 // counted, so each structure takes at most about a second.
 // Usage, one process per worker, margins i ≡ worker (mod workers):
-//   node scripts/study-heterogeneous.ts <from> <to> <step> <worker> <workers> [<cases>] \
+//   node --import ./scripts/stats/record-loads.ts scripts/stats/study-heterogeneous.ts \
+//     <from> <to> <step> <worker> <workers> [<cases>] \
 //     --out sweep-<worker>.tsv
 // The TSV has the same bytes as the standard output of the script's first version (sha256
 // 3496e34c…f374) at the same arguments, when no option below but --out is given.

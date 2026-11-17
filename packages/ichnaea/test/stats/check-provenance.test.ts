@@ -1,8 +1,9 @@
 // The currency check of a published study output (scripts/stats/check-sweep-provenance.ts): at
 // HEAD, every pinned file and package and the Node version are as the run recorded them, and the
 // run commit is reachable from the pull request head that the sidecar names. Each case builds a
-// scratch repository whose `origin` holds that pull request head, and a squash of it on main.
-import { cpSync, readFileSync, writeFileSync } from "node:fs";
+// scratch repository whose `origin` holds that pull request head, and a squash of it on main, and
+// installs a node_modules laid out as pnpm does: two versions of `dep`, and `sub` that `dep` uses.
+import { cpSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -15,11 +16,9 @@ import { commit, removeScratchRepos, runGit, scratchRepo } from "./support/git-r
 afterAll(removeScratchRepos);
 
 const workflow = (version: string): string => `env:\n  NODE_VERSION: ${version}\n`;
-const lockfile = (zod: string): string =>
-  `lockfileVersion: '9.0'\n\npackages:\n\n  '@types/node@26.6.6':\n    resolution: {}\n\n  zod@${zod}:\n    resolution: {}\n\nsnapshots:\n\n  zod@${zod}: {}\n`;
 const FILES = {
   ...Object.fromEntries(STUDY_WORKFLOWS.map((w) => [w, workflow("24.22.2")])),
-  "pnpm-lock.yaml": lockfile("4.1.0"),
+  ".gitignore": "node_modules\n",
   "src/pinned.ts": "export const pinned = 1;\n",
   "src/unpinned.ts": "export const unpinned = 1;\n",
   "out.tsv": "x\n1\n",
@@ -45,6 +44,38 @@ beforeAll(() => {
   runGit(template, "push", "--quiet", "origin", "main");
 });
 
+const DEP = (version: string): string => `export const dep = "${version}";\n`;
+const SUB = "export const sub = 1;\n";
+
+/** Writes the package `name@version` into the pnpm store of `root`, with `files`. */
+function storePackage(root: string, key: string, files: Readonly<Record<string, string>>): string {
+  const name = key.slice(0, key.lastIndexOf("@"));
+  const dir = path.join(root, "node_modules", ".pnpm", key, "node_modules", name);
+  mkdirSync(dir, { recursive: true });
+  const version = key.slice(key.lastIndexOf("@") + 1);
+  writeFileSync(path.join(dir, "package.json"), JSON.stringify({ name, version }));
+  for (const [file, text] of Object.entries(files)) writeFileSync(path.join(dir, file), text);
+  return dir;
+}
+
+/** Links node_modules/dep to the installed `dep@version`, as pnpm does for the root importer. */
+function linkDep(root: string, version: string): void {
+  rmSync(path.join(root, "node_modules", "dep"), { force: true });
+  symlinkSync(`.pnpm/dep@${version}/node_modules/dep`, path.join(root, "node_modules", "dep"));
+}
+
+/** Installs dep@1.0.0, which uses sub@1.0.0, and dep@2.0.0, which another importer keeps. */
+function install(root: string): void {
+  storePackage(root, "dep@1.0.0", { "index.js": DEP("1.0.0") });
+  storePackage(root, "dep@2.0.0", { "index.js": DEP("2.0.0") });
+  storePackage(root, "sub@1.0.0", { "index.js": SUB });
+  symlinkSync(
+    "../../sub@1.0.0/node_modules/sub",
+    path.join(root, "node_modules", ".pnpm", "dep@1.0.0", "node_modules", "sub"),
+  );
+  linkDep(root, "1.0.0");
+}
+
 /**
  * A copy of the template and of its origin, with the output's sidecar as the run wrote it, with
  * `meta` over it. A shallow repository is a clone of main at depth 1, as CI checks out.
@@ -62,6 +93,7 @@ function repo(
     cpSync(template, root, { recursive: true });
     runGit(root, "remote", "set-url", "origin", remote);
   }
+  install(root);
   const output = path.join(root, "out.tsv");
   const sidecar = {
     schema: "ichnaea.stats-provenance/2",
@@ -69,7 +101,10 @@ function repo(
     commit: run,
     pull: 7,
     files: { "src/pinned.ts": sha256(FILES["src/pinned.ts"]) },
-    packages: ["zod@4.1.0", "@types/node@26.6.6"],
+    packages: {
+      "dep@1.0.0": { importedBy: ["src/pinned.ts"], files: { "index.js": sha256(DEP("1.0.0")) } },
+      "sub@1.0.0": { importedBy: ["dep@1.0.0"], files: { "index.js": sha256(SUB) } },
+    },
     seedBase: 1,
     arguments: [],
     node: "v24.22.2",
@@ -111,11 +146,33 @@ describe("the currency check", () => {
     expect(failure).toMatch(/rerun the study at the new commit; never edit the sidecar/);
   });
 
-  it("fails when a pinned package has another version in the lockfile", () => {
+  it("fails when the importer resolves a pinned package to another version", () => {
     const { root, output } = repo();
-    commit(root, { "pnpm-lock.yaml": lockfile("4.2.0") });
+    // The study's importer moved to dep@2.0.0; another importer keeps dep@1.0.0 installed.
+    linkDep(root, "2.0.0");
     expect(checkProvenance([output], root)).toEqual([
-      expect.stringMatching(/zod@4\.1\.0 is not in pnpm-lock\.yaml at HEAD.*rerun the study/),
+      expect.stringMatching(
+        /dep resolves to dep@2\.0\.0 from src\/pinned\.ts at HEAD, the run loaded dep@1\.0\.0.*rerun the study/,
+      ),
+    ]);
+  });
+
+  it("fails when a loaded file of a pinned package has other bytes, as after a patch", () => {
+    const { root, output } = repo();
+    writeFileSync(
+      path.join(root, "node_modules", ".pnpm", "sub@1.0.0", "node_modules", "sub", "index.js"),
+      "export const sub = 2;\n",
+    );
+    expect(checkProvenance([output], root)).toEqual([
+      expect.stringMatching(/sub@1\.0\.0\/index\.js has sha256 [0-9a-f]{64}.*rerun the study/),
+    ]);
+  });
+
+  it("fails when a pinned package is not installed", () => {
+    const { root, output } = repo();
+    rmSync(path.join(root, "node_modules", "dep"));
+    expect(checkProvenance([output], root)).toEqual([
+      expect.stringMatching(/cannot resolve dep from src\/pinned\.ts at HEAD/),
     ]);
   });
 
@@ -192,8 +249,27 @@ describe("the currency check", () => {
     ]);
   });
 
+  it("refuses a published output that is not complete", () => {
+    const { root, output } = repo({ complete: false });
+    writeFileSync(output, "x\n2\n");
+    expect(checkProvenance([output], root)).toEqual([
+      expect.stringMatching(/a published output must be complete; rerun the study/),
+    ]);
+    const { root: other, output: bare } = repo({ outputSha256: undefined });
+    expect(checkProvenance([bare], other)).toEqual([
+      expect.stringMatching(/a published output must be complete; rerun the study/),
+    ]);
+  });
+
   it("checks an output of an unpublished run without a pull request", () => {
     const { root, output } = repo({ pull: null });
     expect(checkProvenance([output], root, { published: false })).toEqual([]);
+  });
+
+  it("fails an output of an unpublished run whose commit is unknown", () => {
+    const { root, output } = repo({ commit: "0123456789abcdef0123456789abcdef01234567" });
+    expect(checkProvenance([output], root, { published: false })).toEqual([
+      expect.stringMatching(/commit 0123456789.* is unknown/),
+    ]);
   });
 });
