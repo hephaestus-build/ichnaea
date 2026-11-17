@@ -650,9 +650,10 @@ yes/no cells, at most 0.002 % of resamples had one.
   raters' own agreement is not shown.
 - **The registered draw.** With raters at accuracy 0.90, the good judge passes 64 % of 360-answer
   draws and 82 % of 460-answer draws. The 80 % target needs about 460 answers. With raters and both
-  judges 0.03 more accurate (raters at raw agreement 0.87), 360 answers give 92 %. These cells move
-  the judges with the raters, so they do not separate the raters' agreement from the judges'
-  accuracy. At ρ = 0.6 the 360-answer draw falls to 53 %.
+  judges 0.03 more accurate (raters at raw agreement 0.87), 360 answers give 92 %. Of the
+  assumptions studied, agreement among people, with the judges keeping their distance, decides the
+  size most. These cells move the judges with the raters, so they do not separate the raters'
+  agreement from the judges' accuracy. At ρ = 0.6 the 360-answer draw falls to 53 %.
 - **A judge-based Pass is rarely reachable.** It needs the Pass margin β_L · 0.10 − B to be
   positive, where β_L is the lower bound of the judge's slope against people on the base and
   known-worse answers, and B is the bias bound on that pair. For a judge as good as a rater, the
