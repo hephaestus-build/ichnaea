@@ -94,44 +94,76 @@ export function sentinelPowerExact(
   const top = 2 * trials;
   const xs = binomial(trials, stored);
   const ys = binomial(trials, fresh);
-  // P(T = t, Y = y) for one case, and the null distribution of Y given T = t.
+  // P(T = t, Y = y) for one case.
   const joint = Array.from({ length: top + 1 }, (_, t) =>
     Array.from({ length: trials + 1 }, (__, y) =>
       t - y < 0 || t - y > trials ? 0 : xs[t - y]! * ys[y]!,
     ),
   );
-  // The n-fold convolutions of each case total's distributions, n = 0 … cases.
-  const powers = (one: readonly number[]): number[][] => {
-    const out = [[1]];
-    for (let n = 1; n <= cases; n++) out.push(convolve(out[n - 1]!, one));
-    return out;
-  };
-  const nulls = Array.from({ length: top + 1 }, (_, t) => powers(nullCase(trials, t)));
-  const joints = joint.map(powers);
-  const logFactorial = [0];
-  for (let i = 1; i <= cases; i++) logFactorial.push(logFactorial[i - 1]! + Math.log(i));
+  const joints = joint.map((one) => convolutionPowers(one, cases));
+  const regions = rejectionRegions(cases, trials, level);
+  let leaf = 0;
   let power = 0;
-  const visit = (t: number, left: number, logWays: number, nul: number[], alt: number[]): void => {
+  // The leaves in the order rejectionRegions recorded them: the counts of cases at t = 0 … 2r.
+  const visit = (t: number, left: number, alt: number[]): void => {
     if (t === top) {
-      const n = convolve(nul, nulls[t]![left]!);
       const a = convolve(alt, joints[t]![left]!);
-      const ways = Math.exp(logWays - logFactorial[left]!);
-      rejection(n, level).forEach((reject, s) => {
-        if (reject) power += ways * a[s]!;
-      });
+      const { ways, reject } = regions[leaf++]!;
+      for (const s of reject) power += ways * a[s]!;
       return;
     }
     for (let count = 0; count <= left; count++)
-      visit(
-        t + 1,
-        left - count,
-        logWays - logFactorial[count]!,
-        convolve(nul, nulls[t]![count]!),
-        convolve(alt, joints[t]![count]!),
-      );
+      visit(t + 1, left - count, convolve(alt, joints[t]![count]!));
   };
-  visit(0, cases, logFactorial[cases]!, [1], [1]);
+  visit(0, cases, [1]);
   return Math.min(1, power);
+}
+
+/** The n-fold convolutions of a distribution, n = 0 … cases. */
+function convolutionPowers(one: readonly number[], cases: number): number[][] {
+  const out = [[1]];
+  for (let n = 1; n <= cases; n++) out.push(convolve(out[n - 1]!, one));
+  return out;
+}
+
+/** One vector of case counts at each case total: its multinomial weight and its rejecting totals. */
+interface Leaf {
+  readonly ways: number;
+  readonly reject: readonly number[];
+}
+
+/**
+ * The rejection region of every vector of case counts, in a fixed order. It depends only on the
+ * cases, the trials and the level, not on the rates, so a search over drifts computes it once.
+ */
+const REGIONS = new Map<string, readonly Leaf[]>();
+function rejectionRegions(cases: number, trials: number, level: number): readonly Leaf[] {
+  const key = `${cases}:${trials}:${level}`;
+  const known = REGIONS.get(key);
+  if (known !== undefined) return known;
+  const top = 2 * trials;
+  const nulls = Array.from({ length: top + 1 }, (_, t) =>
+    convolutionPowers(nullCase(trials, t), cases),
+  );
+  const logFactorial = [0];
+  for (let i = 1; i <= cases; i++) logFactorial.push(logFactorial[i - 1]! + Math.log(i));
+  const leaves: Leaf[] = [];
+  const visit = (t: number, left: number, logWays: number, nul: number[]): void => {
+    if (t === top) {
+      const n = convolve(nul, nulls[t]![left]!);
+      const reject: number[] = [];
+      rejection(n, level).forEach((r, s) => {
+        if (r) reject.push(s);
+      });
+      leaves.push({ ways: Math.exp(logWays - logFactorial[left]!), reject });
+      return;
+    }
+    for (let count = 0; count <= left; count++)
+      visit(t + 1, left - count, logWays - logFactorial[count]!, convolve(nul, nulls[t]![count]!));
+  };
+  visit(0, cases, logFactorial[cases]!, [1]);
+  REGIONS.set(key, leaves);
+  return leaves;
 }
 
 /**

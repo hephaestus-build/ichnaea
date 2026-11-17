@@ -70,49 +70,56 @@ describe("the sentinel test", () => {
   });
 });
 
-describe("the detectable drift, against an exact rational enumeration in Python", () => {
-  it.each(python.settings.map((s) => [`${s.cases} × ${s.trials} at ${s.rate}`, s] as const))(
-    "%s",
-    (_, s) => {
-      const result = sentinelDetectableDrift({ cases: s.cases, trials: s.trials, rate: s.rate });
-      expect(result.method).toBe("exact");
-      expect(result).not.toHaveProperty("seed");
-      for (const [mine, theirs] of [
-        [result.down, s.down],
-        [result.up, s.up],
-      ] as const) {
-        expect(mine.caught).toBe(theirs.caught);
-        expect(mine.drift).toBe(theirs.drift);
-        expect(mine.largest).toBe(theirs.largest);
-        expect(mine.power).toBeCloseTo(theirs.power, 12);
-      }
-      for (const [sign, grid] of [
-        [-1, s.down.grid],
-        [1, s.up.grid],
-      ] as const)
-        for (const point of grid)
-          expect(
-            sentinelPowerExact(s.cases, s.trials, s.rate, s.rate + sign * point.drift),
-            `${sign} ${point.drift}`,
-          ).toBeCloseTo(point.power, 12);
-    },
-  );
+// Each setting sums C(k + 2r, 2r) vectors of case counts at every drift the search tries, and again
+// at every point of the grid it checks: tens of exact evaluations, 8,008 vectors each at 10 cases
+// × 3 trials. That is heavier than vitest's default timeout assumes on a loaded runner.
+describe(
+  "the detectable drift, against an exact rational enumeration in Python",
+  { timeout: 30_000 },
+  () => {
+    it.each(python.settings.map((s) => [`${s.cases} × ${s.trials} at ${s.rate}`, s] as const))(
+      "%s",
+      (_, s) => {
+        const result = sentinelDetectableDrift({ cases: s.cases, trials: s.trials, rate: s.rate });
+        expect(result.method).toBe("exact");
+        expect(result).not.toHaveProperty("seed");
+        for (const [mine, theirs] of [
+          [result.down, s.down],
+          [result.up, s.up],
+        ] as const) {
+          expect(mine.caught).toBe(theirs.caught);
+          expect(mine.drift).toBe(theirs.drift);
+          expect(mine.largest).toBe(theirs.largest);
+          expect(mine.power).toBeCloseTo(theirs.power, 12);
+        }
+        for (const [sign, grid] of [
+          [-1, s.down.grid],
+          [1, s.up.grid],
+        ] as const)
+          for (const point of grid)
+            expect(
+              sentinelPowerExact(s.cases, s.trials, s.rate, s.rate + sign * point.drift),
+              `${sign} ${point.drift}`,
+            ).toBeCloseTo(point.power, 12);
+      },
+    );
 
-  it("gives the figures of the ruling at 15 cases × 2 trials", () => {
-    const high = sentinelDetectableDrift({ cases: 15, trials: 2, rate: 0.8 });
-    // A downward drift of 0.375, rounded up to 0.4; no upward drift reaches 4 in 5: even a drift to
-    // 1.0 is caught 63% of the time.
-    expect(high.down).toMatchObject({ caught: true, drift: 0.4 });
-    expect(high.up).toMatchObject({ caught: false, drift: null });
-    expect(high.up.power).toBeCloseTo(0.6286, 4);
-    expect(sentinelPowerExact(15, 2, 0.8, 0.425)).toBeCloseTo(0.7995, 4);
-    expect(sentinelPowerExact(15, 2, 0.8, 0.45)).toBeLessThan(0.8);
-    const half = sentinelDetectableDrift({ cases: 15, trials: 2, rate: 0.5 });
-    expect(half.down.drift).toBe(0.4);
-    expect(half.up.drift).toBe(0.4);
-    expect(sentinelPowerExact(15, 2, 0.5, 0.15)).toBeLessThan(0.8);
-  });
-});
+    it("gives the figures of the ruling at 15 cases × 2 trials", () => {
+      const high = sentinelDetectableDrift({ cases: 15, trials: 2, rate: 0.8 });
+      // A downward drift of 0.375, rounded up to 0.4; no upward drift reaches 4 in 5: even a drift to
+      // 1.0 is caught 63% of the time.
+      expect(high.down).toMatchObject({ caught: true, drift: 0.4 });
+      expect(high.up).toMatchObject({ caught: false, drift: null });
+      expect(high.up.power).toBeCloseTo(0.6286, 4);
+      expect(sentinelPowerExact(15, 2, 0.8, 0.425)).toBeCloseTo(0.7995, 4);
+      expect(sentinelPowerExact(15, 2, 0.8, 0.45)).toBeLessThan(0.8);
+      const half = sentinelDetectableDrift({ cases: 15, trials: 2, rate: 0.5 });
+      expect(half.down.drift).toBe(0.4);
+      expect(half.up.drift).toBe(0.4);
+      expect(sentinelPowerExact(15, 2, 0.5, 0.15)).toBeLessThan(0.8);
+    });
+  },
+);
 
 describe("the simulated detectable drift", () => {
   it("simulates above 10⁵ terms, with 10,000 draws and the seed recorded, and needs a seed", () => {
