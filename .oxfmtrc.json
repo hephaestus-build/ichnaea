@@ -7,6 +7,7 @@
     "CHANGELOG.md",
     "docs/requirements.md",
     "packages/ichnaea/test/stats/reference-*.json",
-    "packages/*/api/**"
+    "packages/*/api/**",
+    "packages/*/validation/*.meta.json"
   ]
 }
