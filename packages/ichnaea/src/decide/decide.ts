@@ -747,12 +747,18 @@ function recordChecks(input: DecideInput): string[] {
   const unplannedTrial = input.trials.find((t) => !plannedById.has(t.id));
   if (unplannedTrial) invalid.push(`trial '${unplannedTrial.id}' is not in the plan`);
   // A value counts for the planned trial's case and arm, so a trial must name exactly those.
-  for (const t of input.trials) {
+  const renamed = input.trials.flatMap((t) => {
     const p = plannedById.get(t.id);
-    if (p && (t.case !== p.case || t.arm !== p.arm || t.replicate !== p.replicate))
-      invalid.push(
-        `trial '${t.id}' names case '${t.case}', arm '${t.arm}', replicate ${t.replicate}, but the plan has case '${p.case}', arm '${p.arm}', replicate ${p.replicate}`,
-      );
+    return p && (t.case !== p.case || t.arm !== p.arm || t.replicate !== p.replicate)
+      ? [{ t, p }]
+      : [];
+  });
+  const firstRenamed = renamed[0];
+  if (firstRenamed) {
+    const { t, p } = firstRenamed;
+    invalid.push(
+      `${renamed.length} trial(s) name another case, arm or replicate than their planned trial, for example trial '${t.id}' names case '${t.case}', arm '${t.arm}', replicate ${t.replicate}, but the plan has case '${p.case}', arm '${p.arm}', replicate ${p.replicate}`,
+    );
   }
   const unplannedValue = input.values.find((v) => !plannedById.has(v.trial));
   if (unplannedValue)
