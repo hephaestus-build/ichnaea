@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 
 import { afterAll, describe, expect, it } from "vitest";
 
-import { findPrivateReferences, findViolations } from "./check-purity.ts";
+import { findChangesets, findPrivateReferences, findViolations } from "./check-purity.ts";
 
 describe("framework purity check", () => {
   it.each([
@@ -167,6 +167,12 @@ describe("the purity command", () => {
     return { status, stderr };
   }
 
+  it("fails on a changeset, which Ichnaea does not keep (decision 0019)", () => {
+    const { status, stderr } = run({ ".changeset/a-change.md": "---\n---\nA change.\n" }, true);
+    expect(status).toBe(1);
+    expect(stderr).toContain(".changeset/a-change.md: a changeset");
+  });
+
   it("passes a repository without a private reference", () => {
     expect(run({ "docs/a.md": "See decision 0002.\n", "src/a.yml": "a: 1\n" }, true).status).toBe(
       0,
@@ -184,6 +190,22 @@ describe("the purity command", () => {
       expect(status).toBe(1);
       expect(stderr).toContain(`${path}:1:`);
     }
+  });
+});
+
+describe("the changeset check", () => {
+  it("names every file under .changeset/ and nothing else", () => {
+    expect(
+      findChangesets([
+        ".changeset/a.md",
+        ".changeset/config.json",
+        "docs/changeset.md",
+        "a/.changeset/x.md",
+      ]),
+    ).toEqual([
+      ".changeset/a.md: a changeset, but the titles on main are the change log (decision 0019)",
+      ".changeset/config.json: a changeset, but the titles on main are the change log (decision 0019)",
+    ]);
   });
 });
 
