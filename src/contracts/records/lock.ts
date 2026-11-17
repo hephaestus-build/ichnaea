@@ -3,6 +3,7 @@ import * as z from "zod";
 import { none } from "../data-class.ts";
 import { Digest, SuiteId, Text } from "../primitives.ts";
 import { Pool } from "./case.ts";
+import { MeasureIdentity } from "./measure-identity.ts";
 import { PrimaryRegistration } from "./suite-v2.ts";
 import {
   Command,
@@ -105,8 +106,9 @@ export const InstrumentPin = z.strictObject({
 
 /**
  * The lock of a suite (`ichnaea.suite.lock/1`), written by `ichnaea lock` beside the suite. It is
- * stale when the measurement digest, a source, an instrument pin or a measure definition differs
- * from the suite and the checkout. Runtimes are not in the lock; each run's plan records them.
+ * stale when the measurement digest, a source, a dataset, an instrument pin, a limit, or a
+ * measure's definition or implementation differs from the suite and the checkout
+ * (`staleLockEntries`). Runtimes are not in the lock; each run's plan records them.
  */
 export const SuiteLock = z.strictObject({
   schema: none(
@@ -122,10 +124,10 @@ export const SuiteLock = z.strictObject({
     .record(ConfigName, LockedDataset)
     .describe("Each dataset that the sources read.")
     .optional(),
-  instruments: z
-    .record(ConfigName, InstrumentPin)
-    .describe("Each instrument's pin. A built-in scorer has none."),
-  measures: none(z.record(ConfigName, Digest).describe("Each measure definition's digest.")),
+  instruments: z.record(ConfigName, InstrumentPin).describe("Each instrument's pin."),
+  measures: z
+    .record(ConfigName, MeasureIdentity)
+    .describe("Each measure's identity: the digests of its definition and of its implementation."),
   limits: z
     .record(ConfigName, PrimaryRegistration)
     .describe(

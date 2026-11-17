@@ -91,8 +91,9 @@ export declare const InstrumentPin: z.ZodObject<{
 }, z.core.$strict>;
 /**
  * The lock of a suite (`ichnaea.suite.lock/1`), written by `ichnaea lock` beside the suite. It is
- * stale when the measurement digest, a source, an instrument pin or a measure definition differs
- * from the suite and the checkout. Runtimes are not in the lock; each run's plan records them.
+ * stale when the measurement digest, a source, a dataset, an instrument pin, a limit, or a
+ * measure's definition or implementation differs from the suite and the checkout
+ * (`staleLockEntries`). Runtimes are not in the lock; each run's plan records them.
  */
 export declare const SuiteLock: z.ZodObject<{
     schema: z.ZodLiteral<"ichnaea.suite.lock/1">;
@@ -154,7 +155,10 @@ export declare const SuiteLock: z.ZodObject<{
             digest: z.ZodString;
         }, z.core.$strict>>;
     }, z.core.$strict>>;
-    measures: z.ZodRecord<z.ZodString, z.ZodString>;
+    measures: z.ZodRecord<z.ZodString, z.ZodObject<{
+        definition: z.ZodString;
+        implementation: z.ZodString;
+    }, z.core.$strict>>;
     limits: z.ZodRecord<z.ZodString, z.ZodObject<{
         limit: z.ZodNumber;
         owner: z.ZodString;

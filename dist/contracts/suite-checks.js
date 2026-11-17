@@ -9,6 +9,7 @@ export const SUITE_PROBLEM_CODES = [
     "LEVEL_CUT_NOT_A_LEVEL",
     "LEVEL_CUT_AT_LOWEST",
     "LEVEL_ANCHOR_NOT_A_LEVEL",
+    "MEASURE_NOT_COMPUTED",
 ];
 /**
  * Whether a measure has a test, so that attribute can compare a replay with its recording on it: a
@@ -44,6 +45,8 @@ function attributedSecondaries(suite) {
  *   success.
  * - `LEVEL_ANCHOR_NOT_A_LEVEL`: a key of a level measure's `anchors` is not one of its levels,
  *   written as JSON writes the number (`2`, `0.5`; not `2.0`).
+ * - `MEASURE_NOT_COMPUTED`: a measure names neither a scorer nor a stage status (a `stage` with a
+ *   `status`), so nothing computes its values and it has no implementation to lock.
  *
  * It returns no problem for a suite that breaks none.
  */
@@ -68,9 +71,17 @@ export function suiteProblems(suite) {
                     message: `the fidelity margin for '${id}' names no primary measure and no secondary measure with a test, so attribute never uses it`,
                 });
     }
-    for (const [id, measure] of Object.entries(suite.measures))
+    for (const [id, measure] of Object.entries(suite.measures)) {
+        if (measure.scorer === undefined &&
+            (measure.stage === undefined || measure.status === undefined))
+            problems.push({
+                code: "MEASURE_NOT_COMPUTED",
+                path: `/measures/${id.replaceAll("~", "~0").replaceAll("/", "~1")}`,
+                message: `measure '${id}' names neither a scorer nor a stage status, so nothing computes its values`,
+            });
         if (measure.type === "level")
             problems.push(...levelProblems(id, measure));
+    }
     return problems;
 }
 /** The rules of one level measure that a schema cannot express. */

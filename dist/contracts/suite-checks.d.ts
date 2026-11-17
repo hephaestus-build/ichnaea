@@ -3,7 +3,7 @@ import type { SuiteV2 } from "./records/suite-v2.ts";
  * The reasons for which `ichnaea lock` refuses a suite that its schema accepts. Each names a rule
  * that a JSON Schema cannot express.
  */
-export declare const SUITE_PROBLEM_CODES: readonly ["FIDELITY_MARGIN_MISSING", "FIDELITY_MARGIN_UNKNOWN", "LEVELS_NOT_ASCENDING", "LEVEL_CUT_NOT_A_LEVEL", "LEVEL_CUT_AT_LOWEST", "LEVEL_ANCHOR_NOT_A_LEVEL"];
+export declare const SUITE_PROBLEM_CODES: readonly ["FIDELITY_MARGIN_MISSING", "FIDELITY_MARGIN_UNKNOWN", "LEVELS_NOT_ASCENDING", "LEVEL_CUT_NOT_A_LEVEL", "LEVEL_CUT_AT_LOWEST", "LEVEL_ANCHOR_NOT_A_LEVEL", "MEASURE_NOT_COMPUTED"];
 /** A reason for which `ichnaea lock` refuses a suite. */
 export type SuiteProblemCode = (typeof SUITE_PROBLEM_CODES)[number];
 /** One rule that a suite breaks, at the JSON Pointer of the member that breaks it. */
@@ -32,6 +32,8 @@ export interface SuiteProblem {
  *   success.
  * - `LEVEL_ANCHOR_NOT_A_LEVEL`: a key of a level measure's `anchors` is not one of its levels,
  *   written as JSON writes the number (`2`, `0.5`; not `2.0`).
+ * - `MEASURE_NOT_COMPUTED`: a measure names neither a scorer nor a stage status (a `stage` with a
+ *   `status`), so nothing computes its values and it has no implementation to lock.
  *
  * It returns no problem for a suite that breaks none.
  */
