@@ -19,5 +19,10 @@
   },
   "limits": {
     "calls": 12
+  },
+  "deadline": "PT120S",
+  "workdir": "/tmp/ichnaea/run-2026-11-15-a/trial-0001",
+  "configuration": {
+    "path": "/work/support-assistant/configs/answer-short.json"
   }
 }

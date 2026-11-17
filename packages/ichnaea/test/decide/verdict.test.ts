@@ -367,7 +367,10 @@ describe("margins (decision 0012)", () => {
         margin,
         marginStatus: "placeholder",
       });
-      expect(planningPower(s.plan).refuse).toMatch(/is (below|above) the validated margin/);
+      // A comparison, so a plan that is not refused fails as an assertion, not as a matcher error.
+      expect(planningPower(s.plan).refuse).toEqual(
+        expect.stringMatching(/is (below|above) the validated margin/),
+      );
     }
   });
 

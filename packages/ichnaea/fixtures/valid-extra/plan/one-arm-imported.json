@@ -180,7 +180,7 @@
     "onEstimateOnly": "report"
   },
   "budget": {
-    "worstCaseCalls": 720,
+    "worstCaseCalls": 2,
     "maxCalls": 800,
     "callsPerTrial": 2
   },

@@ -74,9 +74,13 @@ describe("data classes", () => {
     "%s declares dataClass when a field inherits it",
     (name) => {
       const schema = committedSchema(name);
-      const { inherits } = unclassified(schema);
-      const props = schema["properties"] as Record<string, unknown>;
-      if (inherits) expect(Object.keys(props)).toContain("dataClass");
+      // A record that is a tagged union declares it in each kind whose fields inherit it.
+      const kinds = (schema["oneOf"] as Array<Record<string, unknown>> | undefined) ?? [schema];
+      for (const kind of kinds) {
+        const { inherits } = unclassified({ ...kind, $defs: schema["$defs"] });
+        const props = kind["properties"] as Record<string, unknown>;
+        if (inherits) expect(Object.keys(props)).toContain("dataClass");
+      }
     },
   );
 

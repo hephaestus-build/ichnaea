@@ -1,0 +1,9 @@
+{
+  "schema": "ichnaea.configuration/2",
+  "digest": "sha256:c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+  "fields": {
+    "model": "example-model-2026-10",
+    "temperature": 0.2
+  },
+  "label": "candidate"
+}

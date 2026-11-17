@@ -322,8 +322,9 @@ describe("score permutation test: the limits of the exact path, at their edges",
   });
 
   it("enumerates a case with 100,000 labellings and not one with 100,001", () => {
+    // Both calls carry a seed, so a cap one too low shows as the Monte Carlo path, not as a throw.
     const at = [{ id: "a", candidate: [0.25], base: levels(99_999) }];
-    expect(scorePermutationTest(at).method).toBe("within-case-permutation-exact");
+    expect(scorePermutationTest(at, { seed: 3 }).method).toBe("within-case-permutation-exact");
     const past = [{ id: "a", candidate: [0.25], base: levels(100_000) }];
     expect(scorePermutationTest(past, { seed: 3 }).method).toBe(
       "within-case-permutation-monte-carlo",
@@ -334,7 +335,8 @@ describe("score permutation test: the limits of the exact path, at their edges",
     // Identical cases of 3-decimal scores: W grows with every case, so k* is the last k under it.
     let k = 1;
     while ((exactWork(identical(k + 1)) as number) <= SCORE_PERMUTATION_WORK_LIMIT) k++;
-    const under = scorePermutationTest(identical(k));
+    // Both calls carry a seed, so a limit too low shows as the Monte Carlo path, not as a throw.
+    const under = scorePermutationTest(identical(k), { seed: 3 });
     expect(under.method).toBe("within-case-permutation-exact");
     expect(under.work).toBe(exactWork(identical(k)));
     const over = scorePermutationTest(identical(k + 1), { seed: 3 });

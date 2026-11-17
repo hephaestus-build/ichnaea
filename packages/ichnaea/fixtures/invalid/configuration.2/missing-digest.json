@@ -1,0 +1,7 @@
+{
+  "schema": "ichnaea.configuration/2",
+  "fields": {
+    "model": "example-model-2026-10",
+    "temperature": 0.2
+  }
+}

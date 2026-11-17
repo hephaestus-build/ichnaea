@@ -9,15 +9,18 @@ import { describe, expect, it } from "vitest";
 const schemas = join(import.meta.dirname, "..", "..", "schemas");
 const schema = (file: string): Record<string, unknown> =>
   JSON.parse(readFileSync(join(schemas, file), "utf8")) as Record<string, unknown>;
+// `union` steps into a union's options: `oneOf` in a writer schema, `anyOf` in a reader schema.
 const at = (node: unknown, path: readonly string[]): { description?: string } =>
-  (path.reduce<unknown>((n, key) => (n as Record<string, unknown> | undefined)?.[key], node) ??
-    {}) as { description?: string };
+  (path.reduce<unknown>((n, key) => {
+    const object = n as Record<string, unknown> | undefined;
+    return key === "union" ? (object?.["oneOf"] ?? object?.["anyOf"]) : object?.[key];
+  }, node) ?? {}) as { description?: string };
 
 const FIELDS: readonly [string, readonly string[]][] = [
   ["trial", ["properties", "usage", "properties", "calls"]],
   ["trial", ["properties", "attempts", "items", "properties", "calls"]],
-  ["trialResult", ["properties", "calls"]],
   ["trialResult", ["properties", "usage", "properties", "calls"]],
+  ["workerEvent", ["union", "0", "properties", "calls"]],
   ["trialRequest", ["properties", "limits", "properties", "calls"]],
 ];
 
