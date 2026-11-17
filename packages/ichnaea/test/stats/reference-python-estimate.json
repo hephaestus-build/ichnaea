@@ -1,0 +1,3056 @@
+{
+ "python": "3.13.18",
+ "mpmath": "1.3.0",
+ "numpy": "2.3.4",
+ "oneArmScore": [
+  {
+   "name": "single",
+   "cells": [
+    {
+     "sum": 3,
+     "trials": 4,
+     "weight": 1
+    }
+   ],
+   "level": 0.95,
+   "sided": "two",
+   "bounds": [
+    0.3006418425824019,
+    0.9544127391902995
+   ]
+  },
+  {
+   "name": "single",
+   "cells": [
+    {
+     "sum": 3,
+     "trials": 4,
+     "weight": 1
+    }
+   ],
+   "level": 0.9,
+   "sided": "two",
+   "bounds": [
+    0.3561680085985063,
+    0.9420926788001414
+   ]
+  },
+  {
+   "name": "single",
+   "cells": [
+    {
+     "sum": 3,
+     "trials": 4,
+     "weight": 1
+    }
+   ],
+   "level": 0.95,
+   "sided": "lower",
+   "bounds": [
+    0.3561680085985063,
+    1.0
+   ]
+  },
+  {
+   "name": "single",
+   "cells": [
+    {
+     "sum": 3,
+     "trials": 4,
+     "weight": 1
+    }
+   ],
+   "level": 0.95,
+   "sided": "upper",
+   "bounds": [
+    0.0,
+    0.9420926788001414
+   ]
+  },
+  {
+   "name": "binary-equal",
+   "cells": [
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.25
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.25
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.25
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.25
+    }
+   ],
+   "level": 0.95,
+   "sided": "two",
+   "bounds": [
+    0.23801148490112195,
+    0.7619885150988781
+   ]
+  },
+  {
+   "name": "binary-equal",
+   "cells": [
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.25
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.25
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.25
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.25
+    }
+   ],
+   "level": 0.9,
+   "sided": "two",
+   "bounds": [
+    0.27856165692510804,
+    0.721438343074892
+   ]
+  },
+  {
+   "name": "binary-equal",
+   "cells": [
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.25
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.25
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.25
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.25
+    }
+   ],
+   "level": 0.95,
+   "sided": "lower",
+   "bounds": [
+    0.27856165692510804,
+    1.0
+   ]
+  },
+  {
+   "name": "binary-equal",
+   "cells": [
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.25
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.25
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.25
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.25
+    }
+   ],
+   "level": 0.95,
+   "sided": "upper",
+   "bounds": [
+    0.0,
+    0.721438343074892
+   ]
+  },
+  {
+   "name": "binary-mixed-r",
+   "cells": [
+    {
+     "sum": 2,
+     "trials": 3,
+     "weight": 0.2
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.2
+    },
+    {
+     "sum": 3,
+     "trials": 3,
+     "weight": 0.2
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.2
+    },
+    {
+     "sum": 2,
+     "trials": 3,
+     "weight": 0.2
+    }
+   ],
+   "level": 0.95,
+   "sided": "two",
+   "bounds": [
+    0.3565949781418041,
+    0.7806180538446907
+   ]
+  },
+  {
+   "name": "binary-mixed-r",
+   "cells": [
+    {
+     "sum": 2,
+     "trials": 3,
+     "weight": 0.2
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.2
+    },
+    {
+     "sum": 3,
+     "trials": 3,
+     "weight": 0.2
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.2
+    },
+    {
+     "sum": 2,
+     "trials": 3,
+     "weight": 0.2
+    }
+   ],
+   "level": 0.9,
+   "sided": "two",
+   "bounds": [
+    0.39687133221010407,
+    0.7469163885739764
+   ]
+  },
+  {
+   "name": "binary-mixed-r",
+   "cells": [
+    {
+     "sum": 2,
+     "trials": 3,
+     "weight": 0.2
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.2
+    },
+    {
+     "sum": 3,
+     "trials": 3,
+     "weight": 0.2
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.2
+    },
+    {
+     "sum": 2,
+     "trials": 3,
+     "weight": 0.2
+    }
+   ],
+   "level": 0.95,
+   "sided": "lower",
+   "bounds": [
+    0.39687133221010407,
+    1.0
+   ]
+  },
+  {
+   "name": "binary-mixed-r",
+   "cells": [
+    {
+     "sum": 2,
+     "trials": 3,
+     "weight": 0.2
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.2
+    },
+    {
+     "sum": 3,
+     "trials": 3,
+     "weight": 0.2
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.2
+    },
+    {
+     "sum": 2,
+     "trials": 3,
+     "weight": 0.2
+    }
+   ],
+   "level": 0.95,
+   "sided": "upper",
+   "bounds": [
+    0.0,
+    0.7469163885739764
+   ]
+  },
+  {
+   "name": "score-fractional",
+   "cells": [
+    {
+     "sum": 1.25,
+     "trials": 2,
+     "weight": 0.3333333333333333
+    },
+    {
+     "sum": 0.4,
+     "trials": 3,
+     "weight": 0.3333333333333333
+    },
+    {
+     "sum": 1.9,
+     "trials": 2,
+     "weight": 0.3333333333333333
+    }
+   ],
+   "level": 0.95,
+   "sided": "two",
+   "bounds": [
+    0.2523935118784354,
+    0.8127511464354542
+   ]
+  },
+  {
+   "name": "score-fractional",
+   "cells": [
+    {
+     "sum": 1.25,
+     "trials": 2,
+     "weight": 0.3333333333333333
+    },
+    {
+     "sum": 0.4,
+     "trials": 3,
+     "weight": 0.3333333333333333
+    },
+    {
+     "sum": 1.9,
+     "trials": 2,
+     "weight": 0.3333333333333333
+    }
+   ],
+   "level": 0.9,
+   "sided": "two",
+   "bounds": [
+    0.29699132852053356,
+    0.7805636990621239
+   ]
+  },
+  {
+   "name": "score-fractional",
+   "cells": [
+    {
+     "sum": 1.25,
+     "trials": 2,
+     "weight": 0.3333333333333333
+    },
+    {
+     "sum": 0.4,
+     "trials": 3,
+     "weight": 0.3333333333333333
+    },
+    {
+     "sum": 1.9,
+     "trials": 2,
+     "weight": 0.3333333333333333
+    }
+   ],
+   "level": 0.95,
+   "sided": "lower",
+   "bounds": [
+    0.29699132852053356,
+    1.0
+   ]
+  },
+  {
+   "name": "score-fractional",
+   "cells": [
+    {
+     "sum": 1.25,
+     "trials": 2,
+     "weight": 0.3333333333333333
+    },
+    {
+     "sum": 0.4,
+     "trials": 3,
+     "weight": 0.3333333333333333
+    },
+    {
+     "sum": 1.9,
+     "trials": 2,
+     "weight": 0.3333333333333333
+    }
+   ],
+   "level": 0.95,
+   "sided": "upper",
+   "bounds": [
+    0.0,
+    0.7805636990621239
+   ]
+  },
+  {
+   "name": "family-weights",
+   "cells": [
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.5
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.125
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.125
+    },
+    {
+     "sum": 1,
+     "trials": 3,
+     "weight": 0.125
+    },
+    {
+     "sum": 2,
+     "trials": 3,
+     "weight": 0.125
+    }
+   ],
+   "level": 0.95,
+   "sided": "two",
+   "bounds": [
+    0.26520365024467385,
+    0.7347963497553262
+   ]
+  },
+  {
+   "name": "family-weights",
+   "cells": [
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.5
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.125
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.125
+    },
+    {
+     "sum": 1,
+     "trials": 3,
+     "weight": 0.125
+    },
+    {
+     "sum": 2,
+     "trials": 3,
+     "weight": 0.125
+    }
+   ],
+   "level": 0.9,
+   "sided": "two",
+   "bounds": [
+    0.28785716061176647,
+    0.7121428393882335
+   ]
+  },
+  {
+   "name": "family-weights",
+   "cells": [
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.5
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.125
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.125
+    },
+    {
+     "sum": 1,
+     "trials": 3,
+     "weight": 0.125
+    },
+    {
+     "sum": 2,
+     "trials": 3,
+     "weight": 0.125
+    }
+   ],
+   "level": 0.95,
+   "sided": "lower",
+   "bounds": [
+    0.28785716061176647,
+    1.0
+   ]
+  },
+  {
+   "name": "family-weights",
+   "cells": [
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.5
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.125
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.125
+    },
+    {
+     "sum": 1,
+     "trials": 3,
+     "weight": 0.125
+    },
+    {
+     "sum": 2,
+     "trials": 3,
+     "weight": 0.125
+    }
+   ],
+   "level": 0.95,
+   "sided": "upper",
+   "bounds": [
+    0.0,
+    0.7121428393882335
+   ]
+  },
+  {
+   "name": "near-zero",
+   "cells": [
+    {
+     "sum": 0,
+     "trials": 3,
+     "weight": 0.25
+    },
+    {
+     "sum": 0,
+     "trials": 3,
+     "weight": 0.25
+    },
+    {
+     "sum": 0,
+     "trials": 3,
+     "weight": 0.25
+    },
+    {
+     "sum": 1,
+     "trials": 3,
+     "weight": 0.25
+    }
+   ],
+   "level": 0.95,
+   "sided": "two",
+   "bounds": [
+    0.015372986180099059,
+    0.3301914087927922
+   ]
+  },
+  {
+   "name": "near-zero",
+   "cells": [
+    {
+     "sum": 0,
+     "trials": 3,
+     "weight": 0.25
+    },
+    {
+     "sum": 0,
+     "trials": 3,
+     "weight": 0.25
+    },
+    {
+     "sum": 0,
+     "trials": 3,
+     "weight": 0.25
+    },
+    {
+     "sum": 1,
+     "trials": 3,
+     "weight": 0.25
+    }
+   ],
+   "level": 0.9,
+   "sided": "two",
+   "bounds": [
+    0.019566431583432103,
+    0.27295295690047316
+   ]
+  },
+  {
+   "name": "near-zero",
+   "cells": [
+    {
+     "sum": 0,
+     "trials": 3,
+     "weight": 0.25
+    },
+    {
+     "sum": 0,
+     "trials": 3,
+     "weight": 0.25
+    },
+    {
+     "sum": 0,
+     "trials": 3,
+     "weight": 0.25
+    },
+    {
+     "sum": 1,
+     "trials": 3,
+     "weight": 0.25
+    }
+   ],
+   "level": 0.95,
+   "sided": "lower",
+   "bounds": [
+    0.019566431583432103,
+    1.0
+   ]
+  },
+  {
+   "name": "near-zero",
+   "cells": [
+    {
+     "sum": 0,
+     "trials": 3,
+     "weight": 0.25
+    },
+    {
+     "sum": 0,
+     "trials": 3,
+     "weight": 0.25
+    },
+    {
+     "sum": 0,
+     "trials": 3,
+     "weight": 0.25
+    },
+    {
+     "sum": 1,
+     "trials": 3,
+     "weight": 0.25
+    }
+   ],
+   "level": 0.95,
+   "sided": "upper",
+   "bounds": [
+    0.0,
+    0.27295295690047316
+   ]
+  },
+  {
+   "name": "near-one",
+   "cells": [
+    {
+     "sum": 3,
+     "trials": 3,
+     "weight": 0.25
+    },
+    {
+     "sum": 3,
+     "trials": 3,
+     "weight": 0.25
+    },
+    {
+     "sum": 2.5,
+     "trials": 3,
+     "weight": 0.25
+    },
+    {
+     "sum": 3,
+     "trials": 3,
+     "weight": 0.25
+    }
+   ],
+   "level": 0.95,
+   "sided": "two",
+   "bounds": [
+    0.7098957371801635,
+    0.9955868014303366
+   ]
+  },
+  {
+   "name": "near-one",
+   "cells": [
+    {
+     "sum": 3,
+     "trials": 3,
+     "weight": 0.25
+    },
+    {
+     "sum": 3,
+     "trials": 3,
+     "weight": 0.25
+    },
+    {
+     "sum": 2.5,
+     "trials": 3,
+     "weight": 0.25
+    },
+    {
+     "sum": 3,
+     "trials": 3,
+     "weight": 0.25
+    }
+   ],
+   "level": 0.9,
+   "sided": "two",
+   "bounds": [
+    0.7679774641355592,
+    0.9941683382039667
+   ]
+  },
+  {
+   "name": "near-one",
+   "cells": [
+    {
+     "sum": 3,
+     "trials": 3,
+     "weight": 0.25
+    },
+    {
+     "sum": 3,
+     "trials": 3,
+     "weight": 0.25
+    },
+    {
+     "sum": 2.5,
+     "trials": 3,
+     "weight": 0.25
+    },
+    {
+     "sum": 3,
+     "trials": 3,
+     "weight": 0.25
+    }
+   ],
+   "level": 0.95,
+   "sided": "lower",
+   "bounds": [
+    0.7679774641355592,
+    1.0
+   ]
+  },
+  {
+   "name": "near-one",
+   "cells": [
+    {
+     "sum": 3,
+     "trials": 3,
+     "weight": 0.25
+    },
+    {
+     "sum": 3,
+     "trials": 3,
+     "weight": 0.25
+    },
+    {
+     "sum": 2.5,
+     "trials": 3,
+     "weight": 0.25
+    },
+    {
+     "sum": 3,
+     "trials": 3,
+     "weight": 0.25
+    }
+   ],
+   "level": 0.95,
+   "sided": "upper",
+   "bounds": [
+    0.0,
+    0.9941683382039667
+   ]
+  },
+  {
+   "name": "all-zero",
+   "cells": [
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.5
+    },
+    {
+     "sum": 0,
+     "trials": 3,
+     "weight": 0.5
+    }
+   ],
+   "level": 0.95,
+   "sided": "two",
+   "bounds": [
+    0.0,
+    0.43448246478317465
+   ]
+  },
+  {
+   "name": "all-zero",
+   "cells": [
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.5
+    },
+    {
+     "sum": 0,
+     "trials": 3,
+     "weight": 0.5
+    }
+   ],
+   "level": 0.9,
+   "sided": "two",
+   "bounds": [
+    0.0,
+    0.35111650076510115
+   ]
+  },
+  {
+   "name": "all-zero",
+   "cells": [
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.5
+    },
+    {
+     "sum": 0,
+     "trials": 3,
+     "weight": 0.5
+    }
+   ],
+   "level": 0.95,
+   "sided": "lower",
+   "bounds": [
+    0.0,
+    1.0
+   ]
+  },
+  {
+   "name": "all-zero",
+   "cells": [
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.5
+    },
+    {
+     "sum": 0,
+     "trials": 3,
+     "weight": 0.5
+    }
+   ],
+   "level": 0.95,
+   "sided": "upper",
+   "bounds": [
+    0.0,
+    0.35111650076510115
+   ]
+  },
+  {
+   "name": "wide",
+   "cells": [
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    }
+   ],
+   "level": 0.95,
+   "sided": "two",
+   "bounds": [
+    0.43309933606607076,
+    0.5669006639339292
+   ]
+  },
+  {
+   "name": "wide",
+   "cells": [
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    }
+   ],
+   "level": 0.9,
+   "sided": "two",
+   "bounds": [
+    0.4424679226283853,
+    0.5575320773716147
+   ]
+  },
+  {
+   "name": "wide",
+   "cells": [
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    }
+   ],
+   "level": 0.95,
+   "sided": "lower",
+   "bounds": [
+    0.4424679226283853,
+    1.0
+   ]
+  },
+  {
+   "name": "wide",
+   "cells": [
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 0,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 1,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    },
+    {
+     "sum": 2,
+     "trials": 2,
+     "weight": 0.03333333333333333
+    }
+   ],
+   "level": 0.95,
+   "sided": "upper",
+   "bounds": [
+    0.0,
+    0.5575320773716147
+   ]
+  }
+ ],
+ "clopperPearson": [
+  {
+   "successes": 0,
+   "trials": 1,
+   "level": 0.95,
+   "two": [
+    0.0,
+    0.975
+   ]
+  },
+  {
+   "successes": 0,
+   "trials": 1,
+   "level": 0.9,
+   "two": [
+    0.0,
+    0.95
+   ]
+  },
+  {
+   "successes": 1,
+   "trials": 3,
+   "level": 0.95,
+   "two": [
+    0.008403758659612645,
+    0.9057006759497539
+   ]
+  },
+  {
+   "successes": 1,
+   "trials": 3,
+   "level": 0.9,
+   "two": [
+    0.016952427508441496,
+    0.8646496378284162
+   ]
+  },
+  {
+   "successes": 3,
+   "trials": 20,
+   "level": 0.95,
+   "two": [
+    0.032070937185463715,
+    0.3789268265453139
+   ]
+  },
+  {
+   "successes": 3,
+   "trials": 20,
+   "level": 0.9,
+   "two": [
+    0.04216940788577858,
+    0.34366380431428184
+   ]
+  },
+  {
+   "successes": 7,
+   "trials": 20,
+   "level": 0.95,
+   "two": [
+    0.15390920478454118,
+    0.592188534532828
+   ]
+  },
+  {
+   "successes": 7,
+   "trials": 20,
+   "level": 0.9,
+   "two": [
+    0.1773109175744491,
+    0.5580345113154888
+   ]
+  },
+  {
+   "successes": 19,
+   "trials": 20,
+   "level": 0.95,
+   "two": [
+    0.7512672372279723,
+    0.9987349105020502
+   ]
+  },
+  {
+   "successes": 19,
+   "trials": 20,
+   "level": 0.9,
+   "two": [
+    0.7838938357931526,
+    0.9974386212234697
+   ]
+  },
+  {
+   "successes": 31,
+   "trials": 60,
+   "level": 0.95,
+   "two": [
+    0.38394601733159683,
+    0.6476870699978736
+   ]
+  },
+  {
+   "successes": 31,
+   "trials": 60,
+   "level": 0.9,
+   "two": [
+    0.40349616855418996,
+    0.6285600196155267
+   ]
+  },
+  {
+   "successes": 2,
+   "trials": 299,
+   "level": 0.95,
+   "two": [
+    0.0008110934845987401,
+    0.023952644452074897
+   ]
+  },
+  {
+   "successes": 2,
+   "trials": 299,
+   "level": 0.9,
+   "two": [
+    0.0011897843357676526,
+    0.02090541610425463
+   ]
+  },
+  {
+   "successes": 4,
+   "trials": 1000,
+   "level": 0.95,
+   "two": [
+    0.001090907987725972,
+    0.010209664683929871
+   ]
+  },
+  {
+   "successes": 4,
+   "trials": 1000,
+   "level": 0.9,
+   "two": [
+    0.001367436251250634,
+    0.009129952563871469
+   ]
+  }
+ ],
+ "bca": [
+  {
+   "name": "ties",
+   "clusters": [
+    {
+     "id": "ties-00",
+     "caseMeans": [
+      0.0
+     ]
+    },
+    {
+     "id": "ties-01",
+     "caseMeans": [
+      1.0
+     ]
+    },
+    {
+     "id": "ties-02",
+     "caseMeans": [
+      0.0
+     ]
+    },
+    {
+     "id": "ties-03",
+     "caseMeans": [
+      1.0
+     ]
+    },
+    {
+     "id": "ties-04",
+     "caseMeans": [
+      0.0
+     ]
+    },
+    {
+     "id": "ties-05",
+     "caseMeans": [
+      1.0
+     ]
+    },
+    {
+     "id": "ties-06",
+     "caseMeans": [
+      0.0
+     ]
+    },
+    {
+     "id": "ties-07",
+     "caseMeans": [
+      1.0
+     ]
+    },
+    {
+     "id": "ties-08",
+     "caseMeans": [
+      0.0
+     ]
+    },
+    {
+     "id": "ties-09",
+     "caseMeans": [
+      1.0
+     ]
+    },
+    {
+     "id": "ties-10",
+     "caseMeans": [
+      0.0
+     ]
+    },
+    {
+     "id": "ties-11",
+     "caseMeans": [
+      1.0
+     ]
+    },
+    {
+     "id": "ties-12",
+     "caseMeans": [
+      0.0
+     ]
+    },
+    {
+     "id": "ties-13",
+     "caseMeans": [
+      1.0
+     ]
+    },
+    {
+     "id": "ties-14",
+     "caseMeans": [
+      0.0
+     ]
+    },
+    {
+     "id": "ties-15",
+     "caseMeans": [
+      1.0
+     ]
+    },
+    {
+     "id": "ties-16",
+     "caseMeans": [
+      0.0
+     ]
+    },
+    {
+     "id": "ties-17",
+     "caseMeans": [
+      1.0
+     ]
+    },
+    {
+     "id": "ties-18",
+     "caseMeans": [
+      0.0
+     ]
+    },
+    {
+     "id": "ties-19",
+     "caseMeans": [
+      1.0
+     ]
+    },
+    {
+     "id": "ties-20",
+     "caseMeans": [
+      0.0
+     ]
+    },
+    {
+     "id": "ties-21",
+     "caseMeans": [
+      1.0
+     ]
+    },
+    {
+     "id": "ties-22",
+     "caseMeans": [
+      0.0
+     ]
+    },
+    {
+     "id": "ties-23",
+     "caseMeans": [
+      1.0
+     ]
+    },
+    {
+     "id": "ties-24",
+     "caseMeans": [
+      0.0
+     ]
+    },
+    {
+     "id": "ties-25",
+     "caseMeans": [
+      1.0
+     ]
+    },
+    {
+     "id": "ties-26",
+     "caseMeans": [
+      0.0
+     ]
+    },
+    {
+     "id": "ties-27",
+     "caseMeans": [
+      1.0
+     ]
+    },
+    {
+     "id": "ties-28",
+     "caseMeans": [
+      0.0
+     ]
+    },
+    {
+     "id": "ties-29",
+     "caseMeans": [
+      1.0
+     ]
+    }
+   ],
+   "weighting": "per-case",
+   "seed": 5,
+   "resamples": 4000,
+   "level": 0.95,
+   "estimate": 0.5,
+   "lower": 0.3333333333333333,
+   "upper": 0.7,
+   "z0": -0.003759951271145934,
+   "acceleration": -1.483523473436671e-16
+  },
+  {
+   "name": "thirty",
+   "clusters": [
+    {
+     "id": "thirty-00",
+     "caseMeans": [
+      0.6666666666666666
+     ]
+    },
+    {
+     "id": "thirty-01",
+     "caseMeans": [
+      0.6666666666666666,
+      0.0
+     ]
+    },
+    {
+     "id": "thirty-02",
+     "caseMeans": [
+      0.6666666666666666,
+      0.0,
+      0.5
+     ]
+    },
+    {
+     "id": "thirty-03",
+     "caseMeans": [
+      0.6666666666666666
+     ]
+    },
+    {
+     "id": "thirty-04",
+     "caseMeans": [
+      0.6666666666666666,
+      0.0
+     ]
+    },
+    {
+     "id": "thirty-05",
+     "caseMeans": [
+      0.6666666666666666,
+      0.0,
+      0.5
+     ]
+    },
+    {
+     "id": "thirty-06",
+     "caseMeans": [
+      0.6666666666666666
+     ]
+    },
+    {
+     "id": "thirty-07",
+     "caseMeans": [
+      0.6666666666666666,
+      0.0
+     ]
+    },
+    {
+     "id": "thirty-08",
+     "caseMeans": [
+      0.6666666666666666,
+      0.0,
+      0.5
+     ]
+    },
+    {
+     "id": "thirty-09",
+     "caseMeans": [
+      0.6666666666666666
+     ]
+    },
+    {
+     "id": "thirty-10",
+     "caseMeans": [
+      0.6666666666666666,
+      0.0
+     ]
+    },
+    {
+     "id": "thirty-11",
+     "caseMeans": [
+      0.6666666666666666,
+      0.0,
+      0.5
+     ]
+    },
+    {
+     "id": "thirty-12",
+     "caseMeans": [
+      0.6666666666666666
+     ]
+    },
+    {
+     "id": "thirty-13",
+     "caseMeans": [
+      0.6666666666666666,
+      0.0
+     ]
+    },
+    {
+     "id": "thirty-14",
+     "caseMeans": [
+      0.6666666666666666,
+      0.0,
+      0.5
+     ]
+    },
+    {
+     "id": "thirty-15",
+     "caseMeans": [
+      0.6666666666666666
+     ]
+    },
+    {
+     "id": "thirty-16",
+     "caseMeans": [
+      0.6666666666666666,
+      0.0
+     ]
+    },
+    {
+     "id": "thirty-17",
+     "caseMeans": [
+      0.6666666666666666,
+      0.0,
+      0.5
+     ]
+    },
+    {
+     "id": "thirty-18",
+     "caseMeans": [
+      0.6666666666666666
+     ]
+    },
+    {
+     "id": "thirty-19",
+     "caseMeans": [
+      0.6666666666666666,
+      0.0
+     ]
+    },
+    {
+     "id": "thirty-20",
+     "caseMeans": [
+      0.6666666666666666,
+      0.0,
+      0.5
+     ]
+    },
+    {
+     "id": "thirty-21",
+     "caseMeans": [
+      0.6666666666666666
+     ]
+    },
+    {
+     "id": "thirty-22",
+     "caseMeans": [
+      0.6666666666666666,
+      0.0
+     ]
+    },
+    {
+     "id": "thirty-23",
+     "caseMeans": [
+      0.6666666666666666,
+      0.0,
+      0.5
+     ]
+    },
+    {
+     "id": "thirty-24",
+     "caseMeans": [
+      0.6666666666666666
+     ]
+    },
+    {
+     "id": "thirty-25",
+     "caseMeans": [
+      0.6666666666666666,
+      0.0
+     ]
+    },
+    {
+     "id": "thirty-26",
+     "caseMeans": [
+      0.6666666666666666,
+      0.0,
+      0.5
+     ]
+    },
+    {
+     "id": "thirty-27",
+     "caseMeans": [
+      0.6666666666666666
+     ]
+    },
+    {
+     "id": "thirty-28",
+     "caseMeans": [
+      0.6666666666666666,
+      0.0
+     ]
+    },
+    {
+     "id": "thirty-29",
+     "caseMeans": [
+      0.6666666666666666,
+      0.0,
+      0.5
+     ]
+    }
+   ],
+   "weighting": "per-case",
+   "seed": 11,
+   "resamples": 2000,
+   "level": 0.95,
+   "estimate": 0.41666666666666663,
+   "lower": 0.38888888888888884,
+   "upper": 0.45370370370370366,
+   "z0": -0.0031332904701324546,
+   "acceleration": 0.018163769248228455
+  },
+  {
+   "name": "thirty-family",
+   "clusters": [
+    {
+     "id": "thirty-family-00",
+     "caseMeans": [
+      0.6666666666666666
+     ]
+    },
+    {
+     "id": "thirty-family-01",
+     "caseMeans": [
+      0.6666666666666666,
+      0.0
+     ]
+    },
+    {
+     "id": "thirty-family-02",
+     "caseMeans": [
+      0.6666666666666666,
+      0.0,
+      0.5
+     ]
+    },
+    {
+     "id": "thirty-family-03",
+     "caseMeans": [
+      0.6666666666666666
+     ]
+    },
+    {
+     "id": "thirty-family-04",
+     "caseMeans": [
+      0.6666666666666666,
+      0.0
+     ]
+    },
+    {
+     "id": "thirty-family-05",
+     "caseMeans": [
+      0.6666666666666666,
+      0.0,
+      0.5
+     ]
+    },
+    {
+     "id": "thirty-family-06",
+     "caseMeans": [
+      0.6666666666666666
+     ]
+    },
+    {
+     "id": "thirty-family-07",
+     "caseMeans": [
+      0.6666666666666666,
+      0.0
+     ]
+    },
+    {
+     "id": "thirty-family-08",
+     "caseMeans": [
+      0.6666666666666666,
+      0.0,
+      0.5
+     ]
+    },
+    {
+     "id": "thirty-family-09",
+     "caseMeans": [
+      0.6666666666666666
+     ]
+    },
+    {
+     "id": "thirty-family-10",
+     "caseMeans": [
+      0.6666666666666666,
+      0.0
+     ]
+    },
+    {
+     "id": "thirty-family-11",
+     "caseMeans": [
+      0.6666666666666666,
+      0.0,
+      0.5
+     ]
+    },
+    {
+     "id": "thirty-family-12",
+     "caseMeans": [
+      0.6666666666666666
+     ]
+    },
+    {
+     "id": "thirty-family-13",
+     "caseMeans": [
+      0.6666666666666666,
+      0.0
+     ]
+    },
+    {
+     "id": "thirty-family-14",
+     "caseMeans": [
+      0.6666666666666666,
+      0.0,
+      0.5
+     ]
+    },
+    {
+     "id": "thirty-family-15",
+     "caseMeans": [
+      0.6666666666666666
+     ]
+    },
+    {
+     "id": "thirty-family-16",
+     "caseMeans": [
+      0.6666666666666666,
+      0.0
+     ]
+    },
+    {
+     "id": "thirty-family-17",
+     "caseMeans": [
+      0.6666666666666666,
+      0.0,
+      0.5
+     ]
+    },
+    {
+     "id": "thirty-family-18",
+     "caseMeans": [
+      0.6666666666666666
+     ]
+    },
+    {
+     "id": "thirty-family-19",
+     "caseMeans": [
+      0.6666666666666666,
+      0.0
+     ]
+    },
+    {
+     "id": "thirty-family-20",
+     "caseMeans": [
+      0.6666666666666666,
+      0.0,
+      0.5
+     ]
+    },
+    {
+     "id": "thirty-family-21",
+     "caseMeans": [
+      0.6666666666666666
+     ]
+    },
+    {
+     "id": "thirty-family-22",
+     "caseMeans": [
+      0.6666666666666666,
+      0.0
+     ]
+    },
+    {
+     "id": "thirty-family-23",
+     "caseMeans": [
+      0.6666666666666666,
+      0.0,
+      0.5
+     ]
+    },
+    {
+     "id": "thirty-family-24",
+     "caseMeans": [
+      0.6666666666666666
+     ]
+    },
+    {
+     "id": "thirty-family-25",
+     "caseMeans": [
+      0.6666666666666666,
+      0.0
+     ]
+    },
+    {
+     "id": "thirty-family-26",
+     "caseMeans": [
+      0.6666666666666666,
+      0.0,
+      0.5
+     ]
+    },
+    {
+     "id": "thirty-family-27",
+     "caseMeans": [
+      0.6666666666666666
+     ]
+    },
+    {
+     "id": "thirty-family-28",
+     "caseMeans": [
+      0.6666666666666666,
+      0.0
+     ]
+    },
+    {
+     "id": "thirty-family-29",
+     "caseMeans": [
+      0.6666666666666666,
+      0.0,
+      0.5
+     ]
+    }
+   ],
+   "weighting": "per-family",
+   "seed": 11,
+   "resamples": 2000,
+   "level": 0.95,
+   "estimate": 0.4629629629629629,
+   "lower": 0.41481481481481475,
+   "upper": 0.5166666666666666,
+   "z0": -0.0018799723133690017,
+   "acceleration": 0.0191977929965226
+  },
+  {
+   "name": "forty-five",
+   "clusters": [
+    {
+     "id": "forty-five-00",
+     "caseMeans": [
+      0.0
+     ]
+    },
+    {
+     "id": "forty-five-01",
+     "caseMeans": [
+      0.0,
+      0.5
+     ]
+    },
+    {
+     "id": "forty-five-02",
+     "caseMeans": [
+      0.0,
+      0.5,
+      1.0
+     ]
+    },
+    {
+     "id": "forty-five-03",
+     "caseMeans": [
+      0.0
+     ]
+    },
+    {
+     "id": "forty-five-04",
+     "caseMeans": [
+      0.0,
+      0.5
+     ]
+    },
+    {
+     "id": "forty-five-05",
+     "caseMeans": [
+      0.0,
+      0.5,
+      1.0
+     ]
+    },
+    {
+     "id": "forty-five-06",
+     "caseMeans": [
+      0.0
+     ]
+    },
+    {
+     "id": "forty-five-07",
+     "caseMeans": [
+      0.0,
+      0.5
+     ]
+    },
+    {
+     "id": "forty-five-08",
+     "caseMeans": [
+      0.0,
+      0.5,
+      1.0
+     ]
+    },
+    {
+     "id": "forty-five-09",
+     "caseMeans": [
+      0.0
+     ]
+    },
+    {
+     "id": "forty-five-10",
+     "caseMeans": [
+      0.0,
+      0.5
+     ]
+    },
+    {
+     "id": "forty-five-11",
+     "caseMeans": [
+      0.0,
+      0.5,
+      1.0
+     ]
+    },
+    {
+     "id": "forty-five-12",
+     "caseMeans": [
+      0.0
+     ]
+    },
+    {
+     "id": "forty-five-13",
+     "caseMeans": [
+      0.0,
+      0.5
+     ]
+    },
+    {
+     "id": "forty-five-14",
+     "caseMeans": [
+      0.0,
+      0.5,
+      1.0
+     ]
+    },
+    {
+     "id": "forty-five-15",
+     "caseMeans": [
+      0.0
+     ]
+    },
+    {
+     "id": "forty-five-16",
+     "caseMeans": [
+      0.0,
+      0.5
+     ]
+    },
+    {
+     "id": "forty-five-17",
+     "caseMeans": [
+      0.0,
+      0.5,
+      1.0
+     ]
+    },
+    {
+     "id": "forty-five-18",
+     "caseMeans": [
+      0.0
+     ]
+    },
+    {
+     "id": "forty-five-19",
+     "caseMeans": [
+      0.0,
+      0.5
+     ]
+    },
+    {
+     "id": "forty-five-20",
+     "caseMeans": [
+      0.0,
+      0.5,
+      1.0
+     ]
+    },
+    {
+     "id": "forty-five-21",
+     "caseMeans": [
+      0.0
+     ]
+    },
+    {
+     "id": "forty-five-22",
+     "caseMeans": [
+      0.0,
+      0.5
+     ]
+    },
+    {
+     "id": "forty-five-23",
+     "caseMeans": [
+      0.0,
+      0.5,
+      1.0
+     ]
+    },
+    {
+     "id": "forty-five-24",
+     "caseMeans": [
+      0.0
+     ]
+    },
+    {
+     "id": "forty-five-25",
+     "caseMeans": [
+      0.0,
+      0.5
+     ]
+    },
+    {
+     "id": "forty-five-26",
+     "caseMeans": [
+      0.0,
+      0.5,
+      1.0
+     ]
+    },
+    {
+     "id": "forty-five-27",
+     "caseMeans": [
+      0.0
+     ]
+    },
+    {
+     "id": "forty-five-28",
+     "caseMeans": [
+      0.0,
+      0.5
+     ]
+    },
+    {
+     "id": "forty-five-29",
+     "caseMeans": [
+      0.0,
+      0.5,
+      1.0
+     ]
+    },
+    {
+     "id": "forty-five-30",
+     "caseMeans": [
+      0.0
+     ]
+    },
+    {
+     "id": "forty-five-31",
+     "caseMeans": [
+      0.0,
+      0.5
+     ]
+    },
+    {
+     "id": "forty-five-32",
+     "caseMeans": [
+      0.0,
+      0.5,
+      1.0
+     ]
+    },
+    {
+     "id": "forty-five-33",
+     "caseMeans": [
+      0.0
+     ]
+    },
+    {
+     "id": "forty-five-34",
+     "caseMeans": [
+      0.0,
+      0.5
+     ]
+    },
+    {
+     "id": "forty-five-35",
+     "caseMeans": [
+      0.0,
+      0.5,
+      1.0
+     ]
+    },
+    {
+     "id": "forty-five-36",
+     "caseMeans": [
+      0.0
+     ]
+    },
+    {
+     "id": "forty-five-37",
+     "caseMeans": [
+      0.0,
+      0.5
+     ]
+    },
+    {
+     "id": "forty-five-38",
+     "caseMeans": [
+      0.0,
+      0.5,
+      1.0
+     ]
+    },
+    {
+     "id": "forty-five-39",
+     "caseMeans": [
+      0.0
+     ]
+    },
+    {
+     "id": "forty-five-40",
+     "caseMeans": [
+      0.0,
+      0.5
+     ]
+    },
+    {
+     "id": "forty-five-41",
+     "caseMeans": [
+      0.0,
+      0.5,
+      1.0
+     ]
+    },
+    {
+     "id": "forty-five-42",
+     "caseMeans": [
+      0.0
+     ]
+    },
+    {
+     "id": "forty-five-43",
+     "caseMeans": [
+      0.0,
+      0.5
+     ]
+    },
+    {
+     "id": "forty-five-44",
+     "caseMeans": [
+      0.0,
+      0.5,
+      1.0
+     ]
+    }
+   ],
+   "weighting": "per-case",
+   "seed": 4242,
+   "resamples": 3000,
+   "level": 0.95,
+   "estimate": 0.3333333333333333,
+   "lower": 0.28125,
+   "upper": 0.385,
+   "z0": 0.06521853970954371,
+   "acceleration": 0.014930727633331833
+  }
+ ],
+ "reductions": [
+  {
+   "values": [
+    1,
+    0,
+    1,
+    0
+   ],
+   "k": 1,
+   "all": 0.5,
+   "any": 0.5
+  },
+  {
+   "values": [
+    1,
+    0,
+    1,
+    0
+   ],
+   "k": 2,
+   "all": 0.16666666666666666,
+   "any": 0.8333333333333334
+  },
+  {
+   "values": [
+    1,
+    0,
+    1,
+    0
+   ],
+   "k": 3,
+   "all": 0.0,
+   "any": 1.0
+  },
+  {
+   "values": [
+    1,
+    0,
+    1,
+    0
+   ],
+   "k": 4,
+   "all": 0.0,
+   "any": 1.0
+  },
+  {
+   "values": [
+    1,
+    1,
+    0,
+    1,
+    0,
+    1,
+    1
+   ],
+   "k": 1,
+   "all": 0.7142857142857143,
+   "any": 0.7142857142857143
+  },
+  {
+   "values": [
+    1,
+    1,
+    0,
+    1,
+    0,
+    1,
+    1
+   ],
+   "k": 2,
+   "all": 0.47619047619047616,
+   "any": 0.9523809523809523
+  },
+  {
+   "values": [
+    1,
+    1,
+    0,
+    1,
+    0,
+    1,
+    1
+   ],
+   "k": 3,
+   "all": 0.2857142857142857,
+   "any": 1.0
+  },
+  {
+   "values": [
+    1,
+    1,
+    0,
+    1,
+    0,
+    1,
+    1
+   ],
+   "k": 4,
+   "all": 0.14285714285714285,
+   "any": 1.0
+  },
+  {
+   "values": [
+    1,
+    1,
+    0,
+    1,
+    0,
+    1,
+    1
+   ],
+   "k": 5,
+   "all": 0.047619047619047616,
+   "any": 1.0
+  },
+  {
+   "values": [
+    1,
+    1,
+    0,
+    1,
+    0,
+    1,
+    1
+   ],
+   "k": 6,
+   "all": 0.0,
+   "any": 1.0
+  },
+  {
+   "values": [
+    1,
+    1,
+    0,
+    1,
+    0,
+    1,
+    1
+   ],
+   "k": 7,
+   "all": 0.0,
+   "any": 1.0
+  },
+  {
+   "values": [
+    0,
+    0,
+    0,
+    1,
+    0
+   ],
+   "k": 1,
+   "all": 0.2,
+   "any": 0.2
+  },
+  {
+   "values": [
+    0,
+    0,
+    0,
+    1,
+    0
+   ],
+   "k": 2,
+   "all": 0.0,
+   "any": 0.4
+  },
+  {
+   "values": [
+    0,
+    0,
+    0,
+    1,
+    0
+   ],
+   "k": 3,
+   "all": 0.0,
+   "any": 0.6
+  },
+  {
+   "values": [
+    0,
+    0,
+    0,
+    1,
+    0
+   ],
+   "k": 4,
+   "all": 0.0,
+   "any": 0.8
+  },
+  {
+   "values": [
+    0,
+    0,
+    0,
+    1,
+    0
+   ],
+   "k": 5,
+   "all": 0.0,
+   "any": 1.0
+  },
+  {
+   "values": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "k": 1,
+   "all": 0.5,
+   "any": 0.5
+  },
+  {
+   "values": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "k": 2,
+   "all": 0.2222222222222222,
+   "any": 0.7777777777777778
+  },
+  {
+   "values": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "k": 3,
+   "all": 0.08333333333333333,
+   "any": 0.9166666666666666
+  },
+  {
+   "values": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "k": 4,
+   "all": 0.023809523809523808,
+   "any": 0.9761904761904762
+  },
+  {
+   "values": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "k": 5,
+   "all": 0.003968253968253968,
+   "any": 0.996031746031746
+  },
+  {
+   "values": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "k": 6,
+   "all": 0.0,
+   "any": 1.0
+  },
+  {
+   "values": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "k": 7,
+   "all": 0.0,
+   "any": 1.0
+  },
+  {
+   "values": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "k": 8,
+   "all": 0.0,
+   "any": 1.0
+  },
+  {
+   "values": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "k": 9,
+   "all": 0.0,
+   "any": 1.0
+  },
+  {
+   "values": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "k": 10,
+   "all": 0.0,
+   "any": 1.0
+  }
+ ]
+}

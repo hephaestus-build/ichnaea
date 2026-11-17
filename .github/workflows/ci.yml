@@ -144,6 +144,16 @@ jobs:
           git diff --exit-code -- test/stats/reference-r-normal.json test/stats/reference-numpy-mt19937.json \
             test/stats/reference-mpmath-normal.json test/stats/reference-normal-coefficients.json \
             test/stats/reference-cluster-bootstrap.tsv
+      # The one-arm estimates: R's binom.test, survival and exact mantelhaen.test, and a Python
+      # implementation written from the formulas alone.
+      - name: The estimate reference values are what their oracles write
+        working-directory: packages/ichnaea
+        run: |
+          docker run --rm --network none -v "$PWD":/w -w /w "$R_IMAGE" Rscript scripts/stats/reference-estimate.R
+          docker run --rm -v "$PWD":/w -w /w "$PYTHON_IMAGE" sh -c \
+            "pip install --quiet --root-user-action=ignore --require-hashes -r scripts/stats/oracle-requirements.txt \
+            && python scripts/stats/estimate_oracle.py test/stats/reference-python-estimate.json"
+          git diff --exit-code -- test/stats/reference-r-estimate.json test/stats/reference-python-estimate.json
       # The score permutation test's tables, and its two oracles: coin, and an exact enumeration in
       # Python that was written from the formulas alone and checks itself first.
       - name: The score permutation reference values are what their oracles write
