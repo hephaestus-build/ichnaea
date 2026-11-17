@@ -177,11 +177,15 @@ describe("configuration identity", () => {
       computed: null,
       problem: "the template has a lone surrogate, so it has no UTF-8 form",
     };
-    expect(await verifyConfiguration(config)).toEqual([problem]);
+    // Asserted not to throw, so a check that throws instead of reporting fails as an assertion.
+    expect(() => verifyConfiguration(config)).not.toThrow();
+    expect(verifyConfiguration(config)).toEqual([problem]);
     expect(() => configurationIdentity(config)).toThrow(
       "the template at /prompts/0/template cannot be hashed: the template has a lone surrogate",
     );
-    expect(await verifyArms([{ identity: replaced, configuration: config }])).toEqual([
+    const arms = [{ identity: replaced, configuration: config }];
+    expect(() => verifyArms(arms)).not.toThrow();
+    expect(verifyArms(arms)).toEqual([
       { ...problem, path: "/arms/0/configuration/prompts/0/digest" },
     ]);
   });
@@ -254,12 +258,15 @@ describe("configuration identity", () => {
     duplicated.models.push(structuredClone(duplicated.models[0]!));
     const noModels = { ...structuredClone(base), models: [] };
     const notARecord = "not a configuration";
-    const errors = await verifyArms([
+    const arms = [
       { identity, configuration: base },
       { identity, configuration: duplicated },
       { identity, configuration: noModels },
       { identity, configuration: notARecord },
-    ]);
+    ];
+    // Asserted not to throw, so a verifier that throws on a bad arm fails as an assertion.
+    expect(() => verifyArms(arms)).not.toThrow();
+    const errors = verifyArms(arms);
     expect(errors.map((e) => [e.path, e.stored, e.computed])).toEqual([
       ["/arms/1/configuration", identity, null],
       ["/arms/2/configuration", identity, null],
