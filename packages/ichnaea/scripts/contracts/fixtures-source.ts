@@ -49,6 +49,136 @@ export const CONFIGURATION_B = {
   label: "candidate",
 };
 
+const COMMIT = "9e2c1f0a4b7d3e6c8a1f2b5d7e9c0a3b6d8f1e2c";
+
+/** A project config with two datasets, a shared worker, an endpoint, baselines and delivery. */
+const PROJECT = {
+  schema: "ichnaea.project/1",
+  suites: ["suites/*/suite.ts"],
+  datasets: {
+    "answers-public": { git: { repo: "https://github.com/example/answers-eval", commit: COMMIT } },
+    "answers-private": {
+      git: {
+        repo: "git@github.com:example/answers-eval-private.git",
+        commit: "41ab0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b",
+      },
+    },
+  },
+  workers: {
+    assistant: {
+      command: ["poetry", "run", "python", "-m", "evals.worker"],
+      prepare: ["poetry", "install", "--no-root"],
+      env: [{ name: "LLM_API_KEY", secret: true }],
+      endpoints: ["eu-llm"],
+      capacity: 4,
+    },
+  },
+  endpoints: { "eu-llm": { concurrency: 8, requestsPerMinute: 600 } },
+  baselines: {
+    from: { githubArtifact: { workflow: "baseline.yml", branch: "main" } },
+    freshness: "P7D",
+  },
+  defaults: { trials: 2, mode: "fast" },
+  delivery: {
+    sinks: { pr: { kind: "github" } },
+    routes: [{ on: "compare", profile: "pr", to: ["pr"] }],
+  },
+  privacy: { homeKey: { fromEnv: "ICHNAEA_HOME_KEY" } },
+};
+
+/** A RAG answer suite: cases from two datasets, a judge, a TypeScript scorer and three profiles. */
+const SUITE_V2 = {
+  schema: "ichnaea.suite/2",
+  id: "answers",
+  version: "4",
+  about: {
+    objective: "Answers about study programmes are correct and grounded in the official pages.",
+    decision: "Release check before a deploy of a new model, prompt or retrieval setting.",
+    construct: "Grounded correctness on curated questions; not user satisfaction.",
+    scope: "German and English questions about admission and programmes.",
+    nonCoverage: ["multi-turn follow-ups", "small talk"],
+    threats: ["judge bias", "retrieval drift between runs"],
+  },
+  cases: {
+    from: [
+      { dataset: "answers-public", path: "answers/cases.jsonl" },
+      { dataset: "answers-private", path: "answers/real.jsonl" },
+    ],
+    pools: { development: { label: "dev" }, validation: { label: "test", maxReads: 40 } },
+  },
+  worker: "assistant",
+  stages: ["search", "rank", "answer"],
+  environment: {
+    index: {
+      service: { fromEnv: "INDEX_URL" },
+      identity: "snapshot-id",
+      class: "none",
+      exposure: "public",
+    },
+  },
+  instruments: {
+    "quality-judge": {
+      command: ["poetry", "run", "python", "-m", "judges.quality"],
+      prepare: ["poetry", "install", "--no-root"],
+      files: ["judges/**", "rubrics/quality.md", "pyproject.toml", "poetry.lock"],
+      judge: {
+        model: "provider/model-x@2026-10-01",
+        prompt: "judges/prompt.md",
+        rubric: "rubrics/quality.md",
+        parameters: { temperature: 0 },
+      },
+      env: [{ name: "JUDGE_API_KEY", secret: true }],
+      endpoints: ["eu-llm"],
+    },
+    "ts-scorers": { files: ["scorers/**", "package-lock.json"] },
+  },
+  measures: {
+    searched: {
+      type: "binary",
+      stage: "search",
+      status: "ok",
+      appliesTo: { slice: "needs-search" },
+      direction: "higher",
+    },
+    grounded: { type: "binary", scorer: { builtin: "links-grounded" } },
+    "cites-page": {
+      type: "binary",
+      scorer: { instrument: "ts-scorers", module: "scorers/cites.ts", export: "citesPage" },
+    },
+    correct: { type: "binary", scorer: { instrument: "quality-judge", dimension: "correctness" } },
+    "rank-ndcg": { type: "score", stage: "rank", scorer: { builtin: "ndcg", options: { k: 5 } } },
+    "latency-ms": { type: "quantity", unit: "ms", scorer: { builtin: "wall-time" } },
+  },
+  policy: {
+    primary: {
+      grounded: {
+        limit: 0.05,
+        owner: "answers-owner",
+        reason: "Pass needs any drop to stay under 5 points.",
+      },
+      searched: {
+        limit: 0.1,
+        owner: "answers-owner",
+        reason: "Search is how answers get grounded.",
+      },
+    },
+    secondary: ["latency-ms"],
+    diagnostic: ["correct", "rank-ndcg", "cites-page"],
+  },
+  profiles: {
+    try: { trials: 1, pool: "development", cases: 10 },
+    pr: { trials: 2, pool: "development", mode: "fast" },
+    release: { trials: 2, pool: "validation", mode: "confirm" },
+  },
+  budget: { calls: 2000, callsPerTrial: 12, judgeCalls: 600 },
+  stopReasons: {
+    COMPLETED: "completed",
+    RATE_LIMITED: "infrastructure",
+    NO_RESULTS: "system",
+    SEARCH_SKIPPED: "not_invoked",
+  },
+};
+
 export const VALID: Record<string, Record<string, unknown>> = {
   case: {
     schema: "ichnaea.case/1",
@@ -635,6 +765,50 @@ export const VALID: Record<string, Record<string, unknown>> = {
     confirmerRole: "suite maintainer",
     promotion: "synthetic",
   },
+  // The v2 records: a RAG answer suite and its project config (synthetic content).
+  "suite.2": SUITE_V2,
+  "configuration.2": {
+    schema: "ichnaea.configuration/2",
+    digest: d("c3"),
+    fields: { model: "example-model-2026-10", temperature: 0.2 },
+  },
+  project: PROJECT,
+  "suite.lock": {
+    schema: "ichnaea.suite.lock/1",
+    suite: "answers",
+    suiteDigest: d("d1"),
+    measurementDigest: d("d2"),
+    sources: [
+      {
+        origin: { dataset: "answers-public", path: "answers/cases.jsonl" },
+        digest: d("d3"),
+        bytes: 48211,
+        pools: { development: 40, validation: 20 },
+      },
+    ],
+    datasets: { "answers-public": { commit: COMMIT, place: "public" } },
+    instruments: {
+      "quality-judge": {
+        files: d("d4"),
+        judge: {
+          model: "provider/model-x@2026-10-01",
+          parameters: { temperature: 0 },
+          prompt: d("d5"),
+          rubric: d("d6"),
+          inputsDigest: d("d7"),
+        },
+      },
+      "ts-scorers": { files: d("d8") },
+    },
+    measures: { searched: d("e2"), grounded: d("e3"), "cites-page": d("e4"), correct: d("e5") },
+    limits: {
+      grounded: {
+        limit: 0.05,
+        owner: "answers-owner",
+        reason: "Pass needs any drop to stay under 5 points.",
+      },
+    },
+  },
 };
 
 type Mutation = (record: Record<string, unknown>) => void;
@@ -969,6 +1143,101 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
   finding: {
     "missing-promotion": (r) => delete r["promotion"],
   },
+  "suite.2": {
+    "missing-about": (r) => delete r["about"],
+    "about-without-threats": (r) => delete (r["about"] as Record<string, unknown>)["threats"],
+    "missing-measures": (r) => delete r["measures"],
+    "missing-budget": (r) => delete r["budget"],
+    "cases-from-and-source": (r) =>
+      ((r["cases"] as Record<string, unknown>)["source"] = { file: "cases.jsonl" }),
+    "measure-as-function-source": (r) =>
+      ((r["measures"] as Record<string, Record<string, unknown>>)["grounded"]!["scorer"] =
+        "(output) => output.includes('http')"),
+    "module-outside-instrument": (r) =>
+      ((r["measures"] as Record<string, Record<string, Record<string, unknown>>>)["cites-page"]![
+        "scorer"
+      ]!["module"] = "../scorers/cites.ts"),
+    "quantity-without-unit": (r) =>
+      delete (r["measures"] as Record<string, Record<string, unknown>>)["latency-ms"]!["unit"],
+    "limit-above-one": (r) =>
+      ((r["policy"] as Record<string, Record<string, Record<string, unknown>>>)["primary"]![
+        "grounded"
+      ]!["limit"] = 5),
+    "limit-of-zero": (r) =>
+      ((r["policy"] as Record<string, Record<string, Record<string, unknown>>>)["primary"]![
+        "grounded"
+      ]!["limit"] = 0),
+    "primary-without-owner": (r) =>
+      delete (r["policy"] as Record<string, Record<string, Record<string, unknown>>>)["primary"]![
+        "grounded"
+      ]!["owner"],
+    "duration-in-words": (r) => (r["limits"] = { trialDeadline: "2 minutes" }),
+    "level-without-levels": (r) =>
+      ((r["measures"] as Record<string, unknown>)["completeness"] = {
+        type: "level",
+        spacing: "equal",
+      }),
+    "judge-parameter-as-an-object": (r) =>
+      ((
+        (r["instruments"] as Record<string, Record<string, unknown>>)["quality-judge"]![
+          "judge"
+        ] as Record<string, unknown>
+      )["parameters"] = { response: { type: "json" } }),
+    "import-module-outside-the-tree": (r) => {
+      delete r["worker"];
+      r["import"] = { module: "../importers/bench.ts" };
+    },
+    "fidelity-margin-of-one": (r) => (r["attribute"] = { fidelityMargin: { grounded: 1 } }),
+    "self-verdict-without-class": (r) =>
+      ((r["stopReasons"] as Record<string, unknown>)["REPAIR_BUDGET_EXHAUSTED"] = {
+        selfVerdict: true,
+      }),
+  },
+  "configuration.2": {
+    "missing-digest": (r) => delete r["digest"],
+    "bad-digest": (r) => (r["digest"] = "sha256:abc"),
+  },
+  project: {
+    "branch-for-commit": (r) =>
+      ((r["datasets"] as Record<string, Record<string, Record<string, unknown>>>)[
+        "answers-public"
+      ]!["git"]!["commit"] = "main"),
+    "https-with-query": (r) =>
+      ((r["datasets"] as Record<string, unknown>)["answers-public"] = {
+        https: { url: "https://example.com/cases.jsonl?sig=abc" },
+        digest: d("a9"),
+      }),
+    "sentinel-below-five": (r) =>
+      ((r["baselines"] as Record<string, unknown>)["sentinel"] = { share: 0.1, min: 4 }),
+    "route-to-no-sink": (r) =>
+      ((r["delivery"] as Record<string, Array<Record<string, unknown>>>)["routes"]![0]!["to"] = []),
+    "webhook-without-signing-key": (r) =>
+      ((r["delivery"] as Record<string, Record<string, unknown>>)["sinks"]!["hook"] = {
+        kind: "webhook",
+        url: { fromEnv: "HOOK_URL" },
+      }),
+    "token-in-a-command": (r) =>
+      ((r["workers"] as Record<string, Record<string, unknown>>)["assistant"]!["command"] = [
+        "worker",
+        // The header form: refused by the header rule, and no provider's token format, so no
+        // secret scanner flags the generated fixture.
+        "Authorization: Bearer x0x0x0x0",
+      ]),
+    "repository-with-credentials": (r) =>
+      ((r["datasets"] as Record<string, Record<string, Record<string, unknown>>>)[
+        "answers-public"
+      ]!["git"]!["repo"] = "https://x-access-token:ghp_abcdefghij0123456789@github.com/o/r.git"),
+    "zero-capacity": (r) =>
+      ((r["workers"] as Record<string, Record<string, unknown>>)["assistant"]!["capacity"] = 0),
+  },
+  "suite.lock": {
+    "missing-measurement-digest": (r) => delete r["measurementDigest"],
+    "https-origin-with-a-query": (r) =>
+      ((r["sources"] as Array<Record<string, unknown>>)[0]!["origin"] = {
+        https: { host: "example.com", path: "/cases.jsonl?sig=abc" },
+      }),
+    "negative-bytes": (r) => ((r["sources"] as Array<Record<string, unknown>>)[0]!["bytes"] = -1),
+  },
 };
 
 /** A planning entry that a decision states for a plan without one, whose margin is refused. */
@@ -991,11 +1260,16 @@ const withoutDelivery = (r: Record<string, unknown>): void => {
 
 export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
   plan: {
+    // A plan with a bound per trial books its worst case as the trials of its arms with `runs`
+    // times the bound, as decide checks: here one planned trial at 2 calls.
     "calls-per-trial": (r) => {
       (r["budget"] as Record<string, unknown>)["callsPerTrial"] = 2;
+      (r["budget"] as Record<string, unknown>)["worstCaseCalls"] = 2;
+      for (const arm of r["arms"] as Array<Record<string, unknown>>) arm["runs"] = true;
     },
     "one-arm-imported": (r) => {
       (r["budget"] as Record<string, unknown>)["callsPerTrial"] = 2;
+      (r["budget"] as Record<string, unknown>)["worstCaseCalls"] = 2;
       const arms = r["arms"] as Array<Record<string, unknown>>;
       arms[arms.length - 1]!["runs"] = true;
     },
@@ -1292,6 +1566,107 @@ export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
       r["informational"] = { "provider.fingerprint": "fp_3c1a" };
     },
   },
+  "suite.2": {
+    "inline-worker-and-cases-from-a-source": (r) => {
+      r["worker"] = {
+        command: ["node", "worker.ts"],
+        processes: 2,
+        startTimeout: "PT5M",
+      };
+      r["cases"] = {
+        source: {
+          git: { repo: "https://github.com/example/cases", commit: COMMIT, path: "a.jsonl" },
+        },
+        exposure: "private",
+        frame: { population: "questions in the help desk", drawnBy: "random", date: "2026-11-01" },
+      };
+    },
+    "import-instead-of-a-worker": (r) => {
+      delete r["worker"];
+      r["import"] = { command: ["python", "-m", "bench.export"] };
+    },
+    "import-from-a-module": (r) => {
+      delete r["worker"];
+      r["import"] = { module: "importers/bench.ts" };
+    },
+    "self-verdict-reduction-and-limits": (r) => {
+      (r["stopReasons"] as Record<string, unknown>)["REPAIR_BUDGET_EXHAUSTED"] = {
+        class: "completed",
+        selfVerdict: true,
+      };
+      (r["measures"] as Record<string, Record<string, unknown>>)["grounded"]!["reduce"] = {
+        all: { k: 2 },
+      };
+      r["limits"] = { trialDeadline: "PT2M", missingMax: 0.2 };
+      r["baselines"] = { freshness: "P3D" };
+      r["configuration"] = { record: ["model", "temperature"] };
+      r["attribute"] = { fidelityMargin: { grounded: 0.025 } };
+      (r["measures"] as Record<string, unknown>)["completeness"] = {
+        type: "level",
+        levels: [0, 1, 2, 3],
+        anchors: { "0": "misses the question", "3": "answers every part" },
+        spacing: { cut: 2 },
+        scorer: { instrument: "quality-judge", dimension: "completeness" },
+      };
+    },
+  },
+  project: {
+    "governance-at-home": (r) => {
+      r["privacy"] = {
+        homeKey: { fromEnv: "ICHNAEA_HOME_KEY" },
+        consent: "/srv/eval/consent.jsonl",
+        governance: {
+          home: { description: "evaluation job inside the deployment's cluster" },
+          purposes: {
+            "PU-3": { enabled: true, basis: "consent", record: "dpia/raters-2026.md" },
+            "PU-7": { enabled: true, basis: "public-task", record: "ropa/eval-at-home.md" },
+          },
+          endpoints: {
+            "eu-llm": { provider: "example", region: "eu", purposes: ["PU-3", "PU-7"] },
+          },
+          retention: { pseudonymous: "P180D", personal: "P30D", labels: { study: "P3Y" } },
+        },
+      };
+      const sinks = (r["delivery"] as Record<string, Record<string, unknown>>)["sinks"]!;
+      sinks["il3"] = { kind: "teams-workflow", url: { fromEnv: "IL3_TEAMS_WORKFLOW_URL" } };
+      sinks["records"] = {
+        kind: "webhook",
+        url: { fromEnv: "RECORDS_WEBHOOK_URL" },
+        signingKey: { fromEnv: "RECORDS_WEBHOOK_SIGNING_KEY" },
+        clearance: {
+          maxExposure: "private",
+          purpose: "PU-6",
+          reason: "the team's records service",
+        },
+      };
+    },
+    "datasets-from-https-and-a-command": (r) => {
+      r["datasets"] = {
+        presigned: { https: { fromEnv: "CASES_URL" }, digest: d("a8") },
+        dvc: {
+          command: ["dvc", "pull", "data/answers.dvc"],
+          output: "data/answers",
+          env: ["AWS_PROFILE"],
+        },
+      };
+    },
+  },
+  "suite.lock": {
+    "command-source-and-an-image": (r) => {
+      r["sources"] = [
+        {
+          origin: { command: ["dvc", "pull"], output: "data/answers" },
+          digest: d("d9"),
+          bytes: 0,
+          pools: {},
+        },
+      ];
+      (r["instruments"] as Record<string, Record<string, unknown>>)["ts-scorers"] = {
+        files: d("d8"),
+        image: { reference: "ghcr.io/example/grader:1", digest: d("da") },
+      };
+    },
+  },
 };
 
 /**
@@ -1439,4 +1814,23 @@ export const READER_ONLY: Record<string, Record<string, Mutation>> = {
   calibration: { "future-status": (r) => (r["status"] = "provisional") },
   finding: { "future-promotion": (r) => (r["promotion"] = "auto") },
   suite: { "future-estimand": (r) => (r["estimand"] = "population") },
+  "suite.2": {
+    "future-measure-type": (r) =>
+      ((r["measures"] as Record<string, Record<string, unknown>>)["grounded"]!["type"] = "ranking"),
+    "future-stop-class": (r) =>
+      ((r["stopReasons"] as Record<string, unknown>)["COMPLETED"] = "partial"),
+    "future-member": (r) => (r["traces"] = { store: "local" }),
+  },
+  "configuration.2": { "future-member": (r) => (r["label"] = "candidate") },
+  project: {
+    "future-sink-kind": (r) =>
+      ((r["delivery"] as Record<string, Record<string, Record<string, unknown>>>)["sinks"]!["pr"]![
+        "kind"
+      ] = "email"),
+  },
+  "suite.lock": {
+    "future-place": (r) =>
+      ((r["datasets"] as Record<string, Record<string, unknown>>)["answers-public"]!["place"] =
+        "internal"),
+  },
 };

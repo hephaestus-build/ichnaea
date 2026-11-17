@@ -2,14 +2,18 @@ import type * as z from "zod";
 
 import { Case, CaseSet } from "./records/case.ts";
 import { Configuration } from "./records/configuration.ts";
+import { ConfigurationV2 } from "./records/configuration-v2.ts";
 import { Decision } from "./records/decision.ts";
 import { Calibration, Judge, Label } from "./records/judge.ts";
 import { MeasureCard, MeasureValue } from "./records/measure.ts";
 import { Finding, Monitor } from "./records/monitor.ts";
 import { Plan } from "./records/plan.ts";
+import { SuiteLock } from "./records/lock.ts";
+import { ProjectConfig } from "./records/project.ts";
 import { Run } from "./records/run.ts";
 import { ScoreRequest, ScoreResult } from "./records/scorer.ts";
 import { Suite } from "./records/suite.ts";
+import { SuiteV2 } from "./records/suite-v2.ts";
 import { Trial } from "./records/trial.ts";
 import {
   Cancel,
@@ -25,8 +29,17 @@ export type Stability = "development" | "alpha" | "beta" | "stable";
 
 /** One record contract: its schema identifier, zod schema and stability. */
 export interface RecordContract {
-  /** The record's name, such as `caseSet`; it names the generated JSON Schema files. */
+  /**
+   * The contract's name, such as `caseSet`; it names the fixtures and, unless `file` is set, the
+   * generated JSON Schema files. While two majors of one record are registered, the newer one's
+   * name carries its major, such as `suite.2`.
+   */
   readonly name: string;
+  /**
+   * The stem of the generated JSON Schema files when it differs from `name`, such as `project.1`:
+   * the schema of an authored file carries its major, so a `$schema` pointer never changes meaning.
+   */
+  readonly file?: string;
   /**
    * The schema identifier, such as `ichnaea.case/1`, that a record of this kind carries in
    * `schema`.
@@ -69,6 +82,39 @@ export const RECORD_CONTRACTS: readonly RecordContract[] = [
     schema: Suite,
     stability: "alpha",
     description: "What an application evaluates, without naming a system.",
+  },
+  {
+    name: "suite.2",
+    id: "ichnaea.suite/2",
+    schema: SuiteV2,
+    stability: "alpha",
+    description:
+      "One thing you evaluate, as plain data: its cases, how to run them, what to measure and the limits.",
+  },
+  {
+    name: "configuration.2",
+    id: "ichnaea.configuration/2",
+    schema: ConfigurationV2,
+    stability: "alpha",
+    description:
+      "An arm's configuration: the digest of its configuration file and the fields the suite keeps.",
+  },
+  {
+    name: "project",
+    file: "project.1",
+    id: "ichnaea.project/1",
+    schema: ProjectConfig,
+    stability: "alpha",
+    description:
+      "The project config, as plain data: what several suites share, such as workers and datasets.",
+  },
+  {
+    name: "suite.lock",
+    id: "ichnaea.suite.lock/1",
+    schema: SuiteLock,
+    stability: "alpha",
+    description:
+      "The lock of a suite: the digests of its sources, instruments and measures, written by lock.",
   },
   {
     name: "plan",

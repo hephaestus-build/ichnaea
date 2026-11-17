@@ -1,0 +1,86 @@
+{
+  "schema": "ichnaea.project/2",
+  "suites": [
+    "suites/*/suite.ts"
+  ],
+  "datasets": {
+    "answers-public": {
+      "git": {
+        "repo": "https://github.com/example/answers-eval",
+        "commit": "9e2c1f0a4b7d3e6c8a1f2b5d7e9c0a3b6d8f1e2c"
+      }
+    },
+    "answers-private": {
+      "git": {
+        "repo": "git@github.com:example/answers-eval-private.git",
+        "commit": "41ab0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b"
+      }
+    }
+  },
+  "workers": {
+    "assistant": {
+      "command": [
+        "poetry",
+        "run",
+        "python",
+        "-m",
+        "evals.worker"
+      ],
+      "prepare": [
+        "poetry",
+        "install",
+        "--no-root"
+      ],
+      "env": [
+        {
+          "name": "LLM_API_KEY",
+          "secret": true
+        }
+      ],
+      "endpoints": [
+        "eu-llm"
+      ],
+      "capacity": 4
+    }
+  },
+  "endpoints": {
+    "eu-llm": {
+      "concurrency": 8,
+      "requestsPerMinute": 600
+    }
+  },
+  "baselines": {
+    "from": {
+      "githubArtifact": {
+        "workflow": "baseline.yml",
+        "branch": "main"
+      }
+    },
+    "freshness": "P7D"
+  },
+  "defaults": {
+    "trials": 2,
+    "mode": "fast"
+  },
+  "delivery": {
+    "sinks": {
+      "pr": {
+        "kind": "github"
+      }
+    },
+    "routes": [
+      {
+        "on": "compare",
+        "profile": "pr",
+        "to": [
+          "pr"
+        ]
+      }
+    ]
+  },
+  "privacy": {
+    "homeKey": {
+      "fromEnv": "ICHNAEA_HOME_KEY"
+    }
+  }
+}
