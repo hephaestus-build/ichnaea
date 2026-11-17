@@ -8,9 +8,10 @@
 // mutant that survives is a test that cannot fail: kill it, or justify it as equivalent here.
 // Equivalent, so not listed: the example importer's own capture-failure class, because import makes
 // the same change (decision 0011).
-import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+
+import { CONTROLS, type Outcome, runTests } from "../mutation.ts";
 
 interface Mutant {
   readonly id: string;
@@ -789,20 +790,38 @@ const ichnaea = join(import.meta.dirname, "..", "..");
 const repository = join(ichnaea, "..", "..");
 const anchorsOnly = process.argv.includes("--anchors");
 const wanted = process.argv.slice(2).filter((a) => a !== "--anchors");
-const passes = (projects: readonly string[]): boolean => {
-  try {
-    execFileSync("pnpm", ["exec", "vitest", "run", ...projects.flatMap((p) => ["--project", p])], {
-      cwd: repository,
-      stdio: "ignore",
-    });
-    return true;
-  } catch {
-    return false;
-  }
+/**
+ * The canary: a change to a comment, which no test can detect, run against every project that any
+ * mutant runs. It runs first and must survive. A killed canary means some test fails whatever the
+ * mutant does, and then every kill is vacuous.
+ */
+export const CANARY: Mutant = {
+  id: "canary: a comment only",
+  file: D,
+  from: "/** Everything a decision is computed from. Reports never compute anything new. */",
+  to: "/** Everything a decision is computed from. Reports never compute anything new (the mutation canary). */",
+  projects: [...new Set(MUTANTS.flatMap((m) => m.projects ?? ["decide"]))],
 };
-const selected = MUTANTS.filter(
-  (x) => wanted.length === 0 || wanted.some((w) => x.id.startsWith(w)),
-);
+
+/**
+ * The control: a release that every primary passes reads INCONCLUSIVE, which the decide tests
+ * assert. It runs second and must be killed; otherwise this run cannot show a kill.
+ */
+export const CONTROL: Mutant = {
+  id: "control: PASS read as INCONCLUSIVE",
+  file: D,
+  from: '    verdict = "PASS";',
+  to: '    verdict = "INCONCLUSIVE";',
+};
+
+const describe = (o: Outcome): string =>
+  o.kind === "error" ? `ERROR: ${o.reason}` : o.kind === "killed" ? "killed" : "SURVIVED";
+
+const selected = [
+  CANARY,
+  CONTROL,
+  ...MUTANTS.filter((x) => wanted.length === 0 || wanted.some((w) => x.id.startsWith(w))),
+];
 const failures: string[] = [];
 let killed = 0;
 for (const m of selected) {
@@ -816,18 +835,32 @@ for (const m of selected) {
   }
   if (anchorsOnly) continue;
   writeFileSync(path, original.replace(m.from, m.to));
+  let outcome: Outcome;
   try {
-    const dead = !passes(m.projects ?? ["decide"]);
-    console.log(`${m.id}: ${dead ? "killed" : "SURVIVED"}`);
-    if (dead) killed++;
-    else failures.push(m.id);
+    outcome = runTests(repository, m.projects ?? ["decide"], m.id);
   } finally {
     writeFileSync(path, original);
   }
+  const role = m === CANARY ? CONTROLS.canary : m === CONTROL ? CONTROLS.control : undefined;
+  if (role !== undefined) {
+    if (outcome.kind !== role.must) {
+      console.log(`${m.id}: ${describe(outcome)}`);
+      console.log(role.otherwise);
+      failures.push(m.id);
+      break;
+    }
+    console.log(`${m.id}: ${outcome.kind}, as it must be`);
+    continue;
+  }
+  console.log(`${m.id}: ${describe(outcome)}`);
+  if (outcome.kind === "killed") killed++;
+  else failures.push(m.id);
 }
 if (anchorsOnly)
-  console.log(`${selected.length - failures.length} of ${selected.length} anchors found once`);
-else console.log(`${killed} of ${selected.length} mutants killed`);
+  console.log(
+    `${selected.length - failures.length} of ${selected.length} anchors found once, the controls' included`,
+  );
+else console.log(`${killed} of ${selected.length - 2} mutants killed`);
 if (failures.length > 0) console.log(`failed: ${failures.join(", ")}`);
 else console.log(anchorsOnly ? "all anchors found" : "all mutants killed");
 process.exitCode = failures.length === 0 ? 0 : 1;
