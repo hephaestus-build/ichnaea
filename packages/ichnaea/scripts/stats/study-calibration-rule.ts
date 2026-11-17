@@ -109,10 +109,23 @@ export function orderRows(rows: readonly string[]): string[] {
 }
 
 /**
- * Checks a shard against the merge's provenance: its sidecar must exist, be complete, match the
- * shard's bytes, and name the same commit, files and Node version. Returns the shard's start time.
+ * Reads the shards in `dir` and checks each against the merge's provenance: its sidecar must exist,
+ * be complete, match the shard's bytes, and name the same commit, files and Node version. Each
+ * shard is read once, and its rows come from the bytes that were checked. Returns the rows and the
+ * shards' start times.
  */
-function checkShard(file: string, merge: Provenance): string {
+export function readShards(
+  dir: string,
+  merge: Provenance,
+): { readonly rows: string[]; readonly starts: string[] } {
+  const shards = readdirSync(dir)
+    .filter((f) => /^shard-\d+\.tsv$/.test(f))
+    .map((f) => readShard(path.join(dir, f), merge));
+  return { rows: shards.flatMap((s) => s.rows), starts: shards.map((s) => s.started) };
+}
+
+function readShard(file: string, merge: Provenance): { rows: string[]; started: string } {
+  const bytes = readFileSync(file);
   const metaFile = `${file}.meta.json`;
   if (!existsSync(metaFile)) throw new Error(`${file} has no provenance sidecar; rerun the shard`);
   const shard = JSON.parse(readFileSync(metaFile, "utf8")) as Partial<Provenance> & {
@@ -122,7 +135,7 @@ function checkShard(file: string, merge: Provenance): string {
   const mismatch =
     shard.complete !== true
       ? "it is incomplete"
-      : shard.outputSha256 !== sha256(readFileSync(file))
+      : shard.outputSha256 !== sha256(bytes)
         ? "its rows do not match its sidecar"
         : shard.commit !== merge.commit
           ? `it ran at ${shard.commit}, the merge runs at ${merge.commit}`
@@ -132,7 +145,7 @@ function checkShard(file: string, merge: Provenance): string {
               ? `it ran on Node ${shard.node}, the merge on ${merge.node}`
               : undefined;
   if (mismatch !== undefined) throw new Error(`${file}: ${mismatch}; rerun the shard`);
-  return shard.started!;
+  return { rows: bytes.toString("utf8").split("\n").filter(Boolean), started: shard.started! };
 }
 
 function parseShard(text: string | undefined): [number, number] {
@@ -175,11 +188,7 @@ if (import.meta.main) {
       SEED_BASE,
       process.argv.slice(2),
     );
-    const shardFiles = readdirSync(dir).filter((f) => /^shard-\d+\.tsv$/.test(f));
-    const starts = shardFiles.map((f) => checkShard(path.join(dir, f), meta));
-    const rows = shardFiles.flatMap((f) =>
-      readFileSync(path.join(dir, f), "utf8").split("\n").filter(Boolean),
-    );
+    const { rows, starts } = readShards(dir, meta);
     const sorted = orderRows(rows);
     writeFileSync(output, `${COLUMNS.join("\t")}\n${sorted.join("\n")}\n`);
     writeMeta(output, { ...meta, started: starts.toSorted()[0] ?? meta.started }, true, {

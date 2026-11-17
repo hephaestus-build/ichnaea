@@ -1,4 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { appendFileSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+
+import { afterAll, describe, expect, it } from "vitest";
 
 import {
   ARM_BIAS_MARGIN,
@@ -17,7 +21,14 @@ import {
   type Cell,
 } from "../../scripts/stats/calibration-rule-study.ts";
 import { sizeDraw } from "../../scripts/stats/size-calibration-draw.ts";
-import { COLUMNS, orderRows, row, seedOf } from "../../scripts/stats/study-calibration-rule.ts";
+import { type Provenance, PROVENANCE_SCHEMA, writeMeta } from "../../scripts/stats/provenance.ts";
+import {
+  COLUMNS,
+  orderRows,
+  readShards,
+  row,
+  seedOf,
+} from "../../scripts/stats/study-calibration-rule.ts";
 import { createRng, gwetAc1 } from "../../src/stats/index.ts";
 
 // A smoke run: 50 studies per cell and 200 resamples per study. The published study runs 2,000 and
@@ -264,6 +275,50 @@ describe("the merge of the shards", () => {
 
   it("refuses a row for an unknown cell", () => {
     expect(() => orderRows([...rows, "not-a-cell\t1"])).toThrow(/unknown cell 'not-a-cell'/);
+  });
+});
+
+describe("reading the shards", () => {
+  const merge: Provenance = {
+    schema: PROVENANCE_SCHEMA,
+    script: "packages/ichnaea/scripts/stats/study-calibration-rule.ts",
+    commit: "a".repeat(40),
+    files: { "packages/ichnaea/scripts/stats/study-calibration-rule.ts": "b".repeat(64) },
+    seedBase: 6_000_000,
+    arguments: [],
+    node: process.version,
+    started: "2026-11-17T00:00:00.000Z",
+  };
+  const dirs: string[] = [];
+  afterAll(() => {
+    for (const dir of dirs) rmSync(dir, { recursive: true });
+  });
+  const shardIn = (rows: string, provenance: Provenance = merge): string => {
+    const dir = mkdtempSync(path.join(tmpdir(), "calibration-shards-"));
+    dirs.push(dir);
+    const file = path.join(dir, "shard-0.tsv");
+    writeFileSync(file, rows);
+    writeMeta(file, provenance, true);
+    return file;
+  };
+
+  it("returns the rows of the bytes it checked", () => {
+    const file = shardIn("binary-equal\t1\nbinary-worse\t2\n");
+    expect(readShards(path.dirname(file), merge)).toEqual({
+      rows: ["binary-equal\t1", "binary-worse\t2"],
+      starts: [merge.started],
+    });
+  });
+
+  it("refuses a shard whose rows changed after its sidecar was written", () => {
+    const file = shardIn("binary-equal\t1\n");
+    appendFileSync(file, "binary-worse\t2\n");
+    expect(() => readShards(path.dirname(file), merge)).toThrow(/rows do not match its sidecar/);
+  });
+
+  it("refuses a shard from another commit", () => {
+    const file = shardIn("binary-equal\t1\n", { ...merge, commit: "c".repeat(40) });
+    expect(() => readShards(path.dirname(file), merge)).toThrow(/ran at c+, the merge runs at a+/);
   });
 });
 
