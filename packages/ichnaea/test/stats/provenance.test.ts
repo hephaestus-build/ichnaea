@@ -1,12 +1,12 @@
 // The provenance a study writes (scripts/stats/provenance.ts): the local modules its process loads,
 // recorded by the package's load recorder (src/core/load-record.ts) that
 // scripts/stats/record-loads.ts preloads, and the third-party packages among them. Each case runs a
-// small study in a scratch repository, with the writer copied into it and the package's own
-// preload in place, which is never pinned.
+// small study in a scratch repository, with the writer, the preload and the recorder copied into
+// it at their paths in the package, so the writer imports the very recorder that the preload
+// started, as in a real run.
 import { spawnSync } from "node:child_process";
 import { copyFileSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
 
 import { afterAll, describe, expect, it } from "vitest";
 
@@ -22,7 +22,9 @@ afterAll(removeScratchRepos);
 
 const scripts = path.join(import.meta.dirname, "../../scripts/stats");
 const workspace = path.join(import.meta.dirname, "../../../..");
-const RECORDER = pathToFileURL(path.join(scripts, "record-loads.ts")).href;
+const src = path.join(import.meta.dirname, "../../src");
+/** The preload, from the root of a scratch repository. */
+const RECORDER = "./rec/scripts/stats/record-loads.ts";
 
 /** The version of a package installed in the workspace. */
 const installed = (name: string): string =>
@@ -32,11 +34,17 @@ const installed = (name: string): string =>
     ) as { version: string }
   ).version;
 
-/** A repository with the writer and the workspace's node_modules. */
+/** A repository with the writer, the preload, the recorder and the workspace's node_modules. */
 function studyRepo(files: Readonly<Record<string, string>>): string {
   const root = scratchRepo();
-  mkdirSync(path.join(root, "rec"));
-  copyFileSync(path.join(scripts, "provenance.ts"), path.join(root, "rec", "provenance.ts"));
+  for (const [from, to] of [
+    [path.join(scripts, "provenance.ts"), "rec/scripts/stats/provenance.ts"],
+    [path.join(scripts, "record-loads.ts"), "rec/scripts/stats/record-loads.ts"],
+    [path.join(src, "core", "load-record.ts"), "rec/src/core/load-record.ts"],
+  ] as const) {
+    mkdirSync(path.dirname(path.join(root, to)), { recursive: true });
+    copyFileSync(from, path.join(root, to));
+  }
   symlinkSync(path.join(workspace, "node_modules"), path.join(root, "node_modules"));
   commit(root, { ".gitignore": "node_modules\n", ...files });
   return root;
@@ -52,7 +60,7 @@ function runStudy(
   return { status: r.status, out: r.stdout, err: r.stderr };
 }
 
-const STUDY = `import { provenance } from "./rec/provenance.ts";
+const STUDY = `import { provenance } from "./rec/scripts/stats/provenance.ts";
 import type { Only } from "./type-only.ts";
 import { used } from "./used.ts";
 
@@ -82,9 +90,11 @@ describe("the provenance of a study", () => {
     expect(p.script).toBe("study.ts");
     expect(p.pull).toBe(12);
     expect(p.seedBase).toBe(7);
+    // The preload and the recorder it starts load before the hooks, so neither is pinned, although
+    // the writer imports the recorder.
     expect(Object.keys(p.files)).toEqual([
       "dynamic.ts",
-      "rec/provenance.ts",
+      "rec/scripts/stats/provenance.ts",
       "study.ts",
       "used.ts",
     ]);
@@ -96,7 +106,7 @@ describe("the provenance of a study", () => {
   it("pins each package it loads: its version, its importers and the bytes of its files", () => {
     const root = studyRepo({
       "study.ts": `import fc from "fast-check";
-import { provenance } from "./rec/provenance.ts";
+import { provenance } from "./rec/scripts/stats/provenance.ts";
 
 console.log(JSON.stringify({ p: provenance(import.meta.filename, null, []), n: typeof fc }));
 `,
@@ -123,7 +133,7 @@ console.log(JSON.stringify({ p: provenance(import.meta.filename, null, []), n: t
 
   it("refuses a run whose loaded modules include one that only re-exports", () => {
     const root = studyRepo({
-      "study.ts": `import { provenance } from "./rec/provenance.ts";
+      "study.ts": `import { provenance } from "./rec/scripts/stats/provenance.ts";
 import { used } from "./barrel.ts";
 
 console.log(used, provenance(import.meta.filename, null, []));
@@ -139,20 +149,20 @@ console.log(used, provenance(import.meta.filename, null, []));
   it("refuses a run that loads worker threads, whose modules it cannot record", () => {
     const root = studyRepo({
       "study.ts": `import { Worker } from "node:worker_threads";
-import { provenance } from "./rec/provenance.ts";
+import { provenance } from "./rec/scripts/stats/provenance.ts";
 
 console.log(typeof Worker, provenance(import.meta.filename, null, []));
 `,
     });
     const { status, err } = runStudy(root);
     expect(status).not.toBe(0);
-    expect(err).toMatch(/a study must not compute in worker threads/);
+    expect(err).toMatch(/the study's loads cannot be pinned: it loaded worker threads/);
   });
 
   it("pins in the merge's sidecar the modules that only a shard loaded", () => {
     const root = studyRepo({
       "study.ts": `import { writeFileSync } from "node:fs";
-import { mergeShards, provenance, readProvenance, writeMeta } from "./rec/provenance.ts";
+import { mergeShards, provenance, readProvenance, writeMeta } from "./rec/scripts/stats/provenance.ts";
 
 if (process.argv[2] === "shard") {
   const { value } = await import(["./shard-only", "ts"].join("."));
@@ -179,7 +189,11 @@ if (process.argv[2] === "shard") {
     const merged = JSON.parse(
       readFileSync(path.join(root, "out.tsv.meta.json"), "utf8"),
     ) as Provenance;
-    expect(Object.keys(merged.files)).toEqual(["rec/provenance.ts", "shard-only.ts", "study.ts"]);
+    expect(Object.keys(merged.files)).toEqual([
+      "rec/scripts/stats/provenance.ts",
+      "shard-only.ts",
+      "study.ts",
+    ]);
     expect(merged.pull).toBe(5);
     // A shard output changed after its run is refused.
     writeFileSync(path.join(root, "shard.tsv"), "2\n");
@@ -198,7 +212,7 @@ if (process.argv[2] === "shard") {
   it("refuses a sidecar when the run loaded a module after its provenance was taken", () => {
     const root = studyRepo({
       "study.ts": `import { writeFileSync } from "node:fs";
-import { provenance, writeMeta } from "./rec/provenance.ts";
+import { provenance, writeMeta } from "./rec/scripts/stats/provenance.ts";
 
 const p = provenance(import.meta.filename, null, []);
 await import(["./dynamic", "ts"].join("."));

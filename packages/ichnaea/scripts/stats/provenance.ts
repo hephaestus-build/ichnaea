@@ -5,8 +5,9 @@
 // keeps the output itself unchanged, so a rerun can be compared with an earlier output byte for
 // byte.
 //
-// The modules are the ones the process loads, recorded by the hooks of record-loads.ts, which the
-// study preloads with `node --import`. A module that is not loaded cannot change the output, so a
+// The modules are the ones the process loads, recorded and pinned by the package's load recorder
+// (src/core/load-record.ts), which the study starts by preloading record-loads.ts with
+// `node --import`. A module that is not loaded cannot change the output, so a
 // change to it needs no rerun. No module the study loads may only re-export: a barrel would pin
 // every file it re-exports, so a module imports the file that defines what it uses (a lint rule
 // holds that too). A study must not compute in worker threads, whose loads are not recorded, and
@@ -21,15 +22,9 @@ import { readFileSync, realpathSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-export const PROVENANCE_SCHEMA = "ichnaea.stats-provenance/2";
+import { loadRecord, pinLoads, type PinnedPackage } from "../../src/core/load-record.ts";
 
-/** A third-party package that a run loaded. */
-export interface PinnedPackage {
-  /** The modules that resolved it: repository paths, or other packages as `name@version`. */
-  readonly importedBy: readonly string[];
-  /** The sha256 of each file the run loaded from it, by path from the package's directory. */
-  readonly files: Readonly<Record<string, string>>;
-}
+export const PROVENANCE_SCHEMA = "ichnaea.stats-provenance/2";
 
 /** What a sidecar records about the run that wrote its output. */
 export interface Provenance {
@@ -71,25 +66,6 @@ export const repoRoot = (file: string): string =>
 /** The command that records a study's loaded modules, from the package's directory. */
 export const RECORD_LOADS = "node --import ./scripts/stats/record-loads.ts";
 
-// The same key as in record-loads.ts, which imports nothing local.
-const LOADED_MODULES = Symbol.for("ichnaea.stats.loaded-modules");
-
-/** What record-loads.ts recorded: the loaded URLs, and the modules that resolved each file. */
-interface LoadRecord {
-  readonly loaded: ReadonlySet<string>;
-  readonly resolvedBy: ReadonlyMap<string, ReadonlySet<string>>;
-}
-
-/** The record of this process's loads, or undefined when nothing records them. */
-function loadRecord(): LoadRecord | undefined {
-  const value: unknown = Reflect.get(globalThis, LOADED_MODULES);
-  const loaded: unknown = Reflect.get(Object(value), "loaded");
-  const resolvedBy: unknown = Reflect.get(Object(value), "resolvedBy");
-  return loaded instanceof Set && resolvedBy instanceof Map
-    ? { loaded: loaded as Set<string>, resolvedBy: resolvedBy as Map<string, Set<string>> }
-    : undefined;
-}
-
 /** True when the module's source holds nothing but `export … from` statements. */
 export function reexportsOnly(source: string): boolean {
   const code = source
@@ -107,97 +83,34 @@ export function reexportsOnly(source: string): boolean {
   return statements > 0 && rest === "";
 }
 
-const NODE_MODULES = `${path.sep}node_modules${path.sep}`;
-
-/** An installed package: its name, its version and its directory. */
-export interface InstalledPackage {
-  readonly name: string;
-  readonly version: string;
-  readonly dir: string;
-}
-
-/** The installed package whose directory holds `packageJson`, read from that manifest. */
-export function readPackage(packageJson: string): InstalledPackage {
-  const manifest: unknown = JSON.parse(readFileSync(packageJson, "utf8"));
-  const name: unknown = Reflect.get(Object(manifest), "name");
-  const version: unknown = Reflect.get(Object(manifest), "version");
-  if (typeof name !== "string" || typeof version !== "string")
-    throw new Error(`${packageJson} names no package and version`);
-  return { name, version, dir: path.dirname(packageJson) };
-}
-
-/** The installed package that holds `file`, or undefined outside node_modules. */
-export function packageOf(file: string): InstalledPackage | undefined {
-  const at = file.lastIndexOf(NODE_MODULES);
-  if (at < 0) return undefined;
-  const parts = file.slice(at + NODE_MODULES.length).split(path.sep);
-  const name = parts[0]?.startsWith("@") ? `${parts[0]}/${parts[1]}` : (parts[0] ?? "");
-  const pkg = readPackage(
-    path.join(file.slice(0, at + NODE_MODULES.length), ...name.split("/"), "package.json"),
-  );
-  if (pkg.name !== name) throw new Error(`${pkg.dir}/package.json names ${pkg.name}, not ${name}`);
-  return pkg;
-}
-
-/** The key of an installed package in a sidecar. */
-export const packageKey = (pkg: InstalledPackage): string => `${pkg.name}@${pkg.version}`;
-
 const byKey = <T>(record: Readonly<Record<string, T>>): Record<string, T> =>
-  Object.fromEntries(Object.entries(record).toSorted(([a], [b]) => a.localeCompare(b)));
+  Object.fromEntries(Object.entries(record).toSorted(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)));
 
-/** What the run has loaded so far: the local modules with their sha256, and the packages. */
+/**
+ * What the run has loaded so far, pinned by the package's load recorder: the local modules with
+ * their sha256, and the packages. Throws when the loads were not recorded from the run's start,
+ * when the recorder cannot pin them, or when a local module is untracked or only re-exports.
+ */
 function loadedSet(root: string, script: string): Pick<Provenance, "files" | "packages"> {
   const record = loadRecord();
   if (record === undefined || !record.loaded.has(pathToFileURL(realpathSync(script)).href))
     throw new Error(
       `the run did not record its loaded modules from its start; run it as ${RECORD_LOADS} <script> …`,
     );
-  if (record.loaded.has("node:worker_threads"))
-    throw new Error(
-      "a study must not compute in worker threads: the modules a worker loads are not recorded",
-    );
-  // A loaded file's key: its repository path, or the package that holds it.
-  const keyOf = (url: string): { file: string; pkg?: InstalledPackage; key: string } => {
-    const file = realpathSync(fileURLToPath(url));
-    const pkg = packageOf(file);
-    if (pkg !== undefined) return { file, pkg, key: packageKey(pkg) };
-    const relative = path.relative(root, file);
-    if (relative.startsWith("..") || path.isAbsolute(relative))
-      throw new Error(`${file} is outside the repository and outside node_modules`);
-    return { file, key: relative };
-  };
-  const files: Record<string, string> = {};
-  const packages: Record<string, { importedBy: Set<string>; files: Record<string, string> }> = {};
-  for (const url of record.loaded) {
-    if (!url.startsWith("file:")) continue;
-    const { file, pkg, key } = keyOf(url);
-    const source = readFileSync(file);
-    if (pkg !== undefined) {
-      const entry = (packages[key] ??= { importedBy: new Set(), files: {} });
-      entry.files[path.relative(pkg.dir, file).split(path.sep).join("/")] = sha256(source);
-      for (const parent of record.resolvedBy.get(url) ?? []) {
-        if (!parent.startsWith("file:")) continue;
-        const by = keyOf(parent).key;
-        if (by !== key) entry.importedBy.add(by);
-      }
-      continue;
-    }
-    git(["ls-files", "--error-unmatch", "--", key], root);
-    if (reexportsOnly(source.toString("utf8")))
-      throw new Error(`${key} only re-exports; import the file that defines what the study uses`);
-    files[key] = sha256(source);
+  let pinned;
+  try {
+    pinned = pinLoads(record, root);
+  } catch (error) {
+    throw new Error(`the study's loads cannot be pinned: ${(error as Error).message}`, {
+      cause: error,
+    });
   }
-  return {
-    files: byKey(files),
-    packages: byKey(
-      Object.fromEntries(
-        Object.entries(packages).map(([key, p]) => [
-          key,
-          { importedBy: [...p.importedBy].toSorted(), files: byKey(p.files) },
-        ]),
-      ),
-    ),
-  };
+  for (const file of Object.keys(pinned.files)) {
+    git(["ls-files", "--error-unmatch", "--", file], root);
+    if (reexportsOnly(readFileSync(path.join(root, file), "utf8")))
+      throw new Error(`${file} only re-exports; import the file that defines what the study uses`);
+  }
+  return pinned;
 }
 
 /** The loaded URLs when each provenance was taken, so that a later load is refused. */

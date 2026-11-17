@@ -23,16 +23,8 @@ import { findPackageJSON } from "node:module";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import {
-  git,
-  metaPath,
-  type PinnedPackage,
-  PROVENANCE_SCHEMA,
-  packageKey,
-  readPackage,
-  repoRoot,
-  sha256,
-} from "./provenance.ts";
+import { packageKey, type PinnedPackage, readPackage } from "../../src/core/load-record.ts";
+import { git, metaPath, PROVENANCE_SCHEMA, repoRoot, sha256 } from "./provenance.ts";
 
 const COMMIT = /^[0-9a-f]{40}$/;
 const RERUN = "rerun the study at the new commit; never edit the sidecar";
