@@ -39,6 +39,20 @@ framework. A suite or project file (`suite.ts` or `suite.jsonc`, `ichnaea.config
 - **Digests.** `suiteDigest` and `projectDigest` hash the canonical JSON without `$schema`, so the
   TypeScript and JSONC forms of one file share a digest. `configuration/2.digest` is over the
   canonical JSON of the arm's configuration file, never its raw bytes.
+- **Measure identity.** A measure's identity has two parts (`MeasureIdentity`). `definition` is
+  `measureDefinitionDigest` of its entry in the suite. `implementation` is the digest of the code
+  that computes its values: an instrument's pin for an instrument process
+  (`instrumentImplementation`), the modules that its module loads for a TypeScript measure, and
+  Ichnaea's build identity for a built-in scorer or a stage status. A fix to a measure's code
+  therefore changes its identity, though its definition stays the same. Both parts enter the lock's
+  `measures` entries, `measurementDigest` and the key of a stored score (`ScoreKey`: the scored
+  result's digest and the measure's identity). `measurementDigest` hashes the members of the
+  suite that change what is measured (`MEASUREMENT_RULE` lists them, and why each other member is
+  left out) with the lock's sources, instrument pins and measure identities.
+- **Staleness.** `staleLockEntries(locked, current)` names, as JSON pointers, each entry of a
+  stored lock that differs from the lock that the suite and the checkout give now: the
+  measurement digest, a source, a dataset, an instrument pin, a limit, or a measure's
+  `definition` or `implementation`. The lock is current when it names none.
 - **Checks beyond the schema.** `suiteProblems(suite)` lists the rules of a parsed suite that a
   JSON Schema cannot express, each with a named code, and `lock` refuses a suite with any. A
   secondary measure that attribute compares needs its own fidelity margin

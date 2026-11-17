@@ -1743,6 +1743,9 @@ export const IdentityFactor: z.ZodObject<{
 }, z.core.$strict>;
 
 // @public
+export function instrumentImplementation(pin: unknown): Digest;
+
+// @public
 export const InstrumentPin: z.ZodObject<{
     files: z.ZodOptional<z.ZodString>;
     image: z.ZodOptional<z.ZodObject<{
@@ -2373,6 +2376,9 @@ export const MeasureDefinition: z.ZodDiscriminatedUnion<[z.ZodObject<{
 }, z.core.$strict>], "type">;
 
 // @public
+export function measureDefinitionDigest(definition: unknown): Digest;
+
+// @public
 export const MeasuredValue: z.ZodDiscriminatedUnion<[z.ZodObject<{
     type: z.ZodLiteral<"binary">;
     pass: z.ZodBoolean;
@@ -2411,6 +2417,28 @@ export const MeasureId: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
 
 // @public
 export type MeasureId = z.infer<typeof MeasureId>;
+
+// @public
+export const MeasureIdentity: z.ZodObject<{
+    definition: z.ZodString;
+    implementation: z.ZodString;
+}, z.core.$strict>;
+
+// @public
+export type MeasureIdentity = z.infer<typeof MeasureIdentity>;
+
+// @public
+export const MEASUREMENT_RULE: DigestRule;
+
+// @public
+export function measurementDigest(suite: unknown, pins: MeasurementPins): Digest;
+
+// @public
+export interface MeasurementPins {
+    readonly instruments: Readonly<Record<string, unknown>>;
+    readonly measures: Readonly<Record<string, unknown>>;
+    readonly sources: readonly unknown[];
+}
 
 // @public
 export const MeasureOutcome: z.ZodObject<{
@@ -3941,6 +3969,18 @@ export const ScoreFailure: z.ZodObject<{
 export type ScoreFailure = z.infer<typeof ScoreFailure>;
 
 // @public
+export const ScoreKey: z.ZodObject<{
+    result: z.ZodString;
+    measure: z.ZodObject<{
+        definition: z.ZodString;
+        implementation: z.ZodString;
+    }, z.core.$strict>;
+}, z.core.$strict>;
+
+// @public
+export type ScoreKey = z.infer<typeof ScoreKey>;
+
+// @public
 export const ScoreObserved: z.ZodObject<{
     model: z.ZodOptional<z.ZodString>;
     responseIds: z.ZodArray<z.ZodString>;
@@ -4270,6 +4310,9 @@ export const StageEvent: z.ZodObject<{
 export type StageEvent = z.infer<typeof StageEvent>;
 
 // @public
+export function staleLockEntries(locked: unknown, current: unknown): string[];
+
+// @public
 export const Step: z.ZodObject<{
     kind: z.ZodEnum<{
         model_call: "model_call";
@@ -4576,7 +4619,10 @@ export const SuiteLock: z.ZodObject<{
             digest: z.ZodString;
         }, z.core.$strict>>;
     }, z.core.$strict>>;
-    measures: z.ZodRecord<z.ZodString, z.ZodString>;
+    measures: z.ZodRecord<z.ZodString, z.ZodObject<{
+        definition: z.ZodString;
+        implementation: z.ZodString;
+    }, z.core.$strict>>;
     limits: z.ZodRecord<z.ZodString, z.ZodObject<{
         limit: z.ZodNumber;
         owner: z.ZodString;

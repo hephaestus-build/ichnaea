@@ -578,7 +578,7 @@
         },
         "additionalProperties": false
       },
-      "description": "Each instrument's pin. A built-in scorer has none."
+      "description": "Each instrument's pin."
     },
     "measures": {
       "type": "object",
@@ -587,18 +587,42 @@
         "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$"
       },
       "additionalProperties": {
-        "type": "string",
-        "pattern": "^sha256:[0-9a-f]{64}$"
-      },
-      "description": "Each measure definition's digest.",
-      "x-ichnaea-data": {
-        "class": "none",
-        "identifier": "none",
-        "egress": [
-          "*"
+        "type": "object",
+        "properties": {
+          "definition": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "description": "The digest of the measure's definition in the suite.",
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
+            }
+          },
+          "implementation": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "description": "The digest of the code that computes the values: an instrument's pin, the modules that a module measure loads, or Ichnaea's build for a built-in scorer and a stage status.",
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
+            }
+          }
+        },
+        "required": [
+          "definition",
+          "implementation"
         ],
-        "retention": "record"
-      }
+        "additionalProperties": false
+      },
+      "description": "Each measure's identity: the digests of its definition and of its implementation."
     },
     "limits": {
       "type": "object",
