@@ -11,10 +11,18 @@ import { Plan } from "./records/plan.ts";
 import { SuiteLock } from "./records/lock.ts";
 import { ProjectConfig } from "./records/project.ts";
 import { Run } from "./records/run.ts";
+import { ScoreRequest, ScoreResult } from "./records/scorer.ts";
 import { Suite } from "./records/suite.ts";
 import { SuiteV2 } from "./records/suite-v2.ts";
 import { Trial } from "./records/trial.ts";
-import { TrialRequest, TrialResult, WorkerError } from "./records/worker.ts";
+import {
+  Cancel,
+  TrialRequest,
+  TrialResult,
+  WorkerError,
+  WorkerEvent,
+  WorkerReady,
+} from "./records/worker.ts";
 
 /** Stability level of a record schema (OpenTelemetry levels; names never encode the stage). */
 export type Stability = "development" | "alpha" | "beta" | "stable";
@@ -143,6 +151,41 @@ export const RECORD_CONTRACTS: readonly RecordContract[] = [
     schema: WorkerError,
     stability: "alpha",
     description: "What a worker writes for a request line it cannot read: an error with no trial.",
+  },
+  {
+    name: "workerReady",
+    id: "ichnaea.workerReady/1",
+    schema: WorkerReady,
+    stability: "alpha",
+    description: "What a worker or scorer process writes when it can take requests.",
+  },
+  {
+    name: "workerEvent",
+    id: "ichnaea.workerEvent/1",
+    schema: WorkerEvent,
+    stability: "alpha",
+    description: "What a worker writes about a trial in flight: a heartbeat or a tool call.",
+  },
+  {
+    name: "cancel",
+    id: "ichnaea.cancel/1",
+    schema: Cancel,
+    stability: "alpha",
+    description: "What Ichnaea sends to stop one trial or one score request in flight.",
+  },
+  {
+    name: "scoreRequest",
+    id: "ichnaea.scoreRequest/1",
+    schema: ScoreRequest,
+    stability: "alpha",
+    description: "What Ichnaea sends a scorer: a case with its references and the trials to score.",
+  },
+  {
+    name: "scoreResult",
+    id: "ichnaea.scoreResult/1",
+    schema: ScoreResult,
+    stability: "alpha",
+    description: "What a scorer answers: a value or a status for each trial and measure.",
   },
   {
     name: "run",

@@ -6,16 +6,24 @@ import type { TestProjectInlineConfiguration } from "vitest/config";
 const root = import.meta.dirname;
 const AREAS = ["contracts", "stats", "core", "decide", "report"] as const;
 
-/** The unit suite of each area. The simulation studies (`*.sim.test.ts`) are not part of it. */
-export const UNIT_PROJECTS: TestProjectInlineConfiguration[] = AREAS.map((area) => ({
-  test: {
-    name: area,
-    root,
-    include: [`test/${area}/**/*.test.ts`],
-    exclude: [`test/${area}/**/*.sim.test.ts`],
-    typecheck: { enabled: true, include: [`test/${area}/**/*.test-d.ts`] },
-  },
-}));
+/**
+ * The unit suite of each area, and the tests of the mutation harnesses in a project of their own.
+ * The simulation studies (`*.sim.test.ts`) are not part of it. A mutant run executes one area's
+ * project with the mutant applied, so that project must not hold the harness's own test: its
+ * anchor check fails whenever any mutant is applied, which would count every mutant as killed.
+ */
+export const UNIT_PROJECTS: TestProjectInlineConfiguration[] = [
+  ...AREAS.map((area) => ({
+    test: {
+      name: area,
+      root,
+      include: [`test/${area}/**/*.test.ts`],
+      exclude: [`test/${area}/**/*.sim.test.ts`, `test/${area}/mutants.test.ts`],
+      typecheck: { enabled: true, include: [`test/${area}/**/*.test-d.ts`] },
+    },
+  })),
+  { test: { name: "mutants", root, include: ["test/*/mutants.test.ts", "test/mutation.test.ts"] } },
+];
 
 /**
  * The simulation studies, too slow for the unit suite. `stats-sim` runs the coverage and type-I

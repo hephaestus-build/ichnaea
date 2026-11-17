@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ichnaea:schema:workerReady:1:reader",
+  "title": "ichnaea.workerReady/1 (reader)",
+  "description": "What a worker or scorer process writes when it can take requests.",
+  "x-ichnaea-stability": "alpha",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "ichnaea.workerReady/1",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
+      }
+    },
+    "capacity": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991,
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
+      }
+    },
+    "protocol": {
+      "type": "string",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
+      },
+      "x-ichnaea-known": [
+        "ichnaea.trialRequest/1",
+        "ichnaea.scoreRequest/1"
+      ]
+    }
+  },
+  "required": [
+    "schema",
+    "capacity",
+    "protocol"
+  ]
+}

@@ -36,6 +36,21 @@
     "workerError": {
       "1": null
     },
+    "workerReady": {
+      "1": null
+    },
+    "workerEvent": {
+      "1": null
+    },
+    "cancel": {
+      "1": null
+    },
+    "scoreRequest": {
+      "1": null
+    },
+    "scoreResult": {
+      "1": null
+    },
     "run": {
       "1": null
     },

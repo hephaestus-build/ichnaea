@@ -371,7 +371,8 @@
                 "drawnBy",
                 "date"
               ]
-            }
+            },
+            "source": false
           },
           "required": [
             "from"
@@ -397,7 +398,13 @@
                         ],
                         "retention": "record"
                       }
-                    }
+                    },
+                    "git": false,
+                    "https": false,
+                    "digest": false,
+                    "command": false,
+                    "output": false,
+                    "env": false
                   },
                   "required": [
                     "file"
@@ -454,7 +461,13 @@
                         "commit"
                       ],
                       "description": "A git repository at a full commit."
-                    }
+                    },
+                    "file": false,
+                    "https": false,
+                    "digest": false,
+                    "command": false,
+                    "output": false,
+                    "env": false
                   },
                   "required": [
                     "git"
@@ -480,7 +493,8 @@
                                 ],
                                 "retention": "record"
                               }
-                            }
+                            },
+                            "fromEnv": false
                           },
                           "required": [
                             "url"
@@ -501,7 +515,8 @@
                                 ],
                                 "retention": "record"
                               }
-                            }
+                            },
+                            "url": false
                           },
                           "required": [
                             "fromEnv"
@@ -523,7 +538,12 @@
                         ],
                         "retention": "record"
                       }
-                    }
+                    },
+                    "file": false,
+                    "git": false,
+                    "command": false,
+                    "output": false,
+                    "env": false
                   },
                   "required": [
                     "https",
@@ -578,7 +598,11 @@
                         ],
                         "retention": "record"
                       }
-                    }
+                    },
+                    "file": false,
+                    "git": false,
+                    "https": false,
+                    "digest": false
                   },
                   "required": [
                     "command",
@@ -758,7 +782,8 @@
                 "drawnBy",
                 "date"
               ]
-            }
+            },
+            "from": false
           },
           "required": [
             "source"
@@ -955,7 +980,8 @@
                 ],
                 "retention": "record"
               }
-            }
+            },
+            "module": false
           },
           "required": [
             "command"
@@ -976,7 +1002,8 @@
                 ],
                 "retention": "record"
               }
-            }
+            },
+            "command": false
           },
           "required": [
             "module"
@@ -1106,7 +1133,9 @@
                   "private",
                   "sealed"
                 ]
-              }
+              },
+              "service": false,
+              "identity": false
             },
             "required": [
               "path"
@@ -1184,7 +1213,8 @@
                   "private",
                   "sealed"
                 ]
-              }
+              },
+              "path": false
             },
             "required": [
               "service",
@@ -1619,7 +1649,11 @@
                           ],
                           "retention": "record"
                         }
-                      }
+                      },
+                      "instrument": false,
+                      "module": false,
+                      "export": false,
+                      "dimension": false
                     },
                     "required": [
                       "builtin"
@@ -1666,7 +1700,10 @@
                           ],
                           "retention": "record"
                         }
-                      }
+                      },
+                      "builtin": false,
+                      "options": false,
+                      "dimension": false
                     },
                     "required": [
                       "instrument",
@@ -1702,7 +1739,11 @@
                           ],
                           "retention": "record"
                         }
-                      }
+                      },
+                      "builtin": false,
+                      "options": false,
+                      "module": false,
+                      "export": false
                     },
                     "required": [
                       "instrument",
@@ -1775,7 +1816,8 @@
                         "required": [
                           "k"
                         ]
-                      }
+                      },
+                      "any": false
                     },
                     "required": [
                       "all"
@@ -1805,7 +1847,8 @@
                         "required": [
                           "k"
                         ]
-                      }
+                      },
+                      "all": false
                     },
                     "required": [
                       "any"
@@ -1975,7 +2018,11 @@
                           ],
                           "retention": "record"
                         }
-                      }
+                      },
+                      "instrument": false,
+                      "module": false,
+                      "export": false,
+                      "dimension": false
                     },
                     "required": [
                       "builtin"
@@ -2022,7 +2069,10 @@
                           ],
                           "retention": "record"
                         }
-                      }
+                      },
+                      "builtin": false,
+                      "options": false,
+                      "dimension": false
                     },
                     "required": [
                       "instrument",
@@ -2058,7 +2108,11 @@
                           ],
                           "retention": "record"
                         }
-                      }
+                      },
+                      "builtin": false,
+                      "options": false,
+                      "module": false,
+                      "export": false
                     },
                     "required": [
                       "instrument",
@@ -2131,7 +2185,8 @@
                         "required": [
                           "k"
                         ]
-                      }
+                      },
+                      "any": false
                     },
                     "required": [
                       "all"
@@ -2161,7 +2216,8 @@
                         "required": [
                           "k"
                         ]
-                      }
+                      },
+                      "all": false
                     },
                     "required": [
                       "any"
@@ -2404,7 +2460,11 @@
                           ],
                           "retention": "record"
                         }
-                      }
+                      },
+                      "instrument": false,
+                      "module": false,
+                      "export": false,
+                      "dimension": false
                     },
                     "required": [
                       "builtin"
@@ -2451,7 +2511,10 @@
                           ],
                           "retention": "record"
                         }
-                      }
+                      },
+                      "builtin": false,
+                      "options": false,
+                      "dimension": false
                     },
                     "required": [
                       "instrument",
@@ -2487,7 +2550,11 @@
                           ],
                           "retention": "record"
                         }
-                      }
+                      },
+                      "builtin": false,
+                      "options": false,
+                      "module": false,
+                      "export": false
                     },
                     "required": [
                       "instrument",
@@ -2560,7 +2627,8 @@
                         "required": [
                           "k"
                         ]
-                      }
+                      },
+                      "any": false
                     },
                     "required": [
                       "all"
@@ -2590,7 +2658,8 @@
                         "required": [
                           "k"
                         ]
-                      }
+                      },
+                      "all": false
                     },
                     "required": [
                       "any"
@@ -2774,7 +2843,11 @@
                           ],
                           "retention": "record"
                         }
-                      }
+                      },
+                      "instrument": false,
+                      "module": false,
+                      "export": false,
+                      "dimension": false
                     },
                     "required": [
                       "builtin"
@@ -2821,7 +2894,10 @@
                           ],
                           "retention": "record"
                         }
-                      }
+                      },
+                      "builtin": false,
+                      "options": false,
+                      "dimension": false
                     },
                     "required": [
                       "instrument",
@@ -2857,7 +2933,11 @@
                           ],
                           "retention": "record"
                         }
-                      }
+                      },
+                      "builtin": false,
+                      "options": false,
+                      "module": false,
+                      "export": false
                     },
                     "required": [
                       "instrument",
@@ -2930,7 +3010,8 @@
                         "required": [
                           "k"
                         ]
-                      }
+                      },
+                      "any": false
                     },
                     "required": [
                       "all"
@@ -2960,7 +3041,8 @@
                         "required": [
                           "k"
                         ]
-                      }
+                      },
+                      "all": false
                     },
                     "required": [
                       "any"

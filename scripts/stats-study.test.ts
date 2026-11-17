@@ -6,6 +6,8 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { STUDIES } from "../packages/ichnaea/scripts/stats/study-plan.ts";
+
 const workflow = readFileSync(
   join(import.meta.dirname, "..", ".github", "workflows", "stats-study.yml"),
   "utf8",
@@ -45,5 +47,12 @@ describe("the statistics study workflow", () => {
     expect(workflow).toMatch(
       /\n {2}verdict:\n[\s\S]*?if: \$\{\{ !cancelled\(\) && needs\.plan\.result == 'success' && needs\.plan\.outputs\.pilot == 'false' \}\}/,
     );
+  });
+
+  // A study is one entry in STUDIES and one option here, added together in the study's own change,
+  // so a dispatch never offers a study that the plan cannot run.
+  it("offers exactly the studies that the plan knows", () => {
+    const options = /\n {6}study:\n[\s\S]*?\n {8}options: \[([^\]]*)\]/.exec(workflow)?.[1];
+    expect(options?.split(",").map((o) => o.trim())).toEqual(Object.keys(STUDIES));
   });
 });

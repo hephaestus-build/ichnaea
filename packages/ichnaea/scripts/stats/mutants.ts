@@ -3,9 +3,12 @@
 //   node scripts/stats/mutants.ts            # every mutant
 //   node scripts/stats/mutants.ts "level"     # selected mutants
 // A mutant that survives is a test that cannot fail: kill it, or justify it as equivalent here.
+// What counts as a kill, and the two controls that every run applies first: scripts/mutation.ts.
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+
+import { CONTROLS, type Outcome, runTests } from "../mutation.ts";
 
 export interface Mutant {
   readonly id: string;
@@ -15,6 +18,28 @@ export interface Mutant {
   /** Regenerate schemas and fixtures first, as a schema change would. */
   readonly regen?: boolean;
 }
+
+/**
+ * The canary: a change to a comment, which no test can detect. It runs first and must survive. A
+ * killed canary means some test fails whatever the mutant does, and then every kill is vacuous.
+ */
+export const CANARY: Mutant = {
+  id: "canary: a comment only",
+  file: "src/stats/types.ts",
+  from: "/** Successes out of trials. */",
+  to: "/** Successes out of trials (the mutation canary). */",
+};
+
+/**
+ * The control: a deliberate break of the Wilson centre, which the reference values assert. It runs
+ * second and must be killed; otherwise this run cannot show a kill.
+ */
+export const CONTROL: Mutant = {
+  id: "control: the Wilson centre broken",
+  file: "src/stats/wilson.ts",
+  from: "const centre = (p + z2 / (2 * n)) / (1 + z2 / n);",
+  to: "const centre = (p + z2 / (3 * n)) / (1 + z2 / n);",
+};
 
 export const MUTANTS: readonly Mutant[] = [
   {
@@ -695,52 +720,86 @@ export function anchorProblems(mutants: readonly Mutant[], root: string): string
  * Runs the selected mutants against the stats tests in `root` and returns the exit code. Every
  * anchor is checked before any source changes: one that does not apply fails the whole run.
  */
+/** Runs a command in `root` and says whether it succeeded. */
+function run(cmd: string, args: string[], root: string): boolean {
+  try {
+    execFileSync(cmd, args, { cwd: root, stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const describe = (o: Outcome): string =>
+  o.kind === "error" ? `ERROR: ${o.reason}` : o.kind === "killed" ? "killed" : "SURVIVED";
+
+/**
+ * Runs the selected mutants against the stats tests in `root` and returns the exit code. Every
+ * anchor is checked before any source changes: one that does not apply fails the whole run. The
+ * canary must survive and the control must be killed, or nothing counts. Only an assertion failure
+ * kills; an error (scripts/mutation.ts) fails the run.
+ */
 export function runMutants(
   mutants: readonly Mutant[],
   root: string,
   wanted: readonly string[],
   log: (line: string) => void = console.log,
+  test: (name: string) => Outcome = (name) => runTests(root, ["stats"], name),
+  canary: Mutant = CANARY,
+  control: Mutant = CONTROL,
 ): number {
-  const selected = mutants.filter(
-    (x) => wanted.length === 0 || wanted.some((w) => x.id.startsWith(w)),
-  );
+  const selected = [
+    canary,
+    control,
+    ...mutants.filter((x) => wanted.length === 0 || wanted.some((w) => x.id.startsWith(w))),
+  ];
   const problems = anchorProblems(selected, root);
   if (problems.length > 0) {
     for (const p of problems) log(p);
     log(`${problems.length} mutant(s) cannot apply: update them before running any`);
     return 1;
   }
-  const run = (cmd: string, args: string[]): boolean => {
-    try {
-      execFileSync(cmd, args, { cwd: root, stdio: "ignore" });
-      return true;
-    } catch {
-      return false;
-    }
-  };
+
   const survivors: string[] = [];
+  const errors: string[] = [];
   for (const m of selected) {
     const path = join(root, m.file);
     const original = readFileSync(path, "utf8");
     writeFileSync(path, original.replace(m.from, m.to));
+    let outcome: Outcome;
     try {
-      if (m.regen) {
-        run("node", ["scripts/contracts/generate-schemas.ts"]);
-        run("node", ["scripts/contracts/write-fixtures.ts"]);
-      }
-      const killed = !run("pnpm", ["exec", "vitest", "run", "--project", "stats"]);
-      log(`${m.id}: ${killed ? "killed" : "SURVIVED"}`);
-      if (!killed) survivors.push(m.id);
+      const regenerated =
+        m.regen !== true ||
+        (run("node", ["scripts/contracts/generate-schemas.ts"], root) &&
+          run("node", ["scripts/contracts/write-fixtures.ts"], root));
+      outcome = regenerated
+        ? test(m.id)
+        : { kind: "error", reason: "the schemas or fixtures could not be regenerated" };
     } finally {
       writeFileSync(path, original);
       if (m.regen) {
-        run("node", ["scripts/contracts/generate-schemas.ts"]);
-        run("node", ["scripts/contracts/write-fixtures.ts"]);
+        run("node", ["scripts/contracts/generate-schemas.ts"], root);
+        run("node", ["scripts/contracts/write-fixtures.ts"], root);
       }
     }
+    const role = m === canary ? CONTROLS.canary : m === control ? CONTROLS.control : undefined;
+    if (role !== undefined) {
+      if (outcome.kind !== role.must) {
+        log(`${m.id}: ${describe(outcome)}`);
+        log(role.otherwise);
+        return 1;
+      }
+      log(`${m.id}: ${outcome.kind}, as it must be`);
+      continue;
+    }
+    log(`${m.id}: ${describe(outcome)}`);
+    if (outcome.kind === "survived") survivors.push(m.id);
+    if (outcome.kind === "error") errors.push(m.id);
   }
-  log(survivors.length === 0 ? "all mutants killed" : `survivors: ${survivors.join(", ")}`);
-  return survivors.length === 0 ? 0 : 1;
+  if (errors.length > 0) log(`errors (no result): ${errors.join(", ")}`);
+  if (survivors.length > 0) log(`survivors: ${survivors.join(", ")}`);
+  if (errors.length === 0 && survivors.length === 0) log("all mutants killed");
+  return errors.length === 0 && survivors.length === 0 ? 0 : 1;
 }
 
 // Importing this file runs nothing: only running it mutates the sources.

@@ -93,7 +93,12 @@
                       ],
                       "retention": "record"
                     }
-                  }
+                  },
+                  "file": false,
+                  "git": false,
+                  "https": false,
+                  "command": false,
+                  "output": false
                 },
                 "required": [
                   "dataset",
@@ -115,7 +120,13 @@
                       ],
                       "retention": "record"
                     }
-                  }
+                  },
+                  "dataset": false,
+                  "path": false,
+                  "git": false,
+                  "https": false,
+                  "command": false,
+                  "output": false
                 },
                 "required": [
                   "file"
@@ -172,7 +183,13 @@
                       "commit"
                     ],
                     "description": "A git source."
-                  }
+                  },
+                  "dataset": false,
+                  "path": false,
+                  "file": false,
+                  "https": false,
+                  "command": false,
+                  "output": false
                 },
                 "required": [
                   "git"
@@ -216,7 +233,13 @@
                       "path"
                     ],
                     "description": "An HTTPS source, by host and path."
-                  }
+                  },
+                  "dataset": false,
+                  "path": false,
+                  "file": false,
+                  "git": false,
+                  "command": false,
+                  "output": false
                 },
                 "required": [
                   "https"
@@ -254,7 +277,12 @@
                       ],
                       "retention": "record"
                     }
-                  }
+                  },
+                  "dataset": false,
+                  "path": false,
+                  "file": false,
+                  "git": false,
+                  "https": false
                 },
                 "required": [
                   "command",
