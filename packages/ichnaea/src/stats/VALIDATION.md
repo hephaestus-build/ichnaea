@@ -537,17 +537,20 @@ an interval or a decision method.
   one from the candidate, and a shared case effect drawn as N(0, 0.7²). Every answer weighs 1.
   - Yes/no: an answer is positive (a defect) with probability prevalence · e^(0.5 · case effect),
     clamped to [0.02, 0.95]. Each rater reads it correctly with probability 0.90, and the judge with
-    its own accuracy. A biased judge misses positives more often on the candidate. A chance judge
-    says yes at the prevalence without reading; an always-no judge never says yes. The "oversampled"
-    cells have positives at 0.35 of the sample.
+    its own accuracy. A biased judge misses true positives more often on the candidate; its false
+    positives stay as they are. A chance judge says yes at the prevalence without reading; an
+    always-no judge never says yes. The prevalence-0.35 cells are a population at that prevalence;
+    they do not oversample, and every answer weighs 1.
   - Levels: a latent quality (case effect plus N(0, 0.7²)) is cut into 5 levels at −1.2, −0.4, 0.4
     and 1.2. Rater readings add N(0, 0.6²). The judge adds its own noise, and a biased judge shifts
     its reading on the candidate.
 - **Draw cells** reproduce the registered draw:
   - a screen of 127 items, 2 runs per item from each of the base (C1), the candidate (C2) and a
     known-worse configuration (C3);
-  - defect rates 0.15, 0.15 and 0.35 per answer, with within-item correlation ρ = 0.3 of the defects
-    and of each reader's errors;
+  - defect rates 0.15, 0.15 and 0.35 per answer. Within an item, the latent Gaussian scores behind
+    the defects, and behind each reader's errors, correlate at ρ = 0.3: an answer's score is
+    √ρ · (item's score) + √(1 − ρ) · (its own), cut at a threshold. ρ is not the correlation of the
+    yes/no outcomes, which is smaller and depends on the threshold;
   - a deterministic proxy that catches 0.65 of the defects (the obvious ones) and flags 0.01 of the
     good answers; readers are 0.07 more accurate on an obvious defect and 0.07 less on a subtle one;
   - a draw of n answers: 0.29 n each from C1 and C2 and the rest from C3, with proxy-positive shares
@@ -555,7 +558,7 @@ an interval or a decision method.
   - raters at accuracy 0.90 (raw agreement 0.82), a good judge at 0.90 and a clearly worse judge at
     0.80.
 
-  The 360-answer draw is then rerun with one assumption changed: ρ = 0 or 0.6, raters at 0.93 (raw
+  The 360-answer draw is then rerun with one assumption changed: latent ρ = 0 or 0.6, raters at 0.93 (raw
   agreement 0.87), or a C1→C3 defect-rate rise of 0.10 or 0.30 instead of 0.20. "Without C3" is a
   140-answer draw of C1 and C2 alone, with positive shares 0.35.
 
@@ -580,12 +583,12 @@ Generic cells, yes/no labels, 60 cases:
 |                        | always no                 | 0.000 | 0.732 | 0.981 | 0.000       | 1.000       | 0.939     | 0.00      | 0.120       | 0.939       |
 | Prevalence 0.05        | chance                    | 0.004 | 0.832 | 0.973 | 0.004       | 1.000       | 0.867     | 0.00      | 0.063       | 0.867       |
 |                        | always no                 | 0.001 | 0.832 | 1.000 | 0.001       | 1.000       | 0.980     | 0.00      | 0.333       | 0.980       |
-| Positives at 0.35      | as good as a rater        | 0.051 | 0.242 | 0.739 | 0.595       | 0.742       | 0.828     | 0.00      | 0.043       | 0.828       |
+| Prevalence 0.35        | as good as a rater        | 0.051 | 0.242 | 0.739 | 0.595       | 0.742       | 0.828     | 0.00      | 0.043       | 0.828       |
 |                        | clearly worse             | 0.000 | 0.231 | 0.053 | 0.153       | 0.097       | 0.572     | 0.00      | 0.000       | 0.572       |
 |                        | chance                    | 0.000 | 0.244 | 0.000 | 0.000       | 0.002       | 0.107     | 0.00      | 0.000       | 0.107       |
 |                        | always no                 | 0.000 | 0.252 | 0.001 | 0.000       | 1.000       | 0.675     | 0.00      | 0.001       | 0.675       |
 
-Generic cells, positives at 0.35, by study size (good judge at 0.90, worse at 0.80):
+Generic cells, prevalence 0.35, by study size (good judge at 0.90, worse at 0.80):
 
 | Cases | Good: pass | Good: floor | Good: sensitivity | Good: bias gate | Worse: pass |
 | ----- | ---------- | ----------- | ----------------- | --------------- | ----------- |

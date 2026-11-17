@@ -14,8 +14,10 @@ import {
   drawStudy,
   runCell,
   type CalibrationRule,
+  type Cell,
 } from "../../scripts/stats/calibration-rule-study.ts";
-import { COLUMNS, row, seedOf } from "../../scripts/stats/study-calibration-rule.ts";
+import { sizeDraw } from "../../scripts/stats/size-calibration-draw.ts";
+import { COLUMNS, orderRows, row, seedOf } from "../../scripts/stats/study-calibration-rule.ts";
 import { createRng, gwetAc1 } from "../../src/stats/index.ts";
 
 // A smoke run: 50 studies per cell and 200 resamples per study. The published study runs 2,000 and
@@ -79,7 +81,7 @@ describe("the judge calibration rule study, smoke run", () => {
       expect(smoke(id).pass).toBe(0);
       expect(holds(id, "ac1")).toBeGreaterThan(0.8);
     }
-    expect(smoke("binary-chance-oversampled").pass).toBe(0);
+    expect(smoke("binary-chance-prev0.35").pass).toBe(0);
   });
 
   it("reports each scale's own conditions, and NA for the other's", () => {
@@ -187,5 +189,71 @@ describe("the rule is a parameter of the study", () => {
     });
     expect(outcome.shownBound).toBe(0);
     expect(outcome.armBias).toBe(0);
+  });
+});
+
+describe("a judge biased between base and candidate", () => {
+  // Perfect raters, so their label is the truth.
+  const cell = (armBias: number): Cell => ({
+    id: "bias",
+    scale: "binary",
+    prevalence: 0.2,
+    raterAccuracy: 1,
+    judge: "reads",
+    judgeAccuracy: 0.9,
+    armBias,
+    cases: 2000,
+  });
+  const unbiased = drawStudy(cell(0), createRng(7));
+  const biased = drawStudy(cell(0.15), createRng(7));
+
+  it("misses true positives on the candidate, and only those", () => {
+    let missed = 0;
+    unbiased.judge.forEach((j, i) => {
+      if (biased.judge[i] === j) return;
+      expect([j, biased.judge[i], unbiased.first[i], unbiased.configurationOf[i]]).toEqual([
+        1, 0, 1, 1,
+      ]);
+      missed += 1;
+    });
+    expect(missed).toBeGreaterThan(0);
+    expect(biased.first).toEqual(unbiased.first);
+  });
+
+  it("keeps its false positives on the candidate", () => {
+    const negatives = biased.first.flatMap((t, i) =>
+      t === 0 && biased.configurationOf[i] === 1 ? [i] : [],
+    );
+    const falsePositives = negatives.filter((i) => biased.judge[i] === 1).length;
+    expect(falsePositives / negatives.length).toBeCloseTo(0.1, 1);
+  });
+});
+
+describe("the merge of the shards", () => {
+  const rows = CELLS.map((cell) => `${cell.id}\t1`);
+
+  it("orders one row per cell into cell order", () => {
+    expect(orderRows(rows.toReversed())).toEqual(rows);
+  });
+
+  it("refuses a duplicated and a missing cell, even when the row count is right", () => {
+    const wrong = [rows[0]!, ...rows.slice(0, -1)];
+    expect(() => orderRows(wrong)).toThrow(/exactly one row.*\(2 rows\).*\(0 rows\)/);
+  });
+
+  it("refuses a row for an unknown cell", () => {
+    expect(() => orderRows([...rows, "not-a-cell\t1"])).toThrow(/unknown cell 'not-a-cell'/);
+  });
+});
+
+describe("the draw sizing tool", () => {
+  it.each([
+    ["studies", { studies: Number.POSITIVE_INFINITY }],
+    ["studies", { studies: 1.5 }],
+    ["resamples", { resamples: 0 }],
+  ])("refuses a %s count that is not a positive integer", (name, counts) => {
+    expect(() => sizeDraw(REGISTERED_DRAW, [140], counts)).toThrow(
+      new RegExp(`${name} must be a positive integer`),
+    );
   });
 });

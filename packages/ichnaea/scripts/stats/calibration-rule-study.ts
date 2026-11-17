@@ -115,15 +115,16 @@ export type Cell =
   | {
       readonly id: string;
       readonly scale: "binary";
-      /** The share of positive answers, before case effects. Oversampling raises it. */
+      /** The share of positive answers, before case effects. */
       readonly prevalence: number;
-      /** True when `prevalence` comes from oversampling positives by stratification. */
-      readonly oversampled: boolean;
       readonly raterAccuracy: number;
       readonly judge: BinaryJudge;
       /** For a judge that `reads`: its accuracy. */
       readonly judgeAccuracy: number;
-      /** How much more often the judge misses a positive under the second configuration. */
+      /**
+       * The judge's added miss rate on true positives under the second configuration, as a share
+       * of answers: it misses a true positive it would have found with probability armBias / prevalence.
+       */
       readonly armBias: number;
       /** Cases per study. */
       readonly cases: number;
@@ -154,12 +155,11 @@ const binary = (
   prevalence: number,
   judge: BinaryJudge,
   judgeAccuracy: number,
-  { armBias = 0, oversampled = false, cases = CASES } = {},
+  { armBias = 0, cases = CASES } = {},
 ): Cell => ({
   id,
   scale: "binary",
   prevalence,
-  oversampled,
   raterAccuracy: 0.9,
   judge,
   judgeAccuracy,
@@ -167,7 +167,7 @@ const binary = (
   cases,
 });
 
-/** The study sizes that the generic sizing cells try, with positives oversampled to 0.35. */
+/** The study sizes that the generic sizing cells try, at prevalence 0.35. */
 export const SIZES = [120, 135, 150, 180] as const;
 
 /** The nuisance parameters that, with a size, set a draw under the registered allocation. */
@@ -288,15 +288,16 @@ export const CELLS: readonly Cell[] = [
   binary("binary-always-no-rare", 0.1, "always-no", 0),
   binary("binary-chance-very-rare", 0.05, "chance", 0),
   binary("binary-always-no-very-rare", 0.05, "always-no", 0),
-  // The same at prevalence 0.1 in the population, with positives oversampled to 0.35 of the sample.
-  binary("binary-equal-oversampled", 0.35, "reads", 0.9, { oversampled: true }),
-  binary("binary-worse-oversampled", 0.35, "reads", 0.8, { oversampled: true }),
-  binary("binary-chance-oversampled", 0.35, "chance", 0, { oversampled: true }),
-  binary("binary-always-no-oversampled", 0.35, "always-no", 0, { oversampled: true }),
+  // The same judges at prevalence 0.35, every answer weighted 1. The draw cells study a sample
+  // that oversamples positives from a rarer population, with 1/π weights.
+  binary("binary-equal-prev0.35", 0.35, "reads", 0.9),
+  binary("binary-worse-prev0.35", 0.35, "reads", 0.8),
+  binary("binary-chance-prev0.35", 0.35, "chance", 0),
+  binary("binary-always-no-prev0.35", 0.35, "always-no", 0),
   // Generic sizing: the good and the clearly worse judge at larger studies.
   ...SIZES.flatMap((cases) => [
-    binary(`binary-equal-oversampled-n${cases}`, 0.35, "reads", 0.9, { oversampled: true, cases }),
-    binary(`binary-worse-oversampled-n${cases}`, 0.35, "reads", 0.8, { oversampled: true, cases }),
+    binary(`binary-equal-prev0.35-n${cases}`, 0.35, "reads", 0.9, { cases }),
+    binary(`binary-worse-prev0.35-n${cases}`, 0.35, "reads", 0.8, { cases }),
   ]),
   { id: "levels-equal", scale: "levels", raterNoise: 0.6, judgeNoise: 0.6, armShift: 0 },
   { id: "levels-noisier", scale: "levels", raterNoise: 0.6, judgeNoise: 0.9, armShift: 0 },
@@ -383,8 +384,12 @@ function drawGeneric(cell: Exclude<Cell, { scale: "draw" }>, rng: Rng): RatedStu
         if (cell.judge === "always-no") j = 0;
         else if (cell.judge === "chance") j = rng.uniform() < cell.prevalence ? 1 : 0;
         else j = read(cell.judgeAccuracy);
-        // Under the second configuration the judge misses positives more often.
-        if (configuration === 1 && j === 1 && rng.uniform() < cell.armBias / cell.prevalence) j = 0;
+        // Under the second configuration the judge misses true positives more often. The draw is
+        // taken for every yes on that configuration, so the stream stays as in a cell without bias.
+        if (configuration === 1 && j === 1) {
+          const u = rng.uniform();
+          if (truth === 1 && u < cell.armBias / cell.prevalence) j = 0;
+        }
         judge.push(j);
       }
     }

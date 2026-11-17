@@ -1,11 +1,13 @@
 // The study of the judge calibration rule (VALIDATION.md, "The judge calibration rule"): every cell
 // of CELLS, STUDIES studies each, RESAMPLES case resamples per study, one seeded stream per cell.
 //   node scripts/stats/study-calibration-rule.ts shard --shard i/n --out <dir>
-//     runs the cells i, i + n, i + 2n, … and writes <dir>/shard-i.tsv;
+//     runs the cells i, i + n, i + 2n, … and writes <dir>/shard-i.tsv with its provenance sidecar;
 //   node scripts/stats/study-calibration-rule.ts merge --in <dir> validation/calibration-rule.tsv
-//     joins the shards in cell order and writes the output with its provenance sidecar.
+//     joins the shards in cell order and writes the output with its provenance sidecar. It refuses
+//     a shard whose sidecar names another commit, other source files or another Node version, and
+//     a set of shards without exactly one row per cell.
 // A cell's rows depend only on its seed, never on the shard that ran it.
-import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
 
@@ -18,7 +20,7 @@ import {
   runCell,
   type CellResult,
 } from "./calibration-rule-study.ts";
-import { provenance, writeMeta } from "./provenance.ts";
+import { type Provenance, provenance, sha256, writeMeta } from "./provenance.ts";
 
 export const STUDIES = 2000;
 export const RESAMPLES = 2000;
@@ -89,6 +91,50 @@ export function runShard(
   );
 }
 
+/** The rows in cell order. Throws unless every cell has exactly one row and no row is unknown. */
+export function orderRows(rows: readonly string[]): string[] {
+  const order = new Map(CELLS.map((cell, i) => [cell.id, i]));
+  const seen = new Map<string, number>();
+  for (const r of rows) {
+    const id = r.split("\t")[0]!;
+    if (!order.has(id)) throw new Error(`a shard has a row for an unknown cell '${id}'`);
+    seen.set(id, (seen.get(id) ?? 0) + 1);
+  }
+  const wrong = CELLS.filter((cell) => seen.get(cell.id) !== 1).map(
+    (cell) => `${cell.id} (${seen.get(cell.id) ?? 0} rows)`,
+  );
+  if (wrong.length > 0)
+    throw new Error(`every cell needs exactly one row; these do not: ${wrong.join(", ")}`);
+  return rows.toSorted((a, b) => order.get(a.split("\t")[0]!)! - order.get(b.split("\t")[0]!)!);
+}
+
+/**
+ * Checks a shard against the merge's provenance: its sidecar must exist, be complete, match the
+ * shard's bytes, and name the same commit, files and Node version. Returns the shard's start time.
+ */
+function checkShard(file: string, merge: Provenance): string {
+  const metaFile = `${file}.meta.json`;
+  if (!existsSync(metaFile)) throw new Error(`${file} has no provenance sidecar; rerun the shard`);
+  const shard = JSON.parse(readFileSync(metaFile, "utf8")) as Partial<Provenance> & {
+    complete?: boolean;
+    outputSha256?: string;
+  };
+  const mismatch =
+    shard.complete !== true
+      ? "it is incomplete"
+      : shard.outputSha256 !== sha256(readFileSync(file))
+        ? "its rows do not match its sidecar"
+        : shard.commit !== merge.commit
+          ? `it ran at ${shard.commit}, the merge runs at ${merge.commit}`
+          : JSON.stringify(shard.files) !== JSON.stringify(merge.files)
+            ? "it ran other source files"
+            : shard.node !== merge.node
+              ? `it ran on Node ${shard.node}, the merge on ${merge.node}`
+              : undefined;
+  if (mismatch !== undefined) throw new Error(`${file}: ${mismatch}; rerun the shard`);
+  return shard.started!;
+}
+
 function parseShard(text: string | undefined): [number, number] {
   const match = /^(\d+)\/(\d+)$/.exec(text ?? "");
   const shard = Number(match?.[1]);
@@ -108,11 +154,17 @@ if (import.meta.main) {
   if (phase === "shard") {
     const [shard, shards] = parseShard(values.shard);
     const out = values.out ?? "calibration-rule-shards";
-    mkdirSync(out, { recursive: true });
-    writeFileSync(
-      path.join(out, `shard-${shard}.tsv`),
-      `${runShard(shard, shards, STUDIES, RESAMPLES).join("\n")}\n`,
+    // Each shard records its own provenance, so the merge can refuse shards from other code.
+    const meta = provenance(
+      new URL(import.meta.url).pathname,
+      [],
+      SEED_BASE,
+      process.argv.slice(2),
     );
+    mkdirSync(out, { recursive: true });
+    const file = path.join(out, `shard-${shard}.tsv`);
+    writeFileSync(file, `${runShard(shard, shards, STUDIES, RESAMPLES).join("\n")}\n`);
+    writeMeta(file, meta, true, { studies: STUDIES, resamples: RESAMPLES });
   } else if (phase === "merge") {
     const output = positionals[0];
     const dir = values.in;
@@ -123,17 +175,18 @@ if (import.meta.main) {
       SEED_BASE,
       process.argv.slice(2),
     );
-    const rows = readdirSync(dir)
-      .filter((f) => /^shard-\d+\.tsv$/.test(f))
-      .flatMap((f) => readFileSync(path.join(dir, f), "utf8").split("\n").filter(Boolean));
-    const order = new Map(CELLS.map((cell, i) => [cell.id, i]));
-    const sorted = rows.toSorted(
-      (a, b) => order.get(a.split("\t")[0]!)! - order.get(b.split("\t")[0]!)!,
+    const shardFiles = readdirSync(dir).filter((f) => /^shard-\d+\.tsv$/.test(f));
+    const starts = shardFiles.map((f) => checkShard(path.join(dir, f), meta));
+    const rows = shardFiles.flatMap((f) =>
+      readFileSync(path.join(dir, f), "utf8").split("\n").filter(Boolean),
     );
-    if (sorted.length !== CELLS.length)
-      throw new Error(`expected ${CELLS.length} cells, got ${sorted.length}`);
+    const sorted = orderRows(rows);
     writeFileSync(output, `${COLUMNS.join("\t")}\n${sorted.join("\n")}\n`);
-    writeMeta(output, meta, true, { studies: STUDIES, resamples: RESAMPLES, cells: CELLS.length });
+    writeMeta(output, { ...meta, started: starts.toSorted()[0] ?? meta.started }, true, {
+      studies: STUDIES,
+      resamples: RESAMPLES,
+      cells: CELLS.length,
+    });
   } else {
     throw new RangeError(`the phase must be "shard" or "merge", got ${phase}`);
   }
