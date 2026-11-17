@@ -1,9 +1,12 @@
 // The provenance a study writes (scripts/stats/provenance.ts): the local modules its process loads,
-// recorded by the hook of scripts/stats/record-loads.ts, and the third-party packages among them.
-// Each case runs a small study in a scratch repository, with the two scripts copied into it.
+// recorded by the package's load recorder (src/core/load-record.ts) that
+// scripts/stats/record-loads.ts preloads, and the third-party packages among them. Each case runs a
+// small study in a scratch repository, with the writer copied into it and the package's own
+// preload in place, which is never pinned.
 import { spawnSync } from "node:child_process";
 import { copyFileSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 import { afterAll, describe, expect, it } from "vitest";
 
@@ -19,6 +22,7 @@ afterAll(removeScratchRepos);
 
 const scripts = path.join(import.meta.dirname, "../../scripts/stats");
 const workspace = path.join(import.meta.dirname, "../../../..");
+const RECORDER = pathToFileURL(path.join(scripts, "record-loads.ts")).href;
 
 /** The version of a package installed in the workspace. */
 const installed = (name: string): string =>
@@ -28,12 +32,11 @@ const installed = (name: string): string =>
     ) as { version: string }
   ).version;
 
-/** A repository with the recorder, the writer and the workspace's node_modules. */
+/** A repository with the writer and the workspace's node_modules. */
 function studyRepo(files: Readonly<Record<string, string>>): string {
   const root = scratchRepo();
   mkdirSync(path.join(root, "rec"));
-  for (const name of ["record-loads.ts", "provenance.ts"])
-    copyFileSync(path.join(scripts, name), path.join(root, "rec", name));
+  copyFileSync(path.join(scripts, "provenance.ts"), path.join(root, "rec", "provenance.ts"));
   symlinkSync(path.join(workspace, "node_modules"), path.join(root, "node_modules"));
   commit(root, { ".gitignore": "node_modules\n", ...files });
   return root;
@@ -44,7 +47,7 @@ function runStudy(
   root: string,
   record = true,
 ): { status: number | null; out: string; err: string } {
-  const argv = [...(record ? ["--import", "./rec/record-loads.ts"] : []), "study.ts"];
+  const argv = [...(record ? ["--import", RECORDER] : []), "study.ts"];
   const r = spawnSync(process.execPath, argv, { cwd: root, encoding: "utf8" });
   return { status: r.status, out: r.stdout, err: r.stderr };
 }
@@ -165,11 +168,10 @@ if (process.argv[2] === "shard") {
       "shard-only.ts": "export const value = 1;\n",
     });
     const run = (phase: string): { status: number | null; err: string } => {
-      const r = spawnSync(
-        process.execPath,
-        ["--import", "./rec/record-loads.ts", "study.ts", phase],
-        { cwd: root, encoding: "utf8" },
-      );
+      const r = spawnSync(process.execPath, ["--import", RECORDER, "study.ts", phase], {
+        cwd: root,
+        encoding: "utf8",
+      });
       return { status: r.status, err: r.stderr };
     };
     expect(run("shard")).toEqual({ status: 0, err: "" });

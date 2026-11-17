@@ -121,7 +121,8 @@ It records:
 - the output's sha256 when the output is complete.
 
 The modules are the ones that the process loads, not the ones that its source names.
-A study runs with the recorder of `record-loads.ts` preloaded, from `packages/ichnaea`:
+A study runs with `record-loads.ts` preloaded, from `packages/ichnaea`.
+It starts the package's load recorder (`src/core/load-record.ts`), which a measure's implementation digest uses too:
 
 ```sh
 node --import ./scripts/stats/record-loads.ts scripts/stats/study-binary-one-trial.ts --pull <N> validation/binary-one-trial.tsv
