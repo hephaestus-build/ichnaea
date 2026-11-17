@@ -1044,7 +1044,9 @@ export const MUTANTS: readonly Mutant[] = [
     id: "sentinel: new draws at each fresh rate",
     file: "src/stats/sentinel.ts",
     from: "  const rng = createRng(seed);",
-    to: "  const rng = createRng(seed + Math.round(fresh * 1e12));",
+    // A seed that changes with the fresh rate and stays a valid 32-bit seed, so the mutant changes
+    // the draws instead of being refused by createRng.
+    to: "  const rng = createRng(1 + ((seed + Math.round(fresh * 1e12)) % 4_000_000_000));",
   },
   {
     id: "sentinel: upward drift as downward",
