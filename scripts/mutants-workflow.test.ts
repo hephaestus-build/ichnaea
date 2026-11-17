@@ -17,6 +17,7 @@ const mutantScripts = readdirSync(scriptsDir, { withFileTypes: true })
 describe("the mutants workflow", () => {
   it("runs every mutant script of the package", () => {
     expect(mutantScripts).toEqual([
+      "scripts/calibration/mutants.ts",
       "scripts/contracts/mutants.ts",
       "scripts/decide/mutants.ts",
       "scripts/stats/mutants.ts",
@@ -32,7 +33,14 @@ describe("the mutants workflow", () => {
   });
 
   it("skips a pull request only when nothing a mutant reads has changed", () => {
-    for (const dir of ["src", "test", "scripts/contracts", "scripts/decide", "scripts/stats"])
+    for (const dir of [
+      "src",
+      "test",
+      "scripts/calibration",
+      "scripts/contracts",
+      "scripts/decide",
+      "scripts/stats",
+    ])
       expect(workflow).toContain(`packages/ichnaea/${dir}`);
   });
 });
