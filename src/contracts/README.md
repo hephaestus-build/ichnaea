@@ -8,19 +8,53 @@ against the schema files in [`schemas/`](../../schemas).
 
 ## Records
 
-| Schema ID                                                               | File                        | Holds                                                      |
-| ----------------------------------------------------------------------- | --------------------------- | ---------------------------------------------------------- |
-| `ichnaea.case/1`                                                        | `case.schema.json`          | One evaluation input with fixtures and hidden references   |
-| `ichnaea.caseSet/1`                                                     | `caseSet.schema.json`       | A versioned collection of cases, identified by a digest    |
-| `ichnaea.configuration/1`                                               | `configuration.schema.json` | A resolved system configuration with factor statuses       |
-| `ichnaea.suite/1`                                                       | `suite.schema.json`         | What an application evaluates, without naming a system     |
-| `ichnaea.plan/1`                                                        | `plan.schema.json`          | The resolved, locked form of a suite for one run           |
-| `ichnaea.trial/1`                                                       | `trial.schema.json`         | The normalised evidence of one trial                       |
-| `ichnaea.run/1`                                                         | `run.schema.json`           | The ledger of a plan's trials with lineage                 |
-| `ichnaea.measureCard/1`                                                 | `measureCard.schema.json`   | The definition of a measure                                |
-| `ichnaea.measureValue/1`                                                | `measureValue.schema.json`  | One measured value on one trial                            |
-| `ichnaea.decision/1`                                                    | `decision.schema.json`      | The verdict of one run with estimates, intervals and flips |
-| `ichnaea.judge/1`, `label/1`, `calibration/1`, `monitor/1`, `finding/1` |                             | In development                                             |
+| Schema ID                                                               | File                          | Holds                                                      |
+| ----------------------------------------------------------------------- | ----------------------------- | ---------------------------------------------------------- |
+| `ichnaea.case/1`                                                        | `case.schema.json`            | One evaluation input with fixtures and hidden references   |
+| `ichnaea.caseSet/1`                                                     | `caseSet.schema.json`         | A versioned collection of cases, identified by a digest    |
+| `ichnaea.configuration/1`                                               | `configuration.schema.json`   | A resolved system configuration with factor statuses       |
+| `ichnaea.suite/1`                                                       | `suite.schema.json`           | What an application evaluates, without naming a system     |
+| `ichnaea.plan/1`                                                        | `plan.schema.json`            | The resolved, locked form of a suite for one run           |
+| `ichnaea.trial/1`                                                       | `trial.schema.json`           | The normalised evidence of one trial                       |
+| `ichnaea.run/1`                                                         | `run.schema.json`             | The ledger of a plan's trials with lineage                 |
+| `ichnaea.measureCard/1`                                                 | `measureCard.schema.json`     | The definition of a measure                                |
+| `ichnaea.measureValue/1`                                                | `measureValue.schema.json`    | One measured value on one trial                            |
+| `ichnaea.decision/1`                                                    | `decision.schema.json`        | The verdict of one run with estimates, intervals and flips |
+| `ichnaea.judge/1`, `label/1`, `calibration/1`, `monitor/1`, `finding/1` |                               | In development                                             |
+| `ichnaea.suite/2`                                                       | `suite.2.schema.json`         | One thing you evaluate, as plain data (alpha)              |
+| `ichnaea.configuration/2`                                               | `configuration.2.schema.json` | An arm's configuration file, by digest (alpha)             |
+| `ichnaea.project/1`                                                     | `project.1.schema.json`       | The project config that several suites share (alpha)       |
+| `ichnaea.suite.lock/1`                                                  | `suite.lock.schema.json`      | The digests that pin a suite, written by `lock` (alpha)    |
+
+`suite/2`, `configuration/2`, `ichnaea.project/1` and `suite.lock/1` are the records of the next
+framework. A suite or project file (`suite.ts` or `suite.jsonc`, `ichnaea.config.ts` or
+`ichnaea.config.jsonc`) loads into one of them. A TypeScript measure is a module reference
+(`{ instrument, module, export }`), never a function value.
+
+- **Plain data.** The schemas validate JSON values. zod drops an `undefined` member and reads a
+  class instance as an object, so a record alone cannot refuse a value that is not plain data.
+  The loader refuses it first: `plainDataProblems(value)` names every such field by its path.
+- **Editors.** A JSONC file points its editor at `suite.2.schema.json` or `project.1.schema.json`
+  with `$schema`. The file name carries the major, so the pointer never changes meaning.
+- **Digests.** `suiteDigest` and `projectDigest` hash the canonical JSON without `$schema`, so the
+  TypeScript and JSONC forms of one file share a digest. `configuration/2.digest` is over the
+  canonical JSON of the arm's configuration file, never its raw bytes.
+- **Checks beyond the schema.** `suiteProblems(suite)` lists the rules of a parsed suite that a
+  JSON Schema cannot express, each with a named code, and `lock` refuses a suite with any. A
+  secondary measure that attribute compares needs its own fidelity margin
+  (`FIDELITY_MARGIN_MISSING`): only a primary measure has a registered limit, inside (0, 1), whose
+  half is the default. A margin entry must name a primary measure or a secondary measure with a
+  test (`FIDELITY_MARGIN_UNKNOWN`), so a misspelled ID cannot leave its measure at the default. A
+  level measure's levels are strictly ascending, its `cut` is one of them
+  and above the lowest, and each `anchors` key is one of them (`LEVELS_NOT_ASCENDING`,
+  `LEVEL_CUT_NOT_A_LEVEL`, `LEVEL_CUT_AT_LOWEST`, `LEVEL_ANCHOR_NOT_A_LEVEL`).
+- **Level scale.** A level measure with `spacing: "equal"` is tested as a score on
+  (level − min)/(max − min). Its limits, fidelity margins and the ±0.15 arm-bias bound live on
+  [0, 1], so a limit means the same for levels 1–5 as for 0–3. A scorer reports a level by its
+  value.
+- **Two majors.** `suite/1` and `configuration/1` stay registered beside `suite/2` and
+  `configuration/2` while the planner and the importer still read them. The newer major needs no
+  migration until the older one leaves the registry (`majors.json`).
 
 ### Protocol records
 
@@ -48,7 +82,8 @@ failure is an `ok` value of `false`, and a value that must not be retried is `mi
 
 ## Writer and reader schemas
 
-Each record has two schema files:
+Each record has two schema files, named by the contract's `file` stem when it has one (`project.1`)
+and by its name otherwise (`schemaFileName`):
 
 - `<name>.schema.json` is the **writer** schema. It is strict: an unknown member is an error, so a
   misspelt or misplaced member never passes unnoticed and never leaves an identity unchanged.

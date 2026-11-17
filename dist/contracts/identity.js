@@ -2,6 +2,8 @@ import * as z from "zod";
 import { digest as rawDigest, NonJsonValueError, sha256 } from "./canonical.js";
 import { Case, CaseSetEntry } from "./records/case.js";
 import { Configuration } from "./records/configuration.js";
+import { ProjectConfig } from "./records/project.js";
+import { SuiteV2 } from "./records/suite-v2.js";
 /** Thrown when a record cannot have a well-defined identity. */
 export class IdentityError extends Error {
     /** The error's name, for `instanceof`-free checks. */
@@ -219,5 +221,24 @@ export function verifyArms(arms, at = "/arms") {
         }
     }
     return errors;
+}
+/** The record without its `$schema` editor pointer, which enters no digest. */
+function withoutSchemaPointer(record) {
+    return Object.fromEntries(Object.entries(record).filter(([key]) => key !== "$schema"));
+}
+/**
+ * The digest of a suite (`ichnaea.suite/2`): SHA-256 over the RFC 8785 canonical JSON of the
+ * record without its `$schema` member, so the TypeScript and JSONC forms of one suite share a
+ * digest. Comments and layout of a JSONC file never reach the record.
+ */
+export function suiteDigest(input) {
+    return digest(withoutSchemaPointer(SuiteV2.parse(input)));
+}
+/**
+ * The digest of a project config (`ichnaea.project/1`): SHA-256 over the RFC 8785 canonical JSON
+ * of the record without its `$schema` member, as for a suite.
+ */
+export function projectDigest(input) {
+    return digest(withoutSchemaPointer(ProjectConfig.parse(input)));
 }
 //# sourceMappingURL=identity.js.map

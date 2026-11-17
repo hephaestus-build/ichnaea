@@ -1,13 +1,17 @@
 import { Case, CaseSet } from "./records/case.js";
 import { Configuration } from "./records/configuration.js";
+import { ConfigurationV2 } from "./records/configuration-v2.js";
 import { Decision } from "./records/decision.js";
 import { Calibration, Judge, Label } from "./records/judge.js";
 import { MeasureCard, MeasureValue } from "./records/measure.js";
 import { Finding, Monitor } from "./records/monitor.js";
 import { Plan } from "./records/plan.js";
+import { SuiteLock } from "./records/lock.js";
+import { ProjectConfig } from "./records/project.js";
 import { Run } from "./records/run.js";
 import { ScoreRequest, ScoreResult } from "./records/scorer.js";
 import { Suite } from "./records/suite.js";
+import { SuiteV2 } from "./records/suite-v2.js";
 import { Trial } from "./records/trial.js";
 import { Cancel, TrialRequest, TrialResult, WorkerError, WorkerEvent, WorkerReady, } from "./records/worker.js";
 /** Every record contract, by name. The generated JSON Schema files follow this list. */
@@ -39,6 +43,35 @@ export const RECORD_CONTRACTS = [
         schema: Suite,
         stability: "alpha",
         description: "What an application evaluates, without naming a system.",
+    },
+    {
+        name: "suite.2",
+        id: "ichnaea.suite/2",
+        schema: SuiteV2,
+        stability: "alpha",
+        description: "One thing you evaluate, as plain data: its cases, how to run them, what to measure and the limits.",
+    },
+    {
+        name: "configuration.2",
+        id: "ichnaea.configuration/2",
+        schema: ConfigurationV2,
+        stability: "alpha",
+        description: "An arm's configuration: the digest of its configuration file and the fields the suite keeps.",
+    },
+    {
+        name: "project",
+        file: "project.1",
+        id: "ichnaea.project/1",
+        schema: ProjectConfig,
+        stability: "alpha",
+        description: "The project config, as plain data: what several suites share, such as workers and datasets.",
+    },
+    {
+        name: "suite.lock",
+        id: "ichnaea.suite.lock/1",
+        schema: SuiteLock,
+        stability: "alpha",
+        description: "The lock of a suite: the digests of its sources, instruments and measures, written by lock.",
     },
     {
         name: "plan",

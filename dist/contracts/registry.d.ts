@@ -3,8 +3,17 @@ import type * as z from "zod";
 export type Stability = "development" | "alpha" | "beta" | "stable";
 /** One record contract: its schema identifier, zod schema and stability. */
 export interface RecordContract {
-    /** The record's name, such as `caseSet`; it names the generated JSON Schema files. */
+    /**
+     * The contract's name, such as `caseSet`; it names the fixtures and, unless `file` is set, the
+     * generated JSON Schema files. While two majors of one record are registered, the newer one's
+     * name carries its major, such as `suite.2`.
+     */
     readonly name: string;
+    /**
+     * The stem of the generated JSON Schema files when it differs from `name`, such as `project.1`:
+     * the schema of an authored file carries its major, so a `$schema` pointer never changes meaning.
+     */
+    readonly file?: string;
     /**
      * The schema identifier, such as `ichnaea.case/1`, that a record of this kind carries in
      * `schema`.

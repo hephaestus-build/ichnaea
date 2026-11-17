@@ -88,4 +88,15 @@ export declare function verifyArms(arms: ReadonlyArray<{
     identity: string;
     configuration: unknown;
 }>, at?: string): LinkError[];
+/**
+ * The digest of a suite (`ichnaea.suite/2`): SHA-256 over the RFC 8785 canonical JSON of the
+ * record without its `$schema` member, so the TypeScript and JSONC forms of one suite share a
+ * digest. Comments and layout of a JSONC file never reach the record.
+ */
+export declare function suiteDigest(input: unknown): Digest;
+/**
+ * The digest of a project config (`ichnaea.project/1`): SHA-256 over the RFC 8785 canonical JSON
+ * of the record without its `$schema` member, as for a suite.
+ */
+export declare function projectDigest(input: unknown): Digest;
 //# sourceMappingURL=identity.d.ts.map

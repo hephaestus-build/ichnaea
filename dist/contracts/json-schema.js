@@ -4,6 +4,10 @@ export function schemaUri(contract, variant = "writer") {
     const [name, major] = contract.id.replace(/^ichnaea\./, "").split("/");
     return `urn:ichnaea:schema:${name}:${major}${variant === "reader" ? ":reader" : ""}`;
 }
+/** The file name of a record contract's writer or reader JSON Schema, such as `case.schema.json`. */
+export function schemaFileName(contract, variant = "writer") {
+    return `${contract.file ?? contract.name}${variant === "reader" ? ".reader" : ""}.schema.json`;
+}
 /**
  * Generates the normative writer JSON Schema 2020-12 of a record contract. Writers are strict: an
  * unknown member is an error, so a misspelt or misplaced member cannot pass unnoticed or leave an
@@ -146,7 +150,7 @@ function relax(node) {
 }
 /** A pattern matching every string except the given ones (a negative lookahead; portable ECMA-262). */
 function notOneOf(values) {
-    const escaped = values.map((v) => String(v).replaceAll(/[.*+?^${}()|[\]\\/-]/g, "\\$&"));
+    const escaped = values.map((v) => String(v).replaceAll(/[.*+?^${}()|[\]\\/]/g, "\\$&"));
     return `^(?!(?:${escaped.join("|")})$)`;
 }
 /**

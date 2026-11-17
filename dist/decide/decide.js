@@ -504,6 +504,11 @@ function importedCallsLimitation(input) {
  * stay on the trial records, the limitation reports them, and they never make the run INVALID. A
  * plan without `callsPerTrial` was written before the plan recorded its bounds, and its calls are
  * not checked, so it keeps the decision it was given.
+ *
+ * A plan with `callsPerTrial` must book exactly its worst case: the trials of the arms with `runs`
+ * times the bound. Without that, an arm that lost its `runs` would check no call and say nothing,
+ * so the bounds fail closed. For the same reason, a plan that marks an arm as run must state
+ * `callsPerTrial`.
  */
 function attemptChecks(input) {
     const invalid = [];
@@ -513,9 +518,19 @@ function attemptChecks(input) {
             invalid.push(`trial '${t.id}' lists attempts ${attempts.map((a) => a.attempt).join(", ")}; they must be numbered 1 to k with no gap`);
     }
     const sorted = callsByRunner(input);
-    if (sorted === undefined)
+    if (sorted === undefined) {
+        // Only a plan from before the bounds lacks callsPerTrial, and it marks no arm as run.
+        const runs = input.plan.arms.filter((a) => a.runs === true).map((a) => a.name);
+        if (runs.length > 0)
+            invalid.push(`the plan marks arm(s) ${runs.join(", ")} as run by Ichnaea but states no bound of calls per trial`);
         return invalid;
+    }
     const { bound, ran } = sorted;
+    const { worstCaseCalls } = input.plan.budget;
+    const runs = new Set(input.plan.arms.filter((a) => a.runs === true).map((a) => a.name));
+    const runTrials = input.plan.trials.filter((t) => runs.has(t.arm)).length;
+    if (worstCaseCalls !== runTrials * bound)
+        invalid.push(`the plan books ${worstCaseCalls} calls in the worst case, but its ${runTrials} trial(s) of the arms Ichnaea runs need ${runTrials * bound} at the bound of ${bound} per trial`);
     const over = [];
     let total = 0;
     for (const t of ran) {
@@ -559,10 +574,16 @@ function recordChecks(input) {
     if (unplannedTrial)
         invalid.push(`trial '${unplannedTrial.id}' is not in the plan`);
     // A value counts for the planned trial's case and arm, so a trial must name exactly those.
-    for (const t of input.trials) {
+    const renamed = input.trials.flatMap((t) => {
         const p = plannedById.get(t.id);
-        if (p && (t.case !== p.case || t.arm !== p.arm || t.replicate !== p.replicate))
-            invalid.push(`trial '${t.id}' names case '${t.case}', arm '${t.arm}', replicate ${t.replicate}, but the plan has case '${p.case}', arm '${p.arm}', replicate ${p.replicate}`);
+        return p && (t.case !== p.case || t.arm !== p.arm || t.replicate !== p.replicate)
+            ? [{ t, p }]
+            : [];
+    });
+    const firstRenamed = renamed[0];
+    if (firstRenamed) {
+        const { t, p } = firstRenamed;
+        invalid.push(`${renamed.length} trial(s) name another case, arm or replicate than their planned trial, for example trial '${t.id}' names case '${t.case}', arm '${t.arm}', replicate ${t.replicate}, but the plan has case '${p.case}', arm '${p.arm}', replicate ${p.replicate}`);
     }
     const unplannedValue = input.values.find((v) => !plannedById.has(v.trial));
     if (unplannedValue)

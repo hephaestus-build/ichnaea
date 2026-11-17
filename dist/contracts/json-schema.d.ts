@@ -1,6 +1,8 @@
 import type { RecordContract } from "./registry.ts";
 /** The JSON Schema `$id` of a record contract. Reader schemas add `:reader`. */
 export declare function schemaUri(contract: RecordContract, variant?: "writer" | "reader"): string;
+/** The file name of a record contract's writer or reader JSON Schema, such as `case.schema.json`. */
+export declare function schemaFileName(contract: RecordContract, variant?: "writer" | "reader"): string;
 /**
  * Generates the normative writer JSON Schema 2020-12 of a record contract. Writers are strict: an
  * unknown member is an error, so a misspelt or misplaced member cannot pass unnoticed or leave an
