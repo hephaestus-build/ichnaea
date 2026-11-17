@@ -119,10 +119,10 @@ export declare function decidePrimariesWith(input: PrimariesInput, compare: Comp
  * tested against the imputation that works against it, and a verdict that changes is INCONCLUSIVE
  * (decision 0010).
  */
-export declare function decide(input: DecideInput): Promise<Decision>;
+export declare function decide(input: DecideInput): Decision;
 /**
  * `decide` with the comparison given, so a test can decide from results of its own. Not exported
  * by the package: every decision Ichnaea makes uses `compareCounts`.
  */
-export declare function decideWith(input: DecideInput, compare: Compare): Promise<Decision>;
+export declare function decideWith(input: DecideInput, compare: Compare): Decision;
 //# sourceMappingURL=decide.d.ts.map

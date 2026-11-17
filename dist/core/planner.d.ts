@@ -13,9 +13,14 @@ export interface PlanInput {
     readonly caseSet: CaseSet;
     /** The cases that the case set lists; each must match its entry's digest, pool and family. */
     readonly cases: readonly Case[];
-    /** The arms to compare, each with its name, role and configuration. */
+    /**
+     * The arms to compare, each with its role and configuration. An arm without a name is named by
+     * its role: the base and the candidate get the opaque names `a` and `b` from `armNames`, so no
+     * trial ID tells a system its side. A reference arm needs a name. An import names its arms,
+     * because the other runner already did.
+     */
     readonly arms: ReadonlyArray<{
-        readonly name: string;
+        readonly name?: string;
         readonly role: "base" | "candidate" | "reference";
         readonly configuration: Configuration;
     }>;
@@ -63,7 +68,9 @@ export declare const TRIGGER_VARIES: {
  * listed before the first call, with each case's trial count (the suite's, or more for the cases of
  * a `replicatesFor` slice), the worst-case calls are computed, and the estimand's conditions
  * are checked. At one trial per case and arm, the trials run case by case, each pair in the order
- * `candidateRunsFirst` chose; otherwise in alternating batches by replicate (REQ-25). What cannot be resolved is refused with a PlanError that names the fix. What can
+ * `candidateRunsFirst` chose; otherwise in alternating batches by replicate (REQ-25), each case's
+ * pair in the order of its coin for that replicate. What cannot be resolved is refused with a
+ * PlanError that names the fix. What can
  * be measured but not decided runs estimate-only, and `modeReasons` says why: no base and
  * candidate, no primary measure, a primary measure with values no validated method decides yet
  * (decision 0008), a placeholder margin (decision 0012), `sampled-cases` (no validated method yet),

@@ -107,6 +107,7 @@ export declare const MeasureValue: z.ZodObject<{
         judge: "judge";
     }>;
     detail: z.ZodOptional<z.ZodString>;
+    why: z.ZodOptional<z.ZodString>;
     dataClass: z.ZodEnum<{
         none: "none";
         personal: "personal";

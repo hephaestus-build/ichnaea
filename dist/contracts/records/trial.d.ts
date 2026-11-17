@@ -2,6 +2,15 @@ import * as z from "zod";
 /**
  * Outcome classes of a trial (REQ-20). A capture failure is never a verdict:
  * `infrastructure_failure` and `not_run` count as missing, never as a quality failure.
+ * `protocol_failure` is the outcome of a worker failure of class `protocol` (`FAILURE_OUTCOME`), and
+ * of nothing else. It is the harness's fault, never the system's: it is missing, never a failure or
+ * a pass, and any one makes the run INVALID.
+ *
+ * The enumeration is closed (`x-ichnaea-closed`) from this version on: a reader of this version
+ * refuses a trial or a ledger entry with an outcome it does not know, so a later outcome fails
+ * closed. A build from before this version widens the enumeration: it counts a `protocol_failure`
+ * trial as missing, never as a pass or a failure of the system, but it does not know that the
+ * outcome makes the run INVALID, so it can still reach a verdict on that run.
  */
 export declare const Outcome: z.ZodEnum<{
     abstained: "abstained";
@@ -10,6 +19,7 @@ export declare const Outcome: z.ZodEnum<{
     infrastructure_failure: "infrastructure_failure";
     invalid_configuration: "invalid_configuration";
     not_run: "not_run";
+    protocol_failure: "protocol_failure";
     system_failure: "system_failure";
 }>;
 /** A trial outcome. */
@@ -36,7 +46,10 @@ export declare const Step: z.ZodObject<{
     durationMs: z.ZodOptional<z.ZodNumber>;
     detail: z.ZodOptional<z.ZodJSONSchema>;
 }, z.core.$strict>;
-/** Resource usage of a trial as reported. Absent means unknown, never zero. */
+/**
+ * Resource usage of a trial as reported. Absent means unknown, never zero. `calls` counts the
+ * model calls the provider accepted. A call the provider rejected, for example with HTTP 429, is not a call.
+ */
 export declare const Usage: z.ZodObject<{
     calls: z.ZodOptional<z.ZodInt>;
     inputTokens: z.ZodOptional<z.ZodInt>;
@@ -81,6 +94,7 @@ export declare const Trial: z.ZodObject<{
         infrastructure_failure: "infrastructure_failure";
         invalid_configuration: "invalid_configuration";
         not_run: "not_run";
+        protocol_failure: "protocol_failure";
         system_failure: "system_failure";
     }>;
     dataClass: z.ZodEnum<{
@@ -144,6 +158,17 @@ export declare const Trial: z.ZodObject<{
     startedAt: z.ZodOptional<z.ZodISODateTime>;
     endedAt: z.ZodOptional<z.ZodISODateTime>;
     inputDigest: z.ZodOptional<z.ZodString>;
+    attempts: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        attempt: z.ZodInt;
+        failure: z.ZodObject<{
+            class: z.ZodEnum<{
+                infrastructure: "infrastructure";
+                not_run: "not_run";
+            }>;
+            kind: z.ZodString;
+        }, z.core.$strict>;
+        calls: z.ZodInt;
+    }, z.core.$strict>>>;
 }, z.core.$strict>;
 /** A trial record. */
 export type Trial = z.infer<typeof Trial>;

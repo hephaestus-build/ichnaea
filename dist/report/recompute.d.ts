@@ -25,5 +25,5 @@ export declare function recompute(records: {
         plan: Plan;
         run: Run;
     }[];
-}): Promise<RecomputeResult>;
+}): RecomputeResult;
 //# sourceMappingURL=recompute.d.ts.map

@@ -20,6 +20,7 @@ export * from "./records/suite.js";
 export * from "./records/trial.js";
 export * from "./records/worker.js";
 export * from "./registry.js";
+export * from "./sha256.js";
 export * from "./target-view.js";
 export * from "./values.js";
 //# sourceMappingURL=index.js.map

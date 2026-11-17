@@ -25,8 +25,10 @@ function withPolicy(schema, policy, extra = {}) {
     return schema.meta({ ...extra, [DATA_POLICY_KEY]: policy });
 }
 /**
- * Marks a closed enumeration: a value set fixed by its definition (IEEE 754's non-finite values),
- * which readers do not widen. Tolerant readers widen every other enumeration.
+ * Marks a closed enumeration, which readers do not widen: a value set fixed by its definition
+ * (IEEE 754's non-finite values), or one whose unknown values must fail closed (the trial outcomes,
+ * so no reader decides a run from an outcome it does not know). Tolerant readers widen every other
+ * enumeration.
  */
 export const CLOSED_KEY = "x-ichnaea-closed";
 /** A field without personal data. It may leave for any purpose. */

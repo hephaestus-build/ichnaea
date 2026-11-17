@@ -56,10 +56,14 @@ export const TrialRequest = z.strictObject({
     /** Bounds for this trial. */
     limits: z.strictObject({
         /**
-         * The most model calls the trial may make. The worker stops before it exceeds them, and
-         * Ichnaea also checks `calls` in the result against them. Absent means no per-trial bound.
+         * The most model calls the trial may make, counted as calls the provider accepted. The worker
+         * stops before it exceeds them, and Ichnaea also checks `calls` in the result against them.
+         * Absent means no per-trial bound. A call the provider rejected, for example with HTTP 429, is not a call.
          */
-        calls: none(z.int().min(0)).optional(),
+        calls: none(z
+            .int()
+            .min(0)
+            .describe("The most model calls the trial may make, counted as calls the provider accepted. A call the provider rejected, for example with HTTP 429, is not a call.")).optional(),
     }),
 });
 /**
@@ -86,6 +90,16 @@ export const TrialFailure = z.strictObject({
     /** A human-readable message. It may contain content from the system. */
     message: content(z.string()).optional(),
 });
+/**
+ * The trial outcome of each failure class, one to one. `protocol_failure` is the outcome of a
+ * `protocol` failure and of nothing else.
+ */
+export const FAILURE_OUTCOME = {
+    infrastructure: "infrastructure_failure",
+    system: "system_failure",
+    not_run: "not_run",
+    protocol: "protocol_failure",
+};
 /** The commit of the system's code, as 40 hexadecimal characters. */
 const Commit = none(z.string().regex(/^[0-9a-f]{40}$/));
 /**
@@ -146,8 +160,14 @@ export const TrialResult = z.strictObject({
     pointer: quasi(Text).optional(),
     /** Why the trial produced no usable output. Absent when the trial completed. */
     failure: TrialFailure.optional(),
-    /** The model calls made in this trial. Required: the run's call bound and budget sum it. */
-    calls: none(z.int().min(0)),
+    /**
+     * The model calls the provider accepted in this trial. Required: the run's call bound and budget
+     * sum it. A call the provider rejected, for example with HTTP 429, is not a call.
+     */
+    calls: none(z
+        .int()
+        .min(0)
+        .describe("The model calls the provider accepted in this trial; the run's call bound and budget sum them. A call the provider rejected, for example with HTTP 429, is not a call.")),
     /** Token and cost usage, when the worker knows it. Absent means unknown, never zero. */
     usage: Usage.optional(),
     /** The configuration the worker ran with. */

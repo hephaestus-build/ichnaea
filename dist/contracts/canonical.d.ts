@@ -26,7 +26,7 @@ export declare function canonicalize(value: unknown): string;
  * UTF-8 form (a text encoder would replace it with U+FFFD, so two different strings would share a
  * digest), so it throws a `TypeError`.
  */
-export declare function sha256(text: string): Promise<`sha256:${string}`>;
+export declare function sha256(text: string): `sha256:${string}`;
 /** Returns the canonical content digest of a JSON value: SHA-256 over its RFC 8785 form. */
-export declare function digest(value: unknown): Promise<`sha256:${string}`>;
+export declare function digest(value: unknown): `sha256:${string}`;
 //# sourceMappingURL=canonical.d.ts.map

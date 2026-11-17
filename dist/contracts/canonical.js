@@ -1,3 +1,4 @@
+import { sha256Hex } from "./sha256.js";
 /**
  * RFC 8785 JSON Canonicalization Scheme (JCS) and SHA-256 content digests.
  *
@@ -89,14 +90,10 @@ const encoder = new TextEncoder();
  * UTF-8 form (a text encoder would replace it with U+FFFD, so two different strings would share a
  * digest), so it throws a `TypeError`.
  */
-export async function sha256(text) {
+export function sha256(text) {
     if (!text.isWellFormed())
         throw new TypeError("cannot hash a string with a lone surrogate: it has no UTF-8 form");
-    const bytes = await globalThis.crypto.subtle.digest("SHA-256", encoder.encode(text));
-    let hex = "";
-    for (const byte of new Uint8Array(bytes))
-        hex += byte.toString(16).padStart(2, "0");
-    return `sha256:${hex}`;
+    return `sha256:${sha256Hex(encoder.encode(text))}`;
 }
 /** Returns the canonical content digest of a JSON value: SHA-256 over its RFC 8785 form. */
 export function digest(value) {

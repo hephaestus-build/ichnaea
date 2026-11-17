@@ -1,4 +1,4 @@
-import { caseDigest, caseSetDigest, candidateRunsFirst, configurationIdentity, digest, Plan, } from "../contracts/index.js";
+import { armNames, caseDigest, caseSetDigest, candidateRunsFirst, configurationIdentity, digest, Plan, } from "../contracts/index.js";
 import { testMeasure } from "./measures.js";
 /** Thrown when a suite cannot be resolved into a valid plan. The message names the fix. */
 export class PlanError extends Error {
@@ -38,7 +38,9 @@ const ARM_NAME = /^[A-Za-z0-9][A-Za-z0-9._@+-]*$/;
  * listed before the first call, with each case's trial count (the suite's, or more for the cases of
  * a `replicatesFor` slice), the worst-case calls are computed, and the estimand's conditions
  * are checked. At one trial per case and arm, the trials run case by case, each pair in the order
- * `candidateRunsFirst` chose; otherwise in alternating batches by replicate (REQ-25). What cannot be resolved is refused with a PlanError that names the fix. What can
+ * `candidateRunsFirst` chose; otherwise in alternating batches by replicate (REQ-25), each case's
+ * pair in the order of its coin for that replicate. What cannot be resolved is refused with a
+ * PlanError that names the fix. What can
  * be measured but not decided runs estimate-only, and `modeReasons` says why: no base and
  * candidate, no primary measure, a primary measure with values no validated method decides yet
  * (decision 0008), a placeholder margin (decision 0012), `sampled-cases` (no validated method yet),
@@ -79,7 +81,16 @@ export async function createPlan(input) {
             throw new PlanError(`sampled-cases needs a randomly drawn pool, but ${curated.length} case(s) are ${curated[0]?.provenance.selection}; use fixed-cases`);
         }
     }
-    const names = input.arms.map((a) => a.name);
+    const seed = { algorithm: "mt19937", value: String(input.seed) };
+    const opaque = armNames(seed);
+    const named = input.arms.map((a) => {
+        if (a.name !== undefined)
+            return { ...a, name: a.name };
+        if (a.role === "reference")
+            throw new PlanError("a reference arm has no opaque name; give it a name");
+        return { ...a, name: opaque[a.role] };
+    });
+    const names = named.map((a) => a.name);
     for (const name of names)
         if (!ARM_NAME.test(name))
             throw new PlanError(`arm name '${name}' may hold only letters, digits and . _ @ + -`);
@@ -129,7 +140,7 @@ export async function createPlan(input) {
     for (const id of suite.hardGates ?? [])
         if (!input.gates.has(id))
             throw new PlanError(`hard gate '${id}' is not provided by any plugin`);
-    const arms = await Promise.all(input.arms.map(async (a) => ({
+    const arms = await Promise.all(named.map(async (a) => ({
         name: a.name,
         role: a.role,
         identity: await configurationIdentity(a.configuration),
@@ -163,20 +174,23 @@ export async function createPlan(input) {
         replicate,
         batch,
     });
-    const seed = { algorithm: "mt19937", value: String(input.seed) };
+    const base = arms.find((a) => a.role === "base");
+    const candidate = arms.find((a) => a.role === "candidate");
+    // A case's arms in its coin's order for the replicate. An arm that is neither base nor candidate
+    // runs after the pair.
+    const ordered = (c, replicate) => {
+        const pair = base && candidate
+            ? candidateRunsFirst(seed, c.id, replicate)
+                ? [candidate, base]
+                : [base, candidate]
+            : [];
+        return [...pair, ...arms.filter((a) => !pair.includes(a))];
+    };
     if (oneTrial) {
-        // One pair per case, in the coin's order, so the plan's order is the run order. An arm that is
-        // neither base nor candidate runs after the pair.
-        const base = arms.find((a) => a.role === "base");
-        const candidate = arms.find((a) => a.role === "candidate");
+        // One pair per case, in the coin's order, so the plan's order is the run order.
         for (const [i, entry] of selected.entries()) {
             const c = selectedCases[i];
-            const pair = base && candidate
-                ? (await candidateRunsFirst(seed, c.id))
-                    ? [candidate, base]
-                    : [base, candidate]
-                : [];
-            for (const arm of [...pair, ...arms.filter((a) => !pair.includes(a))])
+            for (const arm of ordered(c, 0))
                 trials.push(planned(c, entry, arm, 0, i));
         }
     }
@@ -187,7 +201,9 @@ export async function createPlan(input) {
                 if (replicate >= counts[i])
                     continue;
                 // Alternating batches: replicate r runs every case under every arm before r + 1 (REQ-25).
-                for (const [k, arm] of arms.entries())
+                // Within a replicate, each case's pair runs in the order of its own coin, so the order
+                // never says which arm is the base.
+                for (const [k, arm] of ordered(c, replicate).entries())
                     trials.push(planned(c, entry, arm, replicate, replicate * arms.length + k));
             }
         }
@@ -195,7 +211,15 @@ export async function createPlan(input) {
     if (new Set(trials.map((t) => t.id)).size !== trials.length)
         throw new PlanError("two planned trials share an ID; case IDs and arm names collide");
     const running = new Set(input.armsToRun ?? arms.map((a) => a.name));
-    const worstCaseCalls = trials.filter((t) => running.has(t.arm)).length * suite.budget.callsPerTrial;
+    const runTrials = trials.filter((t) => running.has(t.arm)).length;
+    // A plan that runs arms always carries its bound, so a missing one never switches the bounds
+    // off. An import plan runs no arm and spends no call, so it needs none.
+    // The suite record requires the bound, but a caller may hand over a suite it never parsed.
+    const callsPerTrial = suite.budget.callsPerTrial;
+    const bounded = typeof callsPerTrial === "number" && Number.isInteger(callsPerTrial) && callsPerTrial >= 1;
+    if (runTrials > 0 && !bounded)
+        throw new PlanError(`suite '${suite.id}' has no budget.callsPerTrial, the bound of calls per trial that a plan running arms needs`);
+    const worstCaseCalls = runTrials * (callsPerTrial ?? 0);
     const measures = await Promise.all([...suite.primary.map((p) => p.measure), ...(suite.secondary ?? [])].map(async (id) => {
         const card = input.measures.get(id).card;
         return { kind: "measure", id, version: card.version, digest: await digest(card) };
@@ -214,7 +238,8 @@ export async function createPlan(input) {
         estimand: suite.estimand,
         alpha: suite.alpha ?? 0.05,
         replicates: suite.replicates,
-        arms,
+        // Ichnaea's budget counts only the calls of the arms it runs.
+        arms: arms.map((a) => (running.has(a.name) ? { ...a, runs: true } : a)),
         measures,
         primary: suite.primary,
         secondary: suite.secondary ?? [],
@@ -224,6 +249,7 @@ export async function createPlan(input) {
         budget: {
             worstCaseCalls,
             maxCalls: suite.budget.maxCalls,
+            ...(callsPerTrial === undefined ? {} : { callsPerTrial }),
             ...(input.monthlyRemaining === undefined ? {} : { monthlyRemaining: input.monthlyRemaining }),
         },
         trials,

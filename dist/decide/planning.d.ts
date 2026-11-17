@@ -1,5 +1,5 @@
 import type { Plan } from "../contracts/index.ts";
-import type { PlanAdditions } from "../core/index.ts";
+import type { PlanAdditions } from "../core/plugin.ts";
 /** Planned trials per case in one arm (a suite can give some cases more, `replicatesFor`). */
 export declare function plannedTrialsPerCase(plan: Plan, arm: string): Map<string, number>;
 /** "2 (43 cases), 3 (17 cases)": the trial counts per case and arm, for power statements. */

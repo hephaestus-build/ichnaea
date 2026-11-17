@@ -1,4 +1,13 @@
 import * as z from "zod";
+/** The runtime that computed a record: its name, version, operating system and architecture. */
+export declare const Runtime: z.ZodObject<{
+    name: z.ZodString;
+    version: z.ZodString;
+    platform: z.ZodString;
+    arch: z.ZodString;
+}, z.core.$strict>;
+/** A runtime. */
+export type Runtime = z.infer<typeof Runtime>;
 /** The state of one planned trial in the ledger (REQ-19). */
 export declare const LedgerEntry: z.ZodObject<{
     trial: z.core.$ZodBranded<z.ZodString, "TrialId", "out">;
@@ -14,6 +23,7 @@ export declare const LedgerEntry: z.ZodObject<{
         infrastructure_failure: "infrastructure_failure";
         invalid_configuration: "invalid_configuration";
         not_run: "not_run";
+        protocol_failure: "protocol_failure";
         system_failure: "system_failure";
     }>>;
 }, z.core.$strict>;
@@ -32,6 +42,13 @@ export declare const Run: z.ZodObject<{
         platform: z.ZodString;
         ichnaea: z.ZodString;
         ci: z.ZodOptional<z.ZodString>;
+        arch: z.ZodOptional<z.ZodString>;
+        runtime: z.ZodOptional<z.ZodObject<{
+            name: z.ZodString;
+            version: z.ZodString;
+            platform: z.ZodString;
+            arch: z.ZodString;
+        }, z.core.$strict>>;
     }, z.core.$strict>;
     arms: z.ZodArray<z.ZodObject<{
         name: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
@@ -123,6 +140,7 @@ export declare const Run: z.ZodObject<{
             label: z.ZodOptional<z.ZodString>;
             informational: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodJSONSchema>>;
         }, z.core.$strict>;
+        runs: z.ZodOptional<z.ZodLiteral<true>>;
     }, z.core.$strict>>;
     lineage: z.ZodArray<z.ZodObject<{
         kind: z.ZodEnum<{
@@ -152,6 +170,7 @@ export declare const Run: z.ZodObject<{
             infrastructure_failure: "infrastructure_failure";
             invalid_configuration: "invalid_configuration";
             not_run: "not_run";
+            protocol_failure: "protocol_failure";
             system_failure: "system_failure";
         }>>;
     }, z.core.$strict>>;

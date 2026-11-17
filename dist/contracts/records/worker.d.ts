@@ -96,6 +96,16 @@ export declare const TrialFailure: z.ZodObject<{
 /** A trial failure. */
 export type TrialFailure = z.infer<typeof TrialFailure>;
 /**
+ * The trial outcome of each failure class, one to one. `protocol_failure` is the outcome of a
+ * `protocol` failure and of nothing else.
+ */
+export declare const FAILURE_OUTCOME: {
+    readonly infrastructure: "infrastructure_failure";
+    readonly system: "system_failure";
+    readonly not_run: "not_run";
+    readonly protocol: "protocol_failure";
+};
+/**
  * Which code the worker ran: a git commit, an image digest, or both. A system that is not one git
  * checkout, such as an image-released service, names its image instead of inventing a commit.
  */

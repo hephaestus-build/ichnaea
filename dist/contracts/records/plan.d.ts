@@ -166,6 +166,7 @@ export declare const Arm: z.ZodObject<{
         label: z.ZodOptional<z.ZodString>;
         informational: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodJSONSchema>>;
     }, z.core.$strict>;
+    runs: z.ZodOptional<z.ZodLiteral<true>>;
 }, z.core.$strict>;
 /** One planned trial. `family` groups related cases (from the case set) for sampled-cases. */
 export declare const PlannedTrial: z.ZodObject<{
@@ -328,6 +329,7 @@ export declare const Plan: z.ZodObject<{
             label: z.ZodOptional<z.ZodString>;
             informational: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodJSONSchema>>;
         }, z.core.$strict>;
+        runs: z.ZodOptional<z.ZodLiteral<true>>;
     }, z.core.$strict>>;
     measures: z.ZodArray<z.ZodObject<{
         kind: z.ZodEnum<{
@@ -405,6 +407,7 @@ export declare const Plan: z.ZodObject<{
     budget: z.ZodObject<{
         worstCaseCalls: z.ZodInt;
         maxCalls: z.ZodInt;
+        callsPerTrial: z.ZodOptional<z.ZodInt>;
         monthlyRemaining: z.ZodOptional<z.ZodInt>;
     }, z.core.$strict>;
     trials: z.ZodArray<z.ZodObject<{

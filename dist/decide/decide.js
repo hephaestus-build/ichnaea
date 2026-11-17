@@ -1,9 +1,16 @@
 import { candidateRunsFirst, canonicalize, Decision, digest, FactorPart, proportionProblem, REFUSED_MARGIN, verifyArms, } from "../contracts/index.js";
-import { recordProblems, TRIGGER_VARIES } from "../core/index.js";
+import { TRIGGER_VARIES } from "../core/planner.js";
+import { recordProblems } from "../core/records.js";
 import { compareCounts, createRng, EstimandError, fixedCasesMde, holm, MARGIN_FLOOR_NOT_SET, sampledCasesFloor, wilson, } from "../stats/index.js";
 import { describeCounts, plannedTrialsPerCase, planningPower } from "./planning.js";
 /** Outcomes that leave a planned trial without a value: they are missing, never a failure. */
-const MISSING = new Set(["infrastructure_failure", "not_run", "invalid_configuration"]);
+const MISSING = new Set([
+    "infrastructure_failure",
+    "not_run",
+    "invalid_configuration",
+    // The run is INVALID; the trial gives no value, and it is never a failure or a pass.
+    "protocol_failure",
+]);
 /**
  * Outcomes that score as a failed trial on a binary measure whatever value a record carries
  * (REQ-20): the system failed, so the trial cannot pass.
@@ -122,7 +129,7 @@ function concurrencyOf(intervals) {
  * coverage floor decides how many may be lost. The plan must state its schedule and cite at least
  * two clean A/A decisions (`aaLimitations`), unless it is itself an A/A plan.
  */
-async function oneTrialRecords(input, pair) {
+function oneTrialRecords(input, pair) {
     const { plan } = input;
     const limitations = [];
     const unpaired = new Set();
@@ -155,7 +162,7 @@ async function oneTrialRecords(input, pair) {
             // A pair without both trials on record is missing a trial already.
             if (rb === undefined || rc === undefined)
                 continue;
-            const [first, second] = (await candidateRunsFirst(plan.seed, id))
+            const [first, second] = candidateRunsFirst(plan.seed, id, 0)
                 ? [candidate, base]
                 : [base, candidate];
             if (startOf(second) < startOf(first) || Math.abs(rb - rc) > 2 * c - 1)
@@ -167,7 +174,7 @@ async function oneTrialRecords(input, pair) {
     const identity = (name) => plan.arms.find((a) => a.name === name)?.identity;
     // An A/A plan is the evidence itself, so it waives its own A/A precondition and nothing else.
     if (identity(pair.base) !== identity(pair.candidate))
-        limitations.push(...(await aaLimitations(plan, input.aa ?? [])));
+        limitations.push(...aaLimitations(plan, input.aa ?? []));
     return {
         unpaired,
         checks: { checksPassed: limitations.length === 0, limitations },
@@ -188,7 +195,7 @@ function baseModels(plan) {
  * REGRESSION; and it ran this plan's base model and schedule. Each failure is one limitation that
  * names the check and the run.
  */
-async function aaLimitations(plan, given) {
+function aaLimitations(plan, given) {
     const cited = new Map((plan.aa?.decisions ?? []).map((c) => [c.run, c.digest]));
     const out = [];
     if (cited.size < 2)
@@ -202,11 +209,11 @@ async function aaLimitations(plan, given) {
         }
         // Records that do not match their digests prove nothing, so no other check reads them.
         const before = out.length;
-        if ((await digest(e.decision)) !== cite)
+        if (digest(e.decision) !== cite)
             fail("its decision record does not match the cited digest");
-        if (e.decision.plan !== (await digest(e.plan)))
+        if (e.decision.plan !== digest(e.plan))
             fail("its decision does not belong to the given plan");
-        if (e.decision.runDigest !== (await digest(e.run)))
+        if (e.decision.runDigest !== digest(e.run))
             fail("its decision does not belong to the given run");
         if (out.length > before)
             continue;
@@ -448,14 +455,91 @@ function triggerCheck(plan, pair, trials) {
     }
     return problems;
 }
+/** A trial's calls over every attempt, in calls the provider accepted. */
+function callsOf(t) {
+    return (t.attempts ?? []).reduce((n, a) => n + a.calls, t.usage?.calls ?? 0);
+}
+/**
+ * The trials whose calls Ichnaea's bounds count, and the imported ones, by the plan's arms: an arm
+ * with `runs` is Ichnaea's, any other arm's trials are imported. A plan without `callsPerTrial`
+ * was written before the plan recorded its bounds, so none of its calls are sorted: it keeps the
+ * decision it was given.
+ */
+function callsByRunner(input) {
+    const { plan } = input;
+    const bound = plan.budget.callsPerTrial;
+    if (bound === undefined)
+        return undefined;
+    const runs = new Set(plan.arms.filter((a) => a.runs === true).map((a) => a.name));
+    const armOf = new Map(plan.trials.map((t) => [t.id, t.arm]));
+    const ran = [];
+    const imported = [];
+    for (const t of input.trials)
+        (runs.has(armOf.get(t.id) ?? t.arm ?? "") ? ran : imported).push(t);
+    return { bound, ran, imported };
+}
+/**
+ * The limitation that reports an import's calls: another runner made them, so the bounds do not
+ * apply, but the card still says how many there were. It counts the trials of the arms Ichnaea
+ * does not run. Only a plan that carries `callsPerTrial` gets it, so a stored decision recomputes
+ * unchanged; and only when those trials recorded a call.
+ */
+function importedCallsLimitation(input) {
+    const sorted = callsByRunner(input);
+    const calls = (sorted?.imported ?? []).reduce((n, t) => n + callsOf(t), 0);
+    return calls > 0
+        ? [
+            `The imported trials recorded ${calls} calls. Ichnaea's budget applies only to the trials it runs.`,
+        ]
+        : [];
+}
+/**
+ * The checks of each trial's attempts (invariant 12). They are numbered 1 to k with no gap. For
+ * the trials of the arms Ichnaea runs, the calls of every attempt count against the plan's bound
+ * per trial and against the run's budget, so a retry cannot hide an overrun. Every count is of the
+ * calls the provider accepted: a call it rejected, for example with HTTP 429, is not a call, so
+ * throttling alone never makes a run INVALID. A trial without a count of calls counts none.
+ *
+ * The bounds guard what Ichnaea spends. An imported trial's calls were made by another runner: they
+ * stay on the trial records, the limitation reports them, and they never make the run INVALID. A
+ * plan without `callsPerTrial` was written before the plan recorded its bounds, and its calls are
+ * not checked, so it keeps the decision it was given.
+ */
+function attemptChecks(input) {
+    const invalid = [];
+    for (const t of input.trials) {
+        const attempts = t.attempts ?? [];
+        if (attempts.some((a, i) => a.attempt !== i + 1))
+            invalid.push(`trial '${t.id}' lists attempts ${attempts.map((a) => a.attempt).join(", ")}; they must be numbered 1 to k with no gap`);
+    }
+    const sorted = callsByRunner(input);
+    if (sorted === undefined)
+        return invalid;
+    const { bound, ran } = sorted;
+    const over = [];
+    let total = 0;
+    for (const t of ran) {
+        const calls = callsOf(t);
+        total += calls;
+        if (calls > bound)
+            over.push({ trial: t.id, calls });
+    }
+    const example = over[0];
+    if (example)
+        invalid.push(`${over.length} trial(s) made more calls over their attempts than the bound of ${bound} per trial, for example '${example.trial}' (${example.calls} calls)`);
+    const { maxCalls } = input.plan.budget;
+    if (total > maxCalls)
+        invalid.push(`the run made ${total} calls, over the budget of ${maxCalls}, counting every attempt`);
+    return invalid;
+}
 /** Checks of the records themselves. Each problem makes the run INVALID. */
-async function recordChecks(input) {
+function recordChecks(input) {
     const { plan, run } = input;
     const invalid = [];
-    const planDigest = await digest(plan);
+    const planDigest = digest(plan);
     if (run.plan !== planDigest)
         invalid.push(`the run belongs to plan ${run.plan}, not to this plan (${planDigest})`);
-    for (const error of await verifyArms(plan.arms))
+    for (const error of verifyArms(plan.arms))
         invalid.push(`stored configuration at ${error.path} does not match (${error.computed})`);
     const names = plan.arms.map((a) => a.name);
     if (new Set(names).size !== names.length)
@@ -464,14 +548,23 @@ async function recordChecks(input) {
         invalid.push("the plan has two base arms");
     if (plan.arms.filter((a) => a.role === "candidate").length > 1)
         invalid.push("the plan has more than one candidate arm, which is not supported yet (REQ-57)");
-    const plannedIds = new Set(plan.trials.map((t) => t.id));
-    if (plannedIds.size !== plan.trials.length)
+    const plannedById = new Map(plan.trials.map((t) => [t.id, t]));
+    if (plannedById.size !== plan.trials.length)
         invalid.push("the plan has duplicate trial IDs");
     invalid.push(...recordProblems(input));
-    const unplannedTrial = input.trials.find((t) => !plannedIds.has(t.id));
+    const protocol = input.trials.filter((t) => t.outcome === "protocol_failure");
+    for (const kind of new Set(protocol.map((t) => t.error?.kind ?? "unknown")))
+        invalid.push(`a worker reported a protocol failure (${kind}): the harness, not the system, failed`);
+    const unplannedTrial = input.trials.find((t) => !plannedById.has(t.id));
     if (unplannedTrial)
         invalid.push(`trial '${unplannedTrial.id}' is not in the plan`);
-    const unplannedValue = input.values.find((v) => !plannedIds.has(v.trial));
+    // A value counts for the planned trial's case and arm, so a trial must name exactly those.
+    for (const t of input.trials) {
+        const p = plannedById.get(t.id);
+        if (p && (t.case !== p.case || t.arm !== p.arm || t.replicate !== p.replicate))
+            invalid.push(`trial '${t.id}' names case '${t.case}', arm '${t.arm}', replicate ${t.replicate}, but the plan has case '${p.case}', arm '${p.arm}', replicate ${p.replicate}`);
+    }
+    const unplannedValue = input.values.find((v) => !plannedById.has(v.trial));
     if (unplannedValue)
         invalid.push(`a value names trial '${unplannedValue.trial}', which is not in the plan`);
     for (const v of input.values) {
@@ -498,6 +591,7 @@ async function recordChecks(input) {
         invalid.push(`the plan needs ${plan.budget.worstCaseCalls} calls, over the ${plan.budget.monthlyRemaining} left this month`);
     if (input.trials.some((t) => t.outcome === "budget_exceeded"))
         invalid.push("the run exhausted its budget");
+    invalid.push(...attemptChecks(input));
     for (const p of plan.primary) {
         if (!(p.margin < 1 && (p.safetyMargin ?? 0) <= p.margin))
             invalid.push(`measure '${p.measure}': the margin must be below 1 and at least the safety margin`);
@@ -914,9 +1008,9 @@ export function decide(input) {
  * `decide` with the comparison given, so a test can decide from results of its own. Not exported
  * by the package: every decision Ichnaea makes uses `compareCounts`.
  */
-export async function decideWith(input, compare) {
+export function decideWith(input, compare) {
     const { plan, run } = input;
-    const invalid = await recordChecks(input);
+    const invalid = recordChecks(input);
     const trials = new Map(input.trials.map((t) => [t.id, t]));
     const values = new Map(input.values.map((v) => [`${v.measure}\u0000${v.trial}`, v]));
     const baseArm = plan.arms.find((a) => a.role === "base")?.name;
@@ -932,7 +1026,7 @@ export async function decideWith(input, compare) {
         invalid.push(...triggerCheck(plan, pair, input.trials));
     // At one trial per case and arm, the checks of the records decide which pairs hold and whether
     // a regression result can be validated (VALIDATION.md, "One trial per case").
-    const one = pair && oneTrialPlan(plan) ? await oneTrialRecords(input, pair) : undefined;
+    const one = pair && oneTrialPlan(plan) ? oneTrialRecords(input, pair) : undefined;
     const unpaired = one?.unpaired ?? NO_CASES;
     const pairNote = one?.concurrency !== undefined && unpaired.size > 0
         ? [
@@ -1110,7 +1204,7 @@ export async function decideWith(input, compare) {
     else if (failedGate) {
         // A hard gate is deterministic and does not depend on power, so it decides in both modes.
         verdict = "REGRESSION";
-        reason = `Hard gate ${failedGate.gate} failed.`;
+        reason = `Hard gate '${failedGate.gate}' failed.`;
     }
     else if (!decision) {
         verdict = null;
@@ -1153,6 +1247,7 @@ export async function decideWith(input, compare) {
         "An observed model identity cannot detect a silent update behind the same identity.",
         "Hosted models rarely honour seeds; replicates measure run-to-run noise instead.",
         ...(one ? [CLOCK_LIMITATION] : []),
+        ...importedCallsLimitation(input),
         ...invalid.slice(1).map((m) => `Also invalid: ${m}`),
     ];
     return Decision.parse({
@@ -1161,9 +1256,9 @@ export async function decideWith(input, compare) {
         verdict,
         reason,
         scope,
-        plan: await digest(plan),
+        plan: digest(plan),
         run: run.id,
-        runDigest: await digest(run),
+        runDigest: digest(run),
         arms: plan.arms.map((a) => ({ name: a.name, role: a.role, identity: a.identity })),
         differingFactors: pair ? differences(plan, pair.base, pair.candidate).map((d) => d.key) : [],
         alpha: plan.alpha,

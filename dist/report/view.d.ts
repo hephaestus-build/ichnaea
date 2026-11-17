@@ -138,9 +138,18 @@ export declare const NOT_VALIDATED = "(not validated)";
 export declare const NO_BOUND = "no bound";
 /** Why a difference has no bound, in words, from what the record says about it. */
 export declare function noBoundReason(difference: Decision["measures"][number]["comparisons"][number]["difference"]): string;
+/** How `decisionView` builds the view. */
+export interface DecisionViewOptions {
+    /**
+     * True for the view that the report lint reads: every identifier, where the view inserts it or
+     * the decision quotes it, becomes `id`, so a case or arm named "significant" cannot block a
+     * report. Numbers and Ichnaea's own prose stay as they are, so the lint still judges them.
+     */
+    readonly neutral?: boolean;
+}
 /**
  * Builds the view model from a decision record alone. It computes nothing new: every number comes
  * from the record (REQ-82, REQ-128).
  */
-export declare function decisionView(decision: Decision, suite: string, lineage?: Run["lineage"]): DecisionView;
+export declare function decisionView(decision: Decision, suite: string, lineage?: Run["lineage"], options?: DecisionViewOptions): DecisionView;
 //# sourceMappingURL=view.d.ts.map

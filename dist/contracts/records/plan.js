@@ -75,6 +75,12 @@ export const Arm = z.strictObject({
     role: none(z.enum(["base", "candidate", "reference"])),
     identity: none(ConfigurationIdentity),
     configuration: Configuration,
+    /**
+     * True when Ichnaea runs this arm's trials; absent when another runner ran them and they are
+     * imported. The bound per trial and the run's budget count only the calls of the arms Ichnaea
+     * runs. A plan written before this member has none, and its calls are not checked.
+     */
+    runs: none(z.literal(true)).optional(),
 });
 /** One planned trial. `family` groups related cases (from the case set) for sampled-cases. */
 export const PlannedTrial = z.strictObject({
@@ -85,9 +91,12 @@ export const PlannedTrial = z.strictObject({
     replicate: none(z.int().min(0)),
     /**
      * The trial's batch (REQ-25). At two or more trials per case and arm, replicate r runs every case
-     * under every arm before r + 1, and the batch numbers each replicate's arm. At one trial per case
-     * and arm, it numbers the pairs: both trials of a case carry the case's index, and the plan lists
-     * them in the order `candidateRunsFirst` chose, which is the run order.
+     * under every arm before r + 1. A case's arms run in an order for each replicate: the base and
+     * the candidate in the order `candidateRunsFirst` chose for that case and replicate, then any
+     * other arm (a reference arm) in the plan's order. With n arms, the trial at position k of that
+     * order (k from 0) has batch r × n + k: 2r and 2r + 1 for two arms, 3r to 3r + 2 for three. At
+     * one trial per case and arm, it numbers the pairs: every trial of a case carries the case's
+     * index, and the plan lists them in the coin's order, which is the run order.
      */
     batch: none(z.int().min(0)),
 });
@@ -150,6 +159,14 @@ export const Plan = z.strictObject({
     budget: z.strictObject({
         worstCaseCalls: none(z.int().min(0)),
         maxCalls: none(z.int().min(0)),
+        /**
+         * The suite's bound of calls per trial, in calls the provider accepted (a call it rejected,
+         * for example with HTTP 429, is not a call). For the trials of an arm with `runs`, the calls of
+         * every attempt at a trial count against it and against `maxCalls`. An imported arm's calls
+         * are another runner's, so neither bound applies to them. A plan without it states no bound
+         * per trial, and its calls are not checked.
+         */
+        callsPerTrial: none(z.int().min(1)).optional(),
         monthlyRemaining: none(z.int().min(0)).optional(),
     }),
     trials: z.array(PlannedTrial),

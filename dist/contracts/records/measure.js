@@ -76,6 +76,9 @@ export const MeasureValue = z.strictObject({
         .enum(["ichnaea", "application", "judge", "human"])
         .describe("Who computed the value: Ichnaea, the application, a judge or a person.")),
     detail: content(z.string().describe("A note on the value.")).optional(),
-    dataClass: none(RecordDataClass.describe("The data class of the note.")),
+    why: content(z
+        .string()
+        .describe("Why the scorer gave the value, in one short sentence. It explains the value to a reader; no statistic reads it.")).optional(),
+    dataClass: none(RecordDataClass.describe("The data class of the note and the why.")),
 });
 //# sourceMappingURL=measure.js.map

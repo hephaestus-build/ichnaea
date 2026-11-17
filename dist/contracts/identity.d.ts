@@ -39,20 +39,20 @@ export declare const DIGEST_RULES: {
  *
  * The writer computes the identity and stores it in plans and trials.
  */
-export declare function configurationIdentity(input: unknown): Promise<ConfigurationIdentity>;
+export declare function configurationIdentity(input: unknown): ConfigurationIdentity;
 /**
  * Returns the digest of a case (REQ-10): the case restricted to `DIGEST_RULES.case`, with its
  * provenance restricted to `DIGEST_RULES.provenance`. Everything that decides what a case asks, how
  * it is graded and which analysis it supports enters it; the author pointer and the review status
  * do not.
  */
-export declare function caseDigest(input: unknown): Promise<Digest>;
+export declare function caseDigest(input: unknown): Digest;
 /**
  * Returns the digest of a case set (REQ-10): SHA-256 of the RFC 8785 form of its entries, each
  * restricted to `id`, `digest`, `pool` and `family`, sorted by `id`. Changing any case changes its
  * digest and so the set's digest. Duplicate IDs and an empty set are errors.
  */
-export declare function caseSetDigest(entries: readonly unknown[]): Promise<Digest>;
+export declare function caseSetDigest(entries: readonly unknown[]): Digest;
 /**
  * A stored identity or digest that does not match the record it names (`computed` is the value the
  * record has), or a record whose value cannot be computed (`computed` is null and `problem` says
@@ -76,7 +76,7 @@ export interface LinkError {
  * present, must be well-formed Unicode and have the prompt's `digest`, the SHA-256 of the
  * template's UTF-8 bytes. A template with a lone surrogate has no UTF-8 form, so it never matches.
  */
-export declare function verifyConfiguration(input: unknown, at?: string): Promise<LinkError[]>;
+export declare function verifyConfiguration(input: unknown, at?: string): LinkError[];
 /**
  * Checks that every arm's stored identity is the identity of its configuration, and that each
  * configuration's recorded templates match their digests. Plans and runs carry both; a reader that
@@ -87,5 +87,5 @@ export declare function verifyConfiguration(input: unknown, at?: string): Promis
 export declare function verifyArms(arms: ReadonlyArray<{
     identity: string;
     configuration: unknown;
-}>, at?: string): Promise<LinkError[]>;
+}>, at?: string): LinkError[];
 //# sourceMappingURL=identity.d.ts.map

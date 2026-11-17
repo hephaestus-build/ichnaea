@@ -2,7 +2,8 @@ import { readFile } from "node:fs/promises";
 import { Case, CaseSet, canonicalize, Configuration, digest, proportionProblem, Run, Suite, } from "../contracts/index.js";
 import { scoreTrials } from "./measures.js";
 import { createPlan } from "./planner.js";
-import { FileStore, recordProblems, StoreError } from "./store.js";
+import { recordProblems } from "./records.js";
+import { FileStore, StoreError } from "./store.js";
 /**
  * The error kind of a trial whose output was not captured. Such a trial is an infrastructure
  * failure, never a completed trial: it counts as missing, never as a failure of the system.
@@ -26,10 +27,11 @@ async function json(path) {
 /**
  * Marks a trial whose configuration differs from its arm, or whose observations differ from what
  * the configuration expects (REQ-15), as an invalid configuration. Its outputs stay recorded; it
- * gives no value, so it counts as missing.
+ * gives no value, so it counts as missing. A protocol failure stays one: it is the harness's fault
+ * and makes the run INVALID, which an invalid configuration, counted only as missing, would not.
  */
 function checkConfiguration(trial, identity) {
-    if (trial.outcome === "invalid_configuration")
+    if (trial.outcome === "invalid_configuration" || trial.outcome === "protocol_failure")
         return trial;
     const mismatch = identity !== trial.configuration
         ? `the trial ran configuration ${trial.configuration}, not its arm's ${identity ?? "(no arm)"}`
@@ -230,6 +232,13 @@ export async function importRun(input) {
             node: process.versions.node,
             platform: `${process.platform}-${process.arch}`,
             ichnaea: input.ichnaea,
+            arch: process.arch,
+            runtime: {
+                name: "node",
+                version: process.versions.node,
+                platform: process.platform,
+                arch: process.arch,
+            },
         },
         arms: plan.arms,
         lineage,

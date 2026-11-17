@@ -74,9 +74,9 @@ export const DIGEST_RULES = {
         },
     },
 };
-async function digest(value) {
+function digest(value) {
     try {
-        return await rawDigest(value);
+        return rawDigest(value);
     }
     catch (error) {
         // A record can validate and still be unhashable (a lone surrogate in a string).
@@ -121,8 +121,8 @@ function sortedUnique(items, key, what) {
  *
  * The writer computes the identity and stores it in plans and trials.
  */
-export async function configurationIdentity(input) {
-    const [mismatch] = await verifyConfiguration(input);
+export function configurationIdentity(input) {
+    const [mismatch] = verifyConfiguration(input);
     if (mismatch) {
         const template = mismatch.path.replace(/\/digest$/, "/template");
         throw new IdentityError(mismatch.problem === undefined
@@ -133,7 +133,7 @@ export async function configurationIdentity(input) {
     projection["models"] = sortedUnique(projection["models"], "role", "model role");
     projection["parameters"] = sortedUnique(projection["parameters"], "name", "parameter");
     projection["prompts"] = sortedUnique(projection["prompts"].map((p) => pick(p, DIGEST_RULES.prompt.members)), "name", "prompt");
-    return (await digest(projection));
+    return digest(projection);
 }
 /**
  * Returns the digest of a case (REQ-10): the case restricted to `DIGEST_RULES.case`, with its
@@ -141,7 +141,7 @@ export async function configurationIdentity(input) {
  * it is graded and which analysis it supports enters it; the author pointer and the review status
  * do not.
  */
-export async function caseDigest(input) {
+export function caseDigest(input) {
     Case.parse(input);
     const projection = pick(input, DIGEST_RULES.case.members);
     projection["provenance"] = pick(projection["provenance"], DIGEST_RULES.provenance.members);
@@ -152,7 +152,7 @@ export async function caseDigest(input) {
  * restricted to `id`, `digest`, `pool` and `family`, sorted by `id`. Changing any case changes its
  * digest and so the set's digest. Duplicate IDs and an empty set are errors.
  */
-export async function caseSetDigest(entries) {
+export function caseSetDigest(entries) {
     if (entries.length === 0)
         throw new IdentityError("a case set has at least one case");
     for (const entry of entries)
@@ -165,7 +165,7 @@ export async function caseSetDigest(entries) {
  * present, must be well-formed Unicode and have the prompt's `digest`, the SHA-256 of the
  * template's UTF-8 bytes. A template with a lone surrogate has no UTF-8 form, so it never matches.
  */
-export async function verifyConfiguration(input, at = "") {
+export function verifyConfiguration(input, at = "") {
     const config = Configuration.parse(input);
     const errors = [];
     for (const [i, prompt] of config.prompts.entries()) {
@@ -181,7 +181,7 @@ export async function verifyConfiguration(input, at = "") {
             });
             continue;
         }
-        const computed = await sha256(prompt.template);
+        const computed = sha256(prompt.template);
         if (computed !== prompt.digest)
             errors.push({ path, stored: prompt.digest, computed });
     }
@@ -194,16 +194,16 @@ export async function verifyConfiguration(input, at = "") {
  * an arm that is not a valid configuration, or that has no identity (an empty `models`, a duplicate
  * role), is reported with a null `computed` and its `problem`.
  */
-export async function verifyArms(arms, at = "/arms") {
+export function verifyArms(arms, at = "/arms") {
     const errors = [];
     for (const [i, arm] of arms.entries()) {
         const path = `${at}/${i}`;
         try {
-            const templates = await verifyConfiguration(arm.configuration, `${path}/configuration`);
+            const templates = verifyConfiguration(arm.configuration, `${path}/configuration`);
             errors.push(...templates);
             if (templates.length > 0)
                 continue;
-            const computed = await configurationIdentity(arm.configuration);
+            const computed = configurationIdentity(arm.configuration);
             if (computed !== arm.identity)
                 errors.push({ path: `${path}/identity`, stored: arm.identity, computed });
         }

@@ -20,6 +20,7 @@ export * from "./records/suite.ts";
 export * from "./records/trial.ts";
 export * from "./records/worker.ts";
 export * from "./registry.ts";
+export * from "./sha256.ts";
 export * from "./target-view.ts";
 export * from "./values.ts";
 //# sourceMappingURL=index.d.ts.map

@@ -299,6 +299,7 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 9007199254740991,
+          "description": "The most model calls the trial may make, counted as calls the provider accepted. A call the provider rejected, for example with HTTP 429, is not a call.",
           "x-ichnaea-data": {
             "class": "none",
             "identifier": "none",

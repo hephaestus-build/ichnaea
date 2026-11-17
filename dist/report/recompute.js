@@ -4,8 +4,8 @@ import { decide } from "../decide/index.js";
  * Recomputes a decision from the stored primary records and compares it with the stored decision
  * (REQ-83). Any difference (a changed record, a different statistics version) fails.
  */
-export async function recompute(records) {
-    const again = await decide({
+export function recompute(records) {
+    const again = decide({
         ...records,
         decidedAt: records.decision.decidedAt,
         ichnaea: records.decision.ichnaea,

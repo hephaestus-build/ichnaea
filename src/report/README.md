@@ -1,7 +1,9 @@
 # Reports: `@hephaestus-build/ichnaea`
 
 The `report` plugin renders a stored decision as a CI summary in Markdown (`summary.md`) and a
-static HTML report (`report.html`).
+static HTML report (`report.html`). `report(decision, { format })` renders one as Markdown, HTML
+or the JSON view model. It is synchronous, writes no file, and refuses a report that the lint
+refuses (`ReportError`).
 
 - Both come from one view model of the decision record. They compute nothing new, and they show
   the same numbers.

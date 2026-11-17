@@ -9,13 +9,8 @@ export declare function renderMarkdown(view: DecisionView): string;
  */
 export declare function renderHtml(view: DecisionView): string;
 /**
- * The view with every identifier that comes from records (measure, case, arm, gate and factor
- * names, lineage values) replaced, so the wording lint judges only what Ichnaea writes.
- */
-export declare function neutralView(view: DecisionView): DecisionView;
-/**
  * Problems a rendered output must not have (REQ-129). Returns one message per problem. Run it on
- * the output of `neutralView`, so a case named "significant" cannot block a report. Every rate and
+ * a view built with `neutral: true`, so a case named "significant" cannot block a report. Every rate and
  * every difference in a table must stand next to its interval, and an HTML bound marked not
  * validated must say so (decision 0015).
  */

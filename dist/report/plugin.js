@@ -2,7 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { FileStore, CORE_VERSION } from "../core/index.js";
 import { recompute } from "./recompute.js";
-import { lintReport, neutralView, renderHtml, renderMarkdown } from "./render.js";
+import { lintReport, renderHtml, renderMarkdown } from "./render.js";
 import { decisionView } from "./view.js";
 const VERSION = CORE_VERSION;
 const command = {
@@ -38,7 +38,9 @@ const command = {
         const view = decisionView(stored.decision, stored.plan.suite, stored.run.lineage);
         const markdown = renderMarkdown(view);
         const html = renderHtml(view);
-        const neutral = neutralView(view);
+        const neutral = decisionView(stored.decision, stored.plan.suite, stored.run.lineage, {
+            neutral: true,
+        });
         const problems = [
             ...lintReport(renderMarkdown(neutral)),
             ...lintReport(renderHtml(neutral)),

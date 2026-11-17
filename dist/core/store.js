@@ -3,6 +3,7 @@ import { appendFile, mkdir, readdir, readFile, rename, rm, writeFile } from "nod
 import { join } from "node:path";
 import { canonicalize, Decision, GateResult, MeasureValue, Plan, Run, Trial, } from "../contracts/index.js";
 import * as z from "zod";
+import { recordProblems } from "./records.js";
 /** Thrown when a write would change a record that already exists. */
 export class AppendOnlyError extends Error {
     /** The error's name, for `instanceof`-free checks. */
@@ -20,36 +21,6 @@ const IndexLine = z.strictObject({
     verdict: z.enum(["PASS", "REGRESSION", "INCONCLUSIVE", "INVALID"]).nullable(),
     decidedAt: z.string().min(1),
 });
-/** Duplicate keys in a list of records, each named once. */
-function duplicates(records, key) {
-    const seen = new Set();
-    const repeated = new Set();
-    for (const r of records) {
-        const k = key(r);
-        if (seen.has(k))
-            repeated.add(k);
-        seen.add(k);
-    }
-    return [...repeated];
-}
-/**
- * The rules every set of run records keeps: one record per trial, one value per measure and trial,
- * one result per gate. A second record would silently replace the first in any lookup, so it could
- * hide a regression. Returns one message per broken rule.
- */
-export function recordProblems(records) {
-    const problems = [];
-    const trials = duplicates(records.trials, (t) => t.id);
-    if (trials.length > 0)
-        problems.push(`duplicate trial ID(s): ${trials.join(", ")}`);
-    const values = duplicates(records.values, (v) => `${v.measure} on ${v.trial}`);
-    if (values.length > 0)
-        problems.push(`duplicate measure value(s): ${values.join(", ")}`);
-    const gates = duplicates(records.gates, (g) => g.gate);
-    if (gates.length > 0)
-        problems.push(`duplicate gate result(s): ${gates.join(", ")}`);
-    return problems;
-}
 function parseLines(text, schema, file) {
     return text.split("\n").flatMap((line, i) => {
         if (line.trim() === "")
