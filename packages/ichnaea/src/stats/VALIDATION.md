@@ -644,6 +644,11 @@ yes/no cells, at most 0.002 % of resamples had one.
   (raw agreement 0.87), 360 answers give 92 %. Raters' agreement, measured in the rater check
   before the draw is fixed, therefore decides the size more than any other assumption. At ρ = 0.6 the
   360-answer draw falls to 53 %.
+- **A judge-based Pass is rarely reachable.** It needs the Pass margin β_L · 0.10 − B to be
+  positive, where β_L is the lower bound of the judge's slope against people on the base and
+  known-worse answers, and B is the bias bound on that pair. For a judge as good as a rater, the
+  margin is positive in at most 7 % of 460-answer draws, in 12 % of 360-answer draws whose raters
+  agree at 0.87, and in at most 0.1 % of draws below 360 answers (column `passable`).
 - **The bias gate costs little in a large draw.** It holds in 97–99 % of 360- and 460-answer draws.
   In 140-answer draws it holds in 58–78 %, so a small draw often fails the gate even for an unbiased judge.
 
