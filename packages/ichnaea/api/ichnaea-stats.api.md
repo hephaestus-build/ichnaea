@@ -5,9 +5,6 @@
 ```ts
 
 // @public
-export function adjustedTail(level: number, sided: Sided): number;
-
-// @public
 export type AgreementTable = readonly (readonly number[])[];
 
 // @public

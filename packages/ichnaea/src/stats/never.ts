@@ -1,4 +1,5 @@
-import { adjustedTail, pooledClopperPearson } from "./clopper-pearson.ts";
+import { adjustedTail } from "./adjusted-tail.ts";
+import { pooledClopperPearson } from "./clopper-pearson.ts";
 import { assertLevel } from "./types.ts";
 
 /**
