@@ -677,6 +677,10 @@ function importedCallsLimitation(input: DecideInput): string[] {
  * stay on the trial records, the limitation reports them, and they never make the run INVALID. A
  * plan without `callsPerTrial` was written before the plan recorded its bounds, and its calls are
  * not checked, so it keeps the decision it was given.
+ *
+ * A plan with `callsPerTrial` must book exactly its worst case: the trials of the arms with `runs`
+ * times the bound. Without that, an arm that lost its `runs` would check no call and say nothing,
+ * so the bounds fail closed.
  */
 function attemptChecks(input: DecideInput): string[] {
   const invalid: string[] = [];
@@ -690,6 +694,13 @@ function attemptChecks(input: DecideInput): string[] {
   const sorted = callsByRunner(input);
   if (sorted === undefined) return invalid;
   const { bound, ran } = sorted;
+  const { worstCaseCalls } = input.plan.budget;
+  const runs = new Set(input.plan.arms.filter((a) => a.runs === true).map((a) => a.name));
+  const runTrials = input.plan.trials.filter((t) => runs.has(t.arm)).length;
+  if (worstCaseCalls !== runTrials * bound)
+    invalid.push(
+      `the plan books ${worstCaseCalls} calls in the worst case, but its ${runTrials} trial(s) of the arms Ichnaea runs need ${runTrials * bound} at the bound of ${bound} per trial`,
+    );
   const over: { readonly trial: string; readonly calls: number }[] = [];
   let total = 0;
   for (const t of ran) {

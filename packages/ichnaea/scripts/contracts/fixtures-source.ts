@@ -974,11 +974,16 @@ const REFUSED_PLANNING = {
 /** Further valid records: shapes the main valid fixture does not show. */
 export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
   plan: {
+    // A plan with a bound per trial books its worst case as the trials of its arms with `runs`
+    // times the bound, as decide checks: here one planned trial at 2 calls.
     "calls-per-trial": (r) => {
       (r["budget"] as Record<string, unknown>)["callsPerTrial"] = 2;
+      (r["budget"] as Record<string, unknown>)["worstCaseCalls"] = 2;
+      for (const arm of r["arms"] as Array<Record<string, unknown>>) arm["runs"] = true;
     },
     "one-arm-imported": (r) => {
       (r["budget"] as Record<string, unknown>)["callsPerTrial"] = 2;
+      (r["budget"] as Record<string, unknown>)["worstCaseCalls"] = 2;
       const arms = r["arms"] as Array<Record<string, unknown>>;
       arms[arms.length - 1]!["runs"] = true;
     },
