@@ -6,6 +6,8 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { UNIT_PROJECTS } from "../vitest.projects.ts";
+
 import {
   classify,
   isAssertion,
@@ -393,5 +395,33 @@ describe("stack frames on Windows", () => {
       "at measure (C:\\pkg\\src\\stats\\wilson.ts:20:5)",
     ];
     expect(isAssertion(error("AssertionError", "invariant", undefined, frames))).toBe(false);
+  });
+});
+
+/** One of the package's test projects, by name. */
+const named = (name: string) => UNIT_PROJECTS.find((p) => p.test?.name === name)?.test;
+
+describe("the mutated stats project", () => {
+  /**
+   * Tests in the mutated project that import a study script, with the reason they stay: their
+   * subject is the statistics, and the script only gives them their inputs.
+   */
+  const STAY = new Map([["solver-snapshot.test.ts", "its subject is src/stats/solve.ts"]]);
+
+  it("holds no test of a study script: those live in test/stats-studies", () => {
+    const dir = join(import.meta.dirname, "stats");
+    const tests = readdirSync(dir, { recursive: true, encoding: "utf8" }).filter(
+      (f) => f.endsWith(".test.ts") && !f.endsWith(".sim.test.ts") && f !== "mutants.test.ts",
+    );
+    expect(tests.length).toBeGreaterThan(0);
+    const importing = tests.filter((f) =>
+      /from\s+["'][^"']*scripts\/stats\//.test(readFileSync(join(dir, f), "utf8")),
+    );
+    expect(importing.toSorted()).toEqual([...STAY.keys()].toSorted());
+  });
+
+  it("leaves test/stats-studies out of the mutated project, and runs it in the unit suite", () => {
+    expect(named("stats-studies")?.include).toEqual(["test/stats-studies/**/*.test.ts"]);
+    expect(named("stats")?.include).toEqual(["test/stats/**/*.test.ts"]);
   });
 });

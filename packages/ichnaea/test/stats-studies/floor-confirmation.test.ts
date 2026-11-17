@@ -35,8 +35,8 @@ import {
   skipRecord,
   type Structure,
 } from "../../scripts/stats/study-heterogeneous.ts";
-import { exactGroupCoverage, type Group, truthOfGroups } from "./support/exact.ts";
-import { CONFIRM_SEED_OFFSET, estimate } from "./support/simulate.ts";
+import { exactGroupCoverage, type Group, truthOfGroups } from "../stats/support/exact.ts";
+import { CONFIRM_SEED_OFFSET, estimate } from "../stats/support/simulate.ts";
 
 const dir = mkdtempSync(path.join(tmpdir(), "floor-confirmation-"));
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
