@@ -26,6 +26,14 @@ The core of Ichnaea: the plugin host, the planner, import mode, the record store
   Every ledger line must hold a `run` and a non-negative whole number of `calls`. Other fields are
   ignored. A line that does not stops the booking with a `LedgerError` that names the file and
   the line.
+- **Measure implementation.** `measureImplementation` gives the digest of the code that
+  computes a suite's measure, the second part of its identity. For a TypeScript measure,
+  `moduleImplementation` imports its module in a child process with the load recorder in place
+  (`load-record.ts`), and digests every local module that it loads and every third-party package,
+  by version and files. A dynamic import counts, and a type-only import does not. A built-in
+  scorer and a stage status take Ichnaea's build identity (`buildIdentity`: the package name and
+  version and every shipped code file), and an instrument's dimension takes the instrument's pin.
+  The study scripts record their loads with the same recorder.
 - **Egress.** Every class of data except `none` stays in by default. Only the plugin that the
   configuration names as `governance` can let it out. Any plugin can refuse.
 
