@@ -148,7 +148,7 @@ function screen(args: readonly string[]): void {
   const dir = argument(args, "--out") ?? "results";
   mkdirSync(dir, { recursive: true });
   const output = path.join(dir, `screen-${index}-of-${shards}.tsv`);
-  const meta = provenance(local("./study-score-ni.ts"), [], 30_000_000, [...args]);
+  const meta = provenance(local("./study-score-ni.ts"), 30_000_000, [...args]);
   const mine: NiCell[] = niShardOf(niCells(), index, shards);
   let points = 0;
   const extra = (): Record<string, unknown> => ({
@@ -197,7 +197,7 @@ function confirm(args: readonly string[]): void {
   if (list === undefined) throw new RangeError("--points is required");
   mkdirSync(dir, { recursive: true });
   const output = path.join(dir, `confirm-${index}-of-${shards}.tsv`);
-  const meta = provenance(local("./study-score-ni.ts"), [], 40_000_000, [...args]);
+  const meta = provenance(local("./study-score-ni.ts"), 40_000_000, [...args]);
   const listText = readFileSync(list, "utf8");
   const selected = (
     JSON.parse(listText) as { points: { id: string; structure?: string }[] }

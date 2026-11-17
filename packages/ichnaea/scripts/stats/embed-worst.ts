@@ -306,20 +306,11 @@ function main(): void {
   if (out === undefined || inputs.length === 0)
     throw new Error("usage: embed-worst.ts <sweep.tsv>... --out <embedded.jsonl>");
   if (existsSync(out)) throw new Error(`${out} exists already; give a new file`);
-  const here = import.meta.dirname;
-  const failures = checkProvenance(inputs, repoRoot(import.meta.filename));
+  const failures = checkProvenance(inputs, repoRoot(import.meta.filename), {
+    published: false,
+  });
   if (failures.length > 0) throw new Error(`the inputs' provenance fails:\n${failures.join("\n")}`);
-  const p = provenance(
-    import.meta.filename,
-    [
-      path.join(here, "study-heterogeneous.ts"),
-      path.join(here, "check-sweep-provenance.ts"),
-      path.join(here, "provenance.ts"),
-      path.join(here, "../../test/stats/support/exact.ts"),
-    ],
-    null,
-    args,
-  );
+  const p = provenance(import.meta.filename, null, args);
   const sizes = values.sizes.split(",").map(Number);
   const rows: Array<
     Row & { oneTrial: boolean; marginOf: (m: string) => number; seedBase: number }

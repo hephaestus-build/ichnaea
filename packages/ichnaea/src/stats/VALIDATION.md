@@ -280,7 +280,9 @@ theorem, is the evidence:** effects whose rates average 0 do not by themselves f
 mean at n/2, so the theorem alone does not cover every structure here. Below 15 cases the test is
 so discrete that every error stays under 0.01. `validation/binary-one-trial.tsv` lists the worst
 structure of each level, k and family in full, and a unit test recomputes each listed value from
-its structure. Its sidecar records the commit, the script hashes, the seeds and the Node version.
+its structure. Its sidecar records the commit and its pull request, the sha256 of every module that
+the study loaded, the seeds and the Node version (`scripts/stats/README.md`, "Provenance of a study
+output").
 
 - **Claim:** no failure found in this space, which is a search, not a proof. A structure outside it
   may still fail.
@@ -659,12 +661,13 @@ draw cells use assumed defect rates, proxy recall and ρ; the screen measures th
 generator or allocation change needs a rerun.
 
 Rerun from `packages/ichnaea` (about an hour on 4 cores), or with the `Calibration rule study`
-workflow. `$out` is an empty directory:
+workflow. `$out` is an empty directory, and `$pull` is the pull request that publishes the output:
 
 ```sh
 out=$(mktemp -d)
-for i in 0 1 2 3; do node scripts/stats/study-calibration-rule.ts shard --shard "$i/4" --out "$out" & done; wait
-node scripts/stats/study-calibration-rule.ts merge --in "$out" validation/calibration-rule.tsv
+study=(node --import ./scripts/stats/record-loads.ts scripts/stats/study-calibration-rule.ts)
+for i in 0 1 2 3; do "${study[@]}" shard --shard "$i/4" --out "$out" & done; wait
+"${study[@]}" merge --in "$out" --pull "$pull" validation/calibration-rule.tsv
 ```
 
 ## Floors and the minimum detectable effect

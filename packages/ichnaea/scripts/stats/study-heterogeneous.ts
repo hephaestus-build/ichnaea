@@ -473,17 +473,7 @@ function main(): void {
     sample: Number(values.sample),
     skipLog,
   };
-  const p = count
-    ? undefined
-    : provenance(
-        import.meta.filename,
-        [
-          path.join(import.meta.dirname, "../../test/stats/support/exact.ts"),
-          path.join(import.meta.dirname, "provenance.ts"),
-        ],
-        seedBase,
-        args,
-      );
+  const p = count ? undefined : provenance(import.meta.filename, seedBase, args);
   const emit =
     out === undefined
       ? (line: string) => console.log(line)

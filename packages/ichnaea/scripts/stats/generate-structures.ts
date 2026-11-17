@@ -27,7 +27,6 @@
 // Usage: node scripts/generate-structures.ts --out <structures.jsonl> [--one-trial]
 // The output must not exist; its sidecar <out>.meta.json records the provenance.
 import { appendFileSync, existsSync, writeFileSync } from "node:fs";
-import path from "node:path";
 import { parseArgs } from "node:util";
 
 import { createRng } from "../../src/stats/rng.ts";
@@ -232,17 +231,7 @@ function main(): void {
   const perCell = Number(values["per-cell"]);
   if (!Number.isInteger(perCell) || perCell < 121)
     throw new RangeError("--per-cell must hold the 121 grid structures");
-  const here = import.meta.dirname;
-  const p = provenance(
-    import.meta.filename,
-    [
-      path.join(here, "study-heterogeneous.ts"),
-      path.join(here, "../../test/stats/support/exact.ts"),
-      path.join(here, "provenance.ts"),
-    ],
-    seedBase,
-    args,
-  );
+  const p = provenance(import.meta.filename, seedBase, args);
   const lines = generate(
     Number(values.from),
     Number(values.to),

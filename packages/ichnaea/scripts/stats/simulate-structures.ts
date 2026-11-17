@@ -295,17 +295,7 @@ function main(): void {
     probe(all, shard, out, Number(values.sample));
     return;
   }
-  const here = import.meta.dirname;
-  const p = provenance(
-    import.meta.filename,
-    [
-      path.join(here, "../../test/stats/support/exact.ts"),
-      path.join(here, "../../test/stats/support/simulate.ts"),
-      path.join(here, "provenance.ts"),
-    ],
-    shard.seedBase,
-    args,
-  );
+  const p = provenance(import.meta.filename, shard.seedBase, args);
   const extra = {
     kind: "simulation",
     inputs: inputs.map((f) => ({ path: path.basename(f), sha256: sha256(readFileSync(f)) })),
@@ -320,7 +310,7 @@ function main(): void {
     // A resumed run must be the same run: same code, seeds, inputs and shard.
     const before = JSON.parse(readFileSync(metaPath(out), "utf8")) as Record<string, unknown>;
     const now: Record<string, unknown> = { ...p, ...extra };
-    for (const key of ["commit", "files", "seedBase", "inputs", "shard", "reps"])
+    for (const key of ["commit", "files", "packages", "seedBase", "inputs", "shard", "reps"])
       if (JSON.stringify(before[key]) !== JSON.stringify(now[key]))
         throw new Error(`${out} was written by another run: its ${key} differs`);
     sessions = Array.isArray(before["sessions"]) ? before["sessions"] : [];

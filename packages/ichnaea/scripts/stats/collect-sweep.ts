@@ -423,7 +423,7 @@ function collect(
   const embeddedRows = rowsBySet.get("E-embedded");
   if (embedding && embeddedRows) embedding["simulatedByKAndMargin"] = embeddedCounts(embeddedRows);
 
-  problems.push(...checkProvenance(outputs, repo));
+  problems.push(...checkProvenance(outputs, repo, { published: false }));
   const files = Object.fromEntries(
     walk(root).map((f) => [f, sha256(readFileSync(path.join(root, f)))]),
   );
