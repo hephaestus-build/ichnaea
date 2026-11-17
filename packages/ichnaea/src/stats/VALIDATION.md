@@ -557,12 +557,15 @@ to the study as a parameter:
     good answers; readers are 0.07 more accurate on an obvious defect and 0.07 less on a subtle one;
   - a draw of n answers: 0.29 n each from C1 and C2 and the rest from C3, with proxy-positive shares
     0.20, 0.20 and 0.40, at most 2 proxy-positive answers per item, each answer weighted 1/π;
-  - raters at accuracy 0.90 (raw agreement 0.82), a good judge at 0.90 and a clearly worse judge at
-    0.80.
+  - raters at accuracy 0.90 (raw agreement 0.82), a good judge as accurate as a rater (0.90) and a
+    clearly worse judge 0.10 less accurate (0.80).
 
-  The 360-answer draw is then rerun with one assumption changed: latent ρ = 0 or 0.6, raters at 0.93 (raw
-  agreement 0.87), or a C1→C3 defect-rate rise of 0.10 or 0.30 instead of 0.20. "Without C3" is a
-  140-answer draw of C1 and C2 alone, with positive shares 0.35.
+  The 360-answer draw is then rerun with one assumption changed: latent ρ = 0 or 0.6, better raters,
+  or a C1→C3 defect-rate rise of 0.10 or 0.30 instead of 0.20. The judges are defined relative to
+  the raters, so in the better-rater cells (n360 and n140) the raters read at 0.93 (raw agreement
+  0.87), the good judge at 0.93 and the worse judge at 0.83. These cells show the rule when people
+  agree more and the judges keep their distance from them, not when only the raters improve.
+  "Without C3" is a 140-answer draw of C1 and C2 alone, with positive shares 0.35.
 
 **Results.** 2,000 studies per cell, seed 6,000,000 + cell index, from
 `validation/calibration-rule.tsv` and its sidecar. The Monte Carlo standard error of a rate is at most
@@ -612,21 +615,21 @@ Generic cells, 5 levels, 60 cases:
 
 Draw cells (the registered draw):
 
-| Draw              | Good: pass | Good: floor | Good: sensitivity | Good: bias gate | Worse: pass | Positives drawn | Effective positives (Kish) |
-| ----------------- | ---------- | ----------- | ----------------- | --------------- | ----------- | --------------- | -------------------------- |
-| 140               | 0.134      | 0.545       | 0.587             | 0.579           | 0.002       | 46              | 39                         |
-| 200               | 0.258      | 0.630       | 0.688             | 0.774           | 0.006       | 68              | 56                         |
-| 260               | 0.434      | 0.710       | 0.776             | 0.891           | 0.004       | 87              | 72                         |
-| 300               | 0.544      | 0.759       | 0.833             | 0.934           | 0.007       | 99              | 83                         |
-| 360               | 0.641      | 0.805       | 0.860             | 0.975           | 0.014       | 114             | 99                         |
-| 460               | 0.815      | 0.889       | 0.938             | 0.993           | 0.022       | 129             | 119                        |
-| 360, ρ = 0        | 0.732      | 0.867       | 0.888             | 0.966           | 0.012       | 117             | 102                        |
-| 360, ρ = 0.6      | 0.535      | 0.738       | 0.810             | 0.979           | 0.012       | 109             | 95                         |
-| 360, raters 0.93  | 0.918      | 0.999       | 0.932             | 0.994           | 0.032       | 114             | 99                         |
-| 360, C3 rise 0.10 | 0.690      | 0.870       | 0.841             | 0.978           | 0.013       | 96              | 83                         |
-| 360, C3 rise 0.30 | 0.630      | 0.748       | 0.911             | 0.978           | 0.011       | 126             | 112                        |
-| 140, raters 0.93  | 0.458      | 0.932       | 0.702             | 0.758           | 0.011       | 46              | 39                         |
-| 140, without C3   | 0.168      | 0.608       | 0.499             | 0.782           | 0.003       | 49              | 32                         |
+| Draw                         | Good: pass | Good: floor | Good: sensitivity | Good: bias gate | Worse: pass | Positives drawn | Effective positives (Kish) |
+| ---------------------------- | ---------- | ----------- | ----------------- | --------------- | ----------- | --------------- | -------------------------- |
+| 140                          | 0.134      | 0.545       | 0.587             | 0.579           | 0.002       | 46              | 39                         |
+| 200                          | 0.258      | 0.630       | 0.688             | 0.774           | 0.006       | 68              | 56                         |
+| 260                          | 0.434      | 0.710       | 0.776             | 0.891           | 0.004       | 87              | 72                         |
+| 300                          | 0.544      | 0.759       | 0.833             | 0.934           | 0.007       | 99              | 83                         |
+| 360                          | 0.641      | 0.805       | 0.860             | 0.975           | 0.014       | 114             | 99                         |
+| 460                          | 0.815      | 0.889       | 0.938             | 0.993           | 0.022       | 129             | 119                        |
+| 360, ρ = 0                   | 0.732      | 0.867       | 0.888             | 0.966           | 0.012       | 117             | 102                        |
+| 360, ρ = 0.6                 | 0.535      | 0.738       | 0.810             | 0.979           | 0.012       | 109             | 95                         |
+| 360, raters and judges +0.03 | 0.918      | 0.999       | 0.932             | 0.994           | 0.032       | 114             | 99                         |
+| 360, C3 rise 0.10            | 0.690      | 0.870       | 0.841             | 0.978           | 0.013       | 96              | 83                         |
+| 360, C3 rise 0.30            | 0.630      | 0.748       | 0.911             | 0.978           | 0.011       | 126             | 112                        |
+| 140, raters and judges +0.03 | 0.458      | 0.932       | 0.702             | 0.758           | 0.011       | 46              | 39                         |
+| 140, without C3              | 0.168      | 0.608       | 0.499             | 0.782           | 0.003       | 49              | 32                         |
 
 No resample had an undefined statistic in the draw cells or the level cells. In the rare-positive
 yes/no cells, at most 0.002 % of resamples had one.
@@ -647,16 +650,17 @@ yes/no cells, at most 0.002 % of resamples had one.
   therefore passes in at most 17 % of 60-case studies. At 60 cases, the rule mostly reports that the
   raters' own agreement is not shown.
 - **The registered draw.** With raters at accuracy 0.90, the good judge passes 64 % of 360-answer
-  draws and 82 % of 460-answer draws. The 80 % target needs about 460 answers. With raters at 0.93
-  (raw agreement 0.87), 360 answers give 92 %. Raters' agreement, measured in the rater check
-  before the draw is fixed, therefore decides the size more than any other assumption. At ρ = 0.6 the
-  360-answer draw falls to 53 %.
+  draws and 82 % of 460-answer draws. The 80 % target needs about 460 answers. With raters and both
+  judges 0.03 more accurate (raters at raw agreement 0.87), 360 answers give 92 %. Of the
+  assumptions studied, agreement among people, with the judges keeping their distance, decides the
+  size most. These cells move the judges with the raters, so they do not separate the raters'
+  agreement from the judges' accuracy. At ρ = 0.6 the 360-answer draw falls to 53 %.
 - **A judge-based Pass is rarely reachable.** It needs the Pass margin β_L · 0.10 − B to be
   positive, where β_L is the lower bound of the judge's slope against people on the base and
   known-worse answers, and B is the bias bound on that pair. For a judge as good as a rater, the
-  margin is positive in 7.4 % of 460-answer draws, in 12 % of 360-answer draws whose raters agree at
-  0.87 (1.4 % with raters at 0.90), and in at most 0.2 % of draws below 360 answers (column
-  `passable`).
+  margin is positive in 7.4 % of 460-answer draws, in 12 % of 360-answer draws with raters and both
+  judges 0.03 more accurate (1.4 % at the baseline), and in at most 0.2 % of draws below 360 answers
+  (column `passable`).
 - **The bias gate costs little in a large draw.** It holds in 97–99 % of 360- and 460-answer draws.
   In 140-answer draws it holds in 58–78 %, so a small draw often fails the gate even for an unbiased judge.
 
