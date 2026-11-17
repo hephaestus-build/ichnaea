@@ -1,6 +1,6 @@
 import * as z from "zod";
 
-import { content, none, quasi } from "../data-class.ts";
+import { CLOSED_KEY, content, none, quasi } from "../data-class.ts";
 import {
   ArmName,
   CaseId,
@@ -19,6 +19,15 @@ import {
 /**
  * Outcome classes of a trial (REQ-20). A capture failure is never a verdict:
  * `infrastructure_failure` and `not_run` count as missing, never as a quality failure.
+ * `protocol_failure` is the outcome of a worker failure of class `protocol` (`FAILURE_OUTCOME`), and
+ * of nothing else. It is the harness's fault, never the system's: it is missing, never a failure or
+ * a pass, and any one makes the run INVALID.
+ *
+ * The enumeration is closed (`x-ichnaea-closed`) from this version on: a reader of this version
+ * refuses a trial or a ledger entry with an outcome it does not know, so a later outcome fails
+ * closed. A build from before this version widens the enumeration: it counts a `protocol_failure`
+ * trial as missing, never as a pass or a failure of the system, but it does not know that the
+ * outcome makes the run INVALID, so it can still reach a verdict on that run.
  */
 export const Outcome = z.enum([
   "completed",
@@ -28,6 +37,7 @@ export const Outcome = z.enum([
   "budget_exceeded",
   "invalid_configuration",
   "not_run",
+  "protocol_failure",
 ]);
 /** A trial outcome. */
 export type Outcome = z.infer<typeof Outcome>;
@@ -44,9 +54,19 @@ export const Step = z.strictObject({
   detail: content(Json).optional(),
 });
 
-/** Resource usage of a trial as reported. Absent means unknown, never zero. */
+/**
+ * Resource usage of a trial as reported. Absent means unknown, never zero. `calls` counts the
+ * model calls the provider accepted. A call the provider rejected, for example with HTTP 429, is not a call.
+ */
 export const Usage = z.strictObject({
-  calls: none(z.int().min(0)).optional(),
+  calls: none(
+    z
+      .int()
+      .min(0)
+      .describe(
+        "The model calls the provider accepted. A call the provider rejected, for example with HTTP 429, is not a call.",
+      ),
+  ).optional(),
   inputTokens: none(z.int().min(0)).optional(),
   outputTokens: none(z.int().min(0)).optional(),
   cost: none(z.number().min(0)).optional(),
@@ -76,7 +96,7 @@ export const Trial = z.strictObject({
   configuration: none(ConfigurationIdentity),
   arm: none(ArmName).optional(),
   replicate: none(z.int().min(0)),
-  outcome: none(Outcome),
+  outcome: none(Outcome, { [CLOSED_KEY]: true }),
   dataClass: none(RecordDataClass),
   input: content(Json).optional(),
   output: content(Json).optional(),
@@ -92,6 +112,32 @@ export const Trial = z.strictObject({
   startedAt: none(Timestamp).optional(),
   endedAt: none(Timestamp).optional(),
   inputDigest: none(Digest).optional(),
+  /**
+   * The earlier attempts at this trial that a later one replaced, in order and numbered from 1 with
+   * no gap: each an infrastructure failure or a trial not run, with the calls the provider accepted
+   * in it (a call the provider rejected, for example with HTTP 429, is not a call). The record is
+   * the last attempt. For a trial of an arm that Ichnaea runs, the calls of every attempt count
+   * against the per-trial bound and the run's budget, so a retry cannot hide an overrun.
+   */
+  attempts: z
+    .array(
+      z.strictObject({
+        attempt: none(z.int().min(1)),
+        failure: z.strictObject({
+          class: none(z.enum(["infrastructure", "not_run"])),
+          kind: none(Text),
+        }),
+        calls: none(
+          z
+            .int()
+            .min(0)
+            .describe(
+              "The model calls the provider accepted in this attempt. A call the provider rejected, for example with HTTP 429, is not a call.",
+            ),
+        ),
+      }),
+    )
+    .optional(),
 });
 /** A trial record. */
 export type Trial = z.infer<typeof Trial>;

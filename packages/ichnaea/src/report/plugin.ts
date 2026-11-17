@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { type CommandDefinition, FileStore, CORE_VERSION, type Plugin } from "../core/index.ts";
 
 import { recompute } from "./recompute.ts";
-import { lintReport, neutralView, renderHtml, renderMarkdown } from "./render.ts";
+import { lintReport, renderHtml, renderMarkdown } from "./render.ts";
 import { decisionView } from "./view.ts";
 
 const VERSION = CORE_VERSION;
@@ -44,7 +44,9 @@ const command: CommandDefinition = {
     const view = decisionView(stored.decision, stored.plan.suite, stored.run.lineage);
     const markdown = renderMarkdown(view);
     const html = renderHtml(view);
-    const neutral = neutralView(view);
+    const neutral = decisionView(stored.decision, stored.plan.suite, stored.run.lineage, {
+      neutral: true,
+    });
     const problems = [
       ...lintReport(renderMarkdown(neutral)),
       ...lintReport(renderHtml(neutral)),

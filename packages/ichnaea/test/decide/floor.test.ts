@@ -12,7 +12,7 @@ import { describe, expect, it } from "vitest";
 import { decide, decidePrimaries, exitCode, FLOOR_NOT_SET_REASON } from "../../src/decide/index.ts";
 import { type Scenario, scenario } from "./support/scenario.ts";
 
-const run = (s: Scenario): Promise<Decision> =>
+const run = (s: Scenario): Decision =>
   decide({ ...s, decidedAt: "2026-11-15T12:00:00Z", ichnaea: "0.0.0" });
 
 describe("while the validated margin floor is not set (decision 0015)", () => {

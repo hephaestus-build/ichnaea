@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { decide, planningPower } from "../../src/decide/index.ts";
 import { type Scenario, type ScenarioOptions, scenario } from "./support/scenario.ts";
 
-const run = (s: Scenario): Promise<Decision> =>
+const run = (s: Scenario): Decision =>
   decide({ ...s, decidedAt: "2026-11-15T12:00:00Z", ichnaea: "0.0.0" });
 /** The scenario with the planning statement that the decide plugin adds before any call. */
 async function planned(o: ScenarioOptions): Promise<Scenario> {

@@ -19,7 +19,8 @@ import {
 import type { Host } from "./host.ts";
 import { scoreTrials } from "./measures.ts";
 import { createPlan } from "./planner.ts";
-import { FileStore, recordProblems, StoreError } from "./store.ts";
+import { recordProblems } from "./records.ts";
+import { FileStore, StoreError } from "./store.ts";
 
 /** What `ichnaea import` needs. */
 export interface ImportRunInput {
@@ -90,10 +91,12 @@ async function json(path: string): Promise<unknown> {
 /**
  * Marks a trial whose configuration differs from its arm, or whose observations differ from what
  * the configuration expects (REQ-15), as an invalid configuration. Its outputs stay recorded; it
- * gives no value, so it counts as missing.
+ * gives no value, so it counts as missing. A protocol failure stays one: it is the harness's fault
+ * and makes the run INVALID, which an invalid configuration, counted only as missing, would not.
  */
 function checkConfiguration(trial: Trial, identity: string | undefined): Trial {
-  if (trial.outcome === "invalid_configuration") return trial;
+  if (trial.outcome === "invalid_configuration" || trial.outcome === "protocol_failure")
+    return trial;
   const mismatch =
     identity !== trial.configuration
       ? `the trial ran configuration ${trial.configuration}, not its arm's ${identity ?? "(no arm)"}`
@@ -330,6 +333,13 @@ export async function importRun(
       node: process.versions.node,
       platform: `${process.platform}-${process.arch}`,
       ichnaea: input.ichnaea,
+      arch: process.arch,
+      runtime: {
+        name: "node",
+        version: process.versions.node,
+        platform: process.platform,
+        arch: process.arch,
+      },
     },
     arms: plan.arms,
     lineage,

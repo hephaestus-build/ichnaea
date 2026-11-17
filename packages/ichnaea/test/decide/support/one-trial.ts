@@ -51,7 +51,7 @@ export function moved(s: Scenario, from: number, to: number): string[] {
   return ids;
 }
 
-export const decideAt = (s: Scenario, aa?: readonly AaEvidence[]): Promise<Decision> =>
+export const decideAt = (s: Scenario, aa?: readonly AaEvidence[]): Decision =>
   decide({
     ...s,
     ...(aa === undefined ? {} : { aa }),

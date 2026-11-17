@@ -647,8 +647,9 @@ yes/no cells, at most 0.002 % of resamples had one.
 - **A judge-based Pass is rarely reachable.** It needs the Pass margin β_L · 0.10 − B to be
   positive, where β_L is the lower bound of the judge's slope against people on the base and
   known-worse answers, and B is the bias bound on that pair. For a judge as good as a rater, the
-  margin is positive in at most 7 % of 460-answer draws, in 12 % of 360-answer draws whose raters
-  agree at 0.87, and in at most 0.1 % of draws below 360 answers (column `passable`).
+  margin is positive in 7.4 % of 460-answer draws, in 12 % of 360-answer draws whose raters agree at
+  0.87 (1.4 % with raters at 0.90), and in at most 0.2 % of draws below 360 answers (column
+  `passable`).
 - **The bias gate costs little in a large draw.** It holds in 97–99 % of 360- and 460-answer draws.
   In 140-answer draws it holds in 58–78 %, so a small draw often fails the gate even for an unbiased judge.
 
