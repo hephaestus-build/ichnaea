@@ -588,6 +588,10 @@ const counts = (n: number, base: number, candidate: number, trials = 3): CaseCou
     candidate: { successes: candidate, trials },
   }));
 
+/** One case-arm cell with this many trials. */
+const cellOf = (trials: number) =>
+  fc.record({ successes: fc.integer({ min: 0, max: trials }), trials: fc.constant(trials) });
+
 describe("what compareCounts refuses or does not validate", () => {
   const input = {
     valueType: "binary" as const,
@@ -655,14 +659,29 @@ describe("what compareCounts refuses or does not validate", () => {
     // Any input, any margin below the floor: the reason is the margin itself, not the pending floor,
     // so it still holds once the floor is set.
     expect(VALIDATED_MARGIN_FLOOR).toBeGreaterThan(0);
-    const cell = fc
-      .integer({ min: 1, max: 3 })
-      .chain((trials) =>
-        fc.record({ successes: fc.integer({ min: 0, max: trials }), trials: fc.constant(trials) }),
-      );
+    // The margin rule reads only the margin. Each run draws one trial count for all its cells, so
+    // compareCounts takes the exact regression test; with unequal counts it would run the seeded
+    // permutation test on every draw, which this property never reads. Unequal counts are checked
+    // once below.
+    const unequal = compareCounts({
+      ...input,
+      cases: counts(17, 2, 3).map((c, i) =>
+        i % 3 === 0 ? { ...c, base: { successes: 1, trials: 2 } } : c,
+      ),
+      margin: 0.01,
+      rng: createRng(1),
+    });
+    expect(unequal.nonInferiority.limitations).toContain(
+      `margin 0.01 is below the validated margin floor ${VALIDATED_MARGIN_FLOOR}`,
+    );
     fc.assert(
       fc.property(
-        fc.array(fc.record({ base: cell, candidate: cell }), { minLength: 5, maxLength: 20 }),
+        fc.integer({ min: 1, max: 3 }).chain((trials) =>
+          fc.array(fc.record({ base: cellOf(trials), candidate: cellOf(trials) }), {
+            minLength: 5,
+            maxLength: 20,
+          }),
+        ),
         fc.oneof(
           fc.constant(0),
           fc.double({ min: 0, max: VALIDATED_MARGIN_FLOOR, maxExcluded: true, noNaN: true }),
