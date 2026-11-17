@@ -88,28 +88,35 @@ export function classify(exitCode: number | null, report: MutationReport | undef
     };
   // Every failure that is not an assertion: a test that threw something else, a suite's hook, an
   // unhandled error. A type error from the typecheck pass is not a crash of the tests.
-  const crashes = [
+  const failures = [
     ...report.failed.flatMap((f) =>
-      f.errors.filter((e) => !isAssertion(e)).map((e) => `${f.test}: ${short(e)}`),
+      f.errors.filter((e) => !isAssertion(e)).map((e) => ({ at: `${f.test}: `, error: e })),
     ),
-    ...suites.flatMap((s) => s.errors.map((e) => `${s.suite}: ${short(e)}`)),
+    ...suites.flatMap((s) => s.errors.map((e) => ({ at: `${s.suite}: `, error: e }))),
     ...report.unhandled
       .filter((e) => e.name !== "TypeCheckError")
-      .map((e) => `unhandled ${short(e)}`),
+      .map((e) => ({ at: "unhandled ", error: e })),
   ];
+  const crashes = failures.map(({ at, error }) => `${at}${short(error)}`);
   // An assertion detected the mutant: that is a kill, whatever else crashed, as Stryker counts it.
   const by = report.failed.filter((f) => f.errors.some(isAssertion)).map((f) => f.test);
   if (by.length > 0)
     return crashes.length === 0
       ? { kind: "killed", by }
       : { kind: "killed", by, alsoCrashed: crashes };
+  // With no assertion, any crash that is not a timeout makes the run an error, even beside a
+  // timeout: a timeout detects the mutant only when timeouts are the only failures.
+  const crash = failures.find(({ error }) => !timesOut(error));
+  if (crash !== undefined)
+    return {
+      kind: "error",
+      reason: `no assertion failed; it crashed: ${crash.at}${short(crash.error)}`,
+    };
   const timedOut =
-    report.failed.find((f) => f.errors.some((e) => TIMEOUT.test(e.message)))?.test ??
-    suites.find((s) => s.errors.some((e) => TIMEOUT.test(e.message)))?.suite ??
+    report.failed.find((f) => f.errors.some(timesOut))?.test ??
+    suites.find((s) => s.errors.some(timesOut))?.suite ??
     report.modules.find((m) => m.errors.some(timesOut))?.module;
   if (timedOut !== undefined) return { kind: "timedOut", test: timedOut };
-  if (crashes.length > 0)
-    return { kind: "error", reason: `no assertion failed; it crashed: ${crashes[0]}` };
   const typeError = report.unhandled.find((e) => e.name === "TypeCheckError");
   return {
     kind: "error",

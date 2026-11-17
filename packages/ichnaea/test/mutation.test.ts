@@ -425,3 +425,33 @@ describe("the mutated stats project", () => {
     expect(named("stats")?.include).toEqual(["test/stats/**/*.test.ts"]);
   });
 });
+
+describe("a timeout beside a crash, with no assertion", () => {
+  it("is an error, not a detection by timeout: a timeout counts only when it is the only failure", () => {
+    const report: MutationReport = {
+      passed: false,
+      modules: [],
+      failed: [
+        { test: "test/a.test.ts: slow", errors: [error("Error", "Test timed out in 5000ms.")] },
+        { test: "test/b.test.ts: crashes", errors: [error("TypeError", "x is not a function")] },
+      ],
+      suites: [],
+      unhandled: [],
+    };
+    expect(classify(1, report)).toMatchObject({
+      kind: "error",
+      reason: expect.stringContaining("TypeError: x is not a function"),
+    });
+    // A hook that timed out in one suite beside a crash in a test: the same.
+    const hook: MutationReport = {
+      ...report,
+      failed: [report.failed[1]!],
+      suites: [
+        { suite: "test/a.test.ts: outer", errors: [error("Error", "Hook timed out in 10000ms.")] },
+      ],
+    };
+    expect(classify(1, hook).kind).toBe("error");
+    // Timeouts alone remain a detection.
+    expect(classify(1, { ...report, failed: [report.failed[0]!] }).kind).toBe("timedOut");
+  });
+});
