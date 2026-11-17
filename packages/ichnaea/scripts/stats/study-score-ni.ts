@@ -129,7 +129,9 @@ export const selectableSeWithin = (
  * `target`, or `cap` repetitions have run: then the point is capped. Must-fail and reported
  * settings never drive the stop; their standard errors are reported as they are. At 1,000,000
  * repetitions the binomial standard error is at most 0.0005 at any estimate, so a capped point is
- * one whose selectable coverage lies near 0.5 (about 0.39 to 0.61), far below the bar.
+ * one whose selectable coverage lies near 0.5 (about 0.39 to 0.61), far below the bar. A block or
+ * cap that is not a positive whole number is refused before any block runs: a block of 0 would
+ * never advance.
  */
 export function confirmUntil(
   runBlock: (counts: number[], done: number, reps: number) => void,
@@ -137,6 +139,14 @@ export function confirmUntil(
   cap: number,
   target: number,
 ): { counts: number[]; reps: number; capped: boolean } {
+  for (const [name, value] of [
+    ["block (ICHNAEA_CONFIRM_BLOCK)", block],
+    ["cap (ICHNAEA_CONFIRM_CAP)", cap],
+  ] as const)
+    if (!(Number.isSafeInteger(value) && value > 0))
+      throw new RangeError(
+        `the confirmation ${name} must be a positive whole number, got ${value}`,
+      );
   const counts = SETTINGS.map(() => 0);
   let reps = 0;
   do {

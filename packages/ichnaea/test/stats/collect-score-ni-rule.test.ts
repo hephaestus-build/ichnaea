@@ -227,6 +227,20 @@ describe("score non-inferiority: confirmation to SE 0.0005, capped at 1,000,000"
     });
   });
 
+  it("refuses a block or cap that is not a positive whole number before any block runs", () => {
+    for (const bad of [0, -50_000, Number.NaN, 2.5, Number.POSITIVE_INFINITY]) {
+      let ran = 0;
+      const runBlock = () => void ran++;
+      expect(() => confirmUntil(runBlock, bad, CONFIRM_CAP, 0.0005), `block ${bad}`).toThrow(
+        /block \(ICHNAEA_CONFIRM_BLOCK\) must be a positive whole number/,
+      );
+      expect(() => confirmUntil(runBlock, 50_000, bad, 0.0005), `cap ${bad}`).toThrow(
+        /cap \(ICHNAEA_CONFIRM_CAP\) must be a positive whole number/,
+      );
+      expect(ran).toBe(0);
+    }
+  });
+
   it("stops at the cap and marks the point capped", () => {
     // At 0.45, SE ≤ 0.0005 needs 990,000 repetitions: the 20th block reaches the cap.
     expect(confirmUntil(blocks(0.45), 50_000, CONFIRM_CAP, 0.0005)).toMatchObject({
