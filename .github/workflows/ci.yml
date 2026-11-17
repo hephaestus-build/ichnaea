@@ -201,6 +201,14 @@ jobs:
             test/stats/reference-alpha-units.tsv test/stats/reference-base-r-alpha.tsv
           git diff --exit-code -- test/stats/reference-agreement-inputs.json test/stats/reference-r-agreement.json \
             test/stats/reference-alpha-units.tsv test/stats/reference-base-r-alpha.tsv
+      # The drift guard's detectable drift: an exact enumeration in Python, written from the
+      # definition alone, with exact rational rejection regions and no pow, and only the standard library.
+      - name: The drift guard reference values are what their oracle writes
+        working-directory: packages/ichnaea
+        run: |
+          docker run --rm --network none -v "$PWD":/w -w /w "$PYTHON_IMAGE" \
+            python scripts/stats/sentinel_drift_oracle.py test/stats/reference-python-sentinel.json
+          git diff --exit-code -- test/stats/reference-python-sentinel.json
 
   workflows:
     name: workflows
