@@ -145,7 +145,7 @@ jobs:
           set -uo pipefail
           pids=()
           for i in ${SHARDS//,/ }; do
-            nice node "$SCRIPT" screen --shard "$i/$COUNT" --out "$RUNNER_TEMP/out" &
+            nice node --import ./scripts/stats/record-loads.ts "$SCRIPT" screen --shard "$i/$COUNT" --out "$RUNNER_TEMP/out" &
             pids+=("$!")
           done
           status=0
@@ -223,7 +223,7 @@ jobs:
           set -uo pipefail
           pids=()
           for i in ${SHARDS//,/ }; do
-            nice node "$SCRIPT" "$SECOND" --points "$POINTS" --shard "$i/$COUNT" --out "$RUNNER_TEMP/out" &
+            nice node --import ./scripts/stats/record-loads.ts "$SCRIPT" "$SECOND" --points "$POINTS" --shard "$i/$COUNT" --out "$RUNNER_TEMP/out" &
             pids+=("$!")
           done
           status=0

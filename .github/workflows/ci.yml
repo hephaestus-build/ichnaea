@@ -40,6 +40,15 @@ jobs:
       - run: pnpm run check:generated
       - name: The contracts' API report is current
         run: pnpm run check:api
+      # Every published study output must still be what the code at HEAD produces: its sidecar
+      # pins each module and package the study loaded and its Node version, and a change to one
+      # needs a rerun. The checkout stays shallow: the check fetches the head of each pull request
+      # that a sidecar names (refs/pull/<N>/head, which a plain clone lacks) with its history, and
+      # requires the run commit to be reachable from it. A branch rebased after its study ran
+      # fails here; the fix is a rerun, never an edit of the sidecar.
+      - name: Every published study output still matches its code
+        working-directory: packages/ichnaea
+        run: node scripts/stats/check-sweep-provenance.ts --all
       # The tree that the build branch would hold for this commit: its manifest runs nothing on
       # install, and its SBOM describes what it ships.
       - name: The build tree has a manifest without scripts and an SBOM of what it ships

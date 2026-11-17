@@ -1,5 +1,5 @@
 // The static import closure of a set of modules, and what in it would not run in a browser or is
-// not pure. It starts from the walk of scripts/stats/provenance.ts (localImportClosure) and adds
+// not pure. It walks the relative imports of the source text and adds
 // the checks: a `node:` specifier, a bare Node built-in, a package other than zod, a dynamic import
 // of a specifier that is not a literal, the Node-only globals, import.meta.dirname, filename and
 // resolve, and a read of the clock or a random draw.

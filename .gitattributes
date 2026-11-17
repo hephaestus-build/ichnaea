@@ -1,0 +1,5 @@
+# Check out text files with LF line endings on every platform, so that a checkout with
+# core.autocrlf cannot change the bytes, and so the digests, of the code that Ichnaea pins.
+* text=auto eol=lf
+# API Extractor writes its reports with CRLF line endings; they stay as it writes them.
+*.api.md -text

@@ -1,4 +1,8 @@
-import { type Decision, MeasureCard, Plan, type Run, type Trial } from "../contracts/index.ts";
+import type { Decision } from "../contracts/records/decision.ts";
+import { MeasureCard } from "../contracts/records/measure.ts";
+import { Plan } from "../contracts/records/plan.ts";
+import type { Run } from "../contracts/records/run.ts";
+import type { Trial } from "../contracts/records/trial.ts";
 
 import type {
   CommandDefinition,

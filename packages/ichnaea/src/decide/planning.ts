@@ -1,11 +1,7 @@
-import type { Plan, PowerEntry } from "../contracts/index.ts";
+import type { Plan, PowerEntry } from "../contracts/records/plan.ts";
 import type { PlanAdditions } from "../core/plugin.ts";
-import {
-  sampledCasesFloor,
-  VALIDATED_MARGIN_CEILING,
-  VALIDATED_MARGIN_FLOOR,
-  zeroNoiseFloor,
-} from "../stats/index.ts";
+import { VALIDATED_MARGIN_CEILING, VALIDATED_MARGIN_FLOOR } from "../stats/compare.ts";
+import { sampledCasesFloor, zeroNoiseFloor } from "../stats/power.ts";
 
 /** Planned trials per case in one arm (a suite can give some cases more, `replicatesFor`). */
 export function plannedTrialsPerCase(plan: Plan, arm: string): Map<string, number> {

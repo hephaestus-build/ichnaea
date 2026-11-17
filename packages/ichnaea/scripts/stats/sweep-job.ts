@@ -32,6 +32,7 @@ import {
 } from "node:fs";
 import { availableParallelism } from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 
 import { git, repoRoot, sha256 } from "./provenance.ts";
@@ -277,10 +278,19 @@ const writeJob = (out: string, kind: string, extra: Record<string, unknown>): vo
     `${JSON.stringify(jobRecord(kind, extra, out), null, 2)}\n`,
   );
 
-/** Runs a study script with Node; resolves with its standard error, rejects on a failure. */
+/**
+ * Runs a study script with Node, recording the modules it loads for its sidecar
+ * (record-loads.ts); resolves with its standard error, rejects on a failure.
+ */
 function run(script: string, args: readonly string[], stdout?: string): Promise<string> {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [path.join(import.meta.dirname, script), ...args], {
+    const argv = [
+      "--import",
+      pathToFileURL(path.join(import.meta.dirname, "record-loads.ts")).href,
+      path.join(import.meta.dirname, script),
+      ...args,
+    ];
+    const child = spawn(process.execPath, argv, {
       stdio: ["ignore", stdout === undefined ? "inherit" : "pipe", "pipe"],
     });
     let err = "";

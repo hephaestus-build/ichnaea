@@ -12,7 +12,8 @@
 // Structures whose enumeration would visit more than 20,000 outcome multisets are skipped and
 // counted, so each structure takes at most about a second.
 // Usage, one process per worker, margins i ≡ worker (mod workers):
-//   node scripts/study-heterogeneous.ts <from> <to> <step> <worker> <workers> [<cases>] \
+//   node --import ./scripts/stats/record-loads.ts scripts/stats/study-heterogeneous.ts \
+//     <from> <to> <step> <worker> <workers> [<cases>] \
 //     --out sweep-<worker>.tsv
 // The TSV has the same bytes as the standard output of the script's first version (sha256
 // 3496e34c…f374) at the same arguments, when no option below but --out is given.
@@ -47,7 +48,7 @@ import { appendFileSync, existsSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
 
-import { createRng, type Rng } from "../../src/stats/index.ts";
+import { createRng, type Rng } from "../../src/stats/rng.ts";
 import { exactGroupCoverage, type Group, truthOfGroups } from "../../test/stats/support/exact.ts";
 import { provenance, writeMeta } from "./provenance.ts";
 
@@ -473,17 +474,7 @@ function main(): void {
     sample: Number(values.sample),
     skipLog,
   };
-  const p = count
-    ? undefined
-    : provenance(
-        import.meta.filename,
-        [
-          path.join(import.meta.dirname, "../../test/stats/support/exact.ts"),
-          path.join(import.meta.dirname, "provenance.ts"),
-        ],
-        seedBase,
-        args,
-      );
+  const p = count ? undefined : provenance(import.meta.filename, seedBase, args);
   const emit =
     out === undefined
       ? (line: string) => console.log(line)

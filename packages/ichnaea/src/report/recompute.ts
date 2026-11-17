@@ -1,13 +1,10 @@
-import {
-  canonicalize,
-  type Decision,
-  type GateResult,
-  type MeasureValue,
-  type Plan,
-  type Run,
-  type Trial,
-} from "../contracts/index.ts";
-import { decide } from "../decide/index.ts";
+import { canonicalize } from "../contracts/canonical.ts";
+import type { Decision, GateResult } from "../contracts/records/decision.ts";
+import type { MeasureValue } from "../contracts/records/measure.ts";
+import type { Plan } from "../contracts/records/plan.ts";
+import type { Run } from "../contracts/records/run.ts";
+import type { Trial } from "../contracts/records/trial.ts";
+import { decide } from "../decide/decide.ts";
 
 /** The result of recomputing a stored decision. */
 export interface RecomputeResult {

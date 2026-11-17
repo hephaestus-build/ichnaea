@@ -6,33 +6,16 @@
 // correlation). The rule is a parameter: this module never imports one, so the rule can live
 // wherever the calibration code does, and a changed rule only needs a rerun (VALIDATION.md, "The
 // judge calibration rule").
-import { qnorm, type Rng } from "../../src/stats/index.ts";
+import type { Slope } from "../../src/calibration/engine.ts";
+import type { LabelColumns } from "../../src/calibration/statistics.ts";
+import { qnorm } from "../../src/stats/normal.ts";
+import type { Rng } from "../../src/stats/rng.ts";
 
 /**
- * One simulated calibration study: labels on answers, which are grouped into cases (the resampling
- * clusters, items in a calibration study's own words), each case in one sampling stratum.
+ * One simulated calibration study: the labels in the columns that ./calibration reads, with the
+ * truth that only the study knows.
  */
-export interface RatedStudy {
-  /** `binary` labels are 0 or 1 (1 is a positive, a defect); `levels` labels are 1 to `levels`. */
-  readonly scale: "binary" | "levels";
-  /** The number of levels, for the `levels` scale. */
-  readonly levels: number;
-  /** The number of cases. */
-  readonly cases: number;
-  /** Per answer: its case, 0 to cases − 1. */
-  readonly caseOf: readonly number[];
-  /**
-   * Per answer: its configuration. 0 and 1 are the two configurations the plan names, which the
-   * bias check compares; 2 is an extra source of answers (a known-worse configuration).
-   */
-  readonly configurationOf: readonly number[];
-  /** Per answer: its weight, 1/π for inclusion probability π (1 when every answer is sampled). */
-  readonly weight: readonly number[];
-  /** Per case: its stratum for the bootstrap, which resamples cases within each stratum. */
-  readonly stratumOf: readonly number[];
-  readonly first: readonly number[];
-  readonly second: readonly number[];
-  readonly judge: readonly number[];
+export interface RatedStudy extends LabelColumns {
   /** Per answer, for the study's diagnostics only: whether it truly is a positive. */
   readonly truth?: readonly number[];
 }
@@ -53,20 +36,6 @@ export interface RuleOutcome {
   readonly replicates: number;
   /** The judge's slope on the base (0) against known-worse (2) pair, when the study has that pair. */
   readonly slope?: Slope;
-}
-
-/** The judge's slope against people on the base against known-worse pair, on quality (1 − defect). */
-export interface Slope {
-  /** β = judge change ÷ human change. */
-  readonly estimate: number;
-  /** The one-sided 95 % item-cluster lower bound of β, capped at 1. */
-  readonly lower: number;
-  /** The human change (the raters' mean quality on known-worse minus base); negative is a drop. */
-  readonly humanChange: number;
-  /** Its one-sided 95 % upper bound: the drop is shown when it is below 0. */
-  readonly humanChangeUpper: number;
-  /** The shown bound of (judge change − human change) on this pair: B. */
-  readonly pairBound: number;
 }
 
 /** A calibration rule: the conditions it reports, and its evaluation of one study. */

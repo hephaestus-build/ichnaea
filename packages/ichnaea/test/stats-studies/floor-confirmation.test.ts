@@ -1,5 +1,6 @@
 // The tooling of the margin-floor confirmation: the structure generator, the simulation runner,
-// the skip log of the sweep and the provenance check (VALIDATION.md, "The bar").
+// and the skip log of the sweep (VALIDATION.md, "The bar"). provenance.test.ts and
+// check-provenance.test.ts, beside this file, cover the provenance.
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -8,16 +9,7 @@ import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 
 import { createRng } from "../../src/stats/index.ts";
-import { checkProvenance } from "../../scripts/stats/check-sweep-provenance.ts";
 import { cells, cellStructures, generate } from "../../scripts/stats/generate-structures.ts";
-import {
-  git,
-  localImportClosure,
-  metaPath,
-  PROVENANCE_SCHEMA,
-  repoRoot,
-  sha256,
-} from "../../scripts/stats/provenance.ts";
 import {
   coverageRun,
   doneIds,
@@ -301,27 +293,8 @@ describe("the structure generator", () => {
 });
 
 const scripts = path.join(import.meta.dirname, "../../scripts/stats");
-/** Paths relative to the package. */
-const relative = (files: readonly string[]): string[] =>
-  files.map((f) => path.relative(path.join(import.meta.dirname, "../.."), f));
 
-describe("the provenance of a study", () => {
-  it("records every local module a script imports, through the statistics it calls", () => {
-    const files = relative(localImportClosure([path.join(scripts, "simulate-structures.ts")]));
-    expect(files).toEqual(
-      expect.arrayContaining([
-        "scripts/stats/simulate-structures.ts",
-        "scripts/stats/provenance.ts",
-        "test/stats/support/simulate.ts",
-        "src/stats/index.ts",
-        "src/stats/compare.ts",
-        "test/stats/support/exact.ts",
-      ]),
-    );
-    expect(files.every((f) => !f.includes("node_modules"))).toBe(true);
-    expect(files).toEqual(files.toSorted());
-  });
-
+describe("the sweep's outputs", () => {
   it("refuses one file for both the TSV and the skip log", () => {
     const same = path.join(dir, "same.out");
     const run = (): string =>
@@ -340,57 +313,5 @@ describe("the provenance of a study", () => {
         { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
       );
     expect(run).toThrow(/name the same file/);
-  });
-});
-
-describe("the provenance check", () => {
-  const root = repoRoot(import.meta.filename);
-  const head = git(["rev-parse", "HEAD"], root);
-  const file = "packages/ichnaea/test/stats/support/exact.ts";
-  // This change leaves the file as it is at HEAD.
-  const atHead = sha256(readFileSync(path.join(root, file)));
-
-  const output = (name: string, meta: Record<string, unknown>): string => {
-    const out = path.join(dir, name);
-    writeFileSync(out, "margin\n0.050\n");
-    const body = {
-      schema: PROVENANCE_SCHEMA,
-      commit: head,
-      files: { [file]: atHead },
-      complete: true,
-      outputSha256: sha256(readFileSync(out)),
-      ...meta,
-    };
-    writeFileSync(metaPath(out), JSON.stringify(body));
-    return out;
-  };
-
-  it("accepts an output whose commit and sha256 match the scripts at HEAD", () => {
-    expect(checkProvenance([output("good.tsv", {})], root)).toEqual([]);
-  });
-
-  it("fails an output whose recorded sha256 does not match", () => {
-    const out = output("sha.tsv", { files: { [file]: "0".repeat(64) } });
-    expect(checkProvenance([out], root)).toEqual([
-      expect.stringMatching(/has sha256 .* records 0{64}/),
-    ]);
-  });
-
-  it("fails an output whose commit is unknown", () => {
-    const out = output("commit.tsv", { commit: "0123456789abcdef0123456789abcdef01234567" });
-    expect(checkProvenance([out], root)).toEqual([
-      expect.stringMatching(/commit 0123456789.* is unknown/),
-    ]);
-  });
-
-  it("fails an output changed after its run, and one without a sidecar", () => {
-    const out = output("changed.tsv", {});
-    writeFileSync(out, "margin\n0.055\n");
-    const bare = path.join(dir, "bare.tsv");
-    writeFileSync(bare, "");
-    expect(checkProvenance([out, bare], root)).toEqual([
-      expect.stringMatching(/output's sha256 differs/),
-      expect.stringMatching(/no sidecar/),
-    ]);
   });
 });

@@ -18,7 +18,8 @@
 // confirmation seeds (+100,000) the gaps between them, so no two streams share a seed.
 //
 // Usage, one process per worker, structures i ≡ worker (mod workers):
-//   node scripts/simulate-structures.ts <input.jsonl>... --out <out.tsv> --seed-base B \
+//   node --import ./scripts/stats/record-loads.ts scripts/stats/simulate-structures.ts \
+//     <input.jsonl>... --out <out.tsv> --seed-base B \
 //     [--worker i --workers n] [--min-k K] > <log>
 // The TSV gets one row per structure, written as soon as it is judged. A run that stops resumes:
 // rerun the same command and it skips every id already in the TSV. Its sidecar <out.tsv>.meta.json
@@ -33,7 +34,8 @@ import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs
 import path from "node:path";
 import { parseArgs } from "node:util";
 
-import { fixedCasesInterval, type CaseCounts, type Rng } from "../../src/stats/index.ts";
+import { fixedCasesInterval, type CaseCounts } from "../../src/stats/compare.ts";
+import type { Rng } from "../../src/stats/rng.ts";
 import { type Group, truthOfGroups } from "../../test/stats/support/exact.ts";
 import {
   binomial,
@@ -294,17 +296,7 @@ function main(): void {
     probe(all, shard, out, Number(values.sample));
     return;
   }
-  const here = import.meta.dirname;
-  const p = provenance(
-    import.meta.filename,
-    [
-      path.join(here, "../../test/stats/support/exact.ts"),
-      path.join(here, "../../test/stats/support/simulate.ts"),
-      path.join(here, "provenance.ts"),
-    ],
-    shard.seedBase,
-    args,
-  );
+  const p = provenance(import.meta.filename, shard.seedBase, args);
   const extra = {
     kind: "simulation",
     inputs: inputs.map((f) => ({ path: path.basename(f), sha256: sha256(readFileSync(f)) })),
@@ -319,7 +311,7 @@ function main(): void {
     // A resumed run must be the same run: same code, seeds, inputs and shard.
     const before = JSON.parse(readFileSync(metaPath(out), "utf8")) as Record<string, unknown>;
     const now: Record<string, unknown> = { ...p, ...extra };
-    for (const key of ["commit", "files", "seedBase", "inputs", "shard", "reps"])
+    for (const key of ["commit", "files", "packages", "seedBase", "inputs", "shard", "reps"])
       if (JSON.stringify(before[key]) !== JSON.stringify(now[key]))
         throw new Error(`${out} was written by another run: its ${key} differs`);
     sessions = Array.isArray(before["sessions"]) ? before["sessions"] : [];

@@ -6,7 +6,8 @@
 // It checks the tree's manifest and SBOM, packs exactly that tree, and installs the tarball into a
 // new pnpm project outside the repository, with the README's install block. Then it fails unless:
 // - installing runs no script, and one zod is installed;
-// - each subpath (`.`, `./contracts`, `./stats`, `./schemas/<record>.schema.json`) loads in Node;
+// - each subpath (`.`, `./contracts`, `./stats`, `./calibration`, `./schemas/<record>.schema.json`)
+//   loads in Node;
 // - a consumer file type-checks under each consumer compiler profile with `skipLibCheck: false`,
 //   so that the package's declarations are checked;
 // - each scenario of the README's five-minute example, run with the CLI and again with the library
@@ -156,23 +157,26 @@ function checkAndPack(tree: string, work: string): string {
 const API = `import { CORE_VERSION, decide, main, reportPlugin } from "${PACKAGE_NAME}";
 import { Case, canonicalize, type Decision } from "${PACKAGE_NAME}/contracts";
 import { compareCounts, type Comparison } from "${PACKAGE_NAME}/stats";
+import { analyzeCalibration, type CalibrationAnalysis } from "${PACKAGE_NAME}/calibration";
 
 const version: string = CORE_VERSION;
 const exit: (argv: readonly string[]) => Promise<number> = main;
 const text: string = canonicalize({ a: 1 });
 const verdict = (d: Decision): string => d.verdict ?? "none";
 const validated = (c: Comparison): boolean => c.regression.validated;
-export const used = [version, exit, decide, reportPlugin, Case, compareCounts, text, verdict, validated];
+const secondary = (a: CalibrationAnalysis): boolean => a.use === "secondary";
+export const used = [version, exit, decide, reportPlugin, Case, compareCounts, text, verdict, validated, analyzeCalibration, secondary];
 `;
 
 /** The consumer file that Node runs: every subpath, the JSON Schema files and the manifest. */
 const SUBPATHS = `import * as ichnaea from "${PACKAGE_NAME}";
 import * as contracts from "${PACKAGE_NAME}/contracts";
 import * as stats from "${PACKAGE_NAME}/stats";
+import * as calibration from "${PACKAGE_NAME}/calibration";
 import caseSchema from "${PACKAGE_NAME}/schemas/case.schema.json" with { type: "json" };
 import manifest from "${PACKAGE_NAME}/package.json" with { type: "json" };
 
-const counts = { ".": Object.keys(ichnaea).length, "./contracts": Object.keys(contracts).length, "./stats": Object.keys(stats).length };
+const counts = { ".": Object.keys(ichnaea).length, "./contracts": Object.keys(contracts).length, "./stats": Object.keys(stats).length, "./calibration": Object.keys(calibration).length };
 console.log(JSON.stringify({ counts, schema: caseSchema.$id, version: manifest.version, main: typeof ichnaea.main }));
 `;
 

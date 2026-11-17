@@ -800,7 +800,14 @@ export const VALID: Record<string, Record<string, unknown>> = {
       },
       "ts-scorers": { files: d("d8") },
     },
-    measures: { searched: d("e2"), grounded: d("e3"), "cites-page": d("e4"), correct: d("e5") },
+    measures: {
+      searched: { definition: d("e2"), implementation: d("f2") },
+      grounded: { definition: d("e3"), implementation: d("f2") },
+      "cites-page": { definition: d("e4"), implementation: d("f4") },
+      correct: { definition: d("e5"), implementation: d("f5") },
+      "rank-ndcg": { definition: d("e6"), implementation: d("f2") },
+      "latency-ms": { definition: d("e7"), implementation: d("f2") },
+    },
     limits: {
       grounded: {
         limit: 0.05,
@@ -1237,6 +1244,10 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
         https: { host: "example.com", path: "/cases.jsonl?sig=abc" },
       }),
     "negative-bytes": (r) => ((r["sources"] as Array<Record<string, unknown>>)[0]!["bytes"] = -1),
+    "measure-without-implementation": (r) =>
+      delete (r["measures"] as Record<string, Record<string, unknown>>)["searched"]![
+        "implementation"
+      ],
   },
 };
 

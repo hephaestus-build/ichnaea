@@ -24,13 +24,13 @@
 // Seeds: the cell j of margin index i draws from MT19937 seeded with B + 1,000·i + j, where B is
 // --seed-base (default 7,000,000). The default seeds (7,000,000 to 7,050,021) overlap no seed of
 // the sweeps or of the simulation runs.
-// Usage: node scripts/generate-structures.ts --out <structures.jsonl> [--one-trial]
+// Usage: node --import ./scripts/stats/record-loads.ts scripts/stats/generate-structures.ts \
+//     --out <structures.jsonl> [--one-trial]
 // The output must not exist; its sidecar <out>.meta.json records the provenance.
 import { appendFileSync, existsSync, writeFileSync } from "node:fs";
-import path from "node:path";
 import { parseArgs } from "node:util";
 
-import { createRng } from "../../src/stats/index.ts";
+import { createRng } from "../../src/stats/rng.ts";
 import type { Group } from "../../test/stats/support/exact.ts";
 import { provenance, writeMeta } from "./provenance.ts";
 import {
@@ -232,17 +232,7 @@ function main(): void {
   const perCell = Number(values["per-cell"]);
   if (!Number.isInteger(perCell) || perCell < 121)
     throw new RangeError("--per-cell must hold the 121 grid structures");
-  const here = import.meta.dirname;
-  const p = provenance(
-    import.meta.filename,
-    [
-      path.join(here, "study-heterogeneous.ts"),
-      path.join(here, "../../test/stats/support/exact.ts"),
-      path.join(here, "provenance.ts"),
-    ],
-    seedBase,
-    args,
-  );
+  const p = provenance(import.meta.filename, seedBase, args);
   const lines = generate(
     Number(values.from),
     Number(values.to),
