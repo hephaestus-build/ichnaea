@@ -27,6 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0
           persist-credentials: false
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -40,6 +41,11 @@ jobs:
       - run: pnpm run check:generated
       - name: The contracts' API report is current
         run: pnpm run check:api
+      # Every published study output must still be what the code at HEAD produces: its sidecar
+      # pins the sha256 of each file the study ran, and a change to one needs a rerun.
+      - name: Every published study output still matches its code
+        working-directory: packages/ichnaea
+        run: node scripts/stats/check-sweep-provenance.ts --all
       # The tree that the build branch would hold for this commit: its manifest runs nothing on
       # install, and its SBOM describes what it ships.
       - name: The build tree has a manifest without scripts and an SBOM of what it ships

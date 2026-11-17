@@ -3,9 +3,10 @@
 // and every file it lists must have the recorded sha256 both at that commit and at HEAD. A complete
 // output must also still have the sha256 its sidecar records. Fails on the first mismatch per
 // output, and lists every failing output.
-// Usage: node scripts/check-sweep-provenance.ts <output>...
+// Usage: node scripts/check-sweep-provenance.ts <output>... | --all (every committed sidecar)
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 
 import { git, metaPath, PROVENANCE_SCHEMA, repoRoot, sha256 } from "./provenance.ts";
 
@@ -75,10 +76,21 @@ export function checkProvenance(outputs: readonly string[], root: string): strin
   return outputs.flatMap((o) => checkOne(o, root, head) ?? []);
 }
 
+/** The outputs whose sidecars are committed, as paths from the repository root. */
+export function committedOutputs(root: string): string[] {
+  return git(["ls-files", "--", "*.meta.json"], root)
+    .split("\n")
+    .filter((f) => f !== "")
+    .map((f) => f.replace(/\.meta\.json$/, ""))
+    .toSorted();
+}
+
 if (import.meta.main) {
-  const outputs = process.argv.slice(2);
-  if (outputs.length === 0) throw new Error("usage: check-sweep-provenance.ts <output>...");
-  const failures = checkProvenance(outputs, repoRoot(import.meta.filename));
+  const root = repoRoot(import.meta.filename);
+  const args = process.argv.slice(2);
+  const outputs = args.includes("--all") ? committedOutputs(root).map((o) => join(root, o)) : args;
+  if (outputs.length === 0) throw new Error("usage: check-sweep-provenance.ts <output>... | --all");
+  const failures = checkProvenance(outputs, root);
   for (const f of failures) console.error(f);
   if (failures.length > 0) process.exit(1);
   console.log(`provenance: ${outputs.length} output(s) match the scripts at HEAD`);
