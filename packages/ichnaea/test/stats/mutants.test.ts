@@ -142,7 +142,7 @@ describe("the mutation harness", () => {
       "control: killed, as it must be",
       "applies: killed",
       "missed: SURVIVED",
-      "1 of 2 mutants killed",
+      "1 of 2 mutants killed, 0 detected by a timeout",
       "survivors: missed",
     ]);
     expect(readFileSync(join(dir, "source.ts"), "utf8")).toBe(SOURCE);
@@ -200,7 +200,7 @@ describe("the mutation harness", () => {
     expect(code).toBe(1);
     expect(lines.slice(2)).toEqual([
       "applies: ERROR: a suite did not run",
-      "0 of 1 mutants killed",
+      "0 of 1 mutants killed, 0 detected by a timeout",
       "errors (no result): applies",
     ]);
   });
@@ -238,8 +238,8 @@ describe("the mutation harness", () => {
     expect(code).toBe(0);
     expect(lines.slice(2)).toEqual([
       "applies: killed",
-      "1 of 1 mutants killed",
-      "all mutants killed",
+      "1 of 1 mutants killed, 0 detected by a timeout",
+      "every mutant detected",
     ]);
   });
 });

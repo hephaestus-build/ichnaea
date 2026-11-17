@@ -2,8 +2,10 @@
 // (scripts/{stats,contracts,decide}/mutants.ts). Only an assertion failure is a kill, judged by the
 // error's class from a reporter that records it (scripts/mutation-reporter.ts): AssertionError or
 // JestAssertionError, or a fast-check property that returned false or whose predicate failed an
-// assertion. A crash, a suite that cannot load, a timeout, a test that fails by any other error or
-// a run with no report is an error, and an error fails the whole mutation run.
+// assertion. A crash, a suite that cannot load, a test that fails by any other error or a run with
+// no report is an error, and an error fails the whole mutation run. A test that times out under a
+// mutant detects it, as Stryker counts it; the run fails only when more than a tenth of its mutants
+// are detected by a timeout alone.
 //
 // Every runner also applies two controls before its mutants: a comment-only canary, which no test
 // can detect and which must survive, and a deliberate behaviour break, which must be killed. Together
@@ -19,6 +21,8 @@ import type { MutationError, MutationReport } from "./mutation-reporter.ts";
 export type Outcome =
   | { readonly kind: "survived" }
   | { readonly kind: "killed"; readonly by: readonly string[] }
+  /** Detected by a test that timed out under the mutant, as Stryker counts it. */
+  | { readonly kind: "timedOut"; readonly test: string }
   | { readonly kind: "error"; readonly reason: string };
 
 /** The error classes of an assertion: chai's, and vitest's jest-compatible one. */
@@ -71,7 +75,7 @@ export function classify(exitCode: number | null, report: MutationReport | undef
           : `the mutant does not type-check: ${typeErrors[0].message.slice(0, 300)}`,
     };
   const timedOut = report.failed.find((f) => f.errors.some((e) => TIMEOUT.test(e.message)));
-  if (timedOut !== undefined) return { kind: "error", reason: `timed out: ${timedOut.test}` };
+  if (timedOut !== undefined) return { kind: "timedOut", test: timedOut.test };
   const by = report.failed.filter((f) => f.errors.some(isAssertion)).map((f) => f.test);
   if (by.length === 0) {
     const first = report.failed[0]!;
@@ -143,19 +147,30 @@ export const CONTROLS = {
 } as const;
 
 const describe = (o: Outcome): string =>
-  o.kind === "error" ? `ERROR: ${o.reason}` : o.kind === "killed" ? "killed" : "SURVIVED";
+  o.kind === "error"
+    ? `ERROR: ${o.reason}`
+    : o.kind === "killed"
+      ? "killed"
+      : o.kind === "timedOut"
+        ? `detected (timeout): ${o.test}`
+        : "SURVIVED";
+
+/** The share of a run's mutants that may be detected by a timeout before the run fails. */
+export const TIMEOUT_SHARE = 0.1;
 
 /** What a mutation run found. */
 export interface MutationResult {
   /** 0 only when the controls held, at least one mutant ran, and every mutant was killed. */
   readonly code: number;
   readonly killed: number;
+  /** Mutants detected by a timeout: listed, and failing the run only above TIMEOUT_SHARE. */
+  readonly timedOut: readonly string[];
   readonly survivors: readonly string[];
   readonly errors: readonly string[];
 }
 
 /** The result of a run that proves nothing: its controls failed, or no mutant ran. */
-const FAILED: MutationResult = { code: 1, killed: 0, survivors: [], errors: [] };
+const FAILED: MutationResult = { code: 1, killed: 0, timedOut: [], survivors: [], errors: [] };
 
 /**
  * Runs the canary, then the control, then each mutant, through `attempt`, which applies one mutant,
@@ -188,18 +203,25 @@ export function runMutations<M extends { readonly id: string }>(input: {
     log(`${mutant.id}: ${outcome.kind}, as it must be`);
   }
   let killed = 0;
+  const timedOut: string[] = [];
   const survivors: string[] = [];
   const errors: string[] = [];
   for (const mutant of input.mutants) {
     const outcome = input.attempt(mutant);
     log(`${mutant.id}: ${describe(outcome)}`);
     if (outcome.kind === "killed") killed++;
+    else if (outcome.kind === "timedOut") timedOut.push(mutant.id);
     else (outcome.kind === "survived" ? survivors : errors).push(mutant.id);
   }
-  log(`${killed} of ${input.mutants.length} mutants killed`);
+  const total = input.mutants.length;
+  log(`${killed} of ${total} mutants killed, ${timedOut.length} detected by a timeout`);
+  if (timedOut.length > 0) log(`detected (timeout): ${timedOut.join(", ")}`);
+  const tooManyTimeouts = timedOut.length > TIMEOUT_SHARE * total;
+  if (tooManyTimeouts)
+    log(`more than ${100 * TIMEOUT_SHARE}% of the mutants were detected only by a timeout`);
   if (errors.length > 0) log(`errors (no result): ${errors.join(", ")}`);
   if (survivors.length > 0) log(`survivors: ${survivors.join(", ")}`);
-  const code = errors.length === 0 && survivors.length === 0 ? 0 : 1;
-  if (code === 0) log("all mutants killed");
-  return { code, killed, survivors, errors };
+  const code = errors.length === 0 && survivors.length === 0 && !tooManyTimeouts ? 0 : 1;
+  if (code === 0) log("every mutant detected");
+  return { code, killed, timedOut, survivors, errors };
 }

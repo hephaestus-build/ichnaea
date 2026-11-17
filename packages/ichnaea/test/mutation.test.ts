@@ -5,7 +5,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { classify, isAssertion } from "../scripts/mutation.ts";
+import { classify, isAssertion, type Outcome, runMutations } from "../scripts/mutation.ts";
 import type { MutationError, MutationReport } from "../scripts/mutation-reporter.ts";
 
 const error = (name: string, message: string, cause?: MutationError): MutationError => ({
@@ -90,9 +90,10 @@ describe("what one test run under a mutant shows", () => {
     expect(
       classify(1, { passed: false, modules: [], failed: [], unhandled: [error("Error", "boom")] }),
     ).toMatchObject({ kind: "error", reason: expect.stringContaining("unhandled") });
-    expect(classify(1, failing(error("Error", "Test timed out in 5000ms.")))).toMatchObject({
-      kind: "error",
-      reason: expect.stringContaining("timed out"),
+    // A timeout is a detection, not an error: runMutations lists it and bounds its share.
+    expect(classify(1, failing(error("Error", "Test timed out in 5000ms.")))).toEqual({
+      kind: "timedOut",
+      test: "test/x.test.ts: a test",
     });
     expect(classify(0, failing(error("AssertionError", "x")))).toMatchObject({ kind: "error" });
   });
@@ -142,5 +143,48 @@ describe("the sources the classifier relies on", () => {
       ),
     );
     expect(importing).toEqual([]);
+  });
+});
+
+/** n mutants named m0 … m(n − 1). */
+const ids = (n: number) => Array.from({ length: n }, (_, i) => ({ id: `m${i}` }));
+
+describe("timeouts in a mutation run", () => {
+  const canary = { id: "canary" };
+  const control = { id: "control" };
+  /** An attempt in which the first `timeouts` mutants time out and the others are killed. */
+  const attempt =
+    (timeouts: number) =>
+    (m: { id: string }): Outcome =>
+      m === canary
+        ? { kind: "survived" }
+        : m === control || Number(m.id.slice(1)) >= timeouts
+          ? { kind: "killed", by: ["t"] }
+          : { kind: "timedOut", test: "slow" };
+
+  it("lists a timeout as detected, and passes while timeouts are at most a tenth", () => {
+    const lines: string[] = [];
+    const result = runMutations({
+      canary,
+      control,
+      mutants: ids(10),
+      attempt: attempt(1),
+      log: (l) => lines.push(l),
+    });
+    expect(result).toMatchObject({ code: 0, killed: 9, timedOut: ["m0"] });
+    expect(lines).toContain("detected (timeout): m0");
+  });
+
+  it("fails the run when more than a tenth were detected only by a timeout", () => {
+    const lines: string[] = [];
+    const result = runMutations({
+      canary,
+      control,
+      mutants: ids(10),
+      attempt: attempt(2),
+      log: (l) => lines.push(l),
+    });
+    expect(result.code).toBe(1);
+    expect(lines).toContain("more than 10% of the mutants were detected only by a timeout");
   });
 });

@@ -7,8 +7,9 @@
 // moves one fails the test run instead of leaving a mutant that silently tests nothing. That test is
 // in the `mutants` project, not in `contracts`, which the mutated runs execute: its anchor check
 // would fail under every mutant. Only an assertion failure kills. A mutant under which a test throws
-// any other error, a suite does not load or a test times out is a run error, not a kill, and the run
-// fails. Every run first applies a comment-only canary that must survive and a deliberate break that
+// any other error, or a suite does not load, is a run error, not a kill, and the run fails. A test
+// that times out detects the mutant, and more than a tenth of such timeouts fail the run. Every run
+// first applies a comment-only canary that must survive and a deliberate break that
 // must be killed, and a run with no mutant selected fails: scripts/mutation.ts.
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
