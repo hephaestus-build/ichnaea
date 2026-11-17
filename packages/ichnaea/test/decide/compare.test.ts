@@ -7,6 +7,7 @@ import { compare, decide } from "../../src/decide/index.ts";
 import { scenario } from "./support/scenario.ts";
 
 const decidedAt = "2026-11-16T13:00:00Z";
+const shift = (t: Trial): Trial => ({ ...t, replicate: t.replicate + 1 });
 const s = await scenario({
   cases: 40,
   replicates: 2,
@@ -64,7 +65,20 @@ describe("compare", () => {
     const decision = compare(s.plan, { ...s, trials }, { decidedAt });
     expect(decision.verdict).toBe("INVALID");
     expect(decision.invalidReasons).toContain(
-      `trial '${first.id}' names case '${trials[0]?.case}', arm '${trials[0]?.arm}', replicate ${trials[0]?.replicate}, but the plan has case '${first.case}', arm '${first.arm}', replicate ${first.replicate}`,
+      `1 trial(s) name another case, arm or replicate than their planned trial, for example trial '${first.id}' names case '${trials[0]?.case}', arm '${trials[0]?.arm}', replicate ${trials[0]?.replicate}, but the plan has case '${first.case}', arm '${first.arm}', replicate ${first.replicate}`,
     );
+  });
+
+  it("gives one reason for every trial that names another than its planned one", () => {
+    // A shifted replicate numbering would mismatch every trial: one line counts them all.
+    const [first, second] = s.trials;
+    if (!first || !second) throw new Error("the scenario has no trials");
+    const trials = [shift(first), shift(second), ...s.trials.slice(2)];
+    const decision = compare(s.plan, { ...s, trials }, { decidedAt });
+    expect(decision.verdict).toBe("INVALID");
+    const lines = decision.invalidReasons.filter((r) => r.includes("planned trial"));
+    expect(lines).toEqual([
+      `2 trial(s) name another case, arm or replicate than their planned trial, for example trial '${first.id}' names case '${first.case}', arm '${first.arm}', replicate ${first.replicate + 1}, but the plan has case '${first.case}', arm '${first.arm}', replicate ${first.replicate}`,
+    ]);
   });
 });

@@ -1,0 +1,5 @@
+{
+  "schema": "ichnaea.workerReady/1",
+  "capacity": 0,
+  "protocol": "ichnaea.trialRequest/1"
+}

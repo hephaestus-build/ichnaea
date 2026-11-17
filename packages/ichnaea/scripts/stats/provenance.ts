@@ -186,7 +186,8 @@ function mergeHashes(
 /**
  * The provenance of a merge step, with the modules and packages that each shard's process loaded
  * (from the shards' sidecars, `readProvenance`). Throws when a shard has another schema, script,
- * seed base, commit or Node version, or records another sha256 for a file.
+ * seed base, commit or Node version, or records another sha256 for a file. The merged run started
+ * at the earliest start of the merge and its shards.
  */
 export function mergeShards(p: Provenance, shards: readonly Provenance[]): Provenance {
   const files: Record<string, string> = { ...p.files };
@@ -212,6 +213,8 @@ export function mergeShards(p: Provenance, shards: readonly Provenance[]): Prove
   }
   const merged: Provenance = {
     ...p,
+    // The run started when its first process did.
+    started: [p.started, ...shards.map((s) => s.started)].toSorted()[0] ?? p.started,
     files: byKey(files),
     packages: byKey(
       Object.fromEntries(

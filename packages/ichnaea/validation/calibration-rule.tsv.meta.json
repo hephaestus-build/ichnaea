@@ -1,12 +1,12 @@
 {
   "schema": "ichnaea.stats-provenance/1",
   "script": "packages/ichnaea/scripts/stats/study-calibration-rule.ts",
-  "commit": "55bd5648489c9b2815d0669b8acf13d0657ea44b",
+  "commit": "59fb9083dd389c160b6bce8473fd0648073460d6",
   "files": {
-    "packages/ichnaea/scripts/stats/calibration-rule-study.ts": "26bc04a449b3691ca3d36dee0c496cc8a8ccfcec24376ac501fa185f6d8c6430",
+    "packages/ichnaea/scripts/stats/calibration-rule-study.ts": "4ab2ba95c2eec883551f618e940e42d64a8ed4b7ec805e9bce096de4a9f69308",
     "packages/ichnaea/scripts/stats/calibration-rule.ts": "994ab161473c30e8e0b7b1a470008b07e3401af5337aa7ac782e1e10b028a1e3",
     "packages/ichnaea/scripts/stats/provenance.ts": "5c1c46f01671e1068dc5cb7bb0266ccc7a82b752fa0a3478080afa36ff864700",
-    "packages/ichnaea/scripts/stats/study-calibration-rule.ts": "fd6b53786420134fe3444f4288a344c822d3a9ca822ef36cd85970765715d187",
+    "packages/ichnaea/scripts/stats/study-calibration-rule.ts": "37a5998d28874967eedcf602b43b0d791bda6d67ed61c895279c4b19f9ed9cd1",
     "packages/ichnaea/src/calibration/analyze.ts": "910669c7a7eb8f7202ff4f0dae10a850df5cd1cb66a6b30ff7eae91d6b8bc468",
     "packages/ichnaea/src/calibration/engine.ts": "c893fb4681e4e0946411f424b2f7d3d2445bf1d9a35da89946acfbe9a71b00dc",
     "packages/ichnaea/src/calibration/index.ts": "837de19b5220c124807e4a1bc9cec14726a509fa7c9e12d1e5a35d4cbdf90489",
@@ -35,15 +35,15 @@
   "arguments": [
     "merge",
     "--in",
-    "/tmp/calibration-rule-study-pr73.dGJOlb/shards",
+    "/tmp/calibration-rule-study-pr73.GmiIqW/shards",
     "validation/calibration-rule.tsv"
   ],
   "node": "v24.22.2",
-  "started": "2026-11-17T02:40:44.470Z",
+  "started": "2026-11-17T11:44:03.378Z",
   "studies": 2000,
   "resamples": 2000,
-  "cells": 55,
+  "cells": 56,
   "output": "calibration-rule.tsv",
   "complete": true,
-  "outputSha256": "00542378d457bba44d447fb6689c65e7a2d3f05dbbfa07ca418c3c9f31605a72"
+  "outputSha256": "f173a8b91444158027c2d83fa9b039d21ce0cf21379104bee4a77a82cd702f4a"
 }

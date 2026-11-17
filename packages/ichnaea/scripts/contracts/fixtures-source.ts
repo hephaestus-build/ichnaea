@@ -49,6 +49,136 @@ export const CONFIGURATION_B = {
   label: "candidate",
 };
 
+const COMMIT = "9e2c1f0a4b7d3e6c8a1f2b5d7e9c0a3b6d8f1e2c";
+
+/** A project config with two datasets, a shared worker, an endpoint, baselines and delivery. */
+const PROJECT = {
+  schema: "ichnaea.project/1",
+  suites: ["suites/*/suite.ts"],
+  datasets: {
+    "answers-public": { git: { repo: "https://github.com/example/answers-eval", commit: COMMIT } },
+    "answers-private": {
+      git: {
+        repo: "git@github.com:example/answers-eval-private.git",
+        commit: "41ab0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b",
+      },
+    },
+  },
+  workers: {
+    assistant: {
+      command: ["poetry", "run", "python", "-m", "evals.worker"],
+      prepare: ["poetry", "install", "--no-root"],
+      env: [{ name: "LLM_API_KEY", secret: true }],
+      endpoints: ["eu-llm"],
+      capacity: 4,
+    },
+  },
+  endpoints: { "eu-llm": { concurrency: 8, requestsPerMinute: 600 } },
+  baselines: {
+    from: { githubArtifact: { workflow: "baseline.yml", branch: "main" } },
+    freshness: "P7D",
+  },
+  defaults: { trials: 2, mode: "fast" },
+  delivery: {
+    sinks: { pr: { kind: "github" } },
+    routes: [{ on: "compare", profile: "pr", to: ["pr"] }],
+  },
+  privacy: { homeKey: { fromEnv: "ICHNAEA_HOME_KEY" } },
+};
+
+/** A RAG answer suite: cases from two datasets, a judge, a TypeScript scorer and three profiles. */
+const SUITE_V2 = {
+  schema: "ichnaea.suite/2",
+  id: "answers",
+  version: "4",
+  about: {
+    objective: "Answers about study programmes are correct and grounded in the official pages.",
+    decision: "Release check before a deploy of a new model, prompt or retrieval setting.",
+    construct: "Grounded correctness on curated questions; not user satisfaction.",
+    scope: "German and English questions about admission and programmes.",
+    nonCoverage: ["multi-turn follow-ups", "small talk"],
+    threats: ["judge bias", "retrieval drift between runs"],
+  },
+  cases: {
+    from: [
+      { dataset: "answers-public", path: "answers/cases.jsonl" },
+      { dataset: "answers-private", path: "answers/real.jsonl" },
+    ],
+    pools: { development: { label: "dev" }, validation: { label: "test", maxReads: 40 } },
+  },
+  worker: "assistant",
+  stages: ["search", "rank", "answer"],
+  environment: {
+    index: {
+      service: { fromEnv: "INDEX_URL" },
+      identity: "snapshot-id",
+      class: "none",
+      exposure: "public",
+    },
+  },
+  instruments: {
+    "quality-judge": {
+      command: ["poetry", "run", "python", "-m", "judges.quality"],
+      prepare: ["poetry", "install", "--no-root"],
+      files: ["judges/**", "rubrics/quality.md", "pyproject.toml", "poetry.lock"],
+      judge: {
+        model: "provider/model-x@2026-10-01",
+        prompt: "judges/prompt.md",
+        rubric: "rubrics/quality.md",
+        parameters: { temperature: 0 },
+      },
+      env: [{ name: "JUDGE_API_KEY", secret: true }],
+      endpoints: ["eu-llm"],
+    },
+    "ts-scorers": { files: ["scorers/**", "package-lock.json"] },
+  },
+  measures: {
+    searched: {
+      type: "binary",
+      stage: "search",
+      status: "ok",
+      appliesTo: { slice: "needs-search" },
+      direction: "higher",
+    },
+    grounded: { type: "binary", scorer: { builtin: "links-grounded" } },
+    "cites-page": {
+      type: "binary",
+      scorer: { instrument: "ts-scorers", module: "scorers/cites.ts", export: "citesPage" },
+    },
+    correct: { type: "binary", scorer: { instrument: "quality-judge", dimension: "correctness" } },
+    "rank-ndcg": { type: "score", stage: "rank", scorer: { builtin: "ndcg", options: { k: 5 } } },
+    "latency-ms": { type: "quantity", unit: "ms", scorer: { builtin: "wall-time" } },
+  },
+  policy: {
+    primary: {
+      grounded: {
+        limit: 0.05,
+        owner: "answers-owner",
+        reason: "Pass needs any drop to stay under 5 points.",
+      },
+      searched: {
+        limit: 0.1,
+        owner: "answers-owner",
+        reason: "Search is how answers get grounded.",
+      },
+    },
+    secondary: ["latency-ms"],
+    diagnostic: ["correct", "rank-ndcg", "cites-page"],
+  },
+  profiles: {
+    try: { trials: 1, pool: "development", cases: 10 },
+    pr: { trials: 2, pool: "development", mode: "fast" },
+    release: { trials: 2, pool: "validation", mode: "confirm" },
+  },
+  budget: { calls: 2000, callsPerTrial: 12, judgeCalls: 600 },
+  stopReasons: {
+    COMPLETED: "completed",
+    RATE_LIMITED: "infrastructure",
+    NO_RESULTS: "system",
+    SEARCH_SKIPPED: "not_invoked",
+  },
+};
+
 export const VALID: Record<string, Record<string, unknown>> = {
   case: {
     schema: "ichnaea.case/1",
@@ -231,6 +361,9 @@ export const VALID: Record<string, Record<string, unknown>> = {
       input: { question: "Kann ich nach 40 Tagen noch zurückgeben?" },
     },
     limits: { calls: 12 },
+    deadline: "PT120S",
+    workdir: "/tmp/ichnaea/run-2026-11-15-a/trial-0001",
+    configuration: { path: "/work/support-assistant/configs/answer-short.json" },
   },
   trialResult: {
     schema: "ichnaea.trialResult/1",
@@ -245,15 +378,126 @@ export const VALID: Record<string, Record<string, unknown>> = {
       attempt: 1,
     },
     output: { text: "Nein, die Frist beträgt 30 Tage.", sources: ["policy.md"] },
-    calls: 3,
+    events: [
+      {
+        stage: "search",
+        iteration: 0,
+        ran: true,
+        output: { pages: ["policy.md"] },
+        startedAt: "2026-11-15T10:01:00.120Z",
+        endedAt: "2026-11-15T10:01:00.480Z",
+        stop: { reason: "completed" },
+      },
+      { stage: "answer", iteration: 0, ran: true, stop: { reason: "end_turn" } },
+    ],
+    stop: { reason: "end_turn" },
+    usage: {
+      calls: 3,
+      inputTokens: 812,
+      outputTokens: 64,
+      cacheReadTokens: 512,
+      responseIds: ["resp_01", "resp_02", "resp_03"],
+      throttled: { count: 0, ms: 0, firstAcceptedAt: "2026-11-15T10:01:00.100Z" },
+    },
+    timing: {
+      startedAt: "2026-11-15T10:01:00.050Z",
+      firstChunkAt: "2026-11-15T10:01:01.200Z",
+      endedAt: "2026-11-15T10:01:02.000Z",
+    },
     observed: {
       code: { commit: "0123456789abcdef0123456789abcdef01234567" },
       model: "example-model-2026-10",
       route: d("e1"),
       parameters: { temperature: 0 },
+      configuration: d("c3"),
+      configurationRead: ["answer.prompt", "answer.temperature"],
+      environment: { helpCentreIndex: "snapshot-2026-11-01" },
     },
   },
   workerError: { schema: "ichnaea.workerError/1", dataClass: "none", kind: "bad-json" },
+  workerReady: { schema: "ichnaea.workerReady/1", capacity: 2, protocol: "ichnaea.trialRequest/1" },
+  workerEvent: {
+    schema: "ichnaea.workerEvent/1",
+    trial: {
+      // An opaque arm name, as a plan assigns it: never base or candidate (REQ-22).
+      id: "refund-window-de/a/r1",
+      suite: "support-assistant",
+      case: "refund-window-de",
+      arm: "a",
+      replicate: 1,
+      attempt: 1,
+    },
+    kind: "heartbeat",
+    calls: 2,
+  },
+  cancel: {
+    schema: "ichnaea.cancel/1",
+    trial: {
+      // An opaque arm name, as a plan assigns it: never base or candidate (REQ-22).
+      id: "refund-window-de/a/r1",
+      suite: "support-assistant",
+      case: "refund-window-de",
+      arm: "a",
+      replicate: 1,
+      attempt: 2,
+    },
+  },
+  scoreRequest: {
+    schema: "ichnaea.scoreRequest/1",
+    id: "score-0001",
+    dataClass: "none",
+    instrument: "quality-judge",
+    deadline: "PT120S",
+    settings: { judge: { model: "example-judge-2026-10", temperature: 0 } },
+    measures: [
+      { id: "correct", dimension: "correctness" },
+      { id: "complete", dimension: "completeness" },
+    ],
+    case: {
+      id: "refund-window-de",
+      input: { question: "Kann ich nach 40 Tagen noch zurückgeben?" },
+      references: { facts: [{ text: "Return window is 30 days", polarity: "positive" }] },
+    },
+    scratch: "/tmp/ichnaea/run-2026-11-15-a/score-0001",
+    units: [
+      {
+        trial: "refund-window-de/b/r0",
+        output: { text: "Nein, die Frist beträgt 30 Tage.", sources: ["policy.md"] },
+        artifacts: [
+          { name: "exercise", path: "/tmp/ichnaea/run-2026-11-15-a/score-0001/exercise" },
+        ],
+        events: [{ stage: "answer", iteration: 0, ran: true, stop: { reason: "end_turn" } }],
+      },
+    ],
+  },
+  scoreResult: {
+    schema: "ichnaea.scoreResult/1",
+    request: "score-0001",
+    dataClass: "none",
+    values: [
+      {
+        trial: "refund-window-de/b/r0",
+        measure: "correct",
+        status: "ok",
+        value: true,
+        why: "States the 30-day window from the policy.",
+        observed: { model: "example-judge-2026-10", responseIds: ["resp_j1"] },
+      },
+      {
+        trial: "refund-window-de/b/r0",
+        measure: "complete",
+        status: "ok",
+        value: 0.5,
+        observed: { model: "example-judge-2026-10", responseIds: ["resp_j2"] },
+      },
+      {
+        trial: "refund-window-de/a/r0",
+        measure: "complete",
+        status: "not_applicable",
+        why: "The case asks one question.",
+      },
+    ],
+  },
   run: {
     schema: "ichnaea.run/1",
     id: "run-2026-11-15-a",
@@ -521,6 +765,50 @@ export const VALID: Record<string, Record<string, unknown>> = {
     confirmerRole: "suite maintainer",
     promotion: "synthetic",
   },
+  // The v2 records: a RAG answer suite and its project config (synthetic content).
+  "suite.2": SUITE_V2,
+  "configuration.2": {
+    schema: "ichnaea.configuration/2",
+    digest: d("c3"),
+    fields: { model: "example-model-2026-10", temperature: 0.2 },
+  },
+  project: PROJECT,
+  "suite.lock": {
+    schema: "ichnaea.suite.lock/1",
+    suite: "answers",
+    suiteDigest: d("d1"),
+    measurementDigest: d("d2"),
+    sources: [
+      {
+        origin: { dataset: "answers-public", path: "answers/cases.jsonl" },
+        digest: d("d3"),
+        bytes: 48211,
+        pools: { development: 40, validation: 20 },
+      },
+    ],
+    datasets: { "answers-public": { commit: COMMIT, place: "public" } },
+    instruments: {
+      "quality-judge": {
+        files: d("d4"),
+        judge: {
+          model: "provider/model-x@2026-10-01",
+          parameters: { temperature: 0 },
+          prompt: d("d5"),
+          rubric: d("d6"),
+          inputsDigest: d("d7"),
+        },
+      },
+      "ts-scorers": { files: d("d8") },
+    },
+    measures: { searched: d("e2"), grounded: d("e3"), "cites-page": d("e4"), correct: d("e5") },
+    limits: {
+      grounded: {
+        limit: 0.05,
+        owner: "answers-owner",
+        reason: "Pass needs any drop to stay under 5 points.",
+      },
+    },
+  },
 };
 
 type Mutation = (record: Record<string, unknown>) => void;
@@ -603,10 +891,59 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
   trialRequest: {
     "attempt-zero": (r) => ((r["trial"] as Record<string, unknown>)["attempt"] = 0),
     "missing-case-digest": (r) => delete (r["case"] as Record<string, unknown>)["digest"],
+    "missing-deadline": (r) => delete r["deadline"],
+    "deadline-zero": (r) => (r["deadline"] = "PT0S"),
+    "deadline-in-minutes": (r) => (r["deadline"] = "PT2M"),
+    "deadline-as-number": (r) => (r["deadline"] = 120),
+    "missing-workdir": (r) => delete r["workdir"],
+    "missing-configuration-path": (r) => (r["configuration"] = {}),
+    "traceparent-uppercase": (r) =>
+      (r["trace"] = { traceparent: `00-${"4BF92F3577B34DA6".repeat(2)}-00f067aa0ba902b7-01` }),
+    "replay-without-digest": (r) => (r["replay"] = { stage: "search", path: "/tmp/frozen" }),
+    "seed-out-of-range": (r) =>
+      (r["seed"] = { algorithm: "mt19937", value: "18446744073709551616" }),
   },
   trialResult: {
-    "missing-calls": (r) => delete r["calls"],
-    "negative-calls": (r) => (r["calls"] = -1),
+    "missing-usage": (r) => delete r["usage"],
+    "negative-calls": (r) => ((r["usage"] as Record<string, unknown>)["calls"] = -1),
+    "truncated-not-a-boolean": (r) => (r["truncated"] = "yes"),
+    "event-without-ran": (r) => delete (r["events"] as Array<Record<string, unknown>>)[0]!["ran"],
+    "event-negative-iteration": (r) =>
+      ((r["events"] as Array<Record<string, unknown>>)[0]!["iteration"] = -1),
+    "event-replayed-not-a-digest": (r) =>
+      ((r["events"] as Array<Record<string, unknown>>)[0]!["replayed"] = "frozen-search"),
+    "stop-without-reason": (r) => (r["stop"] = {}),
+    "artifact-without-path": (r) => (r["artifacts"] = [{ name: "a", mediaType: "text/plain" }]),
+    "artifact-media-type-not-a-type": (r) =>
+      (r["artifacts"] = [{ name: "a", path: "/tmp/a", mediaType: "plain text" }]),
+    "usage-without-response-ids": (r) =>
+      delete (r["usage"] as Record<string, unknown>)["responseIds"],
+    "usage-without-calls": (r) => delete (r["usage"] as Record<string, unknown>)["calls"],
+    "usage-fractional-cost": (r) => ((r["usage"] as Record<string, unknown>)["costMicros"] = 1.5),
+    "throttled-negative-wait": (r) =>
+      ((r["usage"] as Record<string, unknown>)["throttled"] = { count: 1, ms: -5 }),
+    "throttled-non-finite-wait": (r) =>
+      ((r["usage"] as Record<string, unknown>)["throttled"] = {
+        count: 0,
+        ms: { nonFinite: "inf" },
+      }),
+    "observed-without-keys-read": (r) =>
+      delete (r["observed"] as Record<string, unknown>)["configurationRead"],
+    "observed-configuration-as-path": (r) =>
+      ((r["observed"] as Record<string, unknown>)["configuration"] = "configs/answer-short.json"),
+    "observed-without-environment": (r) =>
+      delete (r["observed"] as Record<string, unknown>)["environment"],
+    "trace-without-ids": (r) => (r["trace"] = { ids: [], complete: true }),
+    "trace-id-too-short": (r) => (r["trace"] = { ids: ["4bf92f35"], complete: true }),
+    "trace-without-complete": (r) => (r["trace"] = { ids: ["4bf92f3577b34da6a3ce929d0e0e4736"] }),
+    "trace-spans-as-a-total": (r) =>
+      (r["trace"] = { ids: ["4bf92f3577b34da6a3ce929d0e0e4736"], spans: 7, complete: true }),
+    "trace-spans-keyed-by-a-name": (r) =>
+      (r["trace"] = {
+        ids: ["4bf92f3577b34da6a3ce929d0e0e4736"],
+        spans: { answer: 7 },
+        complete: true,
+      }),
     "route-as-url": (r) =>
       ((r["observed"] as Record<string, unknown>)["route"] = "https://api.example.com/v1"),
     "short-commit": (r) =>
@@ -619,6 +956,120 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
   workerError: {
     "missing-kind": (r) => delete r["kind"],
     "empty-kind": (r) => (r["kind"] = ""),
+  },
+  workerReady: {
+    "capacity-zero": (r) => (r["capacity"] = 0),
+    "fractional-capacity": (r) => (r["capacity"] = 1.5),
+    "missing-protocol": (r) => delete r["protocol"],
+    "missing-capacity": (r) => delete r["capacity"],
+  },
+  workerEvent: {
+    "tool-call-without-name": (r) => {
+      delete r["calls"];
+      Object.assign(r, {
+        dataClass: "none",
+        kind: "tool_call",
+        stage: "search",
+        iteration: 0,
+        call: { id: "call_01", args: {} },
+      });
+    },
+    "tool-call-result-and-result-artifact": (r) => {
+      delete r["calls"];
+      Object.assign(r, {
+        dataClass: "pseudonymous",
+        kind: "tool_call",
+        stage: "search",
+        iteration: 0,
+        call: {
+          id: "call_03",
+          name: "search_help_centre",
+          args: {},
+          result: { pages: [] },
+          resultArtifact: "search-results",
+        },
+      });
+    },
+    "tool-call-result-artifact-empty": (r) => {
+      delete r["calls"];
+      Object.assign(r, {
+        dataClass: "pseudonymous",
+        kind: "tool_call",
+        stage: "search",
+        iteration: 0,
+        call: { id: "call_03", name: "search_help_centre", args: {}, resultArtifact: "" },
+      });
+    },
+    "tool-call-without-data-class": (r) => {
+      delete r["calls"];
+      Object.assign(r, {
+        kind: "tool_call",
+        stage: "search",
+        iteration: 0,
+        call: { id: "call_01", name: "search_help_centre", args: {} },
+      });
+    },
+    "missing-calls": (r) => delete r["calls"],
+    "negative-calls": (r) => (r["calls"] = -1),
+    "missing-trial": (r) => delete r["trial"],
+    "attempt-zero": (r) => ((r["trial"] as Record<string, unknown>)["attempt"] = 0),
+    "throttled-without-count": (r) => (r["throttled"] = { ms: 1200 }),
+  },
+  cancel: {
+    "missing-trial": (r) => delete r["trial"],
+    "trial-as-id": (r) => (r["trial"] = "refund-window-de/a/r1"),
+    "trial-and-request": (r) => (r["request"] = "score-0001"),
+    "request-not-an-id": (r) => {
+      delete r["trial"];
+      r["request"] = "";
+    },
+  },
+  scoreRequest: {
+    "missing-id": (r) => delete r["id"],
+    "id-with-a-space": (r) => (r["id"] = "score 0001"),
+    "missing-deadline": (r) => delete r["deadline"],
+    "missing-scratch": (r) => delete r["scratch"],
+    "no-units": (r) => (r["units"] = []),
+    "no-measures": (r) => (r["measures"] = []),
+    "unit-without-trial": (r) => delete (r["units"] as Array<Record<string, unknown>>)[0]!["trial"],
+    "artifact-without-path": (r) =>
+      ((r["units"] as Array<Record<string, unknown>>)[0]!["artifacts"] = [{ name: "exercise" }]),
+    "references-not-an-object": (r) =>
+      ((r["case"] as Record<string, unknown>)["references"] = "30 days"),
+    "deadline-in-minutes": (r) => (r["deadline"] = "PT2M"),
+  },
+  scoreResult: {
+    "missing-request": (r) => delete r["request"],
+    "no-values": (r) => (r["values"] = []),
+    "ok-without-value": (r) => delete (r["values"] as Array<Record<string, unknown>>)[0]!["value"],
+    // A level is reported by its value, as the measure lists its levels, never by a name.
+    "level-by-name": (r) =>
+      ((r["values"] as Array<Record<string, unknown>>)[0]!["value"] = "mostly-correct"),
+    "non-finite-score": (r) =>
+      ((r["values"] as Array<Record<string, unknown>>)[1]!["value"] = { nonFinite: "nan" }),
+    "error-without-failure": (r) =>
+      ((r["values"] as Array<Record<string, unknown>>)[0] = {
+        trial: "t-1",
+        measure: "correct",
+        status: "error",
+      }),
+    "missing-without-reason": (r) =>
+      ((r["values"] as Array<Record<string, unknown>>)[0] = {
+        trial: "t-1",
+        measure: "correct",
+        status: "missing",
+      }),
+    "proportion-without-items": (r) =>
+      ((r["values"] as Array<Record<string, unknown>>)[1]!["value"] = {
+        numerator: 0,
+        denominator: 0,
+      }),
+    "observed-without-response-ids": (r) =>
+      ((r["values"] as Array<Record<string, unknown>>)[0]!["observed"] = {
+        model: "example-judge-2026-10",
+      }),
+    "value-without-measure": (r) =>
+      delete (r["values"] as Array<Record<string, unknown>>)[0]!["measure"],
   },
   run: {
     "missing-ledger": (r) => delete r["ledger"],
@@ -692,6 +1143,101 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
   finding: {
     "missing-promotion": (r) => delete r["promotion"],
   },
+  "suite.2": {
+    "missing-about": (r) => delete r["about"],
+    "about-without-threats": (r) => delete (r["about"] as Record<string, unknown>)["threats"],
+    "missing-measures": (r) => delete r["measures"],
+    "missing-budget": (r) => delete r["budget"],
+    "cases-from-and-source": (r) =>
+      ((r["cases"] as Record<string, unknown>)["source"] = { file: "cases.jsonl" }),
+    "measure-as-function-source": (r) =>
+      ((r["measures"] as Record<string, Record<string, unknown>>)["grounded"]!["scorer"] =
+        "(output) => output.includes('http')"),
+    "module-outside-instrument": (r) =>
+      ((r["measures"] as Record<string, Record<string, Record<string, unknown>>>)["cites-page"]![
+        "scorer"
+      ]!["module"] = "../scorers/cites.ts"),
+    "quantity-without-unit": (r) =>
+      delete (r["measures"] as Record<string, Record<string, unknown>>)["latency-ms"]!["unit"],
+    "limit-above-one": (r) =>
+      ((r["policy"] as Record<string, Record<string, Record<string, unknown>>>)["primary"]![
+        "grounded"
+      ]!["limit"] = 5),
+    "limit-of-zero": (r) =>
+      ((r["policy"] as Record<string, Record<string, Record<string, unknown>>>)["primary"]![
+        "grounded"
+      ]!["limit"] = 0),
+    "primary-without-owner": (r) =>
+      delete (r["policy"] as Record<string, Record<string, Record<string, unknown>>>)["primary"]![
+        "grounded"
+      ]!["owner"],
+    "duration-in-words": (r) => (r["limits"] = { trialDeadline: "2 minutes" }),
+    "level-without-levels": (r) =>
+      ((r["measures"] as Record<string, unknown>)["completeness"] = {
+        type: "level",
+        spacing: "equal",
+      }),
+    "judge-parameter-as-an-object": (r) =>
+      ((
+        (r["instruments"] as Record<string, Record<string, unknown>>)["quality-judge"]![
+          "judge"
+        ] as Record<string, unknown>
+      )["parameters"] = { response: { type: "json" } }),
+    "import-module-outside-the-tree": (r) => {
+      delete r["worker"];
+      r["import"] = { module: "../importers/bench.ts" };
+    },
+    "fidelity-margin-of-one": (r) => (r["attribute"] = { fidelityMargin: { grounded: 1 } }),
+    "self-verdict-without-class": (r) =>
+      ((r["stopReasons"] as Record<string, unknown>)["REPAIR_BUDGET_EXHAUSTED"] = {
+        selfVerdict: true,
+      }),
+  },
+  "configuration.2": {
+    "missing-digest": (r) => delete r["digest"],
+    "bad-digest": (r) => (r["digest"] = "sha256:abc"),
+  },
+  project: {
+    "branch-for-commit": (r) =>
+      ((r["datasets"] as Record<string, Record<string, Record<string, unknown>>>)[
+        "answers-public"
+      ]!["git"]!["commit"] = "main"),
+    "https-with-query": (r) =>
+      ((r["datasets"] as Record<string, unknown>)["answers-public"] = {
+        https: { url: "https://example.com/cases.jsonl?sig=abc" },
+        digest: d("a9"),
+      }),
+    "sentinel-below-five": (r) =>
+      ((r["baselines"] as Record<string, unknown>)["sentinel"] = { share: 0.1, min: 4 }),
+    "route-to-no-sink": (r) =>
+      ((r["delivery"] as Record<string, Array<Record<string, unknown>>>)["routes"]![0]!["to"] = []),
+    "webhook-without-signing-key": (r) =>
+      ((r["delivery"] as Record<string, Record<string, unknown>>)["sinks"]!["hook"] = {
+        kind: "webhook",
+        url: { fromEnv: "HOOK_URL" },
+      }),
+    "token-in-a-command": (r) =>
+      ((r["workers"] as Record<string, Record<string, unknown>>)["assistant"]!["command"] = [
+        "worker",
+        // The header form: refused by the header rule, and no provider's token format, so no
+        // secret scanner flags the generated fixture.
+        "Authorization: Bearer x0x0x0x0",
+      ]),
+    "repository-with-credentials": (r) =>
+      ((r["datasets"] as Record<string, Record<string, Record<string, unknown>>>)[
+        "answers-public"
+      ]!["git"]!["repo"] = "https://x-access-token:ghp_abcdefghij0123456789@github.com/o/r.git"),
+    "zero-capacity": (r) =>
+      ((r["workers"] as Record<string, Record<string, unknown>>)["assistant"]!["capacity"] = 0),
+  },
+  "suite.lock": {
+    "missing-measurement-digest": (r) => delete r["measurementDigest"],
+    "https-origin-with-a-query": (r) =>
+      ((r["sources"] as Array<Record<string, unknown>>)[0]!["origin"] = {
+        https: { host: "example.com", path: "/cases.jsonl?sig=abc" },
+      }),
+    "negative-bytes": (r) => ((r["sources"] as Array<Record<string, unknown>>)[0]!["bytes"] = -1),
+  },
 };
 
 /** A planning entry that a decision states for a plan without one, whose margin is refused. */
@@ -707,13 +1253,23 @@ const REFUSED_PLANNING = {
 };
 
 /** Further valid records: shapes the main valid fixture does not show. */
+/** Removes what only a delivered result carries, for a result that reports a failure. */
+const withoutDelivery = (r: Record<string, unknown>): void => {
+  for (const member of ["output", "events", "stop", "timing"]) delete r[member];
+};
+
 export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
   plan: {
+    // A plan with a bound per trial books its worst case as the trials of its arms with `runs`
+    // times the bound, as decide checks: here one planned trial at 2 calls.
     "calls-per-trial": (r) => {
       (r["budget"] as Record<string, unknown>)["callsPerTrial"] = 2;
+      (r["budget"] as Record<string, unknown>)["worstCaseCalls"] = 2;
+      for (const arm of r["arms"] as Array<Record<string, unknown>>) arm["runs"] = true;
     },
     "one-arm-imported": (r) => {
       (r["budget"] as Record<string, unknown>)["callsPerTrial"] = 2;
+      (r["budget"] as Record<string, unknown>)["worstCaseCalls"] = 2;
       const arms = r["arms"] as Array<Record<string, unknown>>;
       arms[arms.length - 1]!["runs"] = true;
     },
@@ -776,15 +1332,28 @@ export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
       r["why"] = "claims a test that is not in the diff";
     },
   },
+  trialRequest: {
+    // A stage suite that starts after `search`, with a simulated user and a trace context.
+    "traced-replay": (r) => {
+      r["trace"] = { traceparent: "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01" };
+      r["seed"] = { algorithm: "mt19937", value: "20261115" };
+      r["replay"] = {
+        stage: "search",
+        path: "/tmp/ichnaea/run-2026-11-15-a/frozen/search",
+        digest: d("a9"),
+        state: { callsLeft: 4 },
+      };
+    },
+  },
   trialResult: {
     "infrastructure-failure": (r) => {
-      delete r["output"];
+      withoutDelivery(r);
       r["failure"] = {
         class: "infrastructure",
         kind: "rate-limited",
         message: "429 from the endpoint",
       };
-      r["calls"] = 1;
+      r["usage"] = { calls: 1, responseIds: ["resp_01"], throttled: { count: 3, ms: 9000 } };
     },
     "image-released-service": (r) =>
       ((r["observed"] as Record<string, unknown>)["code"] = { image: d("b2") }),
@@ -793,20 +1362,189 @@ export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
         commit: "0123456789abcdef0123456789abcdef01234567",
         image: d("b2"),
       }),
-    "with-usage": (r) => (r["usage"] = { inputTokens: 812, outputTokens: 64 }),
+    // Timing and the token counts are optional: absent means unknown, never zero.
+    "only-the-calls": (r) => {
+      r["usage"] = { calls: 3, responseIds: [] };
+      delete r["timing"];
+    },
+    // The worker knows it cut the output: it is not captured, and never scored.
+    truncated: (r) => (r["truncated"] = true),
+    "with-cost-and-reasoning": (r) =>
+      Object.assign(r["usage"] as Record<string, unknown>, {
+        reasoningTokens: 210,
+        costMicros: 1840,
+        throttled: { count: 2, ms: 3100 },
+      }),
     "output-behind-pointer": (r) => {
       delete r["output"];
       r["pointer"] = "trace://composer/8f2c";
     },
     // A malformed request is the harness's fault: class protocol, never a system failure.
     "bad-request": (r) => {
-      delete r["output"];
+      withoutDelivery(r);
       r["failure"] = { class: "protocol", kind: "bad-request" };
-      r["calls"] = 0;
+      r["usage"] = { calls: 0, responseIds: [] };
     },
+    // A trial that delivers a directory instead of an inline output.
+    "artifacts-only": (r) => {
+      delete r["output"];
+      r["artifacts"] = [
+        {
+          name: "exercise",
+          path: "/tmp/ichnaea/run-2026-11-15-a/trial-0001/exercise",
+          mediaType: "inode/directory",
+        },
+        {
+          name: "transcript",
+          path: "/tmp/ichnaea/run-2026-11-15-a/trial-0001/transcript.json",
+          mediaType: "application/json",
+          class: "pseudonymous",
+        },
+      ];
+      (r["events"] as Array<Record<string, unknown>>)[1]!["artifact"] = "exercise";
+    },
+    // Two traces, one of which the SDK gave no count for.
+    traced: (r) =>
+      (r["trace"] = {
+        ids: ["4bf92f3577b34da6a3ce929d0e0e4736", "0af7651916cd43dd8448eb211c80319c"],
+        spans: { "4bf92f3577b34da6a3ce929d0e0e4736": 7 },
+        complete: true,
+      }),
+    "replayed-stage": (r) => {
+      const search = (r["events"] as Array<Record<string, unknown>>)[0]!;
+      delete search["output"];
+      search["replayed"] = d("a9");
+    },
+    "code-from-outside-the-arm": (r) =>
+      ((r["observed"] as Record<string, unknown>)["modules"] = [
+        "/work/support-assistant/lib/rag.py",
+      ]),
+    "stage-not-run": (r) =>
+      (r["events"] = [
+        { stage: "search", iteration: 0, ran: false },
+        ...(r["events"] as unknown[]).slice(1),
+      ]),
   },
   workerError: {
     "with-message": (r) => (r["message"] = "line 3 is not JSON: unexpected end of input"),
+  },
+  cancel: {
+    // A scorer's request, by the `id` that the request carries.
+    "score-request": (r) => {
+      delete r["trial"];
+      r["request"] = "score-0001";
+    },
+  },
+  workerReady: {
+    "one-at-a-time": (r) => (r["capacity"] = 1),
+    scorer: (r) => (r["protocol"] = "ichnaea.scoreRequest/1"),
+  },
+  workerEvent: {
+    "tool-call": (r) => {
+      delete r["calls"];
+      Object.assign(r, {
+        // A tool call's content is at least pseudonymous unless its tool maps to a factor.
+        dataClass: "pseudonymous",
+        kind: "tool_call",
+        stage: "search",
+        iteration: 0,
+        call: {
+          id: "call_01",
+          name: "search_help_centre",
+          args: { query: "Rückgabe nach 40 Tagen", top: 3 },
+          result: { pages: ["policy.md"] },
+        },
+      });
+    },
+    // A result too large to inline is an artifact of the trial, named here.
+    "tool-call-large-result": (r) => {
+      delete r["calls"];
+      Object.assign(r, {
+        dataClass: "pseudonymous",
+        kind: "tool_call",
+        stage: "search",
+        iteration: 0,
+        call: {
+          id: "call_03",
+          name: "search_help_centre",
+          args: { query: "Rückgabe", top: 200 },
+          resultArtifact: "search-results",
+        },
+      });
+    },
+    // Class none: the suite maps this tool to a declared environment factor of class none.
+    "tool-call-error-in-a-turn": (r) => {
+      delete r["calls"];
+      Object.assign(r, {
+        dataClass: "none",
+        kind: "tool_call",
+        stage: "search",
+        iteration: 1,
+        turn: 1,
+        call: { id: "call_02", name: "search_help_centre", args: {}, error: "empty query" },
+      });
+    },
+    // The shim reports each wait under the endpoint's budget in every heartbeat.
+    "throttled-heartbeat": (r) =>
+      (r["throttled"] = { count: 1, ms: 1200, firstAcceptedAt: "2026-11-15T10:01:01.300Z" }),
+  },
+  scoreRequest: {
+    // A deterministic scorer has no settings, and a trial may deliver only its output.
+    "without-settings-or-artifacts": (r) => {
+      delete r["settings"];
+      const unit = (r["units"] as Array<Record<string, unknown>>)[0]!;
+      delete unit["artifacts"];
+      delete unit["events"];
+    },
+  },
+  scoreResult: {
+    "judge-reply-unparsable": (r) =>
+      (r["values"] = [
+        {
+          trial: "refund-window-de/b/r0",
+          measure: "correct",
+          status: "missing",
+          reason: "JUDGE_REPLY_UNPARSABLE",
+          observed: { model: "example-judge-2026-10", responseIds: ["resp_j3"] },
+        },
+      ]),
+    // The request's unit identities parse but its body does not: each unit is echoed.
+    "bad-request": (r) =>
+      (r["values"] = ["correct", "complete"].map((measure) => ({
+        trial: "refund-window-de/b/r0",
+        measure,
+        status: "error",
+        failure: { class: "protocol", kind: "bad-request" },
+      }))),
+    "judge-endpoint-down": (r) =>
+      (r["values"] = [
+        {
+          trial: "refund-window-de/b/r0",
+          measure: "correct",
+          status: "error",
+          failure: {
+            class: "infrastructure",
+            kind: "timeout",
+            message: "judge endpoint timed out",
+          },
+        },
+      ]),
+    "level-and-proportion": (r) => {
+      const values = r["values"] as Array<Record<string, unknown>>;
+      values[0]!["value"] = 3;
+      values[1]!["value"] = { numerator: 3, denominator: 4 };
+    },
+    // A hanging test run inside the deadline is a measured failure, not an error.
+    "tests-timed-out": (r) =>
+      (r["values"] = [
+        {
+          trial: "refund-window-de/b/r0",
+          measure: "tests-pass",
+          status: "ok",
+          value: false,
+          why: "tests timed out",
+        },
+      ]),
   },
   label: { "rater-cannot-tell": (r) => (r["value"] = { type: "unknown" }) },
   run: {
@@ -826,6 +1564,107 @@ export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
       model["version"] = { value: "2026-10-01", status: "pinned" };
       model["route"] = { value: "primary", status: "declared" };
       r["informational"] = { "provider.fingerprint": "fp_3c1a" };
+    },
+  },
+  "suite.2": {
+    "inline-worker-and-cases-from-a-source": (r) => {
+      r["worker"] = {
+        command: ["node", "worker.ts"],
+        processes: 2,
+        startTimeout: "PT5M",
+      };
+      r["cases"] = {
+        source: {
+          git: { repo: "https://github.com/example/cases", commit: COMMIT, path: "a.jsonl" },
+        },
+        exposure: "private",
+        frame: { population: "questions in the help desk", drawnBy: "random", date: "2026-11-01" },
+      };
+    },
+    "import-instead-of-a-worker": (r) => {
+      delete r["worker"];
+      r["import"] = { command: ["python", "-m", "bench.export"] };
+    },
+    "import-from-a-module": (r) => {
+      delete r["worker"];
+      r["import"] = { module: "importers/bench.ts" };
+    },
+    "self-verdict-reduction-and-limits": (r) => {
+      (r["stopReasons"] as Record<string, unknown>)["REPAIR_BUDGET_EXHAUSTED"] = {
+        class: "completed",
+        selfVerdict: true,
+      };
+      (r["measures"] as Record<string, Record<string, unknown>>)["grounded"]!["reduce"] = {
+        all: { k: 2 },
+      };
+      r["limits"] = { trialDeadline: "PT2M", missingMax: 0.2 };
+      r["baselines"] = { freshness: "P3D" };
+      r["configuration"] = { record: ["model", "temperature"] };
+      r["attribute"] = { fidelityMargin: { grounded: 0.025 } };
+      (r["measures"] as Record<string, unknown>)["completeness"] = {
+        type: "level",
+        levels: [0, 1, 2, 3],
+        anchors: { "0": "misses the question", "3": "answers every part" },
+        spacing: { cut: 2 },
+        scorer: { instrument: "quality-judge", dimension: "completeness" },
+      };
+    },
+  },
+  project: {
+    "governance-at-home": (r) => {
+      r["privacy"] = {
+        homeKey: { fromEnv: "ICHNAEA_HOME_KEY" },
+        consent: "/srv/eval/consent.jsonl",
+        governance: {
+          home: { description: "evaluation job inside the deployment's cluster" },
+          purposes: {
+            "PU-3": { enabled: true, basis: "consent", record: "dpia/raters-2026.md" },
+            "PU-7": { enabled: true, basis: "public-task", record: "ropa/eval-at-home.md" },
+          },
+          endpoints: {
+            "eu-llm": { provider: "example", region: "eu", purposes: ["PU-3", "PU-7"] },
+          },
+          retention: { pseudonymous: "P180D", personal: "P30D", labels: { study: "P3Y" } },
+        },
+      };
+      const sinks = (r["delivery"] as Record<string, Record<string, unknown>>)["sinks"]!;
+      sinks["il3"] = { kind: "teams-workflow", url: { fromEnv: "IL3_TEAMS_WORKFLOW_URL" } };
+      sinks["records"] = {
+        kind: "webhook",
+        url: { fromEnv: "RECORDS_WEBHOOK_URL" },
+        signingKey: { fromEnv: "RECORDS_WEBHOOK_SIGNING_KEY" },
+        clearance: {
+          maxExposure: "private",
+          purpose: "PU-6",
+          reason: "the team's records service",
+        },
+      };
+    },
+    "datasets-from-https-and-a-command": (r) => {
+      r["datasets"] = {
+        presigned: { https: { fromEnv: "CASES_URL" }, digest: d("a8") },
+        dvc: {
+          command: ["dvc", "pull", "data/answers.dvc"],
+          output: "data/answers",
+          env: ["AWS_PROFILE"],
+        },
+      };
+    },
+  },
+  "suite.lock": {
+    "command-source-and-an-image": (r) => {
+      r["sources"] = [
+        {
+          origin: { command: ["dvc", "pull"], output: "data/answers" },
+          digest: d("d9"),
+          bytes: 0,
+          pools: {},
+        },
+      ];
+      (r["instruments"] as Record<string, Record<string, unknown>>)["ts-scorers"] = {
+        files: d("d8"),
+        image: { reference: "ghcr.io/example/grader:1", digest: d("da") },
+      };
     },
   },
 };
@@ -876,11 +1715,84 @@ export const READER_ONLY: Record<string, Record<string, Mutation>> = {
     // The base suite scores the output: a worker sends no score, and a reader ignores one.
     "worker-score": (r) => (r["values"] = { "support/facts-stated": true }),
     "future-failure-class": (r) => (r["failure"] = { class: "quality", kind: "wrong-answer" }),
+    // `usage.calls` is the one count: a reader ignores a top-level count as an unknown member.
+    "top-level-calls": (r) => (r["calls"] = 3),
+    // The throttle wait has one home, usage.throttled.ms: a writer sends no timing wait, and a
+    // reader ignores one.
+    "timing-with-a-wait": (r) => ((r["timing"] as Record<string, unknown>)["waitedMs"] = 0),
+    // The base derives a stage's status: a worker sends none, and a reader ignores one.
+    "event-with-status": (r) =>
+      ((r["events"] as Array<Record<string, unknown>>)[0]!["status"] = "ok"),
+    // The base maps a stop reason to its class: a reader ignores a class that a worker sends.
+    "stop-with-class": (r) => (r["stop"] = { reason: "end_turn", class: "completed" }),
+    // Ichnaea hashes artifacts itself: a reader ignores a digest that a worker sends.
+    "artifact-with-digest": (r) =>
+      (r["artifacts"] = [{ name: "a", path: "/tmp/a", mediaType: "text/plain", digest: d("a1") }]),
+  },
+  workerReady: {
+    // A later version may define another kind of request: a reader reads the line, and Ichnaea
+    // refuses a process that reads a kind it does not know.
+    "future-protocol": (r) => (r["protocol"] = "ichnaea.trialRequest/2"),
+  },
+  workerEvent: {
+    // A later minor version may add a kind of event, with members of its own.
+    // A later kind need not count calls: the count belongs to the heartbeat.
+    "future-kind": (r) => {
+      delete r["calls"];
+      r["kind"] = "progress";
+      r["share"] = 0.5;
+    },
+  },
+  cancel: {
+    // A worker needs no reason to stop a trial: a reader ignores one.
+    "with-reason": (r) => (r["reason"] = "deadline"),
   },
   workerError: {
     // A worker never guesses which trial an unreadable line was for: a writer refuses a trial
     // identity, and a reader ignores one as an unknown member.
     "guessed-trial": (r) => (r["trial"] = structuredClone(VALID["trialResult"]!["trial"])),
+  },
+  scoreRequest: {
+    // A worker never receives references; a scorer may get a member a later minor version adds.
+    "future-unit-member": (r) =>
+      ((r["units"] as Array<Record<string, unknown>>)[0]!["turns"] = [{ role: "user" }]),
+  },
+  scoreResult: {
+    // A value on an entry that is not ok is an unknown member: a writer refuses it, and a reader
+    // ignores it, because the status alone says that there is no value.
+    "not-applicable-with-value": (r) =>
+      ((r["values"] as Array<Record<string, unknown>>)[2]!["value"] = false),
+    "missing-with-value": (r) =>
+      ((r["values"] as Array<Record<string, unknown>>)[0] = {
+        trial: "t-1",
+        measure: "correct",
+        status: "missing",
+        reason: "X",
+        value: 0,
+      }),
+    "future-status": (r) =>
+      (r["values"] = [
+        { trial: "refund-window-de/b/r0", measure: "correct", status: "deferred", until: "later" },
+      ]),
+    // A worker class does not apply to a scorer: a writer refuses it, a reader reports it.
+    "worker-class-system": (r) =>
+      (r["values"] = [
+        {
+          trial: "refund-window-de/b/r0",
+          measure: "correct",
+          status: "error",
+          failure: { class: "system", kind: "crashed" },
+        },
+      ]),
+    "future-error-class": (r) =>
+      (r["values"] = [
+        {
+          trial: "refund-window-de/b/r0",
+          measure: "correct",
+          status: "error",
+          failure: { class: "quota", kind: "judge-quota" },
+        },
+      ]),
   },
   run: {
     "future-ledger-state": (r) =>
@@ -902,4 +1814,23 @@ export const READER_ONLY: Record<string, Record<string, Mutation>> = {
   calibration: { "future-status": (r) => (r["status"] = "provisional") },
   finding: { "future-promotion": (r) => (r["promotion"] = "auto") },
   suite: { "future-estimand": (r) => (r["estimand"] = "population") },
+  "suite.2": {
+    "future-measure-type": (r) =>
+      ((r["measures"] as Record<string, Record<string, unknown>>)["grounded"]!["type"] = "ranking"),
+    "future-stop-class": (r) =>
+      ((r["stopReasons"] as Record<string, unknown>)["COMPLETED"] = "partial"),
+    "future-member": (r) => (r["traces"] = { store: "local" }),
+  },
+  "configuration.2": { "future-member": (r) => (r["label"] = "candidate") },
+  project: {
+    "future-sink-kind": (r) =>
+      ((r["delivery"] as Record<string, Record<string, Record<string, unknown>>>)["sinks"]!["pr"]![
+        "kind"
+      ] = "email"),
+  },
+  "suite.lock": {
+    "future-place": (r) =>
+      ((r["datasets"] as Record<string, Record<string, unknown>>)["answers-public"]!["place"] =
+        "internal"),
+  },
 };
