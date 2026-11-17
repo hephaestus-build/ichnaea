@@ -22,6 +22,30 @@ against the schema files in [`schemas/`](../../schemas).
 | `ichnaea.decision/1`                                                    | `decision.schema.json`      | The verdict of one run with estimates, intervals and flips |
 | `ichnaea.judge/1`, `label/1`, `calibration/1`, `monitor/1`, `finding/1` |                             | In development                                             |
 
+### Protocol records
+
+A worker runs the system and a scorer measures it. Each is a process in any language that reads
+one JSON line per request on its standard input and writes one JSON line per answer on its
+standard output.
+
+| Schema ID                | File                       | Holds                                                                                                   |
+| ------------------------ | -------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `ichnaea.workerReady/1`  | `workerReady.schema.json`  | The first protocol line of a worker or scorer: its capacity and the requests it reads                   |
+| `ichnaea.trialRequest/1` | `trialRequest.schema.json` | One trial for a worker: the case input, the deadline, the workdir and the configuration file            |
+| `ichnaea.workerEvent/1`  | `workerEvent.schema.json`  | A heartbeat with the calls so far, or a tool call, for a trial in flight                                |
+| `ichnaea.cancel/1`       | `cancel.schema.json`       | Ichnaea stops one trial or one score request in flight                                                  |
+| `ichnaea.trialResult/1`  | `trialResult.schema.json`  | The raw output, artifacts, stage events, usage with the one call count, timing and what the worker read |
+| `ichnaea.workerError/1`  | `workerError.schema.json`  | The answer to a line without a readable request: no trial, class `none`                                 |
+| `ichnaea.scoreRequest/1` | `scoreRequest.schema.json` | A named request: the case with its references, and the trials to score                                  |
+| `ichnaea.scoreResult/1`  | `scoreResult.schema.json`  | The request's name, and a status (with a value when it is `ok`) for each trial and measure              |
+
+A process answers a request whose `trial` (for a scorer, each unit's trial and measure) parses
+with a `protocol` failure of kind `bad-request` that echoes that identity. It answers any other
+unreadable line with a `workerError`, which never quotes the line. Ichnaea matches each answer to
+its request by identity, never by position, and either answer makes the run INVALID. A scorer's
+`error` takes only class `infrastructure` (retried, then missing) or `protocol`: the system's own
+failure is an `ok` value of `false`, and a value that must not be retried is `missing`.
+
 ## Writer and reader schemas
 
 Each record has two schema files:
@@ -42,7 +66,9 @@ unknown members in `unknownMembers`, and types the result so that code must hand
 
 Strings must be well-formed Unicode and numbers finite. A writer in a language that can emit `NaN`
 or `Infinity` in JSON (Python's `json.dumps` does by default) must refuse them: encode a non-finite
-result as `{ "nonFinite": "nan" | "inf" | "-inf" }`.
+result as `{ "nonFinite": "nan" | "inf" | "-inf" }` where a record allows that marker. On a
+protocol line, a bare `NaN` or `Infinity` is a protocol failure. A score value takes no marker: a
+scorer that computes a non-finite value reports it as `missing` with reason `NON_FINITE`.
 
 Register the annotation keywords with your validator, for example in ajv:
 

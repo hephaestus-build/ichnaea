@@ -13,6 +13,10 @@ export type CaseId = z.infer<typeof CaseId>;
 export declare const TrialId: z.core.$ZodBranded<z.ZodString, "TrialId", "out">;
 /** A trial identifier. */
 export type TrialId = z.infer<typeof TrialId>;
+/** A score request identifier, unique within a run. */
+export declare const ScoreRequestId: z.core.$ZodBranded<z.ZodString, "ScoreRequestId", "out">;
+/** A score request identifier. */
+export type ScoreRequestId = z.infer<typeof ScoreRequestId>;
 /** A run identifier. */
 export declare const RunId: z.core.$ZodBranded<z.ZodString, "RunId", "out">;
 /** A run identifier. */
@@ -63,6 +67,12 @@ export declare const SemVer: z.ZodString;
 export declare const Timestamp: z.ZodISODateTime;
 /** A calendar date, `YYYY-MM-DD`. */
 export declare const CalendarDate: z.ZodISODate;
+/**
+ * A positive length of time as an ISO 8601 duration in seconds only, such as `PT120S` or `PT0.5S`.
+ * Minutes, hours and days are refused, so every language reads the same number of seconds without
+ * a calendar.
+ */
+export declare const Duration: z.ZodString;
 /** Any JSON value. Records never hold non-JSON values. */
 export declare const Json: z.ZodJSONSchema;
 /** Any JSON value. */

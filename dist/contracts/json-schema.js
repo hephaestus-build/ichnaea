@@ -116,22 +116,27 @@ function relax(node) {
     const tagged = out["oneOf"];
     if (Array.isArray(tagged)) {
         const discriminator = discriminatorOf(tagged);
+        if (!discriminator)
+            exclusiveMembers(tagged);
         if (discriminator) {
             // A kind added later still reads: any object with a string discriminator. With the fallback
             // more than one option can match, so the reader uses anyOf.
             delete out["oneOf"];
+            const shared = sharedConstants(tagged);
             out["anyOf"] = [
                 ...tagged,
                 {
                     type: "object",
-                    // Only a kind no known option names: a malformed known kind must still fail.
+                    // Only a kind no known option names: a malformed known kind must still fail. A constant
+                    // that every known kind fixes, such as the record's `schema` ID, stays strict for it.
                     properties: {
+                        ...shared,
                         [discriminator]: {
                             type: "string",
                             pattern: notOneOf(knownKinds(tagged, discriminator)),
                         },
                     },
-                    required: [discriminator],
+                    required: [...Object.keys(shared), discriminator],
                     "x-ichnaea-unknown-kind": true,
                 },
             ];
@@ -144,21 +149,62 @@ function notOneOf(values) {
     const escaped = values.map((v) => String(v).replaceAll(/[.*+?^${}()|[\]\\/-]/g, "\\$&"));
     return `^(?!(?:${escaped.join("|")})$)`;
 }
+/**
+ * In an exclusive union without a tag (zod's `xor`), each option refuses the members that only a
+ * sibling option defines. The reader ignores unknown members, so without this a value with a
+ * member of each option would read as the one option whose member is valid. A member of another
+ * option is a conflict, not a member that a later minor version added.
+ */
+function exclusiveMembers(options) {
+    const members = options.map((o) => new Set(Object.keys(o["properties"] ?? {})));
+    options.forEach((option, i) => {
+        const props = option["properties"];
+        if (!props)
+            return;
+        for (const [j, other] of members.entries())
+            for (const key of other)
+                if (j !== i && !members[i].has(key))
+                    props[key] = false;
+    });
+}
+/** The members that every option of a tagged union requires and fixes to one same constant. */
+function sharedConstants(options) {
+    const first = options[0]?.["properties"];
+    const shared = {};
+    for (const [key, prop] of Object.entries(first ?? {})) {
+        if (!("const" in prop))
+            continue;
+        const same = options.every((o) => {
+            const other = o["properties"]?.[key];
+            const required = o["required"]?.includes(key) ?? false;
+            return required && other !== undefined && other["const"] === prop["const"];
+        });
+        if (same)
+            shared[key] = { const: prop["const"] };
+    }
+    return shared;
+}
 /** The discriminator values a tagged union already knows. */
 function knownKinds(options, discriminator) {
     return [
         ...new Set(options.map((o) => o["properties"][discriminator]?.["const"])),
     ];
 }
-/** The member that every option of a tagged union fixes with `const`. */
+/**
+ * The member that every option of a tagged union fixes with `const`, to a value of its own. A
+ * member that every option fixes to the same value, such as a record's `schema` ID, tells the
+ * options apart from nothing, so it is not the tag and stays strict.
+ */
 function discriminatorOf(options) {
     const first = options[0]?.["properties"];
     if (!first)
         return undefined;
-    return Object.keys(first).find((key) => options.every((o) => {
-        const prop = o["properties"]?.[key];
-        return prop !== undefined && "const" in prop;
-    }));
+    return Object.keys(first).find((key) => {
+        const fixed = options.map((o) => o["properties"]?.[key]);
+        if (!fixed.every((prop) => prop !== undefined && "const" in prop))
+            return false;
+        return options.length < 2 || new Set(fixed.map((prop) => prop?.["const"])).size > 1;
+    });
 }
 /**
  * The reader variant of a record's JSON Schema (REQ-05): every enumeration of strings becomes a

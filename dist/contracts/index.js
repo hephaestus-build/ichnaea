@@ -16,6 +16,7 @@ export * from "./records/measure.js";
 export * from "./records/monitor.js";
 export * from "./records/plan.js";
 export * from "./records/run.js";
+export * from "./records/scorer.js";
 export * from "./records/suite.js";
 export * from "./records/trial.js";
 export * from "./records/worker.js";

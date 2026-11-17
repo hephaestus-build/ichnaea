@@ -49,12 +49,34 @@ export function readRecord(contract, value) {
         };
     }
     const strict = contract.schema.safeParse(value);
-    const issues = strict.success ? [] : strict.error.issues;
+    const issues = strict.success ? [] : meantIssues(strict.error.issues);
     const unknownMembers = issues.flatMap((i) => i.code === "unrecognized_keys" ? i.keys.map((k) => [...i.path, k]) : []);
     const unknownValues = issues
         .filter((i) => i.code !== "unrecognized_keys")
         .map((i) => ({ path: i.path, value: valueAt(value, i.path) }));
     return { ok: true, record: structuredClone(value), unknownValues, unknownMembers };
+}
+/** How many unknown members a union option's issues name. */
+function unknownCount(option) {
+    return option.reduce((n, i) => n + (i.code === "unrecognized_keys" ? i.keys.length : 0), 0);
+}
+/**
+ * The issues of the option that a value meant, inside an untagged union. Of the options that fail
+ * only on unknown members, the one that leaves the fewest members unknown is the one meant, when
+ * exactly one does. Its unknown members are reported as such, with the union's path in front.
+ * Otherwise the union stays one issue: an unknown value.
+ */
+function meantIssues(issues) {
+    return issues.flatMap((issue) => {
+        if (issue.code !== "invalid_union")
+            return [issue];
+        const near = issue.errors.filter((option) => option.every((i) => i.code === "unrecognized_keys"));
+        const fewest = Math.min(...near.map(unknownCount));
+        const meant = near.filter((option) => unknownCount(option) === fewest);
+        if (meant.length !== 1)
+            return [issue];
+        return meantIssues(meant[0].map((i) => ({ ...i, path: [...issue.path, ...i.path] })));
+    });
 }
 function valueAt(root, path) {
     let node = root;

@@ -10,6 +10,8 @@ export const Text = z.string().min(1);
 export const CaseId = id().brand();
 /** A trial identifier, unique within a run. */
 export const TrialId = id().brand();
+/** A score request identifier, unique within a run. */
+export const ScoreRequestId = id().brand();
 /** A run identifier. */
 export const RunId = id().brand();
 /** A case set identifier. */
@@ -41,6 +43,12 @@ export const SemVer = z
 export const Timestamp = z.iso.datetime({ offset: true });
 /** A calendar date, `YYYY-MM-DD`. */
 export const CalendarDate = z.iso.date();
+/**
+ * A positive length of time as an ISO 8601 duration in seconds only, such as `PT120S` or `PT0.5S`.
+ * Minutes, hours and days are refused, so every language reads the same number of seconds without
+ * a calendar.
+ */
+export const Duration = z.string().regex(/^PT(?:[1-9][0-9]*(?:\.[0-9]+)?|0\.[0-9]*[1-9][0-9]*)S$/);
 /** Any JSON value. Records never hold non-JSON values. */
 export const Json = z.json();
 /** An explicit encoding of a non-finite number, because JSON has none (REQ-04). */
