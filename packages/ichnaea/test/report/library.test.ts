@@ -42,4 +42,40 @@ describe("report", () => {
     expect(() => report(loud, { format: "markdown" })).toThrow(ReportError);
     expect(() => report(loud, { format: "html" })).toThrow(ReportError);
   });
+
+  // The lint masks identifiers where the report inserts them, never inside numbers or prose.
+  it("keeps intervals whole when an identifier is a word of their text", () => {
+    const named = { ...decision, differingFactors: ["to"] };
+    for (const format of ["markdown", "html"] as const) {
+      const text = report(named, { format });
+      expect(text).toMatch(/\d+\.\d% to \d+\.\d%/);
+    }
+  });
+
+  it("still refuses forbidden prose when an identifier is the same word", () => {
+    const loud = {
+      ...decision,
+      differingFactors: ["significant"],
+      reason: "The drop is significant.",
+    };
+    expect(() => report(loud, { format: "markdown" })).toThrow(ReportError);
+    expect(() => report(loud, { format: "html" })).toThrow(ReportError);
+  });
+
+  it("does not refuse a report for an identifier the decision quotes or the view inserts", () => {
+    const gate = "app/significant";
+    const named = {
+      ...decision,
+      gates: [{ gate, passed: false, failures: 1 }],
+      reason: `Hard gate '${gate}' failed.`,
+      differingFactors: ["significant"],
+      arms: decision.arms.map((a) => ({ ...a, name: `significant-${a.name}` as typeof a.name })),
+      missingness: {
+        ...decision.missingness,
+        byArm: decision.missingness.byArm.map((a) => ({ ...a, arm: `significant-${a.arm}` })),
+      },
+    } as typeof decision;
+    for (const format of ["markdown", "html"] as const)
+      expect(report(named, { format, suite: "significant" })).toContain(gate);
+  });
 });

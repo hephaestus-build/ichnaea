@@ -140,7 +140,12 @@ export interface DecisionView {
 }
 
 // @public
-export function decisionView(decision: Decision, suite: string, lineage?: Run["lineage"]): DecisionView;
+export function decisionView(decision: Decision, suite: string, lineage?: Run["lineage"], options?: DecisionViewOptions): DecisionView;
+
+// @public
+export interface DecisionViewOptions {
+    readonly neutral?: boolean;
+}
 
 // @public
 export function defineConfig<const Plugins extends readonly Plugin[]>(config: Config<Plugins>): Config<Plugins>;
@@ -416,9 +421,6 @@ export type ModuleLoader = (url: string) => Promise<unknown>;
 export class MonthlyCapError extends Error {
     readonly name = "MonthlyCapError";
 }
-
-// @public
-export function neutralView(view: DecisionView): DecisionView;
 
 // @public
 export const NO_BOUND = "no bound";

@@ -1,6 +1,6 @@
 import type { Decision, Run } from "../contracts/index.ts";
 
-import { lintReport, neutralView, renderHtml, renderMarkdown } from "./render.ts";
+import { lintReport, renderHtml, renderMarkdown } from "./render.ts";
 import { decisionView } from "./view.ts";
 
 /** Thrown when a rendered report would break the wording rules (REQ-129). */
@@ -26,10 +26,12 @@ export interface ReportOptions {
  * bound; one that would throws a ReportError. Writing the text is the caller's job.
  */
 export function report(decision: Decision, options: ReportOptions): string {
-  const view = decisionView(decision, options.suite ?? `run ${decision.run}`, options.lineage);
+  const suite = options.suite ?? `run ${decision.run}`;
+  const view = decisionView(decision, suite, options.lineage);
   if (options.format === "json") return `${JSON.stringify(view, null, 2)}\n`;
   const render = options.format === "markdown" ? renderMarkdown : renderHtml;
-  const problems = lintReport(render(neutralView(view)));
+  const neutral = decisionView(decision, suite, options.lineage, { neutral: true });
+  const problems = lintReport(render(neutral));
   if (problems.length > 0) throw new ReportError(`the report is not valid: ${problems.join("; ")}`);
   return render(view);
 }

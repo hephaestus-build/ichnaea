@@ -112,7 +112,7 @@ describe("run verdicts", () => {
       }),
     );
     expect(d.verdict).toBe("REGRESSION");
-    expect(d.reason).toBe("Hard gate app/schema failed.");
+    expect(d.reason).toBe("Hard gate 'app/schema' failed.");
   });
 
   it("a measure non-inferior with a drop beyond noise stays NON-INFERIOR, with a note", async () => {

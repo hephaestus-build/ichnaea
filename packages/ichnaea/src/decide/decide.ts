@@ -1552,7 +1552,7 @@ export function decideWith(input: DecideInput, compare: Compare): Decision {
   } else if (failedGate) {
     // A hard gate is deterministic and does not depend on power, so it decides in both modes.
     verdict = "REGRESSION";
-    reason = `Hard gate ${failedGate.gate} failed.`;
+    reason = `Hard gate '${failedGate.gate}' failed.`;
   } else if (!decision) {
     verdict = null;
     reason = `Estimate-only: ${modeReasons.join("; ") || "the plan supports no verdict"}. It reports estimates, intervals, differences and flips without a verdict.`;

@@ -27,7 +27,7 @@ describe("verdict order: INVALID, a failed hard gate, estimate-only, statistics"
     const d = await run(s);
     expect(d.mode).toBe("estimate-only");
     expect(d.verdict).toBe("REGRESSION");
-    expect(d.reason).toBe("Hard gate app/schema failed.");
+    expect(d.reason).toBe("Hard gate 'app/schema' failed.");
     expect(d.scope).toBe("a deterministic check failed");
     expect(exitCode(d, s.plan.policy)).toBe(1);
   });
