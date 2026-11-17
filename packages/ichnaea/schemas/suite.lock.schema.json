@@ -611,9 +611,9 @@
         "properties": {
           "limit": {
             "type": "number",
-            "minimum": 0,
-            "maximum": 1,
-            "description": "The largest drop that the owner accepts. It applies to Pass.",
+            "exclusiveMinimum": 0,
+            "exclusiveMaximum": 1,
+            "description": "The largest drop that the owner accepts, inside (0, 1). It applies to Pass. A limit of 0 could never pass, and a limit of 1 would accept any drop.",
             "x-ichnaea-data": {
               "class": "none",
               "identifier": "none",

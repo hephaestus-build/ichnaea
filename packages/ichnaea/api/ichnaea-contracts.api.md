@@ -4144,6 +4144,9 @@ export const Suite: z.ZodObject<{
 export type Suite = z.infer<typeof Suite>;
 
 // @public
+export const SUITE_PROBLEM_CODES: readonly ["FIDELITY_MARGIN_MISSING"];
+
+// @public
 export const SuiteAbout: z.ZodObject<{
     objective: z.ZodString;
     decision: z.ZodString;
@@ -4339,6 +4342,19 @@ export const SuitePolicy: z.ZodObject<{
     secondary: z.ZodOptional<z.ZodArray<z.ZodString>>;
     diagnostic: z.ZodOptional<z.ZodArray<z.ZodString>>;
 }, z.core.$strict>;
+
+// @public
+export interface SuiteProblem {
+    readonly code: SuiteProblemCode;
+    readonly message: string;
+    readonly path: string;
+}
+
+// @public
+export type SuiteProblemCode = (typeof SUITE_PROBLEM_CODES)[number];
+
+// @public
+export function suiteProblems(suite: SuiteV2): SuiteProblem[];
 
 // @public
 export const SuiteV2: z.ZodObject<{

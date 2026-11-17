@@ -311,6 +311,19 @@ describe("the authored files", () => {
     expect(accepts("suite.2", s)).toBe(false);
   });
 
+  it("register each primary limit inside (0, 1): 0 cannot pass and 1 accepts any drop", () => {
+    const s = suite();
+    const grounded = (s["policy"] as Record<string, Record<string, Rec>>)["primary"]!["grounded"]!;
+    for (const limit of [0.0001, 0.5, 0.9999]) {
+      grounded["limit"] = limit;
+      expect(accepts("suite.2", s)).toBe(true);
+    }
+    for (const limit of [0, 1]) {
+      grounded["limit"] = limit;
+      expect(accepts("suite.2", s)).toBe(false);
+    }
+  });
+
   it("map each attributed measure to its fidelity margin, inside (0, 1)", () => {
     const s = suite();
     s["attribute"] = { fidelityMargin: { grounded: 0.025 } };

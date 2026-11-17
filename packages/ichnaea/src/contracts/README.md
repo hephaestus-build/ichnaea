@@ -39,6 +39,11 @@ framework. A suite or project file (`suite.ts` or `suite.jsonc`, `ichnaea.config
 - **Digests.** `suiteDigest` and `projectDigest` hash the canonical JSON without `$schema`, so the
   TypeScript and JSONC forms of one file share a digest. `configuration/2.digest` is over the
   canonical JSON of the arm's configuration file, never its raw bytes.
+- **Checks beyond the schema.** `suiteProblems(suite)` lists the rules of a parsed suite that a
+  JSON Schema cannot express, each with a named code, and `lock` refuses a suite with any. A
+  secondary measure that attribute compares needs its own fidelity margin
+  (`FIDELITY_MARGIN_MISSING`): only a primary measure has a registered limit, inside (0, 1), whose
+  half is the default.
 - **Two majors.** `suite/1` and `configuration/1` stay registered beside `suite/2` and
   `configuration/2` while the planner and the importer still read them. The newer major needs no
   migration until the older one leaves the registry (`majors.json`).

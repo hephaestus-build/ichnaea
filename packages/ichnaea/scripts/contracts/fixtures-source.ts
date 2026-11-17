@@ -886,6 +886,10 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
       ((r["policy"] as Record<string, Record<string, Record<string, unknown>>>)["primary"]![
         "grounded"
       ]!["limit"] = 5),
+    "limit-of-zero": (r) =>
+      ((r["policy"] as Record<string, Record<string, Record<string, unknown>>>)["primary"]![
+        "grounded"
+      ]!["limit"] = 0),
     "primary-without-owner": (r) =>
       delete (r["policy"] as Record<string, Record<string, Record<string, unknown>>>)["primary"]![
         "grounded"

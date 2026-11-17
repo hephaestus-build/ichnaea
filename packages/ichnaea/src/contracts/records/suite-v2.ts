@@ -1,15 +1,7 @@
 import * as z from "zod";
 
 import { none } from "../data-class.ts";
-import {
-  CalendarDate,
-  Digest,
-  Json,
-  Probability,
-  RecordDataClass,
-  SuiteId,
-  Text,
-} from "../primitives.ts";
+import { CalendarDate, Digest, Json, RecordDataClass, SuiteId, Text } from "../primitives.ts";
 import { Pool } from "./case.ts";
 import {
   Command,
@@ -293,7 +285,15 @@ export const MeasureDefinition = z.discriminatedUnion("type", [
 
 /** A primary measure's registration: the largest drop accepted, who set it, and why. */
 export const PrimaryRegistration = z.strictObject({
-  limit: none(Probability.describe("The largest drop that the owner accepts. It applies to Pass.")),
+  limit: none(
+    z
+      .number()
+      .gt(0)
+      .lt(1)
+      .describe(
+        "The largest drop that the owner accepts, inside (0, 1). It applies to Pass. A limit of 0 could never pass, and a limit of 1 would accept any drop.",
+      ),
+  ),
   owner: none(Text.describe("The role that owns the limit.")),
   reason: none(Text.describe("Why the limit has this value.")),
 });
@@ -416,7 +416,7 @@ export const SuiteV2 = z.strictObject({
         z
           .record(ConfigName, z.number().gt(0).lt(1))
           .describe(
-            "For each attributed measure, the largest replay-to-recording difference that still counts as a faithful replay. A measure without an entry uses half its registered limit; attribute applies that default.",
+            "For each attributed measure, the largest replay-to-recording difference that still counts as a faithful replay. A primary measure without an entry uses half its registered limit, which attribute applies. A secondary measure has no registered limit, so it needs an entry: lock refuses it without one (FIDELITY_MARGIN_MISSING).",
           ),
       ).optional(),
     })
