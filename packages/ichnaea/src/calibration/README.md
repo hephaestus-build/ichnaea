@@ -43,12 +43,11 @@ names each condition that does not hold.
   of every drop has β = 1/2: it still detects a large drop, but it shrinks every change.
 - `judgePass(analysis, limit)` says whether a judge-based Pass is reachable at a measure's limit,
   and `blockedBy` names what blocks it: `notCalibrated`, `noKnownWorse`, `dropNotShown` or
-  `slopeNotShown`. It is reachable only for a calibrated judge whose raters' drop is shown and
-  whose β_L · limit > B. Then the judge-measured
-  change's lower bound must be at least −(β_L · limit − B). At a limit of 0.10 it is rarely
-  reachable. In the registered draw, β_L · limit − B is positive in at most 7 % of 460-answer draws
-  for a judge as good as a rater, and in 12 % of 360-answer draws whose raters agree at 0.87 (see the
-  operating characteristics in
+  `slopeNotShown`. It is reachable only for a calibrated judge whose raters' drop is shown and whose
+  β_L · limit > B. Then the judge-measured change's lower bound must be at least −(β_L · limit − B).
+  At a limit of 0.10 it is rarely reachable. In the registered draw, β_L · limit − B is positive in
+  7.4 % of 460-answer draws for a judge as good as a rater, and in 12 % of 360-answer draws whose
+  raters agree at 0.87 (1.4 % with raters at 0.90; see the operating characteristics in
   [VALIDATION.md](../stats/VALIDATION.md#the-judge-calibration-rule-operating-characteristics)).
 
 ```ts
