@@ -1,0 +1,343 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  chiSquareQuantile,
+  clopperPearson,
+  neverCasesNeeded,
+  type NeverClaim,
+  neverClaim,
+  overdispersion,
+  type Stratum,
+  stratifiedZ,
+} from "../../src/stats/index.ts";
+import { regularizedGammaQ } from "../../src/stats/beta.ts";
+
+/** The one-sided level at which pooled Clopper–Pearson runs for a bound at α: e^{−α}. */
+const adjusted = (alpha: number): number => Math.exp(-alpha);
+
+const stratum = (cs: number, cn: number, bs: number, bn: number): Stratum => ({
+  candidate: { successes: cs, trials: cn },
+  base: { successes: bs, trials: bn },
+});
+
+const bad = (overrides: object) => (): NeverClaim =>
+  neverClaim({
+    violations: 0,
+    cases: 10,
+    ceiling: 0.1,
+    confidence: 0.95,
+    detector: { kind: "deterministic" },
+    ...overrides,
+  });
+
+describe("the must-never ceiling", () => {
+  it("shows the ceiling with a deterministic detector at the full level", () => {
+    const claim = neverClaim({
+      violations: 0,
+      cases: 1000,
+      ceiling: 0.005,
+      confidence: 0.95,
+      detector: { kind: "deterministic" },
+    });
+    expect(claim).toMatchObject({
+      status: "shown",
+      level: 0.95,
+      method: "clopper-pearson-adjusted",
+    });
+    expect(claim.bound).toBeCloseTo(1 - (1 - Math.exp(-0.05)) ** (1 / 1000), 14);
+  });
+
+  it("does not show a ceiling that the bound exceeds", () => {
+    const claim = neverClaim({
+      violations: 3,
+      cases: 200,
+      ceiling: 0.01,
+      confidence: 0.95,
+      detector: { kind: "deterministic" },
+    });
+    expect(claim.status).toBe("not-shown");
+    expect(claim.bound).toBeCloseTo(
+      clopperPearson({ successes: 3, trials: 200 }, adjusted(0.05), "upper").upper,
+      14,
+    );
+  });
+
+  it("splits the level between the violation bound and the sensitivity bound", () => {
+    const claim = neverClaim({
+      violations: 1,
+      cases: 2000,
+      ceiling: 0.005,
+      confidence: 0.95,
+      detector: { kind: "model", sensitivityLower: 0.8 },
+    });
+    const flagged = clopperPearson({ successes: 1, trials: 2000 }, adjusted(0.025), "upper").upper;
+    expect(claim).toMatchObject({ level: 0.975, status: "shown" });
+    expect(claim.bound).toBeCloseTo(flagged / 0.8, 14);
+  });
+
+  it("makes no claim when the sensitivity is not bounded above 0", () => {
+    const claim = neverClaim({
+      violations: 0,
+      cases: 5000,
+      ceiling: 0.01,
+      confidence: 0.95,
+      detector: { kind: "model", sensitivityLower: 0 },
+    });
+    expect(claim).toMatchObject({ status: "no-claim", reason: "SENSITIVITY_NOT_BOUNDED" });
+    expect(claim.bound).toBeNull();
+  });
+
+  it("bounds only the flagged rate without a calibration record, as a diagnostic", () => {
+    const claim = neverClaim({
+      violations: 0,
+      cases: 1000,
+      ceiling: 0.005,
+      confidence: 0.95,
+      detector: { kind: "model", sensitivityLower: null },
+    });
+    expect(claim).toMatchObject({ status: "flagged-only", reason: "NO_DETECTOR_CALIBRATION" });
+    expect(claim.bound).toBeCloseTo(1 - (1 - Math.exp(-0.05)) ** (1 / 1000), 14);
+  });
+
+  it("caps the violation bound at 1 and refuses bad inputs", () => {
+    const claim = neverClaim({
+      violations: 50,
+      cases: 60,
+      ceiling: 0.5,
+      confidence: 0.95,
+      detector: { kind: "model", sensitivityLower: 0.3 },
+    });
+    expect(claim.bound).toBe(1);
+    expect(bad({ ceiling: 0 })).toThrow(RangeError);
+    expect(bad({ ceiling: 1 })).toThrow(RangeError);
+    expect(bad({ violations: 11 })).toThrow(RangeError);
+    expect(bad({ cases: 0 })).toThrow(RangeError);
+    expect(bad({ detector: { kind: "model", sensitivityLower: 1.2 } })).toThrow(RangeError);
+  });
+});
+
+/** The exact distribution of the number of violating cases. */
+const poissonBinomial = (rates: readonly number[]): number[] =>
+  rates.reduce(
+    (d, p) =>
+      Array.from({ length: d.length + 1 }, (_, k) => (d[k] ?? 0) * (1 - p) + (d[k - 1] ?? 0) * p),
+    [1],
+  );
+
+/** The probability that an upper bound covers the mean violation rate. */
+const coverage = (rates: readonly number[], upper: (x: number, n: number) => number): number => {
+  const mean = rates.reduce((a, b) => a + b, 0) / rates.length;
+  return poissonBinomial(rates).reduce(
+    (total, mass, x) => (upper(x, rates.length) >= mean ? total + mass : total),
+    0,
+  );
+};
+
+const unadjustedUpper = (x: number, n: number): number =>
+  clopperPearson({ successes: x, trials: n }, 0.95, "upper").upper;
+
+const claimedUpper = (x: number, n: number): number =>
+  neverClaim({
+    violations: x,
+    cases: n,
+    ceiling: 0.5,
+    confidence: 0.95,
+    detector: { kind: "deterministic" },
+  }).bound!;
+
+describe("the must-never bound when cases violate at unequal rates", () => {
+  it("covers the mean rate at the adjusted level, where the unadjusted bound does not", () => {
+    // Two cases, violating at rates 1 and 0.9495: the mirror of the lower bound's worst case.
+    const rates = [1, 1 - 0.0505];
+    expect(coverage(rates, unadjustedUpper)).toBeCloseTo(0.9495, 10);
+    expect(coverage(rates, unadjustedUpper)).toBeLessThan(0.95);
+    expect(coverage(rates, claimedUpper)).toBeGreaterThanOrEqual(0.95);
+  });
+});
+
+describe("the must-never planning count", () => {
+  it("is ⌈ln α′ / ln(1 − ceiling)⌉ clean cases with a deterministic detector, α′ = 1 − e^(−α)", () => {
+    expect(
+      neverCasesNeeded({ ceiling: 0.001, confidence: 0.95, detector: { kind: "deterministic" } }),
+    ).toEqual({ cases: 3020 });
+    expect(
+      neverCasesNeeded({ ceiling: 0.05, confidence: 0.95, detector: { kind: "deterministic" } }),
+    ).toEqual({ cases: 59 });
+  });
+
+  it("is ⌈ln α′ / ln(1 − ceiling·Se_L)⌉ with a calibrated model detector, α′ = 1 − e^(−0.025)", () => {
+    expect(
+      neverCasesNeeded({
+        ceiling: 0.005,
+        confidence: 0.95,
+        detector: { kind: "model", sensitivityLower: 0.9 },
+      }),
+    ).toEqual({ cases: 821 });
+    expect(
+      neverCasesNeeded({
+        ceiling: 0.001,
+        confidence: 0.95,
+        detector: { kind: "model", sensitivityLower: 0.8 },
+      }),
+    ).toEqual({ cases: 4625 });
+  });
+
+  it("is the smallest n whose claim holds with no violation", () => {
+    for (const ceiling of [0.001, 0.003, 0.01, 0.02, 0.05, 0.1, 0.25]) {
+      for (const detector of [
+        { kind: "deterministic" } as const,
+        { kind: "model", sensitivityLower: 0.7 } as const,
+      ]) {
+        const { cases } = neverCasesNeeded({ ceiling, confidence: 0.95, detector }) as {
+          cases: number;
+        };
+        const claim = (n: number) =>
+          neverClaim({ violations: 0, cases: n, ceiling, confidence: 0.95, detector }).status;
+        expect(claim(cases), `${ceiling} ${detector.kind}`).toBe("shown");
+        expect(claim(cases - 1), `${ceiling} ${detector.kind}`).toBe("not-shown");
+      }
+    }
+  });
+
+  it("names what is missing instead of a count", () => {
+    expect(
+      neverCasesNeeded({
+        ceiling: 0.01,
+        confidence: 0.95,
+        detector: { kind: "model", sensitivityLower: null },
+      }),
+    ).toEqual({ cases: null, reason: "NO_DETECTOR_CALIBRATION" });
+    expect(
+      neverCasesNeeded({
+        ceiling: 0.01,
+        confidence: 0.95,
+        detector: { kind: "model", sensitivityLower: 0 },
+      }),
+    ).toEqual({ cases: null, reason: "SENSITIVITY_NOT_BOUNDED" });
+  });
+
+  it("refuses a confidence whose adjusted level is above 1/4, as the claim does", () => {
+    // A deterministic detector at 0.5 runs at α′ = 1 − e^(−0.5) = 0.39; a model detector splits the
+    // level, so it runs at 1 − e^(−0.25) = 0.22, which holds.
+    const deterministic = { kind: "deterministic" } as const;
+    expect(() =>
+      neverCasesNeeded({ ceiling: 0.1, confidence: 0.5, detector: deterministic }),
+    ).toThrow(RangeError);
+    expect(() =>
+      neverClaim({
+        violations: 0,
+        cases: 30,
+        ceiling: 0.1,
+        confidence: 0.5,
+        detector: deterministic,
+      }),
+    ).toThrow(RangeError);
+    const model = { kind: "model", sensitivityLower: 1 } as const;
+    const { cases } = neverCasesNeeded({ ceiling: 0.1, confidence: 0.5, detector: model }) as {
+      cases: number;
+    };
+    const claim = (n: number) =>
+      neverClaim({ violations: 0, cases: n, ceiling: 0.1, confidence: 0.5, detector: model })
+        .status;
+    expect(claim(cases)).toBe("shown");
+    expect(claim(cases - 1)).toBe("not-shown");
+  });
+
+  it("refuses a ceiling that no count up to 2^53 shows, and stays exact near it", () => {
+    const deterministic = { kind: "deterministic" } as const;
+    // The message names the count, not the 1/4 restriction, which would also throw a RangeError.
+    const unrepresentable = /no count of cases up to 2\^53/;
+    // Number.MIN_VALUE: ln(1 − ceiling) rounds to −MIN_VALUE, and at Se_L = 1/2 the target
+    // underflows to 0, so the closed form is infinite.
+    for (const detector of [deterministic, { kind: "model", sensitivityLower: 0.5 } as const])
+      expect(
+        () => neverCasesNeeded({ ceiling: Number.MIN_VALUE, confidence: 0.95, detector }),
+        detector.kind,
+      ).toThrow(unrepresentable);
+    // Below about 1e-16, 1 − α′^(1/n) cannot resolve the ceiling at any count up to 2^53.
+    expect(() =>
+      neverCasesNeeded({ ceiling: 1e-17, confidence: 0.95, detector: deterministic }),
+    ).toThrow(unrepresentable);
+    const { cases } = neverCasesNeeded({
+      ceiling: 1e-12,
+      confidence: 0.95,
+      detector: deterministic,
+    }) as { cases: number };
+    const claim = (n: number) =>
+      neverClaim({
+        violations: 0,
+        cases: n,
+        ceiling: 1e-12,
+        confidence: 0.95,
+        detector: deterministic,
+      }).status;
+    expect(Number.isSafeInteger(cases)).toBe(true);
+    expect(claim(cases)).toBe("shown");
+    expect(claim(cases - 1)).toBe("not-shown");
+  });
+});
+
+describe("the stratified score statistic of a noise run", () => {
+  it("is (O − E)/√V with the hypergeometric moments of each stratum", () => {
+    // One stratum, 3 of 4 candidate trials and 1 of 4 base trials pass: t = 4 of N = 8.
+    // E = 4·4/8 = 2, V = 4·4·4·4/(8²·7) = 4/7, O = 3.
+    const result = stratifiedZ([stratum(3, 4, 1, 4)]);
+    expect(result).not.toBeNull();
+    expect(result!.z).toBeCloseTo(1 / Math.sqrt(4 / 7), 14);
+  });
+
+  it("sums over strata and leaves out a stratum with no information", () => {
+    const pooled = stratifiedZ([stratum(3, 4, 1, 4), stratum(2, 2, 2, 2), stratum(0, 3, 1, 3)]);
+    // The second stratum (every trial passed) adds nothing. The third: t = 1, N = 6, E = 0.5,
+    // V = 3·3·1·5/(36·5) = 0.25.
+    expect(pooled!.z).toBeCloseTo((1 - 0.5) / Math.sqrt(4 / 7 + 0.25), 14);
+    expect(stratifiedZ([stratum(2, 2, 2, 2), stratum(0, 2, 0, 2)])).toBeNull();
+  });
+});
+
+describe("the overdispersion ratio across noise runs", () => {
+  it("is Σz²/N with the χ²(N) interval, left out a run with V = 0", () => {
+    const runs = [
+      [stratum(3, 4, 1, 4)],
+      [stratum(1, 4, 3, 4), stratum(2, 3, 2, 3)],
+      [stratum(2, 2, 2, 2)],
+    ];
+    const result = overdispersion(runs);
+    // Run 1: z² = 1/(4/7). Run 2: O − E = 3 − 4, V = 4/7 + 3·3·4·2/(36·5) = 4/7 + 0.4.
+    const z2 = 1 / (4 / 7) + 1 / (4 / 7 + 0.4);
+    expect(result.runs).toBe(2);
+    expect(result.excluded).toBe(1);
+    expect(result.ratio).toBeCloseTo(z2 / 2, 12);
+    expect(result.lower).toBeCloseTo(z2 / chiSquareQuantile(0.975, 2), 12);
+    expect(result.upper).toBeCloseTo(z2 / chiSquareQuantile(0.025, 2), 12);
+    expect(result.method).toBe("chi-square-approximate");
+  });
+
+  it("gives no ratio when every run is left out", () => {
+    const result = overdispersion([[stratum(2, 2, 2, 2)]]);
+    expect(result).toMatchObject({ runs: 0, excluded: 1 });
+    expect(result.ratio).toBeNaN();
+  });
+});
+
+describe("the χ² quantile", () => {
+  it("matches closed forms at 2 degrees of freedom and known values", () => {
+    // χ²(2) is exponential with mean 2: its p-quantile is −2·ln(1 − p).
+    for (const p of [0.025, 0.5, 0.975])
+      expect(chiSquareQuantile(p, 2)).toBeCloseTo(-2 * Math.log(1 - p), 10);
+    expect(chiSquareQuantile(0.95, 1)).toBeCloseTo(3.841458820694124, 9);
+    expect(chiSquareQuantile(0.975, 10)).toBeCloseTo(20.48317735080739, 9);
+    expect(() => chiSquareQuantile(1, 3)).toThrow(RangeError);
+    expect(() => chiSquareQuantile(0.5, 0)).toThrow(RangeError);
+  });
+
+  it("inverts the upper tail directly for p near 1, where 1 − P rounds the tail away", () => {
+    // p = 1 − 2^−53 at 2 degrees of freedom: −2·ln(2^−53) = 106·ln 2 = 73.4736…
+    expect(chiSquareQuantile(1 - 2 ** -53, 2) / (106 * Math.LN2)).toBeCloseTo(1, 12);
+    expect(chiSquareQuantile(1 - 1e-12, 2) / (-2 * Math.log(1e-12))).toBeCloseTo(1, 4);
+    // Q(1, x) = e^(−x): at x = 40 the tail is 4.2e−18, which 1 − P(1, 40) gives as 0.
+    expect(regularizedGammaQ(1, 40) / Math.exp(-40)).toBeCloseTo(1, 12);
+    expect(regularizedGammaQ(1, 0.5) / Math.exp(-0.5)).toBeCloseTo(1, 12);
+    expect(regularizedGammaQ(3, 0)).toBe(1);
+  });
+});

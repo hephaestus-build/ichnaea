@@ -8,6 +8,20 @@
 export type AgreementTable = readonly (readonly number[])[];
 
 // @public
+export function alertDetectableRate(input: {
+    readonly threshold: number;
+    readonly rule: "below" | "above";
+    readonly traces: number;
+    readonly designEffect: number;
+    readonly level?: number;
+    readonly power?: number;
+}): {
+    readonly rate: number | null;
+    readonly effectiveTraces: number;
+    readonly label: "approximate";
+};
+
+// @public
 export type AlphaMetric = "nominal" | "ordinal" | "interval";
 
 // @public
@@ -76,6 +90,9 @@ export interface CaseScores {
     readonly family?: string;
     readonly id: string;
 }
+
+// @public
+export function chiSquareQuantile(p: number, df: number): number;
 
 // @public
 export function clopperPearson(count: Count, level?: number, sided?: Sided): Interval;
@@ -273,6 +290,31 @@ export interface EstimateResult {
 export function exactStratifiedTest(strata: readonly Stratum[], alternative: "less" | "greater"): TestResult;
 
 // @public
+export interface FidelityCase {
+    readonly recorded: readonly number[];
+    readonly replayed: readonly number[];
+}
+
+// @public
+export function fidelityCheck(input: {
+    readonly valueType: "binary" | "score";
+    readonly cases: readonly FidelityCase[];
+    readonly margin: number;
+}): FidelityResult;
+
+// @public
+export type FidelityRefusal = "NOT_CHECKABLE_AT_ONE_TRIAL" | "ZERO_WIDTH";
+
+// @public
+export interface FidelityResult {
+    readonly interval: (Interval & {
+        readonly coverage: Coverage;
+    }) | null;
+    readonly reason?: FidelityRefusal;
+    readonly shown: boolean;
+}
+
+// @public
 export function fixedCasesFloor(cases: number, replicates: number, alpha?: number, options?: ScoreOptions): number;
 
 // @public
@@ -321,7 +363,13 @@ export interface Interval {
 }
 
 // @public
+export function intraclassCorrelation(clusters: readonly (readonly number[])[]): number;
+
+// @public
 export function kaplanMeier(sample: readonly Duration[]): SurvivalStep[];
+
+// @public
+export function kishDesignEffect(sizes: readonly number[], rho: number): number;
 
 // @public
 export function krippendorffAlpha(units: readonly (readonly (number | null)[])[], metric: AlphaMetric): number;
@@ -343,6 +391,50 @@ export function missingDifferenceTest(cases: readonly {
 };
 
 // @public
+export function neverCasesNeeded(input: {
+    readonly ceiling: number;
+    readonly confidence: number;
+    readonly detector: NeverDetector;
+}): {
+    readonly cases: number;
+} | {
+    readonly cases: null;
+    readonly reason: NeverRefusal;
+};
+
+// @public
+export interface NeverClaim {
+    readonly bound: number | null;
+    readonly level: number;
+    readonly method: "clopper-pearson-adjusted";
+    readonly reason?: NeverRefusal;
+    readonly status: "shown" | "not-shown" | "no-claim" | "flagged-only";
+}
+
+// @public
+export function neverClaim(input: NeverInput): NeverClaim;
+
+// @public
+export type NeverDetector = {
+    readonly kind: "deterministic";
+} | {
+    readonly kind: "model";
+    readonly sensitivityLower: number | null;
+};
+
+// @public
+export interface NeverInput {
+    readonly cases: number;
+    readonly ceiling: number;
+    readonly confidence: number;
+    readonly detector: NeverDetector;
+    readonly violations: number;
+}
+
+// @public
+export type NeverRefusal = "SENSITIVITY_NOT_BOUNDED" | "NO_DETECTOR_CALIBRATION";
+
+// @public
 export type NoInterval = "NO_VALUES" | "NO_SAMPLING_FRAME" | "FEWER_THAN_30_CLUSTERS" | "BCA_UNDEFINED" | "ZERO_WIDTH";
 
 // @public
@@ -359,6 +451,17 @@ export interface OneTrialChecks {
     readonly checksPassed: boolean;
     readonly limitations: readonly string[];
 }
+
+// @public
+export function overdispersion(runs: readonly (readonly Stratum[])[], level?: number): {
+    readonly ratio: number;
+    readonly lower: number;
+    readonly upper: number;
+    readonly level: number;
+    readonly runs: number;
+    readonly excluded: number;
+    readonly method: "chi-square-approximate";
+};
 
 // @public
 export interface PairedTable {
@@ -489,6 +592,11 @@ export type Sided = "two" | "lower" | "upper";
 
 // @public
 export function skewCorrected(score: number, c: number): number;
+
+// @public
+export function stratifiedZ(strata: readonly Stratum[]): {
+    readonly z: number;
+} | null;
 
 // @public
 export interface Stratum {

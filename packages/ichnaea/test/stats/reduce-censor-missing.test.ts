@@ -134,6 +134,14 @@ describe("censoring at the plan's limit", () => {
     // Case a: 10 − 2 = 8. Case b: 2 − 2 = 0. Case c has no base trial and is left out.
     expect(result).toEqual({ estimate: 4, cases: 2, censored: { base: 0, candidate: 1 } });
   });
+
+  it("refuses a trial censored below the limit, whose min(t, L) is unknown", () => {
+    const base = [{ time: 2, censored: false }];
+    const early = [{ id: "a", base, candidate: [{ time: 5, censored: true }] }];
+    const atLimit = [{ id: "a", base, candidate: [{ time: 10, censored: true }] }];
+    expect(() => restrictedDifference(early, 10)).toThrow(RangeError);
+    expect(restrictedDifference(atLimit, 10).estimate).toBe(8);
+  });
 });
 
 describe("the exact test on the missing counts", () => {

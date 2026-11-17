@@ -23,12 +23,30 @@ const pooled: Bound = (successes, trials, level, sided) =>
 const unadjusted: Bound = (successes, trials, level, sided) =>
   clopperPearson({ successes, trials }, level, sided);
 
+/**
+ * The bounds for every count x = 0 … n. They do not depend on the rates, so a scan over rates
+ * computes them once per bound, n, level and side.
+ */
+const boundsCache = new Map<Bound, Map<string, Interval[]>>();
+function boundsFor(bound: Bound, n: number, level: number, sided: Sided): Interval[] {
+  const byBound = boundsCache.get(bound) ?? new Map<string, Interval[]>();
+  boundsCache.set(bound, byBound);
+  const key = `${n}:${level}:${sided}`;
+  let all = byBound.get(key);
+  if (all === undefined) {
+    all = Array.from({ length: n + 1 }, (_, x) => bound(x, n, level, sided));
+    byBound.set(key, all);
+  }
+  return all;
+}
+
 /** The exact probability that the bound covers the mean rate. */
 function coverage(rates: readonly number[], bound: Bound, level: number, sided: Sided): number {
   const n = rates.length;
   const mean = rates.reduce((a, b) => a + b, 0) / n;
+  const bounds = boundsFor(bound, n, level, sided);
   return poissonBinomial(rates).reduce((total, mass, x) => {
-    const b = bound(x, n, level, sided);
+    const b = bounds[x]!;
     return b.lower <= mean && mean <= b.upper ? total + mass : total;
   }, 0);
 }

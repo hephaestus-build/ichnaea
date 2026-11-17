@@ -5,10 +5,15 @@
 # It writes test/stats/reference-r-estimate.json with full-precision values:
 # - Clopper–Pearson bounds from binom.test, two-sided and one-sided;
 # - weighted Kaplan–Meier curves, quantiles and restricted means from survival::survfit;
-# - one-sided exact stratified conditional p-values from mantelhaen.test(exact = TRUE).
+# - one-sided exact stratified conditional p-values from mantelhaen.test(exact = TRUE);
+# - the uncorrected Mantel-Haenszel statistic, the overdispersion z squared, and qchisq;
+# - the intraclass correlation from aov's mean squares, to 14 significant digits.
 suppressPackageStartupMessages(library(survival))
 number <- function(value) sprintf("%.17g", value)
 numbers <- function(values) paste0("[", paste(vapply(values, number, ""), collapse = ","), "]")
+# A value computed through BLAS or LAPACK, such as aov's QR, is written with %.14g:
+# VALIDATION.md § Reference values.
+blas <- function(value) sprintf("%.14g", value)
 
 counts <- list(c(0, 1), c(1, 1), c(0, 5), c(3, 20), c(7, 20), c(10, 20), c(19, 20), c(20, 20),
                c(1, 60), c(31, 60), c(0, 299), c(2, 299), c(150, 299), c(4, 1000), c(997, 1000),
@@ -75,11 +80,58 @@ for (t in tables) {
                       number(less), number(greater)))
 }
 
+# The overdispersion z of a run: R's uncorrected Mantel-Haenszel statistic is z^2.
+runs <- list(
+  list(candidate = c(3, 1, 0), cn = c(4, 4, 3), base = c(1, 3, 1), bn = c(4, 4, 3)),
+  list(candidate = c(2, 5, 1, 0), cn = c(3, 6, 2, 2), base = c(2, 3, 2, 1), bn = c(3, 6, 2, 2)),
+  list(candidate = c(9, 4), cn = c(10, 10), base = c(6, 7), bn = c(10, 10))
+)
+cmh <- character()
+for (run in runs) {
+  k <- length(run$cn)
+  array <- array(0, dim = c(2, 2, k))
+  for (i in seq_len(k)) {
+    array[, , i] <- matrix(c(run$candidate[i], run$cn[i] - run$candidate[i],
+                             run$base[i], run$bn[i] - run$base[i]), 2, byrow = TRUE)
+  }
+  statistic <- unname(mantelhaen.test(array, correct = FALSE)$statistic)
+  cmh <- c(cmh, sprintf('{"candidate":%s,"cn":%s,"base":%s,"bn":%s,"z2":%s}',
+                        numbers(run$candidate), numbers(run$cn), numbers(run$base),
+                        numbers(run$bn), number(statistic)))
+}
+chi <- character()
+for (df in c(1, 2, 3, 5, 10, 30, 100)) for (p in c(0.025, 0.05, 0.5, 0.95, 0.975)) {
+  chi <- c(chi, sprintf('{"df":%d,"p":%s,"q":%s}', df, number(p), number(qchisq(p, df))))
+}
+
+# The intraclass correlation by one-way ANOVA, from aov's mean squares.
+icc_sets <- list(
+  list(c(1, 0, 1), c(0, 0), c(1, 1, 1, 0), c(0, 1)),
+  list(c(0.2, 0.4), c(0.9, 0.8, 0.7), c(0.1, 0.3, 0.2, 0.2), c(0.5, 0.6)),
+  list(c(1, 1, 0, 1), c(1, 1, 1), c(0, 0, 1), c(1, 0), c(0, 0, 0, 1, 0))
+)
+icc <- character()
+for (set in icc_sets) {
+  y <- unlist(set)
+  g <- factor(rep(seq_along(set), lengths(set)))
+  table <- summary(aov(y ~ g))[[1]]
+  msb <- table[["Mean Sq"]][1]
+  msw <- table[["Mean Sq"]][2]
+  n <- length(y)
+  m0 <- (n - sum(lengths(set)^2) / n) / (length(set) - 1)
+  rho <- (msb - msw) / (msb + (m0 - 1) * msw)
+  icc <- c(icc, sprintf('{"clusters":[%s],"rho":%s}',
+                        paste(vapply(set, numbers, ""), collapse = ","), blas(rho)))
+}
+
 writeLines(c(
   "{",
   sprintf('  "r": "%s", "survival": "%s",', R.version.string, packageVersion("survival")),
   sprintf('  "clopperPearson": [\n    %s\n  ],', paste(cp, collapse = ",\n    ")),
   sprintf('  "kaplanMeier": [\n    %s\n  ],', paste(km, collapse = ",\n    ")),
-  sprintf('  "missing": [\n    %s\n  ]', paste(mh, collapse = ",\n    ")),
+  sprintf('  "missing": [\n    %s\n  ],', paste(mh, collapse = ",\n    ")),
+  sprintf('  "mantelHaenszel": [\n    %s\n  ],', paste(cmh, collapse = ",\n    ")),
+  sprintf('  "chiSquare": [\n    %s\n  ],', paste(chi, collapse = ",\n    ")),
+  sprintf('  "intraclass": [\n    %s\n  ]', paste(icc, collapse = ",\n    ")),
   "}"
 ), "test/stats/reference-r-estimate.json")
