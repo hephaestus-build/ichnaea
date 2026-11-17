@@ -103,6 +103,78 @@
             ],
             "retention": "record"
           }
+        },
+        "arch": {
+          "type": "string",
+          "minLength": 1,
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          }
+        },
+        "runtime": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "version": {
+              "type": "string",
+              "minLength": 1,
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "platform": {
+              "type": "string",
+              "minLength": 1,
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "arch": {
+              "type": "string",
+              "minLength": 1,
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            }
+          },
+          "required": [
+            "name",
+            "version",
+            "platform",
+            "arch"
+          ],
+          "additionalProperties": false
         }
       },
       "required": [
@@ -646,6 +718,18 @@
               "factors"
             ],
             "additionalProperties": false
+          },
+          "runs": {
+            "type": "boolean",
+            "const": true,
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
+            }
           }
         },
         "required": [
@@ -769,8 +853,10 @@
               "infrastructure_failure",
               "budget_exceeded",
               "invalid_configuration",
-              "not_run"
+              "not_run",
+              "protocol_failure"
             ],
+            "x-ichnaea-closed": true,
             "x-ichnaea-data": {
               "class": "none",
               "identifier": "none",

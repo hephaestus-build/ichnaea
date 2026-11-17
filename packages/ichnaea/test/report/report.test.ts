@@ -8,7 +8,6 @@ import { scenario } from "../decide/support/scenario.ts";
 import {
   decisionView,
   lintReport,
-  neutralView,
   recompute,
   renderHtml,
   renderMarkdown,
@@ -67,6 +66,23 @@ describe("reports", () => {
     expect(html).not.toContain("<script");
   });
 
+  it("name an opaque arm by its role beside its name, and the lint leaves the words around it", async () => {
+    const { decision } = await decided({ opaque: true });
+    const view = decisionView(decision, "synthetic");
+    const md = renderMarkdown(view);
+    const html = renderHtml(view);
+    for (const a of decision.arms) {
+      expect(html).toContain(`<td>${a.role} (${a.name})</td>`);
+      expect(md).toContain(`| ${a.role} \\(${a.name}\\) |`);
+    }
+    const neutral = decisionView(decision, "synthetic", [], { neutral: true });
+    expect(lintReport(renderHtml(neutral))).toEqual([]);
+    expect(lintReport(renderMarkdown(neutral))).toEqual([]);
+    // The neutral view replaces a short identifier, such as the arm `a`, only where it inserts it,
+    // so "trials" keeps its letters.
+    expect(neutral.missingness).toContain("base (id): 0 of 80 trials missing");
+  });
+
   it("the lint catches forbidden wording and a missing lineage", () => {
     expect(lintReport("A significant improvement. Lineage")).toHaveLength(1);
     expect(lintReport("no footer here")).toEqual(["no lineage footer"]);
@@ -122,7 +138,7 @@ describe("reports", () => {
       const extra = view.measures.find((m) => m.measure === "app/extra");
       expect(extra?.difference?.bound).toBe("no bound (an arm has no value to compare)");
       expect(extra?.difference?.estimate).toBe("–");
-      const neutral = neutralView(view);
+      const neutral = decisionView(decision, "synthetic", [], { neutral: true });
       expect(lintReport(renderMarkdown(neutral))).toEqual([]);
       expect(lintReport(renderHtml(neutral))).toEqual([]);
     }
@@ -258,8 +274,9 @@ describe("reports", () => {
     };
     const view = decisionView(named, "synthetic");
     expect(renderHtml(view)).toContain("a-significant-case");
-    expect(lintReport(renderHtml(neutralView(view)))).toEqual([]);
-    expect(lintReport(renderMarkdown(neutralView(view)))).toEqual([]);
+    const neutral = decisionView(named, "synthetic", [], { neutral: true });
+    expect(lintReport(renderHtml(neutral))).toEqual([]);
+    expect(lintReport(renderMarkdown(neutral))).toEqual([]);
   });
 
   it("draws each difference on an axis centred at 0 with the margin, and states it in text", async () => {

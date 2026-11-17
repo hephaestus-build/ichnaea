@@ -19,7 +19,7 @@ import {
   scenario,
 } from "./support/scenario.ts";
 
-const run = (s: Scenario): Promise<Decision> =>
+const run = (s: Scenario): Decision =>
   decide({ ...s, decidedAt: "2026-11-15T12:00:00Z", ichnaea: "0.0.0" });
 
 /** The scenario with a changed plan, and a run that belongs to it. */
@@ -112,7 +112,7 @@ describe("run verdicts", () => {
       }),
     );
     expect(d.verdict).toBe("REGRESSION");
-    expect(d.reason).toBe("Hard gate app/schema failed.");
+    expect(d.reason).toBe("Hard gate 'app/schema' failed.");
   });
 
   it("a measure non-inferior with a drop beyond noise stays NON-INFERIOR, with a note", async () => {

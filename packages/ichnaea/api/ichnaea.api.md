@@ -57,6 +57,12 @@ export interface CommandHost {
 }
 
 // @public
+export function compare(plan: Plan, records: Omit<RunRecords, "plan">, options: {
+    readonly decidedAt: string;
+    readonly aa?: readonly AaEvidence[];
+}): Decision;
+
+// @public
 export interface Config<Plugins extends readonly Plugin[] = readonly Plugin[]> {
     readonly allowStability?: readonly Exclude<Stability, "stable">[];
     readonly governance?: string;
@@ -77,7 +83,7 @@ export function createHost(config: Config, versions: HostVersions, log?: (messag
 export function createPlan(input: PlanInput): Promise<Plan>;
 
 // @public
-export function decide(input: DecideInput): Promise<Decision>;
+export function decide(input: DecideInput): Decision;
 
 // @public
 export function decideEgress(request: EgressRequest, hooks: ReadonlyArray<[Plugin, NonNullable<Hooks["beforeEgress"]>]>, ctx: HookContext, governance?: string): Promise<{
@@ -134,7 +140,12 @@ export interface DecisionView {
 }
 
 // @public
-export function decisionView(decision: Decision, suite: string, lineage?: Run["lineage"]): DecisionView;
+export function decisionView(decision: Decision, suite: string, lineage?: Run["lineage"], options?: DecisionViewOptions): DecisionView;
+
+// @public
+export interface DecisionViewOptions {
+    readonly neutral?: boolean;
+}
 
 // @public
 export function defineConfig<const Plugins extends readonly Plugin[]>(config: Config<Plugins>): Config<Plugins>;
@@ -412,9 +423,6 @@ export class MonthlyCapError extends Error {
 }
 
 // @public
-export function neutralView(view: DecisionView): DecisionView;
-
-// @public
 export const NO_BOUND = "no bound";
 
 // @public
@@ -449,7 +457,7 @@ export class PlanError extends Error {
 export interface PlanInput {
     readonly aa?: Plan["aa"];
     readonly arms: ReadonlyArray<{
-        readonly name: string;
+        readonly name?: string;
         readonly role: "base" | "candidate" | "reference";
         readonly configuration: Configuration;
     }>;
@@ -558,7 +566,7 @@ export function recompute(records: {
         plan: Plan;
         run: Run;
     }[];
-}): Promise<RecomputeResult>;
+}): RecomputeResult;
 
 // @public
 export interface RecomputeResult {
@@ -574,6 +582,21 @@ export function renderHtml(view: DecisionView): string;
 
 // @public
 export function renderMarkdown(view: DecisionView): string;
+
+// @public
+export function report(decision: Decision, options: ReportOptions): string;
+
+// @public
+export class ReportError extends Error {
+    readonly name = "ReportError";
+}
+
+// @public
+export interface ReportOptions {
+    readonly format: "markdown" | "html" | "json";
+    readonly lineage?: Run["lineage"];
+    readonly suite?: string;
+}
 
 // @public
 export function reportPlugin(): Plugin<"report">;
@@ -648,7 +671,7 @@ export const TRIGGER_VARIES: {
 
 // Warnings were encountered during analysis:
 //
-// src/core/planner.ts:36:5 - (ae-forgotten-export) The symbol "Configuration" needs to be exported by the entry point index.d.ts
+// src/core/planner.ts:42:5 - (ae-forgotten-export) The symbol "Configuration" needs to be exported by the entry point index.d.ts
 // src/core/plugin.ts:65:5 - (ae-forgotten-export) The symbol "Case" needs to be exported by the entry point index.d.ts
 
 // (No @packageDocumentation comment for this package)

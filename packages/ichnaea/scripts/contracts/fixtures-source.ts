@@ -593,6 +593,8 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
   },
   trial: {
     "outcome-not-a-string": (r) => (r["outcome"] = 3),
+    // The outcomes are closed: a reader refuses an unknown one too.
+    "unknown-outcome": (r) => (r["outcome"] = "partial"),
     "missing-configuration": (r) => delete r["configuration"],
     "negative-tokens": (r) => ((r["usage"] as Record<string, unknown>)["inputTokens"] = -1),
     "missing-data-class": (r) => delete r["dataClass"],
@@ -707,6 +709,14 @@ const REFUSED_PLANNING = {
 /** Further valid records: shapes the main valid fixture does not show. */
 export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
   plan: {
+    "calls-per-trial": (r) => {
+      (r["budget"] as Record<string, unknown>)["callsPerTrial"] = 2;
+    },
+    "one-arm-imported": (r) => {
+      (r["budget"] as Record<string, unknown>)["callsPerTrial"] = 2;
+      const arms = r["arms"] as Array<Record<string, unknown>>;
+      arms[arms.length - 1]!["runs"] = true;
+    },
     "one-trial-schedule-and-aa": (r) => {
       r["schedule"] = { concurrency: 4, endpoint: "example-endpoint" };
       r["aa"] = {
@@ -736,6 +746,17 @@ export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
     },
   },
   trial: {
+    "after-two-retries": (r) => {
+      r["attempts"] = [
+        { attempt: 1, failure: { class: "infrastructure", kind: "timeout" }, calls: 1 },
+        { attempt: 2, failure: { class: "not_run", kind: "never-reached" }, calls: 0 },
+      ];
+    },
+    "protocol-failure": (r) => {
+      r["outcome"] = "protocol_failure";
+      delete r["output"];
+      r["error"] = { kind: "bad-request" };
+    },
     online: (r) => {
       r["source"] = "online";
       r["case"] = null;
@@ -750,6 +771,10 @@ export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
   },
   measureValue: {
     "non-finite-score": (r) => (r["value"] = { type: "score", value: { nonFinite: "-inf" } }),
+    "with-why": (r) => {
+      r["value"] = { type: "binary", pass: false };
+      r["why"] = "claims a test that is not in the diff";
+    },
   },
   trialResult: {
     "infrastructure-failure": (r) => {
@@ -784,6 +809,17 @@ export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
     "with-message": (r) => (r["message"] = "line 3 is not JSON: unexpected end of input"),
   },
   label: { "rater-cannot-tell": (r) => (r["value"] = { type: "unknown" }) },
+  run: {
+    "runtime-and-arch": (r) => {
+      r["environment"] = {
+        node: "24.22.2",
+        platform: "linux-x64",
+        ichnaea: "0.1.0",
+        arch: "x64",
+        runtime: { name: "node", version: "24.22.2", platform: "linux", arch: "x64" },
+      };
+    },
+  },
   configuration: {
     "model-version-route-and-informational": (r) => {
       const model = (r["models"] as Array<Record<string, unknown>>)[0]!;
@@ -825,7 +861,6 @@ export const READER_ONLY: Record<string, Record<string, Mutation>> = {
   label: {
     "future-preference-value": (r) => (r["value"] = { type: "preference", preferred: "both" }),
   },
-  trial: { "future-outcome": (r) => (r["outcome"] = "partial") },
   trialRequest: {
     // Scoring comes from the base suite: a writer never sends a case's references.
     "case-with-references": (r) =>

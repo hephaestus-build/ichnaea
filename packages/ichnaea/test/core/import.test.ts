@@ -7,6 +7,7 @@ import { join } from "node:path";
 import type { GateResult, MeasureValue, Trial } from "../../src/contracts/index.ts";
 import { describe, expect, it } from "vitest";
 
+import { decide } from "../../src/decide/index.ts";
 import { card, scenario } from "../decide/support/scenario.ts";
 import {
   createHost,
@@ -20,6 +21,12 @@ import {
 } from "../../src/core/index.ts";
 
 const versions = { core: "0.0.0", contracts: "0.0.0" };
+
+/** A trial turned into a protocol failure with no output, changed further by `change`. */
+function failed(t: Trial, change: Partial<Trial>): Trial {
+  const { output: _output, ...rest } = t;
+  return { ...rest, ...change, outcome: "protocol_failure", error: { kind: "bad-request" } };
+}
 
 /** Writes a scenario's inputs to files and returns an import over a scripted importer. */
 async function setup(
@@ -113,6 +120,15 @@ describe("import mode", () => {
       version: "2.0.0",
     });
     expect(stored.run.lineage.find((l) => l.kind === "measure")?.digest).toMatch(/^sha256:/);
+    expect(stored.run.environment).toMatchObject({
+      arch: process.arch,
+      runtime: {
+        name: "node",
+        version: process.versions.node,
+        platform: process.platform,
+        arch: process.arch,
+      },
+    });
     expect(seen.filter((x) => x === "trial")).toHaveLength(result.trials);
     expect(seen.at(-1)).toBe("run");
   });
@@ -155,6 +171,30 @@ describe("import mode", () => {
     expect(stored.trials[1]?.error?.message).toBe("observed model differs from the expected value");
     // Their values are not stored: an invalid configuration is missing.
     expect(stored.values.some((v) => v.trial === stored.trials[0]?.id)).toBe(false);
+  });
+
+  it("keeps a protocol failure whatever its configuration, so the run stays INVALID", async () => {
+    const { go, store } = await setup((trials, values) => {
+      return {
+        trials: trials.map((t, i) =>
+          i === 0
+            ? failed(t, { configuration: `sha256:${"9".repeat(64)}` as Trial["configuration"] })
+            : i === 1
+              ? failed(t, { observed: [{ name: "model", value: "m-2", expected: "m-1" }] })
+              : t,
+        ),
+        values: values.filter((v) => v.trial !== trials[0]?.id && v.trial !== trials[1]?.id),
+      };
+    });
+    await go();
+    const stored = await new FileStore(store).read("run-1");
+    for (const t of stored.trials.slice(0, 2))
+      expect(t).toMatchObject({ outcome: "protocol_failure", error: { kind: "bad-request" } });
+    const decision = decide({ ...stored, decidedAt: "2026-11-15T12:00:00Z", ichnaea: "0.0.0" });
+    expect(decision.verdict).toBe("INVALID");
+    expect(decision.invalidReasons).toContain(
+      "a worker reported a protocol failure (bad-request): the harness, not the system, failed",
+    );
   });
 
   it("makes a completed record without captured output a capture failure, counted as missing (REQ-20)", async () => {

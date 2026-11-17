@@ -239,31 +239,6 @@ ${list(view.limitations)}
 `;
 }
 
-/**
- * The view with every identifier that comes from records (measure, case, arm, gate and factor
- * names, lineage values) replaced, so the wording lint judges only what Ichnaea writes.
- */
-export function neutralView(view: DecisionView): DecisionView {
-  const ids = [
-    ...view.measures.flatMap((m) => [m.measure, ...m.arms.map((a) => a.arm)]),
-    ...view.flips.map((f) => f.case),
-    ...view.gates.map((g) => g.gate),
-    ...view.differingFactors,
-    ...view.lineage.flatMap(([k, v]) => [k, v]),
-    view.title,
-  ]
-    .filter((id) => id.length > 0)
-    .toSorted((a, b) => b.length - a.length);
-  const neutral = (value: unknown): unknown => {
-    if (typeof value === "string") return ids.reduce((t, id) => t.replaceAll(id, "id"), value);
-    if (Array.isArray(value)) return value.map(neutral);
-    if (value && typeof value === "object")
-      return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, neutral(v)]));
-    return value;
-  };
-  return neutral(view) as DecisionView;
-}
-
 /** A shown rate, a difference in points, and the cells that state their intervals. */
 const RATE = /^\d+\.\d%$/;
 const DIFFERENCE = /^[+−]?\d+\.\d pts$/;
@@ -375,7 +350,7 @@ function htmlRows(text: string): Array<Map<string, string>> {
 
 /**
  * Problems a rendered output must not have (REQ-129). Returns one message per problem. Run it on
- * the output of `neutralView`, so a case named "significant" cannot block a report. Every rate and
+ * a view built with `neutral: true`, so a case named "significant" cannot block a report. Every rate and
  * every difference in a table must stand next to its interval, and an HTML bound marked not
  * validated must say so (decision 0015).
  */

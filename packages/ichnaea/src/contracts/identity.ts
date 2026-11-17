@@ -99,9 +99,9 @@ export const DIGEST_RULES: {
   },
 };
 
-async function digest(value: unknown): Promise<`sha256:${string}`> {
+function digest(value: unknown): `sha256:${string}` {
   try {
-    return await rawDigest(value);
+    return rawDigest(value);
   } catch (error) {
     // A record can validate and still be unhashable (a lone surrogate in a string).
     if (error instanceof NonJsonValueError)
@@ -151,8 +151,8 @@ function sortedUnique(items: unknown, key: string, what: string): unknown[] {
  *
  * The writer computes the identity and stores it in plans and trials.
  */
-export async function configurationIdentity(input: unknown): Promise<ConfigurationIdentity> {
-  const [mismatch] = await verifyConfiguration(input);
+export function configurationIdentity(input: unknown): ConfigurationIdentity {
+  const [mismatch] = verifyConfiguration(input);
   if (mismatch) {
     const template = mismatch.path.replace(/\/digest$/, "/template");
     throw new IdentityError(
@@ -169,7 +169,7 @@ export async function configurationIdentity(input: unknown): Promise<Configurati
     "name",
     "prompt",
   );
-  return (await digest(projection)) as ConfigurationIdentity;
+  return digest(projection) as ConfigurationIdentity;
 }
 
 /**
@@ -178,7 +178,7 @@ export async function configurationIdentity(input: unknown): Promise<Configurati
  * it is graded and which analysis it supports enters it; the author pointer and the review status
  * do not.
  */
-export async function caseDigest(input: unknown): Promise<Digest> {
+export function caseDigest(input: unknown): Digest {
   Case.parse(input);
   const projection = pick(input, DIGEST_RULES.case.members);
   projection["provenance"] = pick(projection["provenance"], DIGEST_RULES.provenance.members);
@@ -190,7 +190,7 @@ export async function caseDigest(input: unknown): Promise<Digest> {
  * restricted to `id`, `digest`, `pool` and `family`, sorted by `id`. Changing any case changes its
  * digest and so the set's digest. Duplicate IDs and an empty set are errors.
  */
-export async function caseSetDigest(entries: readonly unknown[]): Promise<Digest> {
+export function caseSetDigest(entries: readonly unknown[]): Digest {
   if (entries.length === 0) throw new IdentityError("a case set has at least one case");
   for (const entry of entries) CaseSetEntry.parse(entry);
   const projected = entries.map((e) => pick(e, DIGEST_RULES.caseSetEntry.members));
@@ -221,7 +221,7 @@ export interface LinkError {
  * present, must be well-formed Unicode and have the prompt's `digest`, the SHA-256 of the
  * template's UTF-8 bytes. A template with a lone surrogate has no UTF-8 form, so it never matches.
  */
-export async function verifyConfiguration(input: unknown, at = ""): Promise<LinkError[]> {
+export function verifyConfiguration(input: unknown, at = ""): LinkError[] {
   const config = Configuration.parse(input);
   const errors: LinkError[] = [];
   for (const [i, prompt] of config.prompts.entries()) {
@@ -236,7 +236,7 @@ export async function verifyConfiguration(input: unknown, at = ""): Promise<Link
       });
       continue;
     }
-    const computed = await sha256(prompt.template);
+    const computed = sha256(prompt.template);
     if (computed !== prompt.digest) errors.push({ path, stored: prompt.digest, computed });
   }
   return errors;
@@ -249,18 +249,18 @@ export async function verifyConfiguration(input: unknown, at = ""): Promise<Link
  * an arm that is not a valid configuration, or that has no identity (an empty `models`, a duplicate
  * role), is reported with a null `computed` and its `problem`.
  */
-export async function verifyArms(
+export function verifyArms(
   arms: ReadonlyArray<{ identity: string; configuration: unknown }>,
   at = "/arms",
-): Promise<LinkError[]> {
+): LinkError[] {
   const errors: LinkError[] = [];
   for (const [i, arm] of arms.entries()) {
     const path = `${at}/${i}`;
     try {
-      const templates = await verifyConfiguration(arm.configuration, `${path}/configuration`);
+      const templates = verifyConfiguration(arm.configuration, `${path}/configuration`);
       errors.push(...templates);
       if (templates.length > 0) continue;
-      const computed = await configurationIdentity(arm.configuration);
+      const computed = configurationIdentity(arm.configuration);
       if (computed !== arm.identity)
         errors.push({ path: `${path}/identity`, stored: arm.identity, computed });
     } catch (error) {
