@@ -6,6 +6,7 @@ import type { SuiteV2 } from "./records/suite-v2.ts";
  */
 export const SUITE_PROBLEM_CODES = [
   "FIDELITY_MARGIN_MISSING",
+  "FIDELITY_MARGIN_UNKNOWN",
   "LEVELS_NOT_ASCENDING",
   "LEVEL_CUT_NOT_A_LEVEL",
   "LEVEL_CUT_AT_LOWEST",
@@ -26,21 +27,33 @@ export interface SuiteProblem {
 }
 
 /**
- * The measures that attribute compares when the suite has an `attribute` block: the primary and
- * secondary measures that have a test. A quantity is descriptive only, so it has none.
+ * Whether a measure has a test, so that attribute can compare a replay with its recording on it: a
+ * binary or score measure, or a level measure with `spacing`. A quantity is descriptive only, and a
+ * level measure without `spacing` has no test.
+ */
+function hasTest(measure: SuiteV2["measures"][string] | undefined): boolean {
+  if (measure === undefined || measure.type === "quantity") return false;
+  return measure.type !== "level" || measure.spacing !== undefined;
+}
+
+/**
+ * The secondary measures that attribute compares, each once: those with a test. An ID that names
+ * no measure is left to the check of the suite's references.
  */
 function attributedSecondaries(suite: SuiteV2): string[] {
-  if (suite.attribute === undefined) return [];
-  return (suite.policy.secondary ?? []).filter((id) => suite.measures[id]?.type !== "quantity");
+  return [...new Set(suite.policy.secondary ?? [])].filter((id) => hasTest(suite.measures[id]));
 }
 
 /**
  * The rules of a parsed suite that its schema cannot express. `ichnaea lock` refuses a suite with
  * any problem, and names each by its code:
  *
- * - `FIDELITY_MARGIN_MISSING`: an attributed secondary measure has no `attribute.fidelityMargin`
- *   entry. Only a primary measure has a registered limit, so only a primary measure defaults to
- *   half of it.
+ * - `FIDELITY_MARGIN_MISSING`: a suite with an `attribute` block has no `attribute.fidelityMargin`
+ *   entry for a secondary measure with a test. Only a primary measure has a registered limit, so
+ *   only a primary measure defaults to half of it.
+ * - `FIDELITY_MARGIN_UNKNOWN`: an `attribute.fidelityMargin` entry names neither a primary measure
+ *   nor a secondary measure with a test, so attribute would never use it: a misspelled ID would
+ *   leave its measure at the default.
  * - `LEVELS_NOT_ASCENDING`: a level measure's levels are not strictly ascending, so a level would
  *   appear twice or out of order.
  * - `LEVEL_CUT_NOT_A_LEVEL`: a level measure's `cut` is not one of its levels.
@@ -53,14 +66,25 @@ function attributedSecondaries(suite: SuiteV2): string[] {
  */
 export function suiteProblems(suite: SuiteV2): SuiteProblem[] {
   const problems: SuiteProblem[] = [];
-  const margins = suite.attribute?.fidelityMargin ?? {};
-  for (const id of attributedSecondaries(suite))
-    if (!Object.hasOwn(margins, id))
-      problems.push({
-        code: "FIDELITY_MARGIN_MISSING",
-        path: "/attribute/fidelityMargin",
-        message: `secondary measure '${id}' has no fidelity margin; only a primary measure has a registered limit to default to half of`,
-      });
+  if (suite.attribute !== undefined) {
+    const margins = suite.attribute.fidelityMargin ?? {};
+    const secondaries = attributedSecondaries(suite);
+    for (const id of secondaries)
+      if (!Object.hasOwn(margins, id))
+        problems.push({
+          code: "FIDELITY_MARGIN_MISSING",
+          path: "/attribute/fidelityMargin",
+          message: `secondary measure '${id}' has no fidelity margin; only a primary measure has a registered limit to default to half of`,
+        });
+    const compared = new Set([...Object.keys(suite.policy.primary), ...secondaries]);
+    for (const id of Object.keys(margins))
+      if (!compared.has(id))
+        problems.push({
+          code: "FIDELITY_MARGIN_UNKNOWN",
+          path: `/attribute/fidelityMargin/${id}`,
+          message: `the fidelity margin for '${id}' names no primary measure and no secondary measure with a test, so attribute never uses it`,
+        });
+  }
   for (const [id, measure] of Object.entries(suite.measures))
     if (measure.type === "level") problems.push(...levelProblems(id, measure));
   return problems;

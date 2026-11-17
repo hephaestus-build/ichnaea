@@ -65,6 +65,46 @@ describe("a suite's fidelity margins", () => {
   });
 });
 
+/** The valid suite with an attribute block of these margins and these secondary measures. */
+const attributed = (fidelityMargin: Rec, secondary: string[], measures: Rec = {}): Rec => {
+  const s = suite();
+  s["measures"] = { ...(s["measures"] as Rec), ...measures };
+  policy(s)["secondary"] = secondary;
+  s["attribute"] = { fidelityMargin };
+  return s;
+};
+const codesOf = (s: Rec) => problems(s).map((p) => [p.code, p.path]);
+
+describe("a suite's fidelity margin entries", () => {
+  it("ask nothing of a level measure without spacing or a cut, which has no test", () => {
+    const loose = { type: "level", scorer: { builtin: "rubric" }, levels: [0, 1, 2] };
+    expect(codesOf(attributed({}, ["loose"], { loose }))).toEqual([]);
+    const spaced = { ...loose, spacing: "equal" };
+    expect(codesOf(attributed({}, ["spaced"], { spaced }))).toEqual([
+      ["FIDELITY_MARGIN_MISSING", "/attribute/fidelityMargin"],
+    ]);
+  });
+
+  it("refuse an entry that names no measure that attribute compares", () => {
+    const [primary] = Object.keys(policy(suite())["primary"] as Rec);
+    expect(codesOf(attributed({ [`${primary}x`]: 0.01 }, []))).toEqual([
+      ["FIDELITY_MARGIN_UNKNOWN", `/attribute/fidelityMargin/${primary}x`],
+    ]);
+    // A quantity is descriptive only, so it has no margin either.
+    expect(codesOf(attributed({ "latency-ms": 0.01 }, ["latency-ms"]))).toEqual([
+      ["FIDELITY_MARGIN_UNKNOWN", "/attribute/fidelityMargin/latency-ms"],
+    ]);
+    expect(codesOf(attributed({ [primary as string]: 0.01 }, []))).toEqual([]);
+  });
+
+  it("name a secondary measure once, and leave an unknown one to the reference check", () => {
+    const length = { type: "score", scorer: { builtin: "length" } };
+    expect(codesOf(attributed({}, ["length", "length", "nope"], { length }))).toEqual([
+      ["FIDELITY_MARGIN_MISSING", "/attribute/fidelityMargin"],
+    ]);
+  });
+});
+
 /** The valid suite with a level measure `completeness` of these members. */
 const withLevel = (level: Rec): Rec => {
   const s = suite();

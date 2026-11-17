@@ -446,7 +446,7 @@ export const SuiteV2 = z.strictObject({
         z
           .record(ConfigName, z.number().gt(0).lt(1))
           .describe(
-            "For each attributed measure, the largest replay-to-recording difference that still counts as a faithful replay. A primary measure without an entry uses half its registered limit, which attribute applies. A secondary measure has no registered limit, so it needs an entry: lock refuses it without one (FIDELITY_MARGIN_MISSING).",
+            "For each attributed measure, the largest replay-to-recording difference that still counts as a faithful replay. A primary measure without an entry uses half its registered limit, which attribute applies. A secondary measure with a test has no registered limit, so it needs an entry: lock refuses it without one (FIDELITY_MARGIN_MISSING), and refuses an entry that names neither a primary measure nor a secondary measure with a test (FIDELITY_MARGIN_UNKNOWN).",
           ),
       ).optional(),
     })
