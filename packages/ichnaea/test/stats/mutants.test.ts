@@ -142,6 +142,7 @@ describe("the mutation harness", () => {
       "control: killed, as it must be",
       "applies: killed",
       "missed: SURVIVED",
+      "1 of 2 mutants killed",
       "survivors: missed",
     ]);
     expect(readFileSync(join(dir, "source.ts"), "utf8")).toBe(SOURCE);
@@ -199,7 +200,46 @@ describe("the mutation harness", () => {
     expect(code).toBe(1);
     expect(lines.slice(2)).toEqual([
       "applies: ERROR: a suite did not run",
+      "0 of 1 mutants killed",
       "errors (no result): applies",
+    ]);
+  });
+
+  it("fails a run in which no mutant is selected, and never calls it all killed", () => {
+    const dir = scratch(SOURCE);
+    const lines: string[] = [];
+    const code = runMutants(
+      [applies],
+      dir,
+      ["no-such"],
+      (l) => lines.push(l),
+      behaviour(dir),
+      canary,
+      control,
+    );
+    expect(code).toBe(1);
+    expect(lines).toEqual([
+      "no mutants ran: the selection matched none, and an empty run proves nothing",
+    ]);
+  });
+
+  it("counts every mutant killed only when each one was killed", () => {
+    const dir = scratch(SOURCE);
+    const lines: string[] = [];
+    const code = runMutants(
+      [applies],
+      dir,
+      [],
+      (l) => lines.push(l),
+      behaviour(dir),
+      canary,
+      control,
+    );
+    expect(code).toBe(0);
+    expect(lines.slice(2)).toEqual([
+      "applies: killed",
+      "1 of 1 mutants killed",
+      "all mutants killed",
     ]);
   });
 });

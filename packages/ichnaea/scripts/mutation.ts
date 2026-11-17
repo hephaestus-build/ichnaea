@@ -141,3 +141,65 @@ export const CONTROLS = {
       "the deliberate break was not killed: this run cannot show a kill, so no result counts",
   },
 } as const;
+
+const describe = (o: Outcome): string =>
+  o.kind === "error" ? `ERROR: ${o.reason}` : o.kind === "killed" ? "killed" : "SURVIVED";
+
+/** What a mutation run found. */
+export interface MutationResult {
+  /** 0 only when the controls held, at least one mutant ran, and every mutant was killed. */
+  readonly code: number;
+  readonly killed: number;
+  readonly survivors: readonly string[];
+  readonly errors: readonly string[];
+}
+
+/** The result of a run that proves nothing: its controls failed, or no mutant ran. */
+const FAILED: MutationResult = { code: 1, killed: 0, survivors: [], errors: [] };
+
+/**
+ * Runs the canary, then the control, then each mutant, through `attempt`, which applies one mutant,
+ * runs the tests, restores the source and returns the outcome. A canary that does not survive, or a
+ * control that is not killed, stops the run. A run with no mutant selected proves nothing and fails.
+ * An error gives no result and fails the run.
+ */
+export function runMutations<M extends { readonly id: string }>(input: {
+  readonly canary: M;
+  readonly control: M;
+  readonly mutants: readonly M[];
+  readonly attempt: (mutant: M) => Outcome;
+  readonly log?: (line: string) => void;
+}): MutationResult {
+  const log = input.log ?? console.log;
+  if (input.mutants.length === 0) {
+    log("no mutants ran: the selection matched none, and an empty run proves nothing");
+    return FAILED;
+  }
+  for (const [mutant, role] of [
+    [input.canary, CONTROLS.canary],
+    [input.control, CONTROLS.control],
+  ] as const) {
+    const outcome = input.attempt(mutant);
+    if (outcome.kind !== role.must) {
+      log(`${mutant.id}: ${describe(outcome)}`);
+      log(role.otherwise);
+      return FAILED;
+    }
+    log(`${mutant.id}: ${outcome.kind}, as it must be`);
+  }
+  let killed = 0;
+  const survivors: string[] = [];
+  const errors: string[] = [];
+  for (const mutant of input.mutants) {
+    const outcome = input.attempt(mutant);
+    log(`${mutant.id}: ${describe(outcome)}`);
+    if (outcome.kind === "killed") killed++;
+    else (outcome.kind === "survived" ? survivors : errors).push(mutant.id);
+  }
+  log(`${killed} of ${input.mutants.length} mutants killed`);
+  if (errors.length > 0) log(`errors (no result): ${errors.join(", ")}`);
+  if (survivors.length > 0) log(`survivors: ${survivors.join(", ")}`);
+  const code = errors.length === 0 && survivors.length === 0 ? 0 : 1;
+  if (code === 0) log("all mutants killed");
+  return { code, killed, survivors, errors };
+}

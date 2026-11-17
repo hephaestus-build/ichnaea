@@ -6,12 +6,16 @@
 //   node scripts/decide/mutants.ts --anchors       # check every anchor, run nothing
 // A mutant whose anchor is missing, or occurs more than once, is a failure: fix its anchor. A
 // mutant that survives is a test that cannot fail: kill it, or justify it as equivalent here.
+// Only an assertion failure kills. A mutant under which a test throws any other error, a suite does
+// not load or a test times out is a run error, not a kill, and the run fails. Every run first
+// applies a comment-only canary that must survive and a deliberate break that must be killed, and
+// a run with no mutant selected fails: scripts/mutation.ts.
 // Equivalent, so not listed: the example importer's own capture-failure class, because import makes
 // the same change (decision 0011).
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { CONTROLS, type Outcome, runTests } from "../mutation.ts";
+import { type Outcome, runMutations, runTests } from "../mutation.ts";
 
 interface Mutant {
   readonly id: string;
@@ -814,53 +818,41 @@ export const CONTROL: Mutant = {
   to: '    verdict = "INCONCLUSIVE";',
 };
 
-const describe = (o: Outcome): string =>
-  o.kind === "error" ? `ERROR: ${o.reason}` : o.kind === "killed" ? "killed" : "SURVIVED";
-
-const selected = [
-  CANARY,
-  CONTROL,
-  ...MUTANTS.filter((x) => wanted.length === 0 || wanted.some((w) => x.id.startsWith(w))),
-];
-const failures: string[] = [];
-let killed = 0;
-for (const m of selected) {
-  const path = join(ichnaea, m.file);
-  const original = readFileSync(path, "utf8");
-  const count = original.split(m.from).length - 1;
-  if (count !== 1) {
-    console.log(`${m.id}: anchor found ${count} times in ${m.file} (fix the mutant)`);
-    failures.push(m.id);
-    continue;
-  }
-  if (anchorsOnly) continue;
-  writeFileSync(path, original.replace(m.from, m.to));
-  let outcome: Outcome;
-  try {
-    outcome = runTests(repository, m.projects ?? ["decide"], m.id);
-  } finally {
-    writeFileSync(path, original);
-  }
-  const role = m === CANARY ? CONTROLS.canary : m === CONTROL ? CONTROLS.control : undefined;
-  if (role !== undefined) {
-    if (outcome.kind !== role.must) {
-      console.log(`${m.id}: ${describe(outcome)}`);
-      console.log(role.otherwise);
-      failures.push(m.id);
-      break;
-    }
-    console.log(`${m.id}: ${outcome.kind}, as it must be`);
-    continue;
-  }
-  console.log(`${m.id}: ${describe(outcome)}`);
-  if (outcome.kind === "killed") killed++;
-  else failures.push(m.id);
-}
-if (anchorsOnly)
+const selected = MUTANTS.filter(
+  (x) => wanted.length === 0 || wanted.some((w) => x.id.startsWith(w)),
+);
+const anchorCount = (m: Mutant): number =>
+  readFileSync(join(ichnaea, m.file), "utf8").split(m.from).length - 1;
+if (anchorsOnly) {
+  const all = [CANARY, CONTROL, ...selected];
+  const broken = all.filter((m) => anchorCount(m) !== 1);
+  for (const m of broken)
+    console.log(`${m.id}: anchor found ${anchorCount(m)} times in ${m.file} (fix the mutant)`);
   console.log(
-    `${selected.length - failures.length} of ${selected.length} anchors found once, the controls' included`,
+    `${all.length - broken.length} of ${all.length} anchors found once, the controls' included`,
   );
-else console.log(`${killed} of ${selected.length - 2} mutants killed`);
-if (failures.length > 0) console.log(`failed: ${failures.join(", ")}`);
-else console.log(anchorsOnly ? "all anchors found" : "all mutants killed");
-process.exitCode = failures.length === 0 ? 0 : 1;
+  console.log(
+    broken.length === 0 ? "all anchors found" : `failed: ${broken.map((m) => m.id).join(", ")}`,
+  );
+  process.exitCode = broken.length === 0 ? 0 : 1;
+} else {
+  const attempt = (m: Mutant): Outcome => {
+    const count = anchorCount(m);
+    if (count !== 1)
+      return { kind: "error", reason: `anchor found ${count} times in ${m.file} (fix the mutant)` };
+    const path = join(ichnaea, m.file);
+    const original = readFileSync(path, "utf8");
+    writeFileSync(path, original.replace(m.from, m.to));
+    try {
+      return runTests(repository, m.projects ?? ["decide"], m.id);
+    } finally {
+      writeFileSync(path, original);
+    }
+  };
+  process.exitCode = runMutations({
+    canary: CANARY,
+    control: CONTROL,
+    mutants: selected,
+    attempt,
+  }).code;
+}
