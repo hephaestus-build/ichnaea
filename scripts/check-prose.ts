@@ -6,8 +6,9 @@
 //
 // `node scripts/check-prose.ts` checks the docs site. `node scripts/check-prose.ts <file>…` checks
 // the named files.
-import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+
+import { trackedFiles } from "./tracked-files.ts";
 
 /** The longest sentence in words; a list item or a step has a lower limit. */
 export const SENTENCE_WORDS = 25;
@@ -188,13 +189,7 @@ export function checkProse(path: string, source: string): Finding[] {
 
 /** The prose files of the docs site, from git, so that ignored and generated files are left out. */
 function docsFiles(): string[] {
-  return execFileSync(
-    "git",
-    ["ls-files", "--cached", "--others", "--exclude-standard", "docs/site/src/content"],
-    { encoding: "utf8" },
-  )
-    .split("\n")
-    .filter((path) => /\.mdx?$/.test(path));
+  return trackedFiles(["docs/site/src/content"]).filter((path) => /\.mdx?$/.test(path));
 }
 
 if (import.meta.main) {

@@ -53,7 +53,7 @@ This record implements REQ-25 at one trial per case and narrows decision 0009 fo
 ## Evidence
 
 - The type-I study: `validation/binary-one-trial.tsv` and its sidecar, written by
-  `scripts/stats/study-binary-one-trial.ts`. `test/stats/binary-one-trial.test.ts` checks that the
+  `scripts/stats/study-binary-one-trial.ts`. `test/stats-studies/binary-one-trial.test.ts` checks that the
   rejection region equals the exact McNemar test's at every n up to 300 and every level, that the
   dynamic programme equals enumeration through `compareCounts`, and recomputes every listed worst
   structure. This change does not change any p-value of `compareCounts`, only its validity results,

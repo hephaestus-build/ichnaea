@@ -6,13 +6,16 @@
 // `test/contracts/mutants.test.ts` checks that every anchor still occurs exactly once, so a refactor that
 // moves one fails the test run instead of leaving a mutant that silently tests nothing. That test is
 // in the `mutants` project, not in `contracts`, which the mutated runs execute: its anchor check
-// would fail under every mutant. What counts as a kill, and the two controls that every run
-// applies first: scripts/mutation.ts.
+// would fail under every mutant. Only an assertion failure kills. A mutant under which a test throws
+// any other error, or a suite does not load, is a run error, not a kill, and the run fails. A test
+// that times out detects the mutant, and more than a tenth of such timeouts fail the run. Every run
+// first applies a comment-only canary that must survive and a deliberate break that
+// must be killed, and a run with no mutant selected fails: scripts/mutation.ts.
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { CONTROLS, type Outcome, runTests } from "../mutation.ts";
+import { type Outcome, runMutations, runTests } from "../mutation.ts";
 
 export interface Mutant {
   readonly id: string;
@@ -453,9 +456,6 @@ export const MUTANTS: readonly Mutant[] = [
   },
 ];
 
-const describe = (o: Outcome): string =>
-  o.kind === "error" ? `ERROR: ${o.reason}` : o.kind === "killed" ? "killed" : "SURVIVED";
-
 if (import.meta.main) {
   const root = join(import.meta.dirname, "..", "..");
   const wanted = process.argv.slice(2);
@@ -467,58 +467,29 @@ if (import.meta.main) {
       return false;
     }
   };
-  const survivors: string[] = [];
-  const errors: string[] = [];
-  let failed = false;
-  for (const m of [
-    CANARY,
-    CONTROL,
-    ...MUTANTS.filter((x) => wanted.length === 0 || wanted.some((w) => x.id.startsWith(w))),
-  ]) {
+  const regenerate = (): boolean =>
+    run("node", ["scripts/contracts/generate-schemas.ts"]) &&
+    run("node", ["scripts/contracts/write-fixtures.ts"]);
+  const attempt = (m: Mutant): Outcome => {
     const path = join(root, m.file);
     const original = readFileSync(path, "utf8");
     const mutated = mutate(original, m);
-    if ("missing" in mutated) {
-      console.log(`${m.id}: anchor not found (update the mutant)`);
-      errors.push(m.id);
-      continue;
-    }
+    if ("missing" in mutated)
+      return { kind: "error", reason: "its anchor is not found (update the mutant)" };
     writeFileSync(path, mutated.text);
-    let outcome: Outcome;
     try {
-      const regenerated =
-        m.regen !== true ||
-        (run("node", ["scripts/contracts/generate-schemas.ts"]) &&
-          run("node", ["scripts/contracts/write-fixtures.ts"]));
-      outcome = regenerated
-        ? runTests(root, ["contracts"], m.id)
-        : { kind: "error", reason: "the schemas or fixtures could not be regenerated" };
+      if (m.regen === true && !regenerate())
+        return { kind: "error", reason: "the schemas or fixtures could not be regenerated" };
+      return runTests(root, ["contracts"], m.id);
     } finally {
       writeFileSync(path, original);
-      if (m.regen) {
-        run("node", ["scripts/contracts/generate-schemas.ts"]);
-        run("node", ["scripts/contracts/write-fixtures.ts"]);
-      }
+      if (m.regen === true) regenerate();
     }
-    const role = m === CANARY ? CONTROLS.canary : m === CONTROL ? CONTROLS.control : undefined;
-    if (role !== undefined) {
-      if (outcome.kind !== role.must) {
-        console.log(`${m.id}: ${describe(outcome)}`);
-        console.log(role.otherwise);
-        failed = true;
-        break;
-      }
-      console.log(`${m.id}: ${outcome.kind}, as it must be`);
-      continue;
-    }
-    console.log(`${m.id}: ${describe(outcome)}`);
-    if (outcome.kind === "survived") survivors.push(m.id);
-    if (outcome.kind === "error") errors.push(m.id);
-  }
-  if (!failed) {
-    if (errors.length > 0) console.log(`errors (no result): ${errors.join(", ")}`);
-    if (survivors.length > 0) console.log(`survivors: ${survivors.join(", ")}`);
-    if (errors.length === 0 && survivors.length === 0) console.log("all mutants killed");
-  }
-  process.exitCode = !failed && errors.length === 0 && survivors.length === 0 ? 0 : 1;
+  };
+  process.exitCode = runMutations({
+    canary: CANARY,
+    control: CONTROL,
+    mutants: MUTANTS.filter((x) => wanted.length === 0 || wanted.some((w) => x.id.startsWith(w))),
+    attempt,
+  }).code;
 }
