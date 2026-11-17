@@ -4,7 +4,9 @@
 //   node scripts/contracts/mutants.ts S10 E1     # selected mutants
 // A mutant that survives is a test that cannot fail: kill it, or justify it as equivalent here.
 // `test/contracts/mutants.test.ts` checks that every anchor still occurs exactly once, so a refactor that
-// moves one fails the test run instead of leaving a mutant that silently tests nothing.
+// moves one fails the test run instead of leaving a mutant that silently tests nothing. That test is
+// in the `mutants` project, not in `contracts`, which the mutated runs execute: its anchor check
+// would fail under every mutant. A comment-only canary runs first and must survive.
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -54,6 +56,17 @@ export function mutate(original: string, m: Mutant): { text: string } | { missin
   }
   return { text };
 }
+
+/**
+ * The canary: a change to a comment, which no test can detect. It runs first and must survive. A
+ * killed canary means some test fails whatever the mutant does, and then every kill is vacuous.
+ */
+export const CANARY: Mutant = {
+  id: "canary: a comment only",
+  file: "src/contracts/canonical.ts",
+  from: "/** Thrown when a value has no JSON representation. */",
+  to: "/** Thrown when a value has no JSON representation (the mutation canary). */",
+};
 
 export const MUTANTS: readonly Mutant[] = [
   {
@@ -438,9 +451,10 @@ if (import.meta.main) {
     }
   };
   const survivors: string[] = [];
-  for (const m of MUTANTS.filter(
-    (x) => wanted.length === 0 || wanted.some((w) => x.id.startsWith(w)),
-  )) {
+  for (const m of [
+    CANARY,
+    ...MUTANTS.filter((x) => wanted.length === 0 || wanted.some((w) => x.id.startsWith(w))),
+  ]) {
     const path = join(root, m.file);
     const original = readFileSync(path, "utf8");
     const mutated = mutate(original, m);
@@ -456,6 +470,17 @@ if (import.meta.main) {
         run("node", ["scripts/contracts/write-fixtures.ts"]);
       }
       const killed = !run("pnpm", ["exec", "vitest", "run", "--project", "contracts"]);
+      if (m === CANARY) {
+        console.log(`${m.id}: ${killed ? "killed" : "survived, as it must"}`);
+        if (killed) {
+          console.log(
+            "the canary was killed: some test fails whatever the mutant does, so no kill counts",
+          );
+          process.exitCode = 1;
+          break;
+        }
+        continue;
+      }
       console.log(`${m.id}: ${killed ? "killed" : "SURVIVED"}`);
       if (!killed) survivors.push(m.id);
     } finally {
@@ -466,6 +491,10 @@ if (import.meta.main) {
       }
     }
   }
-  console.log(survivors.length === 0 ? "all mutants killed" : `survivors: ${survivors.join(", ")}`);
-  process.exitCode = survivors.length === 0 ? 0 : 1;
+  if (process.exitCode !== 1) {
+    console.log(
+      survivors.length === 0 ? "all mutants killed" : `survivors: ${survivors.join(", ")}`,
+    );
+    process.exitCode = survivors.length === 0 ? 0 : 1;
+  }
 }

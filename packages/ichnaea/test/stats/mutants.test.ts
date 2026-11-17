@@ -9,7 +9,14 @@ import { join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { anchorProblems, MUTANTS, type Mutant, runMutants } from "../../scripts/stats/mutants.ts";
+import {
+  anchorProblems,
+  CANARY,
+  MUTANTS,
+  type Mutant,
+  runMutants,
+} from "../../scripts/stats/mutants.ts";
+import { UNIT_PROJECTS } from "../../vitest.projects.ts";
 
 const root = join(import.meta.dirname, "..", "..");
 
@@ -25,9 +32,32 @@ function scratch(text: string): string {
   return dir;
 }
 
+/** One of the package's test projects, by name. */
+const project = (name: string) => UNIT_PROJECTS.find((p) => p.test?.name === name)?.test;
+
+/** A canary for the scratch package: a comment change that no test can see. */
+const scratchCanary: Mutant = {
+  id: "canary",
+  file: "source.ts",
+  from: "// canary",
+  to: "// canary!",
+};
+const applies: Mutant = {
+  id: "applies",
+  file: "source.ts",
+  from: "const a = 1;",
+  to: "const a = 0;",
+};
+
 describe("the mutation harness", () => {
   it("has every mutant's anchor exactly once in its file", () => {
-    expect(anchorProblems(MUTANTS, root)).toEqual([]);
+    expect(anchorProblems([CANARY, ...MUTANTS], root)).toEqual([]);
+  });
+
+  it("runs the mutants against a project that leaves out this file, whose anchor check every mutant breaks", () => {
+    expect(project("stats")?.exclude).toContain("test/stats/mutants.test.ts");
+    expect(project("contracts")?.exclude).toContain("test/contracts/mutants.test.ts");
+    expect(project("mutants")?.include).toEqual(["test/*/mutants.test.ts"]);
   });
 
   it("names a mutant whose file is missing, whose anchor is gone, or occurs twice", () => {
@@ -46,7 +76,7 @@ describe("the mutation harness", () => {
   });
 
   it("fails the run on an anchor that matches no place or two, before it changes any file", () => {
-    const text = "const a = 1;\nconst b = 2;\nconst b = 2;\n";
+    const text = "// canary\nconst a = 1;\nconst b = 2;\nconst b = 2;\n";
     const dir = scratch(text);
     const lines: string[] = [];
     const code = runMutants(
@@ -58,6 +88,8 @@ describe("the mutation harness", () => {
       dir,
       [],
       (line) => lines.push(line),
+      () => true,
+      scratchCanary,
     );
     expect(code).toBe(1);
     expect(lines).toEqual([
@@ -70,10 +102,56 @@ describe("the mutation harness", () => {
   });
 
   it("fails the run on a duplicate anchor alone", () => {
-    const dir = scratch("const b = 2;\nconst b = 2;\n");
+    const dir = scratch("// canary\nconst b = 2;\nconst b = 2;\n");
     const lines: string[] = [];
     const duplicate: Mutant = { id: "duplicate", file: "source.ts", from: "const b = 2;", to: "x" };
-    expect(runMutants([duplicate], dir, [], (line) => lines.push(line))).toBe(1);
+    expect(
+      runMutants(
+        [duplicate],
+        dir,
+        [],
+        (line) => lines.push(line),
+        () => true,
+        scratchCanary,
+      ),
+    ).toBe(1);
     expect(lines[0]).toBe("duplicate: its anchor occurs 2 times in source.ts, not once");
+  });
+
+  it("runs the canary first, and counts the kills only when the canary survives", () => {
+    const text = "// canary\nconst a = 1;\n";
+    const dir = scratch(text);
+    const lines: string[] = [];
+    // A test that reads the behaviour: it fails only when `a` changed.
+    const behaviour = () => readFileSync(join(dir, "source.ts"), "utf8").includes("const a = 1;");
+    expect(runMutants([applies], dir, [], (l) => lines.push(l), behaviour, scratchCanary)).toBe(0);
+    expect(lines).toEqual([
+      "canary: survived, as it must",
+      "applies: killed",
+      "all mutants killed",
+    ]);
+    expect(readFileSync(join(dir, "source.ts"), "utf8")).toBe(text);
+  });
+
+  it("fails the run when the canary is killed, before any other mutant counts", () => {
+    const text = "// canary\nconst a = 1;\n";
+    const dir = scratch(text);
+    const lines: string[] = [];
+    // A test that fails whatever the change, as the anchor check did inside the mutated project.
+    expect(
+      runMutants(
+        [applies],
+        dir,
+        [],
+        (l) => lines.push(l),
+        () => false,
+        scratchCanary,
+      ),
+    ).toBe(1);
+    expect(lines).toEqual([
+      "canary: killed",
+      "the canary was killed: some test fails whatever the mutant does, so no kill counts",
+    ]);
+    expect(readFileSync(join(dir, "source.ts"), "utf8")).toBe(text);
   });
 });

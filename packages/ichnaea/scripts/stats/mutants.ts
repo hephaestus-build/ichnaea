@@ -16,6 +16,17 @@ export interface Mutant {
   readonly regen?: boolean;
 }
 
+/**
+ * The canary: a change to a comment, which no test can detect. It runs first and must survive. A
+ * killed canary means some test fails whatever the mutant does, and then every kill is vacuous.
+ */
+export const CANARY: Mutant = {
+  id: "canary: a comment only",
+  file: "src/stats/types.ts",
+  from: "/** Successes out of trials. */",
+  to: "/** Successes out of trials (the mutation canary). */",
+};
+
 export const MUTANTS: readonly Mutant[] = [
   {
     id: "NI null at +margin",
@@ -695,49 +706,65 @@ export function anchorProblems(mutants: readonly Mutant[], root: string): string
  * Runs the selected mutants against the stats tests in `root` and returns the exit code. Every
  * anchor is checked before any source changes: one that does not apply fails the whole run.
  */
+/** Runs a command in `root` and says whether it succeeded. */
+function run(cmd: string, args: string[], root: string): boolean {
+  try {
+    execFileSync(cmd, args, { cwd: root, stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function runMutants(
   mutants: readonly Mutant[],
   root: string,
   wanted: readonly string[],
   log: (line: string) => void = console.log,
+  testsPass: () => boolean = () =>
+    run("pnpm", ["exec", "vitest", "run", "--project", "stats"], root),
+  canary: Mutant = CANARY,
 ): number {
-  const selected = mutants.filter(
-    (x) => wanted.length === 0 || wanted.some((w) => x.id.startsWith(w)),
-  );
+  const selected = [
+    canary,
+    ...mutants.filter((x) => wanted.length === 0 || wanted.some((w) => x.id.startsWith(w))),
+  ];
   const problems = anchorProblems(selected, root);
   if (problems.length > 0) {
     for (const p of problems) log(p);
     log(`${problems.length} mutant(s) cannot apply: update them before running any`);
     return 1;
   }
-  const run = (cmd: string, args: string[]): boolean => {
-    try {
-      execFileSync(cmd, args, { cwd: root, stdio: "ignore" });
-      return true;
-    } catch {
-      return false;
-    }
-  };
+
   const survivors: string[] = [];
   for (const m of selected) {
     const path = join(root, m.file);
     const original = readFileSync(path, "utf8");
     writeFileSync(path, original.replace(m.from, m.to));
+    let killed: boolean;
     try {
       if (m.regen) {
-        run("node", ["scripts/contracts/generate-schemas.ts"]);
-        run("node", ["scripts/contracts/write-fixtures.ts"]);
+        run("node", ["scripts/contracts/generate-schemas.ts"], root);
+        run("node", ["scripts/contracts/write-fixtures.ts"], root);
       }
-      const killed = !run("pnpm", ["exec", "vitest", "run", "--project", "stats"]);
-      log(`${m.id}: ${killed ? "killed" : "SURVIVED"}`);
-      if (!killed) survivors.push(m.id);
+      killed = !testsPass();
     } finally {
       writeFileSync(path, original);
       if (m.regen) {
-        run("node", ["scripts/contracts/generate-schemas.ts"]);
-        run("node", ["scripts/contracts/write-fixtures.ts"]);
+        run("node", ["scripts/contracts/generate-schemas.ts"], root);
+        run("node", ["scripts/contracts/write-fixtures.ts"], root);
       }
     }
+    if (m === canary) {
+      log(`${m.id}: ${killed ? "killed" : "survived, as it must"}`);
+      if (killed) {
+        log("the canary was killed: some test fails whatever the mutant does, so no kill counts");
+        return 1;
+      }
+      continue;
+    }
+    log(`${m.id}: ${killed ? "killed" : "SURVIVED"}`);
+    if (!killed) survivors.push(m.id);
   }
   log(survivors.length === 0 ? "all mutants killed" : `survivors: ${survivors.join(", ")}`);
   return survivors.length === 0 ? 0 : 1;
