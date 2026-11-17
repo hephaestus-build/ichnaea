@@ -46,8 +46,9 @@ const MAX_ADJUSTED_TAIL = 0.25;
  * Clopper–Pearson on the pooled count at the adjusted level α′ = 1 − e^{−α} per bound
  * (1 − e^{−α/2} per tail for a two-sided interval). With independent trials at unequal rates, the
  * count is Poisson-binomial. The bound then misses the mean rate with probability below α, for every
- * set of rates (Hoeffding 1956 Theorem 4, Greenberg and Mohri 2014, and Weierstrass's product
- * inequality). Unadjusted CP can miss at a rate up to −ln(1 − α), at extreme means.
+ * set of rates (Hoeffding 1956, Theorem 4, as restated in Bancal and Sekatski 2022, § II; Greenberg
+ * and Mohri 2014; and Weierstrass's product inequality). Unadjusted CP can miss at a rate up to
+ * −ln(1 − α), at extreme means.
  *
  * The proof needs α′ ≤ 1/4 per bound, so a larger one is refused. The result carries the level
  * asked for, and the method "clopper-pearson-adjusted".
