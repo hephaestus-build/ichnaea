@@ -1,5 +1,10 @@
 import { readFile } from "node:fs/promises";
-import { Case, CaseSet, canonicalize, Configuration, digest, proportionProblem, Run, Suite, } from "../contracts/index.js";
+import { canonicalize, digest } from "../contracts/canonical.js";
+import { Case, CaseSet } from "../contracts/records/case.js";
+import { Configuration } from "../contracts/records/configuration.js";
+import { Run } from "../contracts/records/run.js";
+import { Suite } from "../contracts/records/suite.js";
+import { proportionProblem } from "../contracts/values.js";
 import { scoreTrials } from "./measures.js";
 import { createPlan } from "./planner.js";
 import { recordProblems } from "./records.js";

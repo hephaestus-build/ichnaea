@@ -1,7 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { appendFile, mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { canonicalize, Decision, GateResult, MeasureValue, Plan, Run, Trial, } from "../contracts/index.js";
+import { canonicalize } from "../contracts/canonical.js";
+import { Decision, GateResult, } from "../contracts/records/decision.js";
+import { MeasureValue } from "../contracts/records/measure.js";
+import { Plan } from "../contracts/records/plan.js";
+import { Run } from "../contracts/records/run.js";
+import { Trial } from "../contracts/records/trial.js";
 import * as z from "zod";
 import { recordProblems } from "./records.js";
 /** Thrown when a write would change a record that already exists. */

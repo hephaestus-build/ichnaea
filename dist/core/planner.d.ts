@@ -1,4 +1,7 @@
-import { type Case, type CaseSet, type Configuration, type FactorPart, Plan, type Suite } from "../contracts/index.ts";
+import type { Case, CaseSet } from "../contracts/records/case.ts";
+import type { Configuration, FactorPart } from "../contracts/records/configuration.ts";
+import { Plan } from "../contracts/records/plan.ts";
+import type { Suite } from "../contracts/records/suite.ts";
 import type { GateDefinition, MeasureDefinition } from "./plugin.ts";
 /** Thrown when a suite cannot be resolved into a valid plan. The message names the fix. */
 export declare class PlanError extends Error {

@@ -1,4 +1,8 @@
-import type { GateResult as GateResultRecord, MeasureValue as MeasureValueRecord, Plan as PlanRecord, Run as RunRecord, Trial as TrialRecord } from "../contracts/index.ts";
+import type { GateResult as GateResultRecord } from "../contracts/records/decision.ts";
+import type { MeasureValue as MeasureValueRecord } from "../contracts/records/measure.ts";
+import type { Plan as PlanRecord } from "../contracts/records/plan.ts";
+import type { Run as RunRecord } from "../contracts/records/run.ts";
+import type { Trial as TrialRecord } from "../contracts/records/trial.ts";
 /** The primary records of one run, written together. */
 export interface RunRecords {
     /** The plan that the run carries out. */

@@ -1,4 +1,4 @@
-import { canonicalize, digest, } from "../contracts/index.js";
+import { canonicalize, digest } from "../contracts/canonical.js";
 /** Outcomes that a measure scores (REQ-20). */
 const SCORED = new Set(["completed", "abstained"]);
 /** Outcomes that count as a failure on a measure. */

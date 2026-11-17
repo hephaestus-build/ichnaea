@@ -1,4 +1,5 @@
-import { sampledCasesFloor, VALIDATED_MARGIN_CEILING, VALIDATED_MARGIN_FLOOR, zeroNoiseFloor, } from "../stats/index.js";
+import { VALIDATED_MARGIN_CEILING, VALIDATED_MARGIN_FLOOR } from "../stats/compare.js";
+import { sampledCasesFloor, zeroNoiseFloor } from "../stats/power.js";
 /** Planned trials per case in one arm (a suite can give some cases more, `replicatesFor`). */
 export function plannedTrialsPerCase(plan, arm) {
     const counts = new Map();

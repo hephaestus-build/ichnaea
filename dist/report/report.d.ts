@@ -1,4 +1,5 @@
-import type { Decision, Run } from "../contracts/index.ts";
+import type { Decision } from "../contracts/records/decision.ts";
+import type { Run } from "../contracts/records/run.ts";
 /** Thrown when a rendered report would break the wording rules (REQ-129). */
 export declare class ReportError extends Error {
     /** The error's name, for `instanceof`-free checks. */

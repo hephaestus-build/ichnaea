@@ -1,4 +1,4 @@
-import { createRng } from "../stats/index.js";
+import { createRng } from "../stats/rng.js";
 import { bootstrapCalibration, calibrated, estimates, } from "./engine.js";
 /** The registered rule's defaults. */
 export const CALIBRATION_DEFAULTS = {

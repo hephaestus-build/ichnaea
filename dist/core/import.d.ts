@@ -1,4 +1,4 @@
-import { type Plan } from "../contracts/index.ts";
+import type { Plan } from "../contracts/records/plan.ts";
 import type { Host } from "./host.ts";
 /** What `ichnaea import` needs. */
 export interface ImportRunInput {

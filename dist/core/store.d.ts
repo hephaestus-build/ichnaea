@@ -1,4 +1,6 @@
-import { type Decision as DecisionRecord, type Plan as PlanRecord, type Run as RunRecord } from "../contracts/index.ts";
+import { type Decision as DecisionRecord } from "../contracts/records/decision.ts";
+import { type Plan as PlanRecord } from "../contracts/records/plan.ts";
+import { type Run as RunRecord } from "../contracts/records/run.ts";
 import { type RunRecords } from "./records.ts";
 /** Thrown when a write would change a record that already exists. */
 export declare class AppendOnlyError extends Error {

@@ -1,7 +1,8 @@
 import { appendFile, mkdir, open, readFile, rm, stat } from "node:fs/promises";
 import { setTimeout as delay } from "node:timers/promises";
 import { join } from "node:path";
-import { canonicalize, Timestamp } from "../contracts/index.js";
+import { canonicalize } from "../contracts/canonical.js";
+import { Timestamp } from "../contracts/primitives.js";
 import * as z from "zod";
 /**
  * What every ledger line must hold: the run and a non-negative whole number of calls. Other

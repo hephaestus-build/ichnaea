@@ -1,7 +1,17 @@
-import { candidateRunsFirst, canonicalize, Decision, digest, FactorPart, proportionProblem, REFUSED_MARGIN, verifyArms, } from "../contracts/index.js";
+import { canonicalize, digest } from "../contracts/canonical.js";
+import { verifyArms } from "../contracts/identity.js";
+import { candidateRunsFirst } from "../contracts/pair-order.js";
+import { FactorPart } from "../contracts/records/configuration.js";
+import { Decision } from "../contracts/records/decision.js";
+import { REFUSED_MARGIN } from "../contracts/records/plan.js";
+import { proportionProblem } from "../contracts/values.js";
 import { TRIGGER_VARIES } from "../core/planner.js";
 import { recordProblems } from "../core/records.js";
-import { compareCounts, createRng, EstimandError, fixedCasesMde, holm, MARGIN_FLOOR_NOT_SET, sampledCasesFloor, wilson, } from "../stats/index.js";
+import { compareCounts, EstimandError, MARGIN_FLOOR_NOT_SET, } from "../stats/compare.js";
+import { holm } from "../stats/multiplicity.js";
+import { fixedCasesMde, sampledCasesFloor } from "../stats/power.js";
+import { createRng } from "../stats/rng.js";
+import { wilson } from "../stats/wilson.js";
 import { describeCounts, plannedTrialsPerCase, planningPower } from "./planning.js";
 /** Outcomes that leave a planned trial without a value: they are missing, never a failure. */
 const MISSING = new Set([

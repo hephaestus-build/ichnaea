@@ -1,16 +1,11 @@
-import type {
-  Case,
-  DataClass,
-  Decision,
-  GateResult,
-  MeasureCard,
-  MeasuredValue,
-  MeasureValue,
-  Plan,
-  Purpose,
-  Run,
-  Trial,
-} from "../contracts/index.ts";
+import type { DataClass, Purpose } from "../contracts/data-class.ts";
+import type { MeasuredValue } from "../contracts/primitives.ts";
+import type { Case } from "../contracts/records/case.ts";
+import type { Decision, GateResult } from "../contracts/records/decision.ts";
+import type { MeasureCard, MeasureValue } from "../contracts/records/measure.ts";
+import type { Plan } from "../contracts/records/plan.ts";
+import type { Run } from "../contracts/records/run.ts";
+import type { Trial } from "../contracts/records/trial.ts";
 
 /** Stability of a plugin or of one of its parts. Names never encode the stage. */
 export type Stability = "development" | "alpha" | "beta" | "stable";

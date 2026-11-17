@@ -1,7 +1,7 @@
 // The weighted calibration statistics over a set's answers. Every statistic weights each answer by
 // 1/π, its inverse inclusion probability. Ordinal alpha is the exception: it takes unweighted sets
 // only, and the analysis refuses weighted levels.
-import { krippendorffAlpha } from "../stats/index.js";
+import { krippendorffAlpha } from "../stats/agreement.js";
 /** R's type-7 quantile of a sorted array. */
 export function quantile(values, p) {
     const h = (values.length - 1) * p;

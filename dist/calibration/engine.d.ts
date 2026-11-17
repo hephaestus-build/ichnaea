@@ -1,4 +1,4 @@
-import type { Rng } from "../stats/index.ts";
+import type { Rng } from "../stats/rng.ts";
 import { type LabelColumns, type Pairwise } from "./statistics.ts";
 /** The rule's values. */
 export interface RuleValues {

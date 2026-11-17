@@ -2,18 +2,16 @@ import { randomUUID } from "node:crypto";
 import { appendFile, mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { canonicalize } from "../contracts/canonical.ts";
 import {
-  canonicalize,
   Decision,
   type Decision as DecisionRecord,
   GateResult,
-  MeasureValue,
-  Plan,
-  type Plan as PlanRecord,
-  Run,
-  type Run as RunRecord,
-  Trial,
-} from "../contracts/index.ts";
+} from "../contracts/records/decision.ts";
+import { MeasureValue } from "../contracts/records/measure.ts";
+import { Plan, type Plan as PlanRecord } from "../contracts/records/plan.ts";
+import { Run, type Run as RunRecord } from "../contracts/records/run.ts";
+import { Trial } from "../contracts/records/trial.ts";
 import * as z from "zod";
 
 import { recordProblems, type RunRecords } from "./records.ts";

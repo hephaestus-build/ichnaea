@@ -1,4 +1,7 @@
-import { armNames, caseDigest, caseSetDigest, candidateRunsFirst, configurationIdentity, digest, Plan, } from "../contracts/index.js";
+import { digest } from "../contracts/canonical.js";
+import { caseDigest, caseSetDigest, configurationIdentity } from "../contracts/identity.js";
+import { armNames, candidateRunsFirst } from "../contracts/pair-order.js";
+import { Plan } from "../contracts/records/plan.js";
 import { testMeasure } from "./measures.js";
 /** Thrown when a suite cannot be resolved into a valid plan. The message names the fix. */
 export class PlanError extends Error {

@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { FileStore, CORE_VERSION } from "../core/index.js";
+import { FileStore } from "../core/store.js";
+import { CORE_VERSION } from "../core/version.js";
 import { recompute } from "./recompute.js";
 import { lintReport, renderHtml, renderMarkdown } from "./render.js";
 import { decisionView } from "./view.js";

@@ -1,5 +1,10 @@
-import { Decision, type GateResult, type MeasuredValue, type MeasureValue, type Plan, type Run, type Trial } from "../contracts/index.ts";
-import { type CaseCounts, type Comparison, type ComparisonInput, type OneTrialChecks } from "../stats/index.ts";
+import type { MeasuredValue } from "../contracts/primitives.ts";
+import { Decision, type GateResult } from "../contracts/records/decision.ts";
+import type { MeasureValue } from "../contracts/records/measure.ts";
+import { type Plan } from "../contracts/records/plan.ts";
+import type { Run } from "../contracts/records/run.ts";
+import type { Trial } from "../contracts/records/trial.ts";
+import { type CaseCounts, type Comparison, type ComparisonInput, type OneTrialChecks } from "../stats/compare.ts";
 /** Everything a decision is computed from. Reports never compute anything new. */
 export interface DecideInput {
     /** The plan that the run carries out. */

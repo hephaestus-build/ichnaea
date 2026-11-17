@@ -1,4 +1,8 @@
-import { type Decision, type GateResult, type MeasureValue, type Plan, type Run, type Trial } from "../contracts/index.ts";
+import type { Decision, GateResult } from "../contracts/records/decision.ts";
+import type { MeasureValue } from "../contracts/records/measure.ts";
+import type { Plan } from "../contracts/records/plan.ts";
+import type { Run } from "../contracts/records/run.ts";
+import type { Trial } from "../contracts/records/trial.ts";
 /** The result of recomputing a stored decision. */
 export interface RecomputeResult {
     /** Whether the recomputed decision equals the stored one. */

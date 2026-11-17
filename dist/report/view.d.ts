@@ -1,4 +1,6 @@
-import { type Decision, type Real, type Run } from "../contracts/index.ts";
+import type { Real } from "../contracts/primitives.ts";
+import type { Decision } from "../contracts/records/decision.ts";
+import type { Run } from "../contracts/records/run.ts";
 /** A number as reports show it: a percentage with one decimal, or a dash when undefined. */
 export declare function percent(value: Real | number): string;
 /** A difference in percentage points with its sign. */

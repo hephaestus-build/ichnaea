@@ -1,4 +1,5 @@
-import { MeasureCard, Plan } from "../contracts/index.js";
+import { MeasureCard } from "../contracts/records/measure.js";
+import { Plan } from "../contracts/records/plan.js";
 import { satisfies } from "./semver.js";
 /** Thrown when a configuration cannot load. The message names the plugin. */
 export class HostError extends Error {

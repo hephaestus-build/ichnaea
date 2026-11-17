@@ -1,4 +1,5 @@
-import type { Decision, Plan } from "../contracts/index.ts";
+import type { Decision } from "../contracts/records/decision.ts";
+import type { Plan } from "../contracts/records/plan.ts";
 import type { RunRecords } from "../core/records.ts";
 import { type AaEvidence } from "./decide.ts";
 /**

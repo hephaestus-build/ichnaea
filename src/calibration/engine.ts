@@ -1,7 +1,7 @@
 // The calibration rule on a set in columns: one item-cluster bootstrap within strata gives every
 // bound. The analysis (analyze.ts) and the rule's operating-characteristics study
 // (scripts/stats/calibration-rule-study.ts) both run it.
-import type { Rng } from "../stats/index.ts";
+import type { Rng } from "../stats/rng.ts";
 import {
   armBias,
   gap,

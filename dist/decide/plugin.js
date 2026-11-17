@@ -1,7 +1,8 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { canonicalize } from "../contracts/index.js";
-import { FileStore, CORE_VERSION } from "../core/index.js";
+import { canonicalize } from "../contracts/canonical.js";
+import { FileStore } from "../core/store.js";
+import { CORE_VERSION } from "../core/version.js";
 import { decide } from "./decide.js";
 import { planningPower } from "./planning.js";
 const VERSION = CORE_VERSION;

@@ -1,4 +1,6 @@
-import { type Case, type MeasureValue, type Trial } from "../contracts/index.ts";
+import type { Case } from "../contracts/records/case.ts";
+import type { MeasureValue } from "../contracts/records/measure.ts";
+import type { Trial } from "../contracts/records/trial.ts";
 import type { MeasureDefinition } from "./plugin.ts";
 /**
  * Scores trials with the measures Ichnaea computes. A measure that does not apply to a case

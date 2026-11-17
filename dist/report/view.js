@@ -1,4 +1,4 @@
-import { notComputedReason, } from "../contracts/index.js";
+import { notComputedReason } from "../contracts/records/plan.js";
 /** A number as reports show it: a percentage with one decimal, or a dash when undefined. */
 export function percent(value) {
     if (typeof value !== "number")
