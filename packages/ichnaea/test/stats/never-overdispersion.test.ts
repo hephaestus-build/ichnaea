@@ -11,6 +11,9 @@ import {
   stratifiedZ,
 } from "../../src/stats/index.ts";
 
+/** The one-sided level at which pooled Clopper–Pearson runs for a bound at α: e^{−α}. */
+const adjusted = (alpha: number): number => Math.exp(-alpha);
+
 const stratum = (cs: number, cn: number, bs: number, bn: number): Stratum => ({
   candidate: { successes: cs, trials: cn },
   base: { successes: bs, trials: bn },
@@ -35,8 +38,12 @@ describe("the must-never ceiling", () => {
       confidence: 0.95,
       detector: { kind: "deterministic" },
     });
-    expect(claim).toMatchObject({ status: "shown", level: 0.95 });
-    expect(claim.bound).toBeCloseTo(1 - 0.05 ** (1 / 1000), 14);
+    expect(claim).toMatchObject({
+      status: "shown",
+      level: 0.95,
+      method: "clopper-pearson-adjusted",
+    });
+    expect(claim.bound).toBeCloseTo(1 - (1 - Math.exp(-0.05)) ** (1 / 1000), 14);
   });
 
   it("does not show a ceiling that the bound exceeds", () => {
@@ -49,7 +56,7 @@ describe("the must-never ceiling", () => {
     });
     expect(claim.status).toBe("not-shown");
     expect(claim.bound).toBeCloseTo(
-      clopperPearson({ successes: 3, trials: 200 }, 0.95, "upper").upper,
+      clopperPearson({ successes: 3, trials: 200 }, adjusted(0.05), "upper").upper,
       14,
     );
   });
@@ -62,7 +69,7 @@ describe("the must-never ceiling", () => {
       confidence: 0.95,
       detector: { kind: "model", sensitivityLower: 0.8 },
     });
-    const flagged = clopperPearson({ successes: 1, trials: 2000 }, 0.975, "upper").upper;
+    const flagged = clopperPearson({ successes: 1, trials: 2000 }, adjusted(0.025), "upper").upper;
     expect(claim).toMatchObject({ level: 0.975, status: "shown" });
     expect(claim.bound).toBeCloseTo(flagged / 0.8, 14);
   });
@@ -88,7 +95,7 @@ describe("the must-never ceiling", () => {
       detector: { kind: "model", sensitivityLower: null },
     });
     expect(claim).toMatchObject({ status: "flagged-only", reason: "NO_DETECTOR_CALIBRATION" });
-    expect(claim.bound).toBeCloseTo(1 - 0.05 ** (1 / 1000), 14);
+    expect(claim.bound).toBeCloseTo(1 - (1 - Math.exp(-0.05)) ** (1 / 1000), 14);
   });
 
   it("caps the violation bound at 1 and refuses bad inputs", () => {
@@ -108,31 +115,70 @@ describe("the must-never ceiling", () => {
   });
 });
 
+/** The exact distribution of the number of violating cases. */
+const poissonBinomial = (rates: readonly number[]): number[] =>
+  rates.reduce(
+    (d, p) =>
+      Array.from({ length: d.length + 1 }, (_, k) => (d[k] ?? 0) * (1 - p) + (d[k - 1] ?? 0) * p),
+    [1],
+  );
+
+/** The probability that an upper bound covers the mean violation rate. */
+const coverage = (rates: readonly number[], upper: (x: number, n: number) => number): number => {
+  const mean = rates.reduce((a, b) => a + b, 0) / rates.length;
+  return poissonBinomial(rates).reduce(
+    (total, mass, x) => (upper(x, rates.length) >= mean ? total + mass : total),
+    0,
+  );
+};
+
+const unadjustedUpper = (x: number, n: number): number =>
+  clopperPearson({ successes: x, trials: n }, 0.95, "upper").upper;
+
+const claimedUpper = (x: number, n: number): number =>
+  neverClaim({
+    violations: x,
+    cases: n,
+    ceiling: 0.5,
+    confidence: 0.95,
+    detector: { kind: "deterministic" },
+  }).bound!;
+
+describe("the must-never bound when cases violate at unequal rates", () => {
+  it("covers the mean rate at the adjusted level, where the unadjusted bound does not", () => {
+    // Two cases, violating at rates 1 and 0.9495: the mirror of the lower bound's worst case.
+    const rates = [1, 1 - 0.0505];
+    expect(coverage(rates, unadjustedUpper)).toBeCloseTo(0.9495, 10);
+    expect(coverage(rates, unadjustedUpper)).toBeLessThan(0.95);
+    expect(coverage(rates, claimedUpper)).toBeGreaterThanOrEqual(0.95);
+  });
+});
+
 describe("the must-never planning count", () => {
-  it("is ⌈ln α / ln(1 − ceiling)⌉ clean cases with a deterministic detector", () => {
+  it("is ⌈ln α′ / ln(1 − ceiling)⌉ clean cases with a deterministic detector, α′ = 1 − e^(−α)", () => {
     expect(
       neverCasesNeeded({ ceiling: 0.001, confidence: 0.95, detector: { kind: "deterministic" } }),
-    ).toEqual({ cases: 2995 });
+    ).toEqual({ cases: 3020 });
     expect(
       neverCasesNeeded({ ceiling: 0.05, confidence: 0.95, detector: { kind: "deterministic" } }),
     ).toEqual({ cases: 59 });
   });
 
-  it("is ⌈ln 0.025 / ln(1 − ceiling·Se_L)⌉ with a calibrated model detector", () => {
+  it("is ⌈ln α′ / ln(1 − ceiling·Se_L)⌉ with a calibrated model detector, α′ = 1 − e^(−0.025)", () => {
     expect(
       neverCasesNeeded({
         ceiling: 0.005,
         confidence: 0.95,
         detector: { kind: "model", sensitivityLower: 0.9 },
       }),
-    ).toEqual({ cases: 818 });
+    ).toEqual({ cases: 821 });
     expect(
       neverCasesNeeded({
         ceiling: 0.001,
         confidence: 0.95,
         detector: { kind: "model", sensitivityLower: 0.8 },
       }),
-    ).toEqual({ cases: 4610 });
+    ).toEqual({ cases: 4625 });
   });
 
   it("is the smallest n whose claim holds with no violation", () => {

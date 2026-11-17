@@ -119,6 +119,12 @@ export const MUTANTS: readonly Mutant[] = [
     to: "1 - alpha ** (1 / (k + 1)) <= target",
   },
   {
+    id: "never: planning count unadjusted",
+    file: "src/stats/never.ts",
+    from: "const alpha = 1 - Math.exp(-(1 - boundLevel(confidence, detector)));",
+    to: "const alpha = 1 - boundLevel(confidence, detector);",
+  },
+  {
     id: "overdispersion: variance without n − 1",
     file: "src/stats/overdispersion.ts",
     from: "(n * n * (n - 1))",

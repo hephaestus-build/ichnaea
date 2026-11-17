@@ -541,24 +541,27 @@ the restricted mean of the curve; the refusal of a trial censored below L; and t
 `neverClaim` bounds the violation rate of a must-never measure on one arm. Its unit is the case at
 the run's trial count: a case violates when any of its trials does. A case without a detector value
 on each trial counts as a violation in the bound, and it is not a hit. The claim is `shown` when the
-exact one-sided Clopper–Pearson upper bound is at most the ceiling. The bound is exact, so the claim
-is validated.
+one-sided Clopper–Pearson upper bound on the pooled count of violating cases is at most the ceiling.
+Cases can violate at unequal rates, so the bound runs at the adjusted level of the estimates'
+section (pooled Clopper–Pearson): it is conservative for every set of rates, so the claim is
+validated. The adjustment widens the zero-count ceiling by about 0.8%.
 
-| Detector                            | Bound                                                | Level of each bound    | Claim                        |
-| ----------------------------------- | ---------------------------------------------------- | ---------------------- | ---------------------------- |
-| Deterministic                       | Clopper–Pearson upper bound on the violating cases   | the confidence         | `shown` or `not-shown`       |
-| Model, with Se_L > 0                | the same bound ÷ Se_L, capped at 1                   | 1 − (1 − confidence)/2 | `shown` or `not-shown`       |
-| Model, with Se_L = 0                | none                                                 | —                      | `no-claim`                   |
-| Model, without a calibration record | Clopper–Pearson upper bound on the flagged rate only | the confidence         | `flagged-only`, a diagnostic |
+| Detector                            | Bound                                                       | Level of each bound    | Claim                        |
+| ----------------------------------- | ----------------------------------------------------------- | ---------------------- | ---------------------------- |
+| Deterministic                       | Pooled Clopper–Pearson upper bound on the violating cases   | the confidence         | `shown` or `not-shown`       |
+| Model, with Se_L > 0                | the same bound ÷ Se_L, capped at 1                          | 1 − (1 − confidence)/2 | `shown` or `not-shown`       |
+| Model, with Se_L = 0                | none                                                        | —                      | `no-claim`                   |
+| Model, without a calibration record | Pooled Clopper–Pearson upper bound on the flagged rate only | the confidence         | `flagged-only`, a diagnostic |
 
 The two bounds of a model detector hold jointly at the confidence by Bonferroni, so each takes half
 of 1 − confidence. Se_L is the lower bound on the detector's sensitivity from its calibration
 record, at that level. The detector's false positives only make the claim conservative.
 
 `neverCasesNeeded` gives the fewest cases, all clean, that show a ceiling:
-⌈ln α′ / ln(1 − ceiling·Se_L)⌉, with α′ the bound's own 1 − level and Se_L = 1 for a deterministic
-detector. The count is checked against the claim, so it is the smallest n whose claim holds: 2,995
-for a ceiling of 0.001 with a deterministic detector, and 4,610 with a model detector at Se_L = 0.8.
+⌈ln α′ / ln(1 − ceiling·Se_L)⌉, with α′ = 1 − e^{−α} the adjusted level of the bound's own
+α = 1 − level, and Se_L = 1 for a deterministic detector. The count is checked against the claim, so
+it is the smallest n whose claim holds: 3,020 for a ceiling of 0.001 with a deterministic detector,
+and 4,625 with a model detector at Se_L = 0.8.
 Without a calibration record, or at Se_L = 0, it gives the reason instead of a count.
 
 ## The overdispersion ratio of noise runs
@@ -582,9 +585,9 @@ two or more.
 quantile with `qchisq` at 7 degrees of freedom and 5 probabilities, within a relative 1e-10
 (`reference-estimate.R`).
 
-**Mutants.** `scripts/stats/mutants.ts` changes these methods in 8 ways (those named `never:` and
+**Mutants.** `scripts/stats/mutants.ts` changes these methods in 9 ways (those named `never:` and
 `overdispersion:`): the split of the level, the division by Se_L, the level of the flagged-only
-bound and the planning check; the variance factor, the interval's tails, the exclusion at V = 0 and
+bound, the planning check and the adjusted level of the planning count; the variance factor, the interval's tails, the exclusion at V = 0 and
 the degrees of freedom of the χ² quantile.
 
 ## Replay fidelity of attribution

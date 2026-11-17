@@ -1,4 +1,4 @@
-import { clopperPearson } from "./clopper-pearson.ts";
+import { pooledClopperPearson } from "./clopper-pearson.ts";
 import { assertLevel } from "./types.ts";
 
 /**
@@ -46,7 +46,7 @@ export interface NeverClaim {
   /** Why there is no claim on the violation rate. */
   readonly reason?: NeverRefusal;
   /** The bound's method. */
-  readonly method: "clopper-pearson-upper";
+  readonly method: "clopper-pearson-adjusted";
 }
 
 function check(ceiling: number, confidence: number, detector: NeverDetector): void {
@@ -65,21 +65,22 @@ const boundLevel = (confidence: number, detector: NeverDetector): number =>
   detector.kind === "model" ? 1 - (1 - confidence) / 2 : confidence;
 
 /**
- * The must-never ceiling claim. A deterministic detector bounds the violation rate by the exact
- * one-sided Clopper–Pearson upper bound at the full confidence. A calibrated model detector divides
+ * The must-never ceiling claim. A deterministic detector bounds the violation rate by the one-sided
+ * Clopper–Pearson upper bound on the pooled count of violating cases at the adjusted level
+ * (`pooledClopperPearson`), which holds when cases violate at unequal rates, at the full confidence. A calibrated model detector divides
  * that bound, at 1 − (1 − confidence)/2, by the lower bound on its sensitivity, taken at the same
  * level, so that the two bounds hold jointly at the confidence. Its false positives only make the
- * claim conservative. The claim is exact, so it is validated.
+ * claim conservative. The claim is conservative for any rates, so it is validated.
  */
 export function neverClaim(input: NeverInput): NeverClaim {
   const { violations, cases, ceiling, confidence, detector } = input;
   check(ceiling, confidence, detector);
   if (!(Number.isInteger(cases) && cases >= 1))
     throw new RangeError(`${cases} cases is not positive`);
-  const method = "clopper-pearson-upper";
+  const method = "clopper-pearson-adjusted";
   const level = boundLevel(confidence, detector);
   if (detector.kind === "model" && detector.sensitivityLower === null) {
-    const diagnostic = clopperPearson(
+    const diagnostic = pooledClopperPearson(
       { successes: violations, trials: cases },
       confidence,
       "upper",
@@ -95,14 +96,19 @@ export function neverClaim(input: NeverInput): NeverClaim {
   const sensitivity = detector.kind === "model" ? detector.sensitivityLower! : 1;
   if (sensitivity === 0)
     return { status: "no-claim", bound: null, level, reason: "SENSITIVITY_NOT_BOUNDED", method };
-  const flagged = clopperPearson({ successes: violations, trials: cases }, level, "upper").upper;
+  const flagged = pooledClopperPearson(
+    { successes: violations, trials: cases },
+    level,
+    "upper",
+  ).upper;
   const bound = Math.min(1, flagged / sensitivity);
   return { status: bound <= ceiling ? "shown" : "not-shown", bound, level, method };
 }
 
 /**
  * The fewest cases, all clean, that show the ceiling: ⌈ln α′ / ln(1 − ceiling·Se_L)⌉ with α′ the
- * bound's own 1 − level (the full α for a deterministic detector, α/2 for a model detector) and
+ * adjusted level 1 − e^{−α} of the bound's own α (the full α for a deterministic detector, α/2 for a
+ * model detector), as `pooledClopperPearson` takes it, and
  * Se_L = 1 for a deterministic detector. It is checked against the claim itself, so it is the
  * smallest n whose claim holds. A model detector without a calibration record, or with Se_L = 0,
  * gets no count and the reason instead.
@@ -119,7 +125,7 @@ export function neverCasesNeeded(input: {
     return { cases: null, reason: "NO_DETECTOR_CALIBRATION" };
   const sensitivity = detector.kind === "model" ? detector.sensitivityLower! : 1;
   if (sensitivity === 0) return { cases: null, reason: "SENSITIVITY_NOT_BOUNDED" };
-  const alpha = 1 - boundLevel(confidence, detector);
+  const alpha = 1 - Math.exp(-(1 - boundLevel(confidence, detector)));
   const target = ceiling * sensitivity;
   let n = Math.max(1, Math.ceil(Math.log(alpha) / Math.log1p(-target)));
   // The closed form can sit one off where the logarithms round; the claim decides.

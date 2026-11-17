@@ -406,7 +406,7 @@ export function neverCasesNeeded(input: {
 export interface NeverClaim {
     readonly bound: number | null;
     readonly level: number;
-    readonly method: "clopper-pearson-upper";
+    readonly method: "clopper-pearson-adjusted";
     readonly reason?: NeverRefusal;
     readonly status: "shown" | "not-shown" | "no-claim" | "flagged-only";
 }
