@@ -167,7 +167,7 @@ const binary = (
   cases,
 });
 
-/** The study sizes that the generic sizing cells try, at prevalence 0.35. */
+/** The study sizes that the generic sizing cells try, with positives at 0.35 and no weighting. */
 export const SIZES = [120, 135, 150, 180] as const;
 
 /** The nuisance parameters that, with a size, set a draw under the registered allocation. */
@@ -288,8 +288,8 @@ export const CELLS: readonly Cell[] = [
   binary("binary-always-no-rare", 0.1, "always-no", 0),
   binary("binary-chance-very-rare", 0.05, "chance", 0),
   binary("binary-always-no-very-rare", 0.05, "always-no", 0),
-  // The same judges at prevalence 0.35, every answer weighted 1. The draw cells study a sample
-  // that oversamples positives from a rarer population, with 1/π weights.
+  // The same judges with positives drawn at 0.35 and every answer weighted 1: no weighting. Only
+  // the draw cells study an oversampled, weighted draw.
   binary("binary-equal-prev0.35", 0.35, "reads", 0.9),
   binary("binary-worse-prev0.35", 0.35, "reads", 0.8),
   binary("binary-chance-prev0.35", 0.35, "chance", 0),
@@ -319,6 +319,10 @@ export const CELLS: readonly Cell[] = [
       rho: nuisance.rho,
     })),
   ),
+  // A judge biased at the gate's bound: a mean bias of −0.20 between the configurations. The case
+  // effect raises the realised prevalence from 0.35 to 0.372, so armBias = 0.20 · 0.35 / (0.9 ·
+  // 0.372). The cell is last, so its seed moves no other cell's.
+  binary("binary-bias-at-bound-prev0.35", 0.35, "reads", 0.9, { armBias: 0.2092 }),
 ];
 
 /** The bias tolerances and limits at which the study reports P(shown bound ≤ m). */

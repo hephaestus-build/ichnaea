@@ -230,6 +230,26 @@ describe("a judge biased between base and candidate", () => {
   });
 });
 
+describe("the judge biased at the gate's bound", () => {
+  it("has a mean bias of −0.20 between the configurations", () => {
+    const cell = CELLS.find((c) => c.id === "binary-bias-at-bound-prev0.35");
+    if (cell?.scale !== "binary") throw new Error("the at-bound cell is a yes/no cell");
+    const study = drawStudy({ ...cell, cases: 200_000 }, createRng(11));
+    const mean = [0, 0];
+    const count = [0, 0];
+    study.judge.forEach((j, i) => {
+      const k = study.configurationOf[i]!;
+      mean[k]! += j - (study.first[i]! + study.second[i]!) / 2;
+      count[k]! += 1;
+    });
+    expect(mean[1]! / count[1]! - mean[0]! / count[0]!).toBeCloseTo(-0.2, 2);
+  });
+
+  it("comes last, so its seed moves no other cell", () => {
+    expect(CELLS.at(-1)!.id).toBe("binary-bias-at-bound-prev0.35");
+  });
+});
+
 describe("the merge of the shards", () => {
   const rows = CELLS.map((cell) => `${cell.id}\t1`);
 

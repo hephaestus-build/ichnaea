@@ -539,8 +539,9 @@ an interval or a decision method.
     clamped to [0.02, 0.95]. Each rater reads it correctly with probability 0.90, and the judge with
     its own accuracy. A biased judge misses true positives more often on the candidate; its false
     positives stay as they are. A chance judge says yes at the prevalence without reading; an
-    always-no judge never says yes. The prevalence-0.35 cells are a population at that prevalence;
-    they do not oversample, and every answer weighs 1.
+    always-no judge never says yes. The prev0.35 cells draw positives at 0.35, and every answer weighs 1.
+    They study no weighting. Only the draw cells study an oversampled, weighted draw. The
+    at-bound cell's judge has a mean bias of −0.20 on the candidate, the bias gate's bound.
   - Levels: a latent quality (case effect plus N(0, 0.7²)) is cut into 5 levels at −1.2, −0.4, 0.4
     and 1.2. Rater readings add N(0, 0.6²). The judge adds its own noise, and a biased judge shifts
     its reading on the candidate.
