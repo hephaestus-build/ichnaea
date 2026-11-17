@@ -5,7 +5,7 @@ import { CalendarDate, Digest, Json, RecordDataClass, SuiteId, Text } from "../p
 import { Pool } from "./case.ts";
 import {
   Command,
-  Duration,
+  AuthoredDuration,
   EnvEntry,
   Exposure,
   FromEnv,
@@ -177,7 +177,7 @@ export const InstrumentSettings = z.strictObject({
     })
     .describe("An instrument of another runner, whose values arrive by import.")
     .optional(),
-  deadline: none(Duration.describe("The time bound of one score request.")).optional(),
+  deadline: none(AuthoredDuration.describe("The time bound of one score request.")).optional(),
 });
 
 /**
@@ -431,7 +431,9 @@ export const SuiteV2 = z.strictObject({
   baselines: z
     .strictObject({
       freshness: none(
-        Duration.describe("The oldest stored baseline to use. Only lower than the project's."),
+        AuthoredDuration.describe(
+          "The oldest stored baseline to use. Only lower than the project's.",
+        ),
       ).optional(),
     })
     .describe("How old a stored baseline may be for this suite.")

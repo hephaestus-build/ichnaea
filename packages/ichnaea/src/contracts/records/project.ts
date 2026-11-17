@@ -3,7 +3,7 @@ import * as z from "zod";
 import { none } from "../data-class.ts";
 import { Probability, Text } from "../primitives.ts";
 import {
-  Duration,
+  AuthoredDuration,
   Endpoint,
   FromEnv,
   ConfigName,
@@ -35,9 +35,11 @@ export const BaselineSource = z.xor([
 /** Stored baselines: where they come from, how old they may be, and the drift sentinel. */
 export const Baselines = z.strictObject({
   from: BaselineSource.describe("Where stored baselines come from. Default store.").optional(),
-  freshness: none(Duration.describe("The oldest stored baseline to use. Default P7D.")).optional(),
+  freshness: none(
+    AuthoredDuration.describe("The oldest stored baseline to use. Default P7D."),
+  ).optional(),
   maxFreshness: none(
-    Duration.describe("The largest freshness that a suite may set. Default P30D."),
+    AuthoredDuration.describe("The largest freshness that a suite may set. Default P30D."),
   ).optional(),
   sentinel: z
     .strictObject({
@@ -136,10 +138,12 @@ export const Governance = z.strictObject({
     .optional(),
   retention: z
     .strictObject({
-      pseudonymous: none(Duration.describe("How long pseudonymous data is kept.")).optional(),
-      personal: none(Duration.describe("How long personal data is kept.")).optional(),
+      pseudonymous: none(
+        AuthoredDuration.describe("How long pseudonymous data is kept."),
+      ).optional(),
+      personal: none(AuthoredDuration.describe("How long personal data is kept.")).optional(),
       labels: none(
-        z.record(ConfigName, Duration).describe("How long each study's labels are kept."),
+        z.record(ConfigName, AuthoredDuration).describe("How long each study's labels are kept."),
       ).optional(),
     })
     .describe("How long data above class none is kept.")

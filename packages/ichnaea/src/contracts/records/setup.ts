@@ -26,10 +26,12 @@ const TIME = "T(?:[0-9]+H(?:[0-9]+M)?(?:[0-9]+S)?|[0-9]+M(?:[0-9]+S)?|[0-9]+S)";
 const DATE = "(?:[0-9]+Y(?:[0-9]+M)?(?:[0-9]+D)?|[0-9]+M(?:[0-9]+D)?|[0-9]+D)";
 
 /**
- * An ISO 8601 duration in years, months, days, hours, minutes and whole seconds, such as `P7D`,
- * `PT10M` or `P3Y`. It has at least one part, and a `T` is followed by a time part.
+ * An ISO 8601 duration as a person writes it in a project or suite file: years, months, days,
+ * hours, minutes and whole seconds, such as `P7D`, `PT10M` or `P3Y`. It has at least one part, and
+ * a `T` is followed by a time part. Records exchanged with a worker or scorer use `Duration`, in
+ * seconds only.
  */
-export const Duration = z.string().regex(new RegExp(`^P(?:${DATE}(?:${TIME})?|${TIME})$`));
+export const AuthoredDuration = z.string().regex(new RegExp(`^P(?:${DATE}(?:${TIME})?|${TIME})$`));
 
 /** A full git commit: 40 hexadecimal digits (SHA-1), or 64 (SHA-256). Never a branch or a tag. */
 export const CommitSha = z.string().regex(/^[0-9a-f]{40}(?:[0-9a-f]{24})?$/);
@@ -185,7 +187,7 @@ export const WorkerSettings = z.strictObject({
   ).optional(),
   processes: none(z.int().min(1).describe("How many worker processes run. Default 1.")).optional(),
   startTimeout: none(
-    Duration.describe("How long a worker may take to be ready. Default PT10M."),
+    AuthoredDuration.describe("How long a worker may take to be ready. Default PT10M."),
   ).optional(),
 });
 /** A worker's settings. */
@@ -216,15 +218,15 @@ export const RunLimits = z.strictObject({
   ).optional(),
   outputBytes: none(z.int().min(0).describe("The largest output of a trial, in bytes.")).optional(),
   trialDeadline: none(
-    Duration.describe("The time bound of one trial, net of throttle waits."),
+    AuthoredDuration.describe("The time bound of one trial, net of throttle waits."),
   ).optional(),
   wallClockMax: none(
-    Duration.describe("The wall-clock cap of one trial attempt, throttle waits included."),
+    AuthoredDuration.describe("The wall-clock cap of one trial attempt, throttle waits included."),
   ).optional(),
   missingMax: none(
     Probability.describe("The largest share of an arm's planned trials that may be missing."),
   ).optional(),
   throttleMax: none(
-    Duration.describe("How long one call may wait to get through before the trial stops."),
+    AuthoredDuration.describe("How long one call may wait to get through before the trial stops."),
   ).optional(),
 });
