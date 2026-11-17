@@ -127,14 +127,16 @@ describe("the authored files", () => {
     expect(plainDataProblems(s)).toEqual(['"/version": undefined']);
   });
 
-  it("digest a suite and a project config without $schema, so the TS and JSONC forms agree", async () => {
+  it("digest a suite and a project config synchronously, without $schema, so the forms agree", () => {
     const s = suite();
     const jsonc = { $schema: "../../schemas/suite.2.schema.json", ...s };
-    expect(await suiteDigest(jsonc)).toBe(await suiteDigest(s));
-    expect(await suiteDigest({ ...s, version: "5" })).not.toBe(await suiteDigest(s));
+    expect(suiteDigest(jsonc)).toMatch(/^sha256:[0-9a-f]{64}$/);
+    expect(suiteDigest(jsonc)).toBe(suiteDigest(s));
+    expect(suiteDigest({ ...s, version: "5" })).not.toBe(suiteDigest(s));
     const p = project();
-    expect(await projectDigest({ ...p, $schema: "./schemas/project.1.schema.json" })).toBe(
-      await projectDigest(p),
+    expect(projectDigest(p)).toMatch(/^sha256:[0-9a-f]{64}$/);
+    expect(projectDigest({ ...p, $schema: "./schemas/project.1.schema.json" })).toBe(
+      projectDigest(p),
     );
   });
 

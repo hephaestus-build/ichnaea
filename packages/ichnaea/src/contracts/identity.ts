@@ -288,14 +288,14 @@ function withoutSchemaPointer(record: Record<string, unknown>): Record<string, u
  * record without its `$schema` member, so the TypeScript and JSONC forms of one suite share a
  * digest. Comments and layout of a JSONC file never reach the record.
  */
-export async function suiteDigest(input: unknown): Promise<Digest> {
-  return (await digest(withoutSchemaPointer(SuiteV2.parse(input)))) as Digest;
+export function suiteDigest(input: unknown): Digest {
+  return digest(withoutSchemaPointer(SuiteV2.parse(input)));
 }
 
 /**
  * The digest of a project config (`ichnaea.project/1`): SHA-256 over the RFC 8785 canonical JSON
  * of the record without its `$schema` member, as for a suite.
  */
-export async function projectDigest(input: unknown): Promise<Digest> {
-  return (await digest(withoutSchemaPointer(ProjectConfig.parse(input)))) as Digest;
+export function projectDigest(input: unknown): Digest {
+  return digest(withoutSchemaPointer(ProjectConfig.parse(input)));
 }

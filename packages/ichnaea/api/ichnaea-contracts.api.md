@@ -3362,7 +3362,7 @@ export const ProjectConfig: z.ZodObject<{
 export type ProjectConfig = z.infer<typeof ProjectConfig>;
 
 // @public
-export function projectDigest(input: unknown): Promise<Digest>;
+export function projectDigest(input: unknown): Digest;
 
 // @public
 export function projectForEgress(schema: z.ZodType, record: unknown, context: EgressContext): EgressProjection;
@@ -4242,7 +4242,7 @@ export const SuiteCases: z.ZodXor<readonly [z.ZodObject<{
 }, z.core.$strict>]>;
 
 // @public
-export function suiteDigest(input: unknown): Promise<Digest>;
+export function suiteDigest(input: unknown): Digest;
 
 // @public
 export const SuiteId: z.core.$ZodBranded<z.ZodString, "SuiteId", "out">;
