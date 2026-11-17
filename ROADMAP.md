@@ -21,6 +21,7 @@ Items marked **study** wait for a statistics study that a maintainer registers b
 | Active sampling of labels                                                  | Uniform sampling for human labels.                                      | An inverse-propensity estimate from labels drawn by a judge's uncertainty.    | **Study:** coverage of the estimator on the label grid.                  |
 | Monitor alerts over time                                                   | Alerts on the interval bounds of closed windows.                        | Confidence sequences that stay valid when a team checks often.                | **Study:** a sequence method, and a consumer that checks windows daily.  |
 | Prediction-powered estimates                                               | Judge values and human labels stay apart.                               | Estimates that combine many judge values with few labels.                     | **Study:** coverage on the calibration data.                             |
+| Judge-based Pass                                                           | Judges are secondary. At a 0.10 limit, the planned size gives no Pass.  | A judge-based Pass, from a larger limit or a slope over known-worse versions. | **Study:** a suite version registers a lever; its calibration passes.    |
 
 ## 2. Adapters that can become native
 
