@@ -131,6 +131,20 @@ describe("the measurement digest", () => {
     expect(() => measurementDigest(s, { ...p, instruments: more })).toThrow(IdentityError);
   });
 
+  it("refuses any instrument pin for a suite without instruments, even one named with nothing", () => {
+    // Joined, no names and one empty name are both "", so the names are compared one by one.
+    const s = suite();
+    delete s["instruments"];
+    const measures = s["measures"] as Rec;
+    delete measures["cites-page"];
+    delete measures["correct"];
+    const p = { ...pins(s), instruments: {} };
+    expect(() => measurementDigest(s, p)).not.toThrow();
+    expect(() => measurementDigest(s, { ...p, instruments: { "": {} } })).toThrow(IdentityError);
+    const extra = { extra: { files: d("5") } };
+    expect(() => measurementDigest(s, { ...p, instruments: extra })).toThrow(IdentityError);
+  });
+
   it("refuses an instrument measure whose implementation is not its instrument's pin", () => {
     const s = suite();
     const p = pins(s);

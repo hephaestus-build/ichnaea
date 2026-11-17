@@ -377,19 +377,26 @@ export interface MeasurementPins {
  * suite's definition of that measure; or when a measure that reads an instrument's dimension has
  * another implementation than the digest of that instrument's pin.
  */
+/**
+ * Whether two sorted name lists are the same, name by name. Joining them would not do: no names and
+ * one empty name would both join to "".
+ */
+const sameNames = (a: readonly string[], b: readonly string[]): boolean =>
+  a.length === b.length && a.every((name, i) => name === b[i]);
+
 export function measurementDigest(suite: unknown, pins: MeasurementPins): Digest {
   const parsed = SuiteV2.parse(suite);
   const measures = z.record(z.string(), MeasureIdentity).parse(pins.measures);
   const named = Object.keys(parsed.measures).toSorted(compare);
   const identified = Object.keys(measures).toSorted(compare);
-  if (named.join("\0") !== identified.join("\0"))
+  if (!sameNames(named, identified))
     throw new IdentityError(
       `the identities name the measures ${identified.join(", ")}, the suite ${named.join(", ")}`,
     );
   const instruments = z.record(z.string(), InstrumentPin).parse(pins.instruments);
   const declared = Object.keys(parsed.instruments ?? {}).toSorted(compare);
   const pinned = Object.keys(instruments).toSorted(compare);
-  if (declared.join("\0") !== pinned.join("\0"))
+  if (!sameNames(declared, pinned))
     throw new IdentityError(
       `the pins name the instruments ${pinned.join(", ")}, the suite ${declared.join(", ")}`,
     );
