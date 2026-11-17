@@ -156,22 +156,26 @@ export interface CalibrationAnalysis {
  */
 export declare function analyzeCalibration(input: CalibrationInput, settings: CalibrationSettings): CalibrationAnalysis;
 /** Why a judge-based Pass is not reachable. */
-export type PassBlocker = "notCalibrated" | "noKnownWorse" | "dropNotShown" | "slopeNotShown";
+export type PassBlocker = "notCalibrated" | "unsupportedScale" | "noKnownWorse" | "dropNotShown" | "slopeNotShown";
 /** Whether a judge-based Pass is reachable at a limit. */
 export interface JudgePass {
     /** True when nothing blocks it. */
     readonly reachable: boolean;
     /** −(β_L · limit − B): the judge-measured change's lower bound must be at least this. */
     readonly lowerBoundAtLeast: number | undefined;
-    /** Every reason that blocks it, in this order: notCalibrated, noKnownWorse, dropNotShown, slopeNotShown. */
+    /**
+     * Every reason that blocks it, in this order: notCalibrated, unsupportedScale, noKnownWorse,
+     * dropNotShown, slopeNotShown.
+     */
     readonly blockedBy: readonly PassBlocker[];
 }
 /**
  * Whether a judge-based Pass is reachable at a measure's limit, and the bound it would need. A Pass
  * needs the judge-measured change's lower bound to be at least −(β_L · limit − B), with β_L the
  * slope's lower bound and B the bias bound on the calibration's base against known-worse pair. It
- * is blocked when the judge is not calibrated, without known-worse answers, when the human drop on
- * that pair is not shown, or when β_L · limit ≤ B. Even when it is reachable, a calibrated judge's
+ * is blocked when the judge is not calibrated, for levels (the slope needs yes/no labels, so no
+ * known-worse answers can unblock it), without known-worse answers, when the human drop on that
+ * pair is not shown, or when β_L · limit ≤ B. Even when it is reachable, a calibrated judge's
  * measures stay secondary in this version.
  */
 export declare function judgePass(analysis: CalibrationAnalysis, limit: number): JudgePass;
