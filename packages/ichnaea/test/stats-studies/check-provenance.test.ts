@@ -3,7 +3,15 @@
 // run commit is reachable from the pull request head that the sidecar names. Each case builds a
 // scratch repository whose `origin` holds that pull request head, and a squash of it on main, and
 // installs a node_modules laid out as pnpm does: two versions of `dep`, and `sub` that `dep` uses.
-import { cpSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+  cpSync,
+  lstatSync,
+  mkdirSync,
+  readFileSync,
+  symlinkSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -14,6 +22,16 @@ import { metaPath, sha256 } from "../../scripts/stats/provenance.ts";
 import { commit, removeScratchRepos, runGit, scratchRepo } from "../stats/support/git-repo.ts";
 
 afterAll(removeScratchRepos);
+
+/** Removes a symlink itself, if there is one. `rmSync` on a link to a directory throws EISDIR on Node 24.3. */
+const unlink = (link: string): void => {
+  try {
+    lstatSync(link);
+  } catch {
+    return;
+  }
+  unlinkSync(link);
+};
 
 const workflow = (version: string): string => `env:\n  NODE_VERSION: ${version}\n`;
 const FILES = {
@@ -60,7 +78,7 @@ function storePackage(root: string, key: string, files: Readonly<Record<string, 
 
 /** Links node_modules/dep to the installed `dep@version`, as pnpm does for the root importer. */
 function linkDep(root: string, version: string): void {
-  rmSync(path.join(root, "node_modules", "dep"), { force: true });
+  unlink(path.join(root, "node_modules", "dep"));
   symlinkSync(`.pnpm/dep@${version}/node_modules/dep`, path.join(root, "node_modules", "dep"));
 }
 
@@ -170,7 +188,7 @@ describe("the currency check", () => {
 
   it("fails when a pinned package is not installed", () => {
     const { root, output } = repo();
-    rmSync(path.join(root, "node_modules", "dep"));
+    unlink(path.join(root, "node_modules", "dep"));
     expect(checkProvenance([output], root)).toEqual([
       expect.stringMatching(/cannot resolve dep from src\/pinned\.ts at HEAD/),
     ]);
