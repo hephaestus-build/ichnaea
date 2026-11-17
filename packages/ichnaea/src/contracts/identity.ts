@@ -369,6 +369,13 @@ export interface MeasurementPins {
 }
 
 /**
+ * Whether two sorted name lists are the same, name by name. Joining them would not do: no names and
+ * one empty name would both join to "".
+ */
+const sameNames = (a: readonly string[], b: readonly string[]): boolean =>
+  a.length === b.length && a.every((name, i) => name === b[i]);
+
+/**
  * The measurement digest of a suite: the digest of the parts that change what is measured
  * (`MEASUREMENT_RULE`), with the lock's pins: each source, each instrument's pin and each measure's
  * identity. A change to a measure's code changes its implementation digest and so this digest,
@@ -377,13 +384,6 @@ export interface MeasurementPins {
  * suite's definition of that measure; or when a measure that reads an instrument's dimension has
  * another implementation than the digest of that instrument's pin.
  */
-/**
- * Whether two sorted name lists are the same, name by name. Joining them would not do: no names and
- * one empty name would both join to "".
- */
-const sameNames = (a: readonly string[], b: readonly string[]): boolean =>
-  a.length === b.length && a.every((name, i) => name === b[i]);
-
 export function measurementDigest(suite: unknown, pins: MeasurementPins): Digest {
   const parsed = SuiteV2.parse(suite);
   const measures = z.record(z.string(), MeasureIdentity).parse(pins.measures);
