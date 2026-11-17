@@ -104,27 +104,25 @@ export function classify(exitCode: number | null, report: MutationReport | undef
     return crashes.length === 0
       ? { kind: "killed", by }
       : { kind: "killed", by, alsoCrashed: crashes };
-  // With no assertion, any crash that is not a timeout makes the run an error, even beside a
-  // timeout: a timeout detects the mutant only when timeouts are the only failures.
-  const crash = failures.find(({ error }) => !timesOut(error));
-  if (crash !== undefined)
+  // With no assertion kill, a timeout detects the mutant only when every failure of any kind is a
+  // timeout: a test, a hook or a file-level hook that timed out. Any other failure (a crash, a hook
+  // error, a type error from the typecheck pass) makes the run an error.
+  const nonKill = [
+    ...failures,
+    ...report.modules.flatMap((m) => m.errors.map((e) => ({ at: `${m.module}: `, error: e }))),
+    ...report.unhandled
+      .filter((e) => e.name === "TypeCheckError")
+      .map((e) => ({ at: "the mutant does not type-check: ", error: e })),
+  ];
+  const other = nonKill.find(({ error }) => !timesOut(error));
+  if (other !== undefined)
     return {
       kind: "error",
-      reason: `no assertion failed; it crashed: ${crash.at}${short(crash.error)}`,
+      reason: `no assertion failed; it failed otherwise: ${other.at}${short(other.error)}`,
     };
-  const timedOut =
-    report.failed.find((f) => f.errors.some(timesOut))?.test ??
-    suites.find((s) => s.errors.some(timesOut))?.suite ??
-    report.modules.find((m) => m.errors.some(timesOut))?.module;
-  if (timedOut !== undefined) return { kind: "timedOut", test: timedOut };
-  const typeError = report.unhandled.find((e) => e.name === "TypeCheckError");
-  return {
-    kind: "error",
-    reason:
-      typeError === undefined
-        ? "the run failed, but no test failed"
-        : `the mutant does not type-check: ${typeError.message.slice(0, 300)}`,
-  };
+  const timedOut = nonKill[0];
+  if (timedOut !== undefined) return { kind: "timedOut", test: timedOut.at.replace(/: $/, "") };
+  return { kind: "error", reason: "the run failed, but no test failed" };
 }
 
 /** The directory that keeps each run's output, so that an error can be read afterwards. */

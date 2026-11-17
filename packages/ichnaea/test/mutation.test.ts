@@ -455,3 +455,41 @@ describe("a timeout beside a crash, with no assertion", () => {
     expect(classify(1, { ...report, failed: [report.failed[0]!] }).kind).toBe("timedOut");
   });
 });
+
+describe("a timeout detects a mutant only when every failure is a timeout", () => {
+  const slow: MutationReport = {
+    passed: false,
+    modules: [],
+    failed: [
+      { test: "test/a.test.ts: slow", errors: [error("Error", "Test timed out in 5000ms.")] },
+    ],
+    suites: [],
+    unhandled: [],
+  };
+
+  it("makes a timeout beside a type error from the typecheck pass an error", () => {
+    const report = {
+      ...slow,
+      unhandled: [error("TypeCheckError", "'x' is possibly 'undefined'.")],
+    };
+    expect(classify(1, report)).toMatchObject({
+      kind: "error",
+      reason: expect.stringContaining("does not type-check"),
+    });
+  });
+
+  it("makes a timeout beside a hook error an error", () => {
+    const report = {
+      ...slow,
+      suites: [{ suite: "test/b.test.ts: outer", errors: [error("TypeError", "cannot close")] }],
+    };
+    expect(classify(1, report)).toMatchObject({
+      kind: "error",
+      reason: expect.stringContaining("cannot close"),
+    });
+  });
+
+  it("keeps a timeout alone a detection by timeout", () => {
+    expect(classify(1, slow)).toEqual({ kind: "timedOut", test: "test/a.test.ts: slow" });
+  });
+});
