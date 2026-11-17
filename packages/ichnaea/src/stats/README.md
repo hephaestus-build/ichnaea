@@ -123,7 +123,8 @@ const result = estimate({
     { id: "c", values: [], planned: 1 },
   ],
 });
-// result.interval: Clopper–Pearson, coverage "conservative"; result.worstCase: { low, high };
+// result.interval: Clopper–Pearson at the adjusted level, coverage "conservative";
+// result.worstCase: { low, high };
 // result.operational: the interval over planned trials, missing as failure
 ```
 
