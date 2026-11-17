@@ -2,7 +2,7 @@
 // same decision byte for byte, and it is decide over the plan and the run's records.
 import { describe, expect, it } from "vitest";
 
-import { digest } from "../../src/contracts/index.ts";
+import { type Trial, digest } from "../../src/contracts/index.ts";
 import { compare, decide } from "../../src/decide/index.ts";
 import { scenario } from "./support/scenario.ts";
 
@@ -48,5 +48,23 @@ describe("compare", () => {
     const decision = compare(s.plan, other, { decidedAt });
     expect(decision.verdict).toBe("INVALID");
     expect(decision.invalidReasons[0]).toMatch(/^the run belongs to plan sha256:/);
+  });
+
+  // A trial that keeps its planned ID but names another case, arm or replicate would be counted for
+  // the planned one; the import refuses it, and so does every other entry point.
+  it.each([
+    ["case", (t: Trial, other: Trial) => ({ ...t, case: other.case })],
+    ["arm", (t: Trial, other: Trial) => ({ ...t, arm: other.arm })],
+    ["replicate", (t: Trial) => ({ ...t, replicate: t.replicate + 1 })],
+  ] as const)("is INVALID for a trial that names another %s than its planned one", (_, change) => {
+    const [first] = s.trials;
+    const other = s.trials.find((t) => t.case !== first?.case && t.arm !== first?.arm);
+    if (!first || !other) throw new Error("the scenario has no trials");
+    const trials = [change(first, other), ...s.trials.slice(1)];
+    const decision = compare(s.plan, { ...s, trials }, { decidedAt });
+    expect(decision.verdict).toBe("INVALID");
+    expect(decision.invalidReasons).toContain(
+      `trial '${first.id}' names case '${trials[0]?.case}', arm '${trials[0]?.arm}', replicate ${trials[0]?.replicate}, but the plan has case '${first.case}', arm '${first.arm}', replicate ${first.replicate}`,
+    );
   });
 });

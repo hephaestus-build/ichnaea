@@ -725,17 +725,25 @@ function recordChecks(input: DecideInput): string[] {
     invalid.push("the plan has two base arms");
   if (plan.arms.filter((a) => a.role === "candidate").length > 1)
     invalid.push("the plan has more than one candidate arm, which is not supported yet (REQ-57)");
-  const plannedIds = new Set(plan.trials.map((t) => t.id as string));
-  if (plannedIds.size !== plan.trials.length) invalid.push("the plan has duplicate trial IDs");
+  const plannedById = new Map(plan.trials.map((t) => [t.id as string, t]));
+  if (plannedById.size !== plan.trials.length) invalid.push("the plan has duplicate trial IDs");
   invalid.push(...recordProblems(input));
   const protocol = input.trials.filter((t) => t.outcome === "protocol_failure");
   for (const kind of new Set(protocol.map((t) => t.error?.kind ?? "unknown")))
     invalid.push(
       `a worker reported a protocol failure (${kind}): the harness, not the system, failed`,
     );
-  const unplannedTrial = input.trials.find((t) => !plannedIds.has(t.id));
+  const unplannedTrial = input.trials.find((t) => !plannedById.has(t.id));
   if (unplannedTrial) invalid.push(`trial '${unplannedTrial.id}' is not in the plan`);
-  const unplannedValue = input.values.find((v) => !plannedIds.has(v.trial));
+  // A value counts for the planned trial's case and arm, so a trial must name exactly those.
+  for (const t of input.trials) {
+    const p = plannedById.get(t.id);
+    if (p && (t.case !== p.case || t.arm !== p.arm || t.replicate !== p.replicate))
+      invalid.push(
+        `trial '${t.id}' names case '${t.case}', arm '${t.arm}', replicate ${t.replicate}, but the plan has case '${p.case}', arm '${p.arm}', replicate ${p.replicate}`,
+      );
+  }
+  const unplannedValue = input.values.find((v) => !plannedById.has(v.trial));
   if (unplannedValue)
     invalid.push(`a value names trial '${unplannedValue.trial}', which is not in the plan`);
   for (const v of input.values) {
