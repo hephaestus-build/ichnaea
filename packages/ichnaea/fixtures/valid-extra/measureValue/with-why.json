@@ -1,0 +1,14 @@
+{
+  "schema": "ichnaea.measureValue/1",
+  "trial": "t-0001",
+  "measure": "support/facts-correct",
+  "version": "1.0.0",
+  "applicable": true,
+  "value": {
+    "type": "binary",
+    "pass": false
+  },
+  "source": "ichnaea",
+  "dataClass": "none",
+  "why": "claims a test that is not in the diff"
+}

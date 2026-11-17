@@ -120,7 +120,7 @@ describe("configuration identity", () => {
         computed: await sha256(edited.prompts[0]!.template!),
       },
     ]);
-    await expect(configurationIdentity(edited)).rejects.toThrow(
+    expect(() => configurationIdentity(edited)).toThrow(
       "the template at /prompts/0/template does not match its digest",
     );
     const identity = await configurationIdentity(resolved);
@@ -148,7 +148,7 @@ describe("configuration identity", () => {
     const trimmed = structuredClone(candidate);
     trimmed.prompts[0]!.template = prompt.template!.trim();
     expect(await verifyConfiguration(trimmed)).toHaveLength(1);
-    await expect(configurationIdentity(trimmed)).rejects.toThrow(IdentityError);
+    expect(() => configurationIdentity(trimmed)).toThrow(IdentityError);
   });
 
   it("reading a plan does not check its templates, and verifyArms does", async () => {
@@ -165,7 +165,7 @@ describe("configuration identity", () => {
 
   it("refuses a template with a lone surrogate, which has no UTF-8 form", async () => {
     const lone = "Answer from \ud800the help centre.";
-    await expect(sha256(lone)).rejects.toThrow("lone surrogate");
+    expect(() => sha256(lone)).toThrow("lone surrogate");
     // The replacement character is what a text encoder would write for the lone surrogate.
     const replaced = await sha256("Answer from \ufffdthe help centre.");
     const config = structuredClone(base);
@@ -178,7 +178,7 @@ describe("configuration identity", () => {
       problem: "the template has a lone surrogate, so it has no UTF-8 form",
     };
     expect(await verifyConfiguration(config)).toEqual([problem]);
-    await expect(configurationIdentity(config)).rejects.toThrow(
+    expect(() => configurationIdentity(config)).toThrow(
       "the template at /prompts/0/template cannot be hashed: the template has a lone surrogate",
     );
     expect(await verifyArms([{ identity: replaced, configuration: config }])).toEqual([
@@ -193,14 +193,12 @@ describe("configuration identity", () => {
   });
 
   it("refuses unknown members, so a misspelt or misplaced member cannot leave the identity unchanged", async () => {
-    await expect(
-      configurationIdentity({ ...structuredClone(base), tools: ["search"] }),
-    ).rejects.toThrow();
+    expect(() => configurationIdentity({ ...structuredClone(base), tools: ["search"] })).toThrow();
     const misspelt = {
       ...structuredClone(base),
       models: base.models.map((m) => ({ ...m, versoin: { value: "x", status: "pinned" } })),
     };
-    await expect(configurationIdentity(misspelt)).rejects.toThrow();
+    expect(() => configurationIdentity(misspelt)).toThrow();
   });
 
   it("ignores the description and informational values, such as a provider fingerprint", async () => {
@@ -279,7 +277,7 @@ describe("configuration identity", () => {
   ])("refuses a duplicate %s, whose identity would depend on order", async (_, add) => {
     const duplicated = structuredClone(base);
     add(duplicated);
-    await expect(configurationIdentity(duplicated)).rejects.toThrow(IdentityError);
+    expect(() => configurationIdentity(duplicated)).toThrow(IdentityError);
   });
 
   it.each<[string, (c: Record<string, unknown>) => void]>([
@@ -299,7 +297,7 @@ describe("configuration identity", () => {
     const broken: Record<string, unknown> = structuredClone(base);
     breakIt(broken);
     expect(ConfigurationSchema.safeParse(broken).success).toBe(false);
-    await expect(configurationIdentity(broken)).rejects.toThrow();
+    expect(() => configurationIdentity(broken)).toThrow();
   });
 });
 
@@ -307,7 +305,7 @@ describe("case and case-set digests", () => {
   const record = CaseSchema.parse(fixture("case"));
 
   it("a case digest refuses members the schema does not define", async () => {
-    await expect(caseDigest({ ...record, futureField: [1] })).rejects.toThrow();
+    expect(() => caseDigest({ ...record, futureField: [1] })).toThrow();
   });
 
   it("changes when any one case changes (REQ-10)", async () => {
@@ -348,7 +346,7 @@ describe("case and case-set digests", () => {
       caseSet: "another-set",
     };
     expect(await caseDigest(reviewed)).toBe(await caseDigest(record));
-    await expect(caseSetDigest([])).rejects.toThrow(IdentityError);
+    expect(() => caseSetDigest([])).toThrow(IdentityError);
   });
 
   it.each<[string, (c: Record<string, unknown>) => void]>([
@@ -410,7 +408,7 @@ describe("case and case-set digests", () => {
     expect(await caseSetDigest([{ ...entry, pool: "sealed" }])).not.toBe(
       await caseSetDigest([entry]),
     );
-    await expect(caseSetDigest([entry, entry])).rejects.toThrow(IdentityError);
+    expect(() => caseSetDigest([entry, entry])).toThrow(IdentityError);
   });
 });
 

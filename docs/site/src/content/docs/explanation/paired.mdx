@@ -1,0 +1,51 @@
+---
+title: Why paired comparisons
+description: Ichnaea compares the base and the candidate case by case, because two scores side by side cannot separate a real change from run-to-run noise.
+sidebar:
+  order: 1
+---
+
+A model can answer the same question differently each time you ask it.
+So two runs of the same system give different scores.
+The question is how to tell a real decrease from that noise.
+
+## The side-by-side habit
+
+Many teams run an eval suite on the old and the new system and put the two scores next to each other.
+A rule such as "block if the score falls by 3 points" then decides.
+
+That rule ignores how much your cases vary between runs.
+On a small suite, noise alone can cross the threshold, and a real decrease can stay under it.
+The threshold looks objective, but it measures nothing about your cases.
+
+## What Ichnaea does instead
+
+You run both configurations on the same cases, usually 2 or 3 times each.
+Ichnaea then compares them inside each case.
+
+- A case that both configurations always pass, or always fail, says nothing about the change. It drops out of the test.
+- A case that passes in the base and fails in the candidate is evidence of a decrease.
+- With 2 or more trials per case in each version, Ichnaea sees how much each case varies between runs. It compares the decrease with that variation.
+
+The test is the exact stratified conditional test. Each case is one stratum.
+With unequal trial counts, Ichnaea uses a permutation test within each case instead.
+
+## What the numbers mean
+
+The estimate is the mean of the per-case differences in pass rate.
+Every case has the same weight, whatever its number of trials.
+The method calls this estimand `fixed-cases`.
+
+The result is about these cases only. It makes no claim about inputs that are not in your suite.
+To make a claim about new inputs, you need a sample of cases drawn from them, and Ichnaea has no validated method for that yet.
+
+## What it does not cover
+
+- Only pass/fail measures have a validated test today. Measures with scores show an estimate and no verdict.
+- With one trial per version in some cases, a Regression means "significant on these cases". It does not mean "beyond run-to-run noise".
+
+## Evidence
+
+- [Decision 0004](https://github.com/hephaestus-build/ichnaea/blob/main/docs/decisions/0004-fixed-cases-interval.md): the estimate, its interval and the equal case weights.
+- [Decision 0016](https://github.com/hephaestus-build/ichnaea/blob/main/docs/decisions/0016-regression-test-and-noise-claim.md): the regression test, and when a verdict may say "beyond run-to-run noise".
+- [Statistics validation](https://github.com/hephaestus-build/ichnaea/blob/main/packages/ichnaea/src/stats/VALIDATION.md): the type-I error of each test, measured.

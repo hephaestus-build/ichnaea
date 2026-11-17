@@ -120,6 +120,7 @@ export const Arm: z.ZodObject<{
         label: z.ZodOptional<z.ZodString>;
         informational: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodJSONSchema>>;
     }, z.core.$strict>;
+    runs: z.ZodOptional<z.ZodLiteral<true>>;
 }, z.core.$strict>;
 
 // @public
@@ -168,6 +169,15 @@ export const ArmName: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
 
 // @public
 export type ArmName = z.infer<typeof ArmName>;
+
+// @public
+export function armNames(seed: {
+    readonly algorithm: string;
+    readonly value: string;
+}): {
+    readonly base: "a" | "b";
+    readonly candidate: "a" | "b";
+};
 
 // @public
 export const Artifact: z.ZodObject<{
@@ -292,7 +302,7 @@ export type Cancel = z.infer<typeof Cancel>;
 export function candidateRunsFirst(seed: {
     readonly algorithm: string;
     readonly value: string;
-}, caseId: string): Promise<boolean>;
+}, caseId: string, replicate?: number): boolean;
 
 // @public
 export function canonicalize(value: unknown): string;
@@ -482,7 +492,7 @@ export const Case: z.ZodObject<{
 export type Case = z.infer<typeof Case>;
 
 // @public
-export function caseDigest(input: unknown): Promise<Digest>;
+export function caseDigest(input: unknown): Digest;
 
 // @public
 export function caseForTarget(record: Case): TargetCase;
@@ -624,7 +634,7 @@ export const CaseSet: z.ZodObject<{
 export type CaseSet = z.infer<typeof CaseSet>;
 
 // @public
-export function caseSetDigest(entries: readonly unknown[]): Promise<Digest>;
+export function caseSetDigest(entries: readonly unknown[]): Digest;
 
 // @public
 export const CaseSetEntry: z.ZodObject<{
@@ -851,7 +861,7 @@ export const ConfigurationIdentity: z.core.$ZodBranded<z.ZodString, "Configurati
 export type ConfigurationIdentity = z.infer<typeof ConfigurationIdentity>;
 
 // @public
-export function configurationIdentity(input: unknown): Promise<ConfigurationIdentity>;
+export function configurationIdentity(input: unknown): ConfigurationIdentity;
 
 // @public
 export function content<T extends z.ZodType>(schema: T): T;
@@ -1239,7 +1249,7 @@ export const Digest: z.ZodString;
 export type Digest = z.infer<typeof Digest>;
 
 // @public
-export function digest(value: unknown): Promise<`sha256:${string}`>;
+export function digest(value: unknown): `sha256:${string}`;
 
 // @public
 export const DIGEST_RULES: {
@@ -1374,6 +1384,14 @@ export const FactorStatus: z.ZodEnum<{
 
 // @public
 export type FactorStatus = z.infer<typeof FactorStatus>;
+
+// @public
+export const FAILURE_OUTCOME: {
+    readonly infrastructure: "infrastructure_failure";
+    readonly system: "system_failure";
+    readonly not_run: "not_run";
+    readonly protocol: "protocol_failure";
+};
 
 // @public
 export const Finding: z.ZodObject<{
@@ -1625,6 +1643,7 @@ export const LedgerEntry: z.ZodObject<{
         infrastructure_failure: "infrastructure_failure";
         invalid_configuration: "invalid_configuration";
         not_run: "not_run";
+        protocol_failure: "protocol_failure";
         system_failure: "system_failure";
     }>>;
 }, z.core.$strict>;
@@ -2032,6 +2051,7 @@ export const MeasureValue: z.ZodObject<{
         judge: "judge";
     }>;
     detail: z.ZodOptional<z.ZodString>;
+    why: z.ZodOptional<z.ZodString>;
     dataClass: z.ZodEnum<{
         none: "none";
         personal: "personal";
@@ -2213,6 +2233,7 @@ export const Outcome: z.ZodEnum<{
     infrastructure_failure: "infrastructure_failure";
     invalid_configuration: "invalid_configuration";
     not_run: "not_run";
+    protocol_failure: "protocol_failure";
     system_failure: "system_failure";
 }>;
 
@@ -2361,6 +2382,7 @@ export const Plan: z.ZodObject<{
             label: z.ZodOptional<z.ZodString>;
             informational: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodJSONSchema>>;
         }, z.core.$strict>;
+        runs: z.ZodOptional<z.ZodLiteral<true>>;
     }, z.core.$strict>>;
     measures: z.ZodArray<z.ZodObject<{
         kind: z.ZodEnum<{
@@ -2438,6 +2460,7 @@ export const Plan: z.ZodObject<{
     budget: z.ZodObject<{
         worstCaseCalls: z.ZodInt;
         maxCalls: z.ZodInt;
+        callsPerTrial: z.ZodOptional<z.ZodInt>;
         monthlyRemaining: z.ZodOptional<z.ZodInt>;
     }, z.core.$strict>;
     trials: z.ZodArray<z.ZodObject<{
@@ -2853,6 +2876,13 @@ export const Run: z.ZodObject<{
         platform: z.ZodString;
         ichnaea: z.ZodString;
         ci: z.ZodOptional<z.ZodString>;
+        arch: z.ZodOptional<z.ZodString>;
+        runtime: z.ZodOptional<z.ZodObject<{
+            name: z.ZodString;
+            version: z.ZodString;
+            platform: z.ZodString;
+            arch: z.ZodString;
+        }, z.core.$strict>>;
     }, z.core.$strict>;
     arms: z.ZodArray<z.ZodObject<{
         name: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
@@ -2944,6 +2974,7 @@ export const Run: z.ZodObject<{
             label: z.ZodOptional<z.ZodString>;
             informational: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodJSONSchema>>;
         }, z.core.$strict>;
+        runs: z.ZodOptional<z.ZodLiteral<true>>;
     }, z.core.$strict>>;
     lineage: z.ZodArray<z.ZodObject<{
         kind: z.ZodEnum<{
@@ -2973,6 +3004,7 @@ export const Run: z.ZodObject<{
             infrastructure_failure: "infrastructure_failure";
             invalid_configuration: "invalid_configuration";
             not_run: "not_run";
+            protocol_failure: "protocol_failure";
             system_failure: "system_failure";
         }>>;
     }, z.core.$strict>>;
@@ -2988,6 +3020,17 @@ export const RunId: z.core.$ZodBranded<z.ZodString, "RunId", "out">;
 
 // @public
 export type RunId = z.infer<typeof RunId>;
+
+// @public
+export const Runtime: z.ZodObject<{
+    name: z.ZodString;
+    version: z.ZodString;
+    platform: z.ZodString;
+    arch: z.ZodString;
+}, z.core.$strict>;
+
+// @public
+export type Runtime = z.infer<typeof Runtime>;
 
 // @public
 export const Schedule: z.ZodObject<{
@@ -3268,7 +3311,10 @@ export const SensitivityResult: z.ZodObject<{
 }, z.core.$strict>;
 
 // @public
-export function sha256(text: string): Promise<`sha256:${string}`>;
+export function sha256(text: string): `sha256:${string}`;
+
+// @public
+export function sha256Hex(message: Uint8Array): string;
 
 // @public
 export type Stability = "development" | "alpha" | "beta" | "stable";
@@ -3478,6 +3524,7 @@ export const Trial: z.ZodObject<{
         infrastructure_failure: "infrastructure_failure";
         invalid_configuration: "invalid_configuration";
         not_run: "not_run";
+        protocol_failure: "protocol_failure";
         system_failure: "system_failure";
     }>;
     dataClass: z.ZodEnum<{
@@ -3541,6 +3588,17 @@ export const Trial: z.ZodObject<{
     startedAt: z.ZodOptional<z.ZodISODateTime>;
     endedAt: z.ZodOptional<z.ZodISODateTime>;
     inputDigest: z.ZodOptional<z.ZodString>;
+    attempts: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        attempt: z.ZodInt;
+        failure: z.ZodObject<{
+            class: z.ZodEnum<{
+                infrastructure: "infrastructure";
+                not_run: "not_run";
+            }>;
+            kind: z.ZodString;
+        }, z.core.$strict>;
+        calls: z.ZodInt;
+    }, z.core.$strict>>>;
 }, z.core.$strict>;
 
 // @public
@@ -3908,10 +3966,10 @@ export type Verdict = z.infer<typeof Verdict>;
 export function verifyArms(arms: ReadonlyArray<{
     identity: string;
     configuration: unknown;
-}>, at?: string): Promise<LinkError[]>;
+}>, at?: string): LinkError[];
 
 // @public
-export function verifyConfiguration(input: unknown, at?: string): Promise<LinkError[]>;
+export function verifyConfiguration(input: unknown, at?: string): LinkError[];
 
 // @public
 export const WorkerError: z.ZodObject<{

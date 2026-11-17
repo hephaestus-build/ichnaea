@@ -156,6 +156,7 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 9007199254740991,
+          "description": "The model calls the provider accepted in this attempt so far. A call the provider rejected, for example with HTTP 429, is not a call.",
           "x-ichnaea-data": {
             "class": "none",
             "identifier": "none",

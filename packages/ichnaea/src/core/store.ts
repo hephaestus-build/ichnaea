@@ -7,17 +7,16 @@ import {
   Decision,
   type Decision as DecisionRecord,
   GateResult,
-  type GateResult as GateResultRecord,
   MeasureValue,
-  type MeasureValue as MeasureValueRecord,
   Plan,
   type Plan as PlanRecord,
   Run,
   type Run as RunRecord,
   Trial,
-  type Trial as TrialRecord,
 } from "../contracts/index.ts";
 import * as z from "zod";
+
+import { recordProblems, type RunRecords } from "./records.ts";
 
 /** Thrown when a write would change a record that already exists. */
 export class AppendOnlyError extends Error {
@@ -53,52 +52,10 @@ const IndexLine: z.ZodType<RunIndexEntry> = z.strictObject({
   decidedAt: z.string().min(1),
 });
 
-/** The primary records of one run, written together. */
-export interface RunRecords {
-  /** The plan that the run carries out. */
-  readonly plan: PlanRecord;
-  /** The run record with its ledger. */
-  readonly run: RunRecord;
-  /** The run's trial records, one for each trial ID. */
-  readonly trials: readonly TrialRecord[];
-  /** The measure values, one for each measure and trial. */
-  readonly values: readonly MeasureValueRecord[];
-  /** The hard gates' results, one for each gate. */
-  readonly gates: readonly GateResultRecord[];
-}
-
 /** Everything stored for one run. */
 export interface StoredRun extends RunRecords {
   /** The run's decision; absent until the run is decided. */
   readonly decision?: DecisionRecord;
-}
-
-/** Duplicate keys in a list of records, each named once. */
-function duplicates<T>(records: readonly T[], key: (r: T) => string): string[] {
-  const seen = new Set<string>();
-  const repeated = new Set<string>();
-  for (const r of records) {
-    const k = key(r);
-    if (seen.has(k)) repeated.add(k);
-    seen.add(k);
-  }
-  return [...repeated];
-}
-
-/**
- * The rules every set of run records keeps: one record per trial, one value per measure and trial,
- * one result per gate. A second record would silently replace the first in any lookup, so it could
- * hide a regression. Returns one message per broken rule.
- */
-export function recordProblems(records: Omit<RunRecords, "plan" | "run">): string[] {
-  const problems: string[] = [];
-  const trials = duplicates(records.trials, (t) => t.id);
-  if (trials.length > 0) problems.push(`duplicate trial ID(s): ${trials.join(", ")}`);
-  const values = duplicates(records.values, (v) => `${v.measure} on ${v.trial}`);
-  if (values.length > 0) problems.push(`duplicate measure value(s): ${values.join(", ")}`);
-  const gates = duplicates(records.gates, (g) => g.gate);
-  if (gates.length > 0) problems.push(`duplicate gate result(s): ${gates.join(", ")}`);
-  return problems;
 }
 
 function parseLines<T>(text: string, schema: z.ZodType<T>, file: string): T[] {

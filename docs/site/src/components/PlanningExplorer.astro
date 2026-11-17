@@ -1,0 +1,294 @@
+---
+// The planning explorer: a form whose numbers come from @hephaestus-build/ichnaea/stats, run in a
+// web worker. Native controls give labels and keyboard use. The live region announces one
+// sentence per result, never the whole panel.
+---
+
+<form class="planner" id="planner" novalidate>
+  <fieldset>
+    <legend>Your suite</legend>
+    <div class="field">
+      <label for="cases">Cases</label>
+      <input id="cases" name="cases" type="number" min="2" max="300" step="1" value="12" required />
+      <p class="hint">The inputs your suite runs, each in the base and the candidate.</p>
+    </div>
+    <fieldset class="field">
+      <legend>Trials per case, in each version</legend>
+      <div class="choices">
+        <label><input type="radio" name="trials" value="1" /> 1</label>
+        <label><input type="radio" name="trials" value="2" /> 2</label>
+        <label><input type="radio" name="trials" value="3" checked /> 3</label>
+      </div>
+      <p class="hint">How many times the base and the candidate each answer each case. At 1, the numbers assume that your records pass the order, timing and noise checks.</p>
+    </fieldset>
+    <div class="field">
+      <label for="limit">Limit, in points</label>
+      <input id="limit" name="limit" type="number" min="5" max="30" step="0.5" value="15" />
+      <p class="hint">The largest decrease you accept. You register it before any run. The planner refuses a limit below 5 points.</p>
+    </div>
+    <div class="field">
+      <label for="alwaysPass">Cases the base passes every time, in percent</label>
+      <input id="alwaysPass" name="alwaysPass" type="number" min="0" max="100" step="5" value="80" />
+      <p class="hint">Most suites have many cases that the system always gets right.</p>
+    </div>
+    <div class="field">
+      <label for="otherRate">Pass rate of the other cases, in percent</label>
+      <input id="otherRate" name="otherRate" type="number" min="5" max="95" step="5" value="70" />
+      <p class="hint">How often the system gets each of the remaining cases right.</p>
+    </div>
+    <div class="field">
+      <label for="calls">Model calls per trial</label>
+      <input id="calls" name="calls" type="number" min="1" max="100" step="1" value="1" />
+      <p class="hint">Used only for the cost line.</p>
+    </div>
+  </fieldset>
+  <button type="submit" id="run">Calculate</button>
+  <p class="hint">The calculation runs Ichnaea's statistics in your browser and makes no network call.</p>
+</form>
+
+<noscript><p>The planning explorer needs JavaScript. The floor table on the limits page works without it.</p></noscript>
+
+<section class="results" aria-labelledby="results-title">
+  <h2 id="results-title">For this design</h2>
+  <p id="summary" class="summary" aria-live="polite">Select Calculate to see the numbers.</p>
+  <dl id="details" hidden>
+    <dt>Cost</dt>
+    <dd id="cost"></dd>
+    <dt>Best-case floor</dt>
+    <dd id="floor"></dd>
+    <dt>Regression test</dt>
+    <dd id="validity"></dd>
+    <dt>Smallest decrease detected in 80% of runs</dt>
+    <dd id="detectable"></dd>
+    <dt>No change: a noise check</dt>
+    <dd>
+      <p id="nochange-intro"></p>
+      <div class="bar-row">
+        <span class="bar-label">Ichnaea: Regression</span>
+        <span class="bar"><span id="bar-ichnaea" class="bar-fill"></span></span>
+        <span id="count-ichnaea" class="bar-count"></span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">A fixed "−3 points" rule</span>
+        <span class="bar"><span id="bar-threshold" class="bar-fill"></span></span>
+        <span id="count-threshold" class="bar-count"></span>
+      </div>
+    </dd>
+    <dt>Bound clears the limit when nothing changes</dt>
+    <dd id="pass"></dd>
+  </dl>
+</section>
+
+<script>
+  import type { Design, PlannerRequest, PlannerResult } from "../planner/model.ts";
+  import { detectableSentence, MAX_SEED, plannerSeed } from "../planner/page.ts";
+
+  const form = document.querySelector<HTMLFormElement>("#planner");
+  const button = document.querySelector<HTMLButtonElement>("#run");
+  const field = (id: string): HTMLElement => {
+    const element = document.getElementById(id);
+    if (!element) throw new Error(`the planner has no element #${id}`);
+    return element;
+  };
+  const points = (fraction: number): string => `${(fraction * 100).toFixed(1).replace(/\.0$/, "")} points`;
+  const share = (count: number, runs: number): string =>
+    `${count} of ${runs} runs (${((count / runs) * 100).toFixed(1).replace(/\.0$/, "")}%)`;
+
+  const worker = new Worker(new URL("../planner/worker.ts", import.meta.url), { type: "module" });
+  let latest = 0;
+
+  const clamp = (value: number, low: number, high: number): number =>
+    Math.min(high, Math.max(low, value));
+
+  function read(): { design: Design; calls: number; seed: number | undefined } {
+    const data = new FormData(form ?? undefined);
+    const number = (name: string, fallback: number): number => {
+      const value = Number(data.get(name));
+      return Number.isFinite(value) ? value : fallback;
+    };
+    return {
+      design: {
+        cases: Math.round(clamp(number("cases", 12), 2, 300)),
+        trials: clamp(number("trials", 3), 1, 3),
+        margin: clamp(number("limit", 15), 5, 30) / 100,
+        alwaysPass: clamp(number("alwaysPass", 80), 0, 100) / 100,
+        otherRate: clamp(number("otherRate", 70), 5, 95) / 100,
+      },
+      calls: Math.round(clamp(number("calls", 1), 1, 100)),
+      seed: plannerSeed(new URLSearchParams(location.search).get("seed")),
+    };
+  }
+
+  function writeUrl(): void {
+    const data = new FormData(form ?? undefined);
+    const params = new URLSearchParams(location.search);
+    for (const [key, value] of data) params.set(key, String(value));
+    history.replaceState(null, "", `?${params}`);
+  }
+
+  function readUrl(): void {
+    const params = new URLSearchParams(location.search);
+    for (const [key, value] of params) {
+      const input = form?.querySelector<HTMLInputElement>(`[name="${CSS.escape(key)}"]`);
+      if (!input) continue;
+      if (input.type === "radio") {
+        const radio = form?.querySelector<HTMLInputElement>(`[name="${CSS.escape(key)}"][value="${CSS.escape(value)}"]`);
+        if (radio) radio.checked = true;
+      } else input.value = value;
+    }
+  }
+
+  let calls = 1;
+  let design: Design | undefined;
+
+  function fail(message: string): void {
+    field("details").hidden = true;
+    field("summary").textContent = message;
+    if (button) button.disabled = false;
+  }
+
+  // A worker that fails to load or throws sends no result, so the page says so instead of waiting.
+  worker.addEventListener("error", () => fail("The calculation failed to run. Reload the page to try again."));
+  worker.addEventListener("messageerror", () => fail("The calculation failed to run. Reload the page to try again."));
+
+  worker.addEventListener("message", (event: MessageEvent<PlannerResult>) => {
+    const result = event.data;
+    if (result.id !== latest || !design) return;
+    if (!result.ok) {
+      fail(`The calculation failed: ${result.error}. Change the inputs and select Calculate again.`);
+      return;
+    }
+    const { noChange } = result;
+    const trials = design.cases * design.trials * 2;
+    field("cost").textContent = `${design.cases} cases × ${design.trials} trials × 2 versions = ${trials} trials, ${trials * calls} model calls.`;
+    field("floor").textContent =
+      result.floor >= design.margin
+        ? `${points(result.floor)}. Your ${points(design.margin)} limit is not above it, so this suite can never pass, even when nothing changes.`
+        : `${points(result.floor)}. No run of this suite can clear a smaller limit. Your ${points(design.margin)} limit is above it.`;
+    field("validity").textContent =
+      result.limitations.length === 0
+        ? "Validated for this design."
+        : `Not validated for this design: ${result.limitations.join("; ")}. A real comparison gives no Regression here.`;
+    field("detectable").textContent = detectableSentence(
+      result.detectable,
+      result.detectableRuns,
+      result.limitations.length === 0,
+    );
+    field("nochange-intro").textContent = `${noChange.runs} simulated runs in which the candidate is the base. Every alarm is false.`;
+    const width = (count: number): string => `${(count / noChange.runs) * 100}%`;
+    field("bar-ichnaea").style.width = width(noChange.regressionAlarms);
+    field("bar-threshold").style.width = width(noChange.thresholdAlarms);
+    field("count-ichnaea").textContent = share(noChange.regressionAlarms, noChange.runs);
+    field("count-threshold").textContent = share(noChange.thresholdAlarms, noChange.runs);
+    field("pass").textContent = `The bound clears your limit in ${share(noChange.boundClearsMargin, noChange.runs)}. Pass would also need both statistical results validated for this design. Today no run can pass.`;
+    field("details").hidden = false;
+    field("summary").textContent = `With no change, Ichnaea raised a false alarm in ${share(noChange.regressionAlarms, noChange.runs)}, and the fixed rule in ${share(noChange.thresholdAlarms, noChange.runs)}.`;
+    if (button) button.disabled = false;
+  });
+
+  form?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    writeUrl();
+    const input = read();
+    if (input.seed === undefined) {
+      design = undefined;
+      fail(`The seed in the address must be a whole number from 1 to ${MAX_SEED}. Change it and select Calculate again.`);
+      return;
+    }
+    design = input.design;
+    calls = input.calls;
+    latest += 1;
+    if (button) button.disabled = true;
+    field("summary").textContent = "Calculating…";
+    // Worker.postMessage takes no target origin.
+    // oxlint-disable-next-line unicorn/require-post-message-target-origin
+    worker.postMessage({ id: latest, design: input.design, seed: input.seed } satisfies PlannerRequest);
+  });
+
+  readUrl();
+  form?.requestSubmit();
+</script>
+
+<style>
+  .planner fieldset {
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 0.5rem;
+    padding: 1rem;
+  }
+  .planner .field {
+    margin-top: 0.75rem;
+  }
+  .planner fieldset.field {
+    border: none;
+    padding: 0;
+  }
+  .planner label,
+  .planner legend {
+    font-weight: 600;
+  }
+  .planner .choices {
+    display: flex;
+    gap: 1.5rem;
+  }
+  .planner .choices label {
+    font-weight: 400;
+  }
+  .planner input[type="number"] {
+    display: block;
+    width: 8rem;
+    margin-top: 0.25rem;
+  }
+  .hint {
+    margin-top: 0.25rem;
+    font-size: var(--sl-text-sm);
+    color: var(--sl-color-gray-2);
+  }
+  .planner button {
+    margin-top: 1rem;
+    padding: 0.5rem 1.25rem;
+    border: none;
+    border-radius: 0.375rem;
+    background: var(--sl-color-accent);
+    color: var(--sl-color-black);
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .planner button:disabled {
+    opacity: 0.6;
+    cursor: progress;
+  }
+  .summary {
+    font-weight: 600;
+  }
+  .results dt {
+    font-weight: 600;
+    margin-top: 1rem;
+  }
+  .results dd {
+    margin-left: 0;
+  }
+  .bar-row {
+    display: grid;
+    grid-template-columns: minmax(8rem, 12rem) 1fr minmax(9rem, auto);
+    gap: 0.5rem;
+    align-items: center;
+    margin-top: 0.5rem;
+  }
+  .bar {
+    display: block;
+    height: 1rem;
+    background: var(--sl-color-gray-6);
+    border: 1px solid var(--sl-color-gray-4);
+  }
+  .bar-fill {
+    display: block;
+    height: 100%;
+    width: 0;
+    background: var(--sl-color-text-accent);
+  }
+  @media (max-width: 40rem) {
+    .bar-row {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

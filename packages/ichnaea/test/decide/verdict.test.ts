@@ -6,7 +6,7 @@ import { decide, exitCode, planningPower } from "../../src/decide/index.ts";
 import { decideFloorSet, FLOOR_REASON } from "./support/floor-set.ts";
 import { type Scenario, scenario } from "./support/scenario.ts";
 
-const run = (s: Scenario): Promise<Decision> =>
+const run = (s: Scenario): Decision =>
   decide({ ...s, decidedAt: "2026-11-15T12:00:00Z", ichnaea: "0.0.0" });
 const failedGate = {
   hardGates: ["app/schema"],
@@ -27,7 +27,7 @@ describe("verdict order: INVALID, a failed hard gate, estimate-only, statistics"
     const d = await run(s);
     expect(d.mode).toBe("estimate-only");
     expect(d.verdict).toBe("REGRESSION");
-    expect(d.reason).toBe("Hard gate app/schema failed.");
+    expect(d.reason).toBe("Hard gate 'app/schema' failed.");
     expect(d.scope).toBe("a deterministic check failed");
     expect(exitCode(d, s.plan.policy)).toBe(1);
   });

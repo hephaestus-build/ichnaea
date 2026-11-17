@@ -15,6 +15,7 @@ import { join } from "node:path";
 
 import {
   type Case,
+  candidateRunsFirst,
   type Decision,
   type GateResult,
   Plan as PlanSchema,
@@ -662,10 +663,12 @@ describe("planner (REQ-16, REQ-19, REQ-27, REQ-33, REQ-49, decision 0008)", asyn
     expect(p.mode).toBe("decision");
     expect(p.modeReasons).toEqual([]);
     expect(p.trials).toHaveLength(8 * 2 * 2);
+    // Each case's pair runs in the order of its coin for that replicate.
+    const first = candidateRunsFirst(p.seed, "case-000") ? "candidate" : "base";
     expect(p.trials[0]).toEqual({
-      id: "case-000/base/r0",
+      id: `case-000/${first}/r0`,
       case: "case-000",
-      arm: "base",
+      arm: first,
       replicate: 0,
       batch: 0,
     });

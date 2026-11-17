@@ -43,8 +43,8 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "verifyArms ignored",
     file: D,
-    from: "for (const error of await verifyArms(plan.arms))",
-    to: "for (const error of [] as Awaited<ReturnType<typeof verifyArms>>)",
+    from: "for (const error of verifyArms(plan.arms))",
+    to: "for (const error of [] as ReturnType<typeof verifyArms>)",
   },
   {
     id: "base without values allowed",
@@ -190,9 +190,9 @@ export const MUTANTS: readonly Mutant[] = [
     projects: ["core", "decide"],
   },
   {
-    id: "one trial: the planner ignores the coin",
+    id: "the planner ignores the coin",
     file: "src/core/planner.ts",
-    from: "          ? (await candidateRunsFirst(seed, c.id))",
+    from: "        ? candidateRunsFirst(seed, c.id, replicate)",
     to: "          ? false",
     projects: CORE,
   },
@@ -253,7 +253,7 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "a/a: the cited digest unchecked",
     file: D,
-    from: "    if ((await digest(e.decision)) !== cite)",
+    from: "    if (digest(e.decision) !== cite)",
     to: "    if (false)",
   },
   {
@@ -310,8 +310,8 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "invalid configuration not missing",
     file: D,
-    from: 'const MISSING = new Set(["infrastructure_failure", "not_run", "invalid_configuration"]);',
-    to: 'const MISSING = new Set(["infrastructure_failure", "not_run"]);',
+    from: '  "not_run",\n  "invalid_configuration",\n',
+    to: '  "not_run",\n',
   },
   {
     id: "not applicable counted as planned",

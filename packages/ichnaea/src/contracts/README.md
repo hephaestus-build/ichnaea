@@ -56,8 +56,8 @@ Each record has two schema files:
   that a later minor version adds to an open enumeration (the known values stay as the
   `x-ichnaea-known` annotation), and a kind that a later minor version adds to a tagged union (the
   fallback option, marked `x-ichnaea-unknown-kind`, takes only kinds no known option names). A
-  reader must treat such values as unknown. Closed enumerations (`x-ichnaea-closed`, the
-  non-finite values) and the `schema` field stay strict: a new major version is a new schema, and
+  reader must treat such values as unknown. Closed enumerations (`x-ichnaea-closed`: the
+  non-finite values and the trial outcomes) and the `schema` field stay strict: a new major version is a new schema, and
   it ships with a migration (`majors.json`).
 
 In TypeScript, `readRecord(contract, value)` validates against the reader schema (zod builds it

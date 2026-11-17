@@ -57,6 +57,43 @@ describe("prose check", () => {
     expect(problems("<!-- a comment\nthat spans lines -->\n\nSimply run it.")).toHaveLength(1);
   });
 
+  it("closes a fence only on a line that holds the marker and nothing else", () => {
+    expect(problems("~~~text\n~~~not-a-close\n~~~\n\nSimply run it.")).toEqual([
+      "a word that tells the reader it is easy",
+    ]);
+  });
+
+  it("skips MDX comments, on one line or several, and inside a sentence", () => {
+    expect(problems("{/* Keep this note; it is not rendered. */}")).toEqual([]);
+    expect(problems("{/* A note\nthat spans lines; really */}\n\nSimply run it.")).toHaveLength(1);
+    expect(problems("It runs {/* note; hidden */} locally.")).toEqual([]);
+  });
+
+  it("reads the text after an MDX comment's end on the same line as prose", () => {
+    expect(problems("{/* note */} Simply run it.")).toEqual([
+      "a word that tells the reader it is easy",
+    ]);
+    expect(problems("{/* a note\nthat spans lines */} Simply run it.")).toEqual([
+      "a word that tells the reader it is easy",
+    ]);
+  });
+
+  it("skips a whole multiline import or export", () => {
+    expect(problems('import {\n  Card,\n  CardGrid,\n} from "x";\n\nIt runs locally.')).toEqual([]);
+    expect(problems("export const meta = {\n  title: 'a; b',\n};\n\nSimply run it.")).toHaveLength(
+      1,
+    );
+  });
+
+  it("ends an import or export without a semicolon at the next blank line, as MDX does", () => {
+    expect(problems("export const meta = {}\n\nSimply run it.")).toEqual([
+      "a word that tells the reader it is easy",
+    ]);
+    expect(problems('import "./styles.css"\n\nSimply run it.')).toEqual([
+      "a word that tells the reader it is easy",
+    ]);
+  });
+
   it("counts a code span as one word and keeps the text of a link", () => {
     const [block] = proseBlocks("Run `pnpm exec ichnaea compare plan.json results.jsonl` now.");
     expect(wordCount(block?.text ?? "")).toBe(3);

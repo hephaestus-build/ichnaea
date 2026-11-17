@@ -19,6 +19,7 @@ import {
   Unit,
 } from "../primitives.ts";
 import { ScriptedTurn } from "./case.ts";
+import { type Outcome } from "./trial.ts";
 
 /**
  * Which trial a request asks for and a result answers: the identity that resume uses. A result
@@ -105,11 +106,19 @@ export const TrialRequest = z.strictObject({
   /** Bounds for this trial. */
   limits: z.strictObject({
     /**
-     * The most model calls the trial may make. The worker stops before it exceeds them, and
-     * Ichnaea also checks `usage.calls` in the result against them. Absent means no per-trial
-     * bound.
+     * The most model calls the trial may make, counted as calls the provider accepted. The worker
+     * stops before it exceeds them, and Ichnaea also checks `usage.calls` in the result against
+     * them. Absent means no per-trial bound. A call the provider rejected, for example with HTTP
+     * 429, is not a call.
      */
-    calls: none(z.int().min(0)).optional(),
+    calls: none(
+      z
+        .int()
+        .min(0)
+        .describe(
+          "The most model calls the trial may make, counted as calls the provider accepted. A call the provider rejected, for example with HTTP 429, is not a call.",
+        ),
+    ).optional(),
   }),
   /**
    * The plan's time limit for the trial, net of throttle waits. At the limit, Ichnaea sends a
@@ -165,6 +174,17 @@ export const TrialFailure = z.strictObject({
 });
 /** A trial failure. */
 export type TrialFailure = z.infer<typeof TrialFailure>;
+
+/**
+ * The trial outcome of each failure class, one to one. `protocol_failure` is the outcome of a
+ * `protocol` failure and of nothing else.
+ */
+export const FAILURE_OUTCOME = {
+  infrastructure: "infrastructure_failure",
+  system: "system_failure",
+  not_run: "not_run",
+  protocol: "protocol_failure",
+} as const satisfies Record<TrialFailure["class"], Outcome>;
 
 /** The commit of the system's code, as 40 hexadecimal characters. */
 const Commit = none(z.string().regex(/^[0-9a-f]{40}$/));
@@ -326,7 +346,14 @@ export type Throttling = z.infer<typeof Throttling>;
  */
 export const TrialUsage = z.strictObject({
   /** The accepted model calls of the attempt. A call that the provider rejected is not one. */
-  calls: none(z.int().min(0)),
+  calls: none(
+    z
+      .int()
+      .min(0)
+      .describe(
+        "The model calls the provider accepted in this attempt. A call the provider rejected, for example with HTTP 429, is not a call.",
+      ),
+  ),
   /** The input tokens. */
   inputTokens: none(z.int().min(0)).optional(),
   /** The output tokens. */
@@ -528,7 +555,14 @@ export const WorkerEvent = z.discriminatedUnion("kind", [
     trial: TrialIdentity,
     kind: none(z.literal("heartbeat")),
     /** The accepted model calls of the attempt so far. */
-    calls: none(z.int().min(0)),
+    calls: none(
+      z
+        .int()
+        .min(0)
+        .describe(
+          "The model calls the provider accepted in this attempt so far. A call the provider rejected, for example with HTTP 429, is not a call.",
+        ),
+    ),
     /** The calls that the provider rejected for its rate limit so far, and the waits. */
     throttled: Throttling.optional(),
   }),

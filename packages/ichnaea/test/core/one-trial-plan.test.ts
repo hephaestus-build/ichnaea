@@ -96,7 +96,8 @@ describe("a plan at one trial per case and arm", async () => {
       "one trial per case and arm is outside the validated domain",
     ]);
     // Alternating batches by replicate, as at two or more trials (REQ-25).
-    expect(mixed.plan.trials[0]).toMatchObject({ case: "case-000", arm: "base", batch: 0 });
+    const first = candidateRunsFirst(mixed.plan.seed, "case-000") ? "candidate" : "base";
+    expect(mixed.plan.trials[0]).toMatchObject({ case: "case-000", arm: first, batch: 0 });
   });
 
   it("records the schedule and the cited A/A decisions it is given", async () => {
