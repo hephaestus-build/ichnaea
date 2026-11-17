@@ -53,7 +53,7 @@ describe("cross-language digest vectors", () => {
         expect(await configurationIdentity(v.input)).toBe(v.digest);
         break;
       case "configurationIdentityRefused":
-        await expect(configurationIdentity(v.input)).rejects.toThrow();
+        expect(() => configurationIdentity(v.input)).toThrow();
         break;
       case "caseDigest":
         expect(await caseDigest(v.input)).toBe(v.digest);

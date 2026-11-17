@@ -6,7 +6,7 @@ import { decide } from "../../src/decide/index.ts";
 import { decideFloorSet } from "./support/floor-set.ts";
 import { type Scenario, type ScenarioOptions, scenario } from "./support/scenario.ts";
 
-const run = (s: Scenario): Promise<Decision> =>
+const run = (s: Scenario): Decision =>
   decide({ ...s, decidedAt: "2026-11-15T12:00:00Z", ichnaea: "0.0.0" });
 // Refusals are about the records, not the cases: a small valid run decides them as well.
 const small: ScenarioOptions = { cases: 6, replicates: 2, base: () => 1, candidate: () => 1 };

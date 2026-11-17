@@ -1,15 +1,25 @@
 import * as z from "zod";
 
-import { none } from "../data-class.ts";
+import { CLOSED_KEY, none } from "../data-class.ts";
 import { PlanDigest, RunId, SemVer, Text, Timestamp, TrialId } from "../primitives.ts";
 import { Arm, LineageItem } from "./plan.ts";
 import { Outcome } from "./trial.ts";
+
+/** The runtime that computed a record: its name, version, operating system and architecture. */
+export const Runtime = z.strictObject({
+  name: none(Text),
+  version: none(Text),
+  platform: none(Text),
+  arch: none(Text),
+});
+/** A runtime. */
+export type Runtime = z.infer<typeof Runtime>;
 
 /** The state of one planned trial in the ledger (REQ-19). */
 export const LedgerEntry = z.strictObject({
   trial: none(TrialId),
   state: none(z.enum(["planned", "running", "recorded"])),
-  outcome: none(Outcome).optional(),
+  outcome: none(Outcome, { [CLOSED_KEY]: true }).optional(),
 });
 
 /**
@@ -27,6 +37,13 @@ export const Run = z.strictObject({
     platform: none(Text),
     ichnaea: none(SemVer),
     ci: none(Text).optional(),
+    /** The processor architecture, for example `x64` (`process.arch` in Node). */
+    arch: none(Text).optional(),
+    /**
+     * The runtime that computed the run's records. A recompute on the same runtime must give the
+     * same bytes; on another runtime it is a new computation (REQ-83).
+     */
+    runtime: Runtime.optional(),
   }),
   arms: z.array(Arm).min(1),
   lineage: z.array(LineageItem),

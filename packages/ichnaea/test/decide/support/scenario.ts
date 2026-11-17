@@ -117,6 +117,15 @@ export interface ScenarioOptions {
   readonly aa?: Plan["aa"];
   /** The run's ID; default run-1. */
   readonly runId?: string;
+  /** The suite's bound of calls per trial; default 1. */
+  readonly callsPerTrial?: number;
+  /** The arms whose calls count against the plan's worst case; default every arm. */
+  readonly armsToRun?: readonly string[];
+  /** The usage and the earlier attempts each trial records. */
+  readonly usage?: (t: { case: string; arm: string; replicate: number }) => Trial["usage"];
+  readonly attempts?: (t: { case: string; arm: string; replicate: number }) => Trial["attempts"];
+  /** Leaves the arms unnamed, so the planner names them `a` and `b` (default: base, candidate). */
+  readonly opaque?: boolean;
 }
 
 export interface Scenario {
@@ -186,7 +195,7 @@ export async function scenario(o: ScenarioOptions): Promise<Scenario> {
     })),
     secondary: o.secondary ?? [],
     hardGates: o.hardGates ?? [],
-    budget: { maxCalls: o.maxCalls ?? 100_000, callsPerTrial: 1 },
+    budget: { maxCalls: o.maxCalls ?? 100_000, callsPerTrial: o.callsPerTrial ?? 1 },
     policy: {
       onRegression: "block",
       onInconclusive: "report",
@@ -200,12 +209,12 @@ export async function scenario(o: ScenarioOptions): Promise<Scenario> {
     cases,
     arms: [
       {
-        name: "base",
+        ...(o.opaque ? {} : { name: "base" }),
         role: "base",
         configuration: (o.baseConfig ?? ((c: Configuration) => c))(configuration("model-a", "a1")),
       },
       {
-        name: "candidate",
+        ...(o.opaque ? {} : { name: "candidate" }),
         role: "candidate",
         configuration: (o.candidateConfig ?? ((c: Configuration) => c))(
           configuration(o.candidateModel ?? "model-a", "b2"),
@@ -217,6 +226,7 @@ export async function scenario(o: ScenarioOptions): Promise<Scenario> {
       (o.hardGates ?? []).map((id) => [id, { id, version: "1.0.0", description: "a check" }]),
     ),
     trigger: o.trigger ?? "code",
+    ...(o.armsToRun ? { armsToRun: o.armsToRun } : {}),
     ...(o.varies ? { varies: o.varies } : {}),
     seed: o.seed ?? 7,
     ...(o.schedule ? { schedule: o.schedule } : {}),
@@ -227,13 +237,27 @@ export async function scenario(o: ScenarioOptions): Promise<Scenario> {
   const rng = createRng(o.seed ?? 7);
   const trials: Trial[] = [];
   const values: MeasureValue[] = [];
-  for (const t of plan.trials) {
+  // The draws follow a fixed order, by replicate, case and arm, so a scenario's data does not
+  // depend on the order in which each replicate's pairs run. At one trial per case, the plan's
+  // own order is that order.
+  const armIndex = new Map(plan.arms.map((a, i) => [a.name as string, i]));
+  const order = plan.trials.some((t) => t.replicate > 0)
+    ? plan.trials.toSorted(
+        (a, b) =>
+          a.replicate - b.replicate ||
+          Number(a.case.slice(5)) - Number(b.case.slice(5)) ||
+          (armIndex.get(a.arm) ?? 0) - (armIndex.get(b.arm) ?? 0),
+      )
+    : plan.trials;
+  for (const t of order) {
     const index = Number(t.case.slice(5));
     const outcome =
       o.outcome?.({ case: t.case, arm: t.arm, replicate: t.replicate }) ?? "completed";
     const identity = plan.arms.find((a) => a.name === t.arm)?.identity as Trial["configuration"];
     const at = { case: t.case, arm: t.arm, replicate: t.replicate };
     const observed = o.observed?.(at);
+    const usage = o.usage?.(at);
+    const attempts = o.attempts?.(at);
     trials.push({
       schema: "ichnaea.trial/1",
       id: t.id,
@@ -249,11 +273,14 @@ export async function scenario(o: ScenarioOptions): Promise<Scenario> {
       // A completed trial carries the output it was scored on.
       ...(outcome === "completed" || outcome === "abstained" ? { output: { text: "answer" } } : {}),
       ...(observed ? { observed } : {}),
+      ...(usage ? { usage } : {}),
+      ...(attempts ? { attempts } : {}),
     } as Trial);
     const forced = o.value?.({ ...at, outcome });
     if (forced === null) continue;
     if (forced === undefined && outcome !== "completed" && outcome !== "abstained") continue;
-    const p = t.arm === "base" ? o.base(index) : o.candidate(index);
+    const role = plan.arms.find((a) => a.name === t.arm)?.role;
+    const p = role === "base" ? o.base(index) : o.candidate(index);
     for (const m of [...measureIds, ...(o.secondary ?? [])]) {
       if (o.applies && !o.applies(m, index)) {
         values.push({

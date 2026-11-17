@@ -1,5 +1,5 @@
 import type { Plan, PowerEntry } from "../contracts/index.ts";
-import type { PlanAdditions } from "../core/index.ts";
+import type { PlanAdditions } from "../core/plugin.ts";
 import {
   sampledCasesFloor,
   VALIDATED_MARGIN_CEILING,

@@ -23,7 +23,7 @@ export interface RecomputeResult {
  * Recomputes a decision from the stored primary records and compares it with the stored decision
  * (REQ-83). Any difference (a changed record, a different statistics version) fails.
  */
-export async function recompute(records: {
+export function recompute(records: {
   readonly plan: Plan;
   readonly run: Run;
   readonly trials: readonly Trial[];
@@ -32,8 +32,8 @@ export async function recompute(records: {
   readonly decision: Decision;
   /** The A/A evidence the plan cites, as `decide` took it. */
   readonly aa?: readonly { decision: Decision; plan: Plan; run: Run }[];
-}): Promise<RecomputeResult> {
-  const again = await decide({
+}): RecomputeResult {
+  const again = decide({
     ...records,
     decidedAt: records.decision.decidedAt,
     ichnaea: records.decision.ichnaea,

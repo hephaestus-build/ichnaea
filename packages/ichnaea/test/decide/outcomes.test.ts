@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { decide } from "../../src/decide/index.ts";
 import { type Scenario, scenario } from "./support/scenario.ts";
 
-const run = (s: Scenario): Promise<Decision> =>
+const run = (s: Scenario): Decision =>
   decide({ ...s, decidedAt: "2026-11-15T12:00:00Z", ichnaea: "0.0.0" });
 const candidateOf = (d: Decision) =>
   d.measures[0]?.arms.find((a) => a.arm === "candidate")?.availability;
@@ -31,6 +31,27 @@ describe("outcome classes on measures the application computes (REQ-20)", () => 
       175 / 180,
       10,
     );
+  });
+
+  it("a protocol failure is missing, never a failure, and makes the run INVALID", async () => {
+    const d = await run(
+      await scenario({
+        cases: 60,
+        replicates: 3,
+        base: () => 1,
+        candidate: () => 1,
+        margin: 0.05,
+        outcome: (t) =>
+          t.arm === "candidate" && t.case === "case-003" && t.replicate === 1
+            ? "protocol_failure"
+            : undefined,
+      }),
+    );
+    expect(d.verdict).toBe("INVALID");
+    expect(d.invalidReasons).toContain(
+      "a worker reported a protocol failure (unknown): the harness, not the system, failed",
+    );
+    expect(candidateOf(d)).toMatchObject({ planned: 180, available: 179, missing: 1 });
   });
 
   it("a system failure that carries a passing value makes the run INVALID", async () => {
