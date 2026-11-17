@@ -27,13 +27,19 @@ The core of Ichnaea: the plugin host, the planner, import mode, the record store
   ignored. A line that does not stops the booking with a `LedgerError` that names the file and
   the line.
 - **Measure implementation.** `measureImplementation` gives the digest of the code that
-  computes a suite's measure, the second part of its identity. For a TypeScript measure,
-  `moduleImplementation` imports its module in a child process with the load recorder in place
-  (`load-record.ts`), and digests every local module that it loads and every third-party package,
-  by version and files. A dynamic import counts, and a type-only import does not. A built-in
-  scorer and a stage status take Ichnaea's build identity (`buildIdentity`: the package name and
-  version and every shipped code file), and an instrument's dimension takes the instrument's pin.
-  The study scripts record their loads with the same recorder.
+  computes a suite's measure, the second part of its identity. For a TypeScript measure, it
+  digests two things. `moduleImplementation` imports the module in a child process with the load
+  recorder in place (`load-record.ts`), and digests every local module and every third-party
+  package, by version and files, that the module loads when it is imported. An import that runs
+  then counts, and a type-only import does not. The pin of the instrument that holds the module
+  covers the rest: its `files` hold what the module reaches only when it scores, such as a lazy
+  import, a data file or a script, and the pin also holds its image. The child process gets only
+  `PATH` and `HOME`, and it is killed with `SIGKILL` after its time limit. A built-in scorer and a
+  stage status take Ichnaea's build identity (`buildIdentity`: the package name and version and
+  every code file that the package ships), and an instrument's dimension takes the instrument's
+  pin. The study scripts record their loads with the same recorder.
+  A later change makes the scorer runner record what the scoring process loads, and refuse a
+  module that the lock does not hold.
 - **Egress.** Every class of data except `none` stays in by default. Only the plugin that the
   configuration names as `governance` can let it out. Any plugin can refuse.
 

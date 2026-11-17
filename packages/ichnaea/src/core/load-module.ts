@@ -14,5 +14,6 @@ recordLoads();
 await import(pathToFileURL(module).href);
 const record = loadRecord();
 if (record === undefined) throw new Error("the loads were not recorded");
-// The same tag as LOADS in implementation.ts.
-process.send({ "ichnaea.loads": pinLoads(record, root) });
+// The same tag as LOADS in implementation.ts. The child exits once the record is sent, so it is
+// the last tagged message, and a module that keeps its process alive cannot hold the parent.
+process.send({ "ichnaea.loads": pinLoads(record, root) }, () => process.exit(0));
