@@ -11,7 +11,7 @@
 // can detect and which must survive, and a deliberate behaviour break, which must be killed. Together
 // they show that the runner tells a kill from a survivor on this run.
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -31,13 +31,29 @@ const PROPERTY_FAILED = "Property failed after";
 const RETURNED_FALSE = "Property failed by returning false";
 const TIMEOUT = /^(Test|Hook) timed out/;
 
+/** A stack frame in a test file: `x.test.ts:12:3`, or a `.test-d.ts`, `.test.mts`, … file. */
+const TEST_FRAME = /\.test(-d)?\.[cm]?[jt]sx?:\d+/;
+
+/**
+ * Whether an assertion error was raised by a test: its first frame that names a file outside
+ * `node_modules` (that is, past the assertion library's own frames) lies in a test file. An AssertionError that a runtime
+ * dependency raises has the source that called it there, so it is not a kill.
+ */
+export function raisedByTest(error: MutationError): boolean {
+  // Frames with no file (`<anonymous>`, `node:` internals, `index 0`) say nothing about who raised it.
+  const first = error.frames.find(
+    (f) => /[/\\]/.test(f) && !f.includes("/node_modules/") && !f.includes("(node:"),
+  );
+  return first !== undefined && TEST_FRAME.test(first);
+}
+
 /**
  * Whether an error is an assertion failure, by its class. A fast-check property failure is one
  * when its predicate returned false, or when the error its predicate threw (its cause) is an
  * assertion; a property whose predicate threw any other error is not.
  */
 export function isAssertion(error: MutationError): boolean {
-  if (ASSERTION_CLASSES.has(error.name)) return true;
+  if (ASSERTION_CLASSES.has(error.name)) return raisedByTest(error);
   if (error.message.startsWith(PROPERTY_FAILED)) {
     if (error.cause === undefined) return false;
     return error.cause.message.startsWith(RETURNED_FALSE) || isAssertion(error.cause);
@@ -93,13 +109,44 @@ let logs: string | undefined;
 const logDir = (): string => (logs ??= mkdtempSync(join(tmpdir(), "mutants-")));
 const REPORTER = join(import.meta.dirname, "mutation-reporter.ts");
 
-/** Runs vitest on `projects` in `cwd` and judges the run. The output is kept under a log name. */
-export function runTests(cwd: string, projects: readonly string[], name: string): Outcome {
-  const dir = logDir();
-  const safe = name.replace(/[^\w.-]+/g, "_").slice(0, 80);
+/** What a run of vitest returns: `spawnSync`'s result, as far as the judge reads it. */
+type Spawn = (
+  command: string,
+  args: readonly string[],
+  options: {
+    cwd: string;
+    encoding: "utf8";
+    timeout: number;
+    maxBuffer: number;
+    env: NodeJS.ProcessEnv;
+  },
+) => {
+  readonly status: number | null;
+  readonly stdout?: string;
+  readonly stderr?: string;
+  readonly error?: Error;
+};
+
+/** The file name under which a run's report and log are kept. */
+export const logName = (name: string): string => name.replace(/[^\w.-]+/g, "_").slice(0, 80);
+
+/**
+ * Runs vitest on `projects` in `cwd` and judges the run. The output is kept under a log name. The
+ * report file is deleted before the run, so a run that writes none can never read a stale one,
+ * even when two mutant IDs share a log name.
+ */
+export function runTests(
+  cwd: string,
+  projects: readonly string[],
+  name: string,
+  spawn: Spawn = spawnSync,
+  dir: string = logDir(),
+): Outcome {
+  const safe = logName(name);
   const reportFile = join(dir, `${safe}.json`);
   const logFile = join(dir, `${safe}.log`);
-  const result = spawnSync(
+  rmSync(reportFile, { force: true });
+  const result = spawn(
     "pnpm",
     [
       "exec",

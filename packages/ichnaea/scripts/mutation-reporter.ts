@@ -1,7 +1,7 @@
 // A vitest reporter for the mutant runners (scripts/mutation.ts). It writes, to the file named by
 // ICHNAEA_MUTATION_REPORT, the structure of every error of a run: each failed test's errors with
-// their name, whether they carry an expected and actual value, their cause and their first stack
-// frame; each test module that did not run; and the unhandled errors. The classifier decides from
+// their name, whether they carry an expected and actual value, their cause and their leading stack
+// frames; each test module that did not run; and the unhandled errors. The classifier decides from
 // this structure what the run shows.
 import { writeFileSync } from "node:fs";
 
@@ -13,8 +13,8 @@ export interface MutationError {
   readonly message: string;
   /** True when the error carries `actual` or `expected`, as an assertion error does. */
   readonly comparison: boolean;
-  /** The first frame of its stack, or "" when it has none. */
-  readonly frame: string;
+  /** The leading frames of its stack, at most 20, without the "at " prefix's indentation. */
+  readonly frames: readonly string[];
   readonly cause?: MutationError;
 }
 
@@ -40,14 +40,17 @@ function describe(error: unknown, depth = 0): MutationError {
   const e = (
     typeof error === "object" && error !== null ? error : { message: String(error) }
   ) as ErrorLike;
-  const frame =
-    (e.stack ?? "").split("\n").find((line) => line.trimStart().startsWith("at ")) ?? "";
+  const frames = (e.stack ?? "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("at "))
+    .slice(0, 20);
   return {
     // vitest names a serialised cause "Caused by: <class>"; the class is what counts.
     name: typeof e.name === "string" ? e.name.replace(/^Caused by: /, "") : "",
     message: typeof e.message === "string" ? e.message : "",
     comparison: "actual" in e || "expected" in e,
-    frame: frame.trim(),
+    frames,
     ...(e.cause !== undefined && depth < 5 ? { cause: describe(e.cause, depth + 1) } : {}),
   };
 }

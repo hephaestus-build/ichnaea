@@ -1,18 +1,33 @@
 // What a test run under a mutant shows (scripts/mutation.ts): only an assertion failure, by its
 // class, is a kill. This file is in the `mutants` project, which no mutated run executes.
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { classify, isAssertion, type Outcome, runMutations } from "../scripts/mutation.ts";
+import {
+  classify,
+  isAssertion,
+  logName,
+  type Outcome,
+  runMutations,
+  runTests,
+} from "../scripts/mutation.ts";
 import type { MutationError, MutationReport } from "../scripts/mutation-reporter.ts";
 
-const error = (name: string, message: string, cause?: MutationError): MutationError => ({
+/** A frame in a test file, where an assertion raised by a test has its first own frame. */
+const TEST = "at /pkg/test/stats/x.test.ts:12:3";
+const error = (
+  name: string,
+  message: string,
+  cause?: MutationError,
+  frames: readonly string[] = [TEST],
+): MutationError => ({
   name,
   message,
   comparison: false,
-  frame: "",
+  frames,
   ...(cause === undefined ? {} : { cause }),
 });
 const property = (cause: MutationError): MutationError =>
@@ -186,5 +201,52 @@ describe("timeouts in a mutation run", () => {
     });
     expect(result.code).toBe(1);
     expect(lines).toContain("more than 10% of the mutants were detected only by a timeout");
+  });
+});
+
+describe("where an assertion was raised", () => {
+  const vitest =
+    "at _Assertion.__VITEST_REJECTS__ (file:///r/node_modules/.pnpm/vitest@5.1.0/node_modules/vitest/dist/chunks/index.js:2178:33)";
+  const chai =
+    "at _Assertion.propertyGetter (file:///r/node_modules/.pnpm/chai@6.3.0/node_modules/chai/index.js:1607:27)";
+
+  it("counts an assertion whose first file frame past the assertion library is in a test file", () => {
+    // The stack of a real `rejects` assertion: vitest, chai, a frame with no file, chai, the test.
+    const frames = [vitest, chai, "at Reflect.get (<anonymous>)", chai, TEST];
+    expect(isAssertion(error("AssertionError", "promise resolved", undefined, frames))).toBe(true);
+  });
+
+  it("does not count an AssertionError that a runtime dependency raised from the source", () => {
+    const dependency = "at check (file:///r/node_modules/some-dep/index.js:3:9)";
+    const source = "at measure (/pkg/src/stats/wilson.ts:20:5)";
+    const raised = error("AssertionError", "dependency invariant", undefined, [
+      dependency,
+      source,
+      TEST,
+    ]);
+    expect(isAssertion(raised)).toBe(false);
+    expect(classify(1, failing(raised))).toMatchObject({ kind: "error" });
+    expect(isAssertion(error("AssertionError", "no stack", undefined, []))).toBe(false);
+  });
+
+  it("does not count a fast-check property whose assertion came from the source", () => {
+    const fromSource = error("AssertionError", "x", undefined, ["at f (/pkg/src/core/a.ts:1:1)"]);
+    expect(isAssertion(property(fromSource))).toBe(false);
+  });
+});
+
+/** A run that crashes before its reporter writes anything. */
+const crashed = () => ({ status: 1, stdout: "", stderr: "crashed" });
+
+describe("a run's report file", () => {
+  it("is deleted before the run, so a run that writes none never reads a stale one", () => {
+    const dir = mkdtempSync(join(tmpdir(), "mutation-"));
+    const stale = join(dir, `${logName("a mutant")}.json`);
+    writeFileSync(stale, JSON.stringify({ passed: true, modules: [], failed: [], unhandled: [] }));
+    expect(runTests(dir, ["stats"], "a mutant", crashed, dir)).toMatchObject({
+      kind: "error",
+      reason: expect.stringContaining("no test report"),
+    });
+    expect(existsSync(stale)).toBe(false);
   });
 });
