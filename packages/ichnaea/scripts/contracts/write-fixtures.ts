@@ -56,10 +56,13 @@ for (const [name, record] of Object.entries(VALID)) {
     write(join(root, "invalid", name, `${variant}.json`), copy);
     count++;
   }
-  // Every record refuses another major version of its schema ID.
+  // Every record refuses the next major version of its schema ID.
   const wrongId = {
     ...structuredClone(record),
-    schema: String(record["schema"]).replace(/\/1$/, "/2"),
+    schema: String(record["schema"]).replace(
+      /\/(\d+)$/,
+      (_, major: string) => `/${Number(major) + 1}`,
+    ),
   };
   write(join(root, "invalid", name, "wrong-schema-id.json"), wrongId);
   count++;

@@ -1,0 +1,8 @@
+{
+  "schema": "ichnaea.configuration/3",
+  "digest": "sha256:c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+  "fields": {
+    "model": "example-model-2026-10",
+    "temperature": 0.2
+  }
+}
