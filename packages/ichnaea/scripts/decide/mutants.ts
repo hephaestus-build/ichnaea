@@ -800,9 +800,23 @@ const passes = (projects: readonly string[]): boolean => {
     return false;
   }
 };
-const selected = MUTANTS.filter(
-  (x) => wanted.length === 0 || wanted.some((w) => x.id.startsWith(w)),
-);
+/**
+ * The canary: a change to a comment, which no test can detect, run against every project that any
+ * mutant runs. It runs first and must survive. A killed canary means some test fails whatever the
+ * mutant does, and then every kill is vacuous.
+ */
+export const CANARY: Mutant = {
+  id: "canary: a comment only",
+  file: D,
+  from: "/** Everything a decision is computed from. Reports never compute anything new. */",
+  to: "/** Everything a decision is computed from. Reports never compute anything new (the mutation canary). */",
+  projects: [...new Set(MUTANTS.flatMap((m) => m.projects ?? ["decide"]))],
+};
+
+const selected = [
+  CANARY,
+  ...MUTANTS.filter((x) => wanted.length === 0 || wanted.some((w) => x.id.startsWith(w))),
+];
 const failures: string[] = [];
 let killed = 0;
 for (const m of selected) {
@@ -816,18 +830,32 @@ for (const m of selected) {
   }
   if (anchorsOnly) continue;
   writeFileSync(path, original.replace(m.from, m.to));
+  let dead: boolean;
   try {
-    const dead = !passes(m.projects ?? ["decide"]);
-    console.log(`${m.id}: ${dead ? "killed" : "SURVIVED"}`);
-    if (dead) killed++;
-    else failures.push(m.id);
+    dead = !passes(m.projects ?? ["decide"]);
   } finally {
     writeFileSync(path, original);
   }
+  if (m === CANARY) {
+    console.log(`${m.id}: ${dead ? "killed" : "survived, as it must"}`);
+    if (dead) {
+      console.log(
+        "the canary was killed: some test fails whatever the mutant does, so no kill counts",
+      );
+      failures.push(m.id);
+      break;
+    }
+    continue;
+  }
+  console.log(`${m.id}: ${dead ? "killed" : "SURVIVED"}`);
+  if (dead) killed++;
+  else failures.push(m.id);
 }
 if (anchorsOnly)
-  console.log(`${selected.length - failures.length} of ${selected.length} anchors found once`);
-else console.log(`${killed} of ${selected.length} mutants killed`);
+  console.log(
+    `${selected.length - failures.length} of ${selected.length} anchors found once, the canary's included`,
+  );
+else console.log(`${killed} of ${selected.length - 1} mutants killed`);
 if (failures.length > 0) console.log(`failed: ${failures.join(", ")}`);
 else console.log(anchorsOnly ? "all anchors found" : "all mutants killed");
 process.exitCode = failures.length === 0 ? 0 : 1;
