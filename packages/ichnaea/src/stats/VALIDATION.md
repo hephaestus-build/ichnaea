@@ -543,7 +543,7 @@ an interval or a decision method.
   - Levels: a latent quality (case effect plus N(0, 0.7²)) is cut into 5 levels at −1.2, −0.4, 0.4
     and 1.2. Rater readings add N(0, 0.6²). The judge adds its own noise, and a biased judge shifts
     its reading on the candidate.
-- **Draw cells** reproduce the chatbot's registered calibration draw:
+- **Draw cells** reproduce the registered draw:
   - a screen of 127 items, 2 runs per item from each of the base (C1), the candidate (C2) and a
     known-worse configuration (C3);
   - defect rates 0.15, 0.15 and 0.35 per answer, with within-item correlation ρ = 0.3 of the defects
@@ -604,7 +604,7 @@ Generic cells, 5 levels, 60 cases:
 | as good as a rater, shifted    | 0.065     | 0.038 | 0.074 | 0.858         | 0.695     | 0.234       | 0.695       |
 |                                | 0.128     | 0.008 | 0.067 | 0.733         | 0.147     | 0.010       | 0.147       |
 
-Draw cells (the chatbot's registered draw):
+Draw cells (the registered draw):
 
 | Draw              | Good: pass | Good: floor | Good: sensitivity | Good: bias gate | Worse: pass | Positives drawn | Effective positives (Kish) |
 | ----------------- | ---------- | ----------- | ----------------- | --------------- | ----------- | --------------- | -------------------------- |
@@ -638,7 +638,7 @@ yes/no cells, at most 0.002 % of resamples had one.
   the floor in 47 % of studies at prevalence 0.2, and level raters reach it in 6–8 %. A good judge
   therefore passes in at most 17 % of 60-case studies. At 60 cases, the rule mostly reports that the
   raters' own agreement is not shown.
-- **The chatbot's draw.** With raters at accuracy 0.90, the good judge passes 64 % of 360-answer
+- **The registered draw.** With raters at accuracy 0.90, the good judge passes 64 % of 360-answer
   draws and 82 % of 460-answer draws. The 80 % target needs about 460 answers. With raters at 0.93
   (raw agreement 0.87), 360 answers give 92 %. Raters' agreement, measured in the rater check
   before the draw is fixed, therefore decides the size more than any other assumption. At ρ = 0.6 the
@@ -648,7 +648,7 @@ yes/no cells, at most 0.002 % of resamples had one.
 
 **Limits.** The raters and the judge are synthetic. The numbers describe this rule on these
 generators. They are not the coverage of an interval, and they do not validate a decision method. The
-draw cells use assumed defect rates, proxy recall and ρ; the chatbot's screen measures them. A rule,
+draw cells use assumed defect rates, proxy recall and ρ; the screen measures them. A rule,
 generator or allocation change needs a rerun.
 
 Rerun from `packages/ichnaea` (about an hour on 4 cores), or with the `Calibration rule study`

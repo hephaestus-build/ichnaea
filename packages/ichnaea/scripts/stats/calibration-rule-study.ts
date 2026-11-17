@@ -146,7 +146,7 @@ export type Cell =
       readonly rho: number;
     };
 
-/** Cases per study unless a cell names more, as in the chatbot's first calibration study. */
+/** Cases per study unless a cell names more: 60 cases of two answers, a first study of 120 answers. */
 export const CASES = 60;
 
 const binary = (
@@ -207,12 +207,12 @@ export function designOf(n: number, nuisance: Nuisance): DrawDesign {
 }
 
 /**
- * The chatbot's first calibration study as registered: 127 eligible items, two screening runs per
+ * The registered draw's nuisance parameters: 127 eligible items, two screening runs per
  * configuration, defect rates 0.15 in C1 and C2 and 0.35 in the known-worse C3 (the designed drop of
  * 0.20 on quality), a proxy that catches 0.65 of defects, ρ = 0.3, and raters at accuracy 0.90 (raw
  * agreement 0.82).
  */
-export const CHATBOT: Nuisance = {
+export const REGISTERED_DRAW: Nuisance = {
   items: 127,
   runs: [2, 2, 2],
   defectRate: [0.15, 0.15, 0.35],
@@ -237,7 +237,11 @@ export const DRAWS: readonly {
   readonly nuisance: Nuisance;
   readonly design: DrawDesign;
 }[] = [
-  ...DRAW_SIZES.map((n) => ({ name: `n${n}`, nuisance: CHATBOT, design: designOf(n, CHATBOT) })),
+  ...DRAW_SIZES.map((n) => ({
+    name: `n${n}`,
+    nuisance: REGISTERED_DRAW,
+    design: designOf(n, REGISTERED_DRAW),
+  })),
   ...(
     [
       ["rho0", { rho: 0 }],
@@ -247,21 +251,21 @@ export const DRAWS: readonly {
       ["drop0.30", { defectRate: [0.15, 0.15, 0.45] }],
     ] as const
   ).map(([change, values]) => {
-    const nuisance: Nuisance = { ...CHATBOT, ...values };
+    const nuisance: Nuisance = { ...REGISTERED_DRAW, ...values };
     return { name: `n360-${change}`, nuisance, design: designOf(360, nuisance) };
   }),
   {
     name: "n140-raters0.87",
-    nuisance: { ...CHATBOT, raterAccuracy: 0.93 },
-    design: designOf(140, { ...CHATBOT, raterAccuracy: 0.93 }),
+    nuisance: { ...REGISTERED_DRAW, raterAccuracy: 0.93 },
+    design: designOf(140, { ...REGISTERED_DRAW, raterAccuracy: 0.93 }),
   },
   {
     name: "n140-without-c3",
-    nuisance: CHATBOT,
+    nuisance: REGISTERED_DRAW,
     design: {
       items: 127,
       runs: [2, 2, 0],
-      defectRate: CHATBOT.defectRate,
+      defectRate: REGISTERED_DRAW.defectRate,
       groups: [
         { configuration: 0, units: 70, positiveShare: 0.35 },
         { configuration: 1, units: 70, positiveShare: 0.35 },
@@ -419,7 +423,7 @@ function shuffled<T>(xs: readonly T[], rng: Rng): T[] {
 }
 
 /**
- * A calibration draw, as the chatbot's sampling plan states it:
+ * A calibration draw, as the registered sampling plan states it:
  * 1. Screen: each item gets the design's runs per configuration. An answer is a defect when its
  *    latent √ρ·u_item + √(1−ρ)·e exceeds the threshold of its configuration's defect rate, so
  *    defects cluster within items with correlation ρ. The proxy catches a defect with probability

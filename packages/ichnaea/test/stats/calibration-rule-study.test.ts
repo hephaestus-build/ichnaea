@@ -8,7 +8,7 @@ import {
 } from "../../scripts/stats/calibration-rule.ts";
 import {
   CELLS,
-  CHATBOT,
+  REGISTERED_DRAW,
   MARGINS,
   designOf,
   drawStudy,
@@ -114,14 +114,14 @@ describe("the calibration draw cells", () => {
   });
 
   it("splits a draw by the registered allocation, as the 140-answer pilot does", () => {
-    expect(designOf(140, CHATBOT).groups).toEqual([
+    expect(designOf(140, REGISTERED_DRAW).groups).toEqual([
       { configuration: 0, units: 41, positiveShare: 0.2 },
       { configuration: 1, units: 41, positiveShare: 0.2 },
       { configuration: 2, units: 58, positiveShare: 0.4 },
     ]);
   });
 
-  it("passes the good judge more often than the clearly worse one on the chatbot's draw", () => {
+  it("passes the good judge more often than the clearly worse one on the registered draw", () => {
     expect(smoke("draw-n360-rho0-good").pass).toBeGreaterThan(
       smoke("draw-n360-rho0-worse").pass + 0.2,
     );
