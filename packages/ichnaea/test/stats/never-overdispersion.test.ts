@@ -245,17 +245,19 @@ describe("the must-never planning count", () => {
 
   it("refuses a ceiling that no count up to 2^53 shows, and stays exact near it", () => {
     const deterministic = { kind: "deterministic" } as const;
+    // The message names the count, not the 1/4 restriction, which would also throw a RangeError.
+    const unrepresentable = /no count of cases up to 2\^53/;
     // Number.MIN_VALUE: ln(1 − ceiling) rounds to −MIN_VALUE, and at Se_L = 1/2 the target
     // underflows to 0, so the closed form is infinite.
     for (const detector of [deterministic, { kind: "model", sensitivityLower: 0.5 } as const])
       expect(
-        () => neverCasesNeeded({ ceiling: Number.MIN_VALUE, confidence: 0.5, detector }),
+        () => neverCasesNeeded({ ceiling: Number.MIN_VALUE, confidence: 0.95, detector }),
         detector.kind,
-      ).toThrow(RangeError);
+      ).toThrow(unrepresentable);
     // Below about 1e-16, 1 − α′^(1/n) cannot resolve the ceiling at any count up to 2^53.
     expect(() =>
       neverCasesNeeded({ ceiling: 1e-17, confidence: 0.95, detector: deterministic }),
-    ).toThrow(RangeError);
+    ).toThrow(unrepresentable);
     const { cases } = neverCasesNeeded({
       ceiling: 1e-12,
       confidence: 0.95,
