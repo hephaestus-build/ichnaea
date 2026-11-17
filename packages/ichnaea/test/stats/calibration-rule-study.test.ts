@@ -192,20 +192,21 @@ describe("the rule is a parameter of the study", () => {
   });
 });
 
+// A yes/no cell with perfect raters, so their label is the truth.
+const perfectRaters = (armBias: number): Cell => ({
+  id: "bias",
+  scale: "binary",
+  prevalence: 0.2,
+  raterAccuracy: 1,
+  judge: "reads",
+  judgeAccuracy: 0.9,
+  armBias,
+  cases: 2000,
+});
+
 describe("a judge biased between base and candidate", () => {
-  // Perfect raters, so their label is the truth.
-  const cell = (armBias: number): Cell => ({
-    id: "bias",
-    scale: "binary",
-    prevalence: 0.2,
-    raterAccuracy: 1,
-    judge: "reads",
-    judgeAccuracy: 0.9,
-    armBias,
-    cases: 2000,
-  });
-  const unbiased = drawStudy(cell(0), createRng(7));
-  const biased = drawStudy(cell(0.15), createRng(7));
+  const unbiased = drawStudy(perfectRaters(0), createRng(7));
+  const biased = drawStudy(perfectRaters(0.15), createRng(7));
 
   it("misses true positives on the candidate, and only those", () => {
     let missed = 0;
