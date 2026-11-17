@@ -104,3 +104,30 @@ These are point estimates, validated against R. No interval for them is validate
 from resampling whole cases is estimate only. Kappa and alpha are NaN where they are undefined, and
 a resample can hit that: count those replicates and report their share, never drop them. AC1 is
 never NaN. `VALIDATION.md` lists the oracles and the limits.
+
+## One-arm estimates
+
+`estimate` gives one arm's mean over the cases that ran (`these-cases`), or over a population with a
+declared sampling frame (`population`), with its interval, the worst-case bounds and the
+operational estimate with missing trials as failures. Each interval says what its coverage rests
+on: `conservative` or `not-validated`. It decides nothing.
+
+```ts
+import { estimate } from "@hephaestus-build/ichnaea/stats";
+
+const result = estimate({
+  valueType: "binary",
+  cases: [
+    { id: "a", values: [1] },
+    { id: "b", values: [0] },
+    { id: "c", values: [], planned: 1 },
+  ],
+});
+// result.interval: Clopper–Pearson at the adjusted level, coverage "conservative";
+// result.worstCase: { low, high };
+// result.operational: the interval over planned trials, missing as failure
+```
+
+`reduceTrials` gives pass^k, pass@k or a majority per case. `kaplanMeier`, `survivalQuantile`,
+`restrictedMean` and `restrictedDifference` handle times censored at the plan's limit.
+`missingDifferenceTest` flags a difference in missing trials between the arms.

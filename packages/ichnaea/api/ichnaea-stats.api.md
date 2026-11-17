@@ -14,10 +14,42 @@ export type AlphaMetric = "nominal" | "ordinal" | "interval";
 export type ArmCounts = Count;
 
 // @public
+export interface ArmMissing {
+    readonly missing: number;
+    readonly planned: number;
+}
+
+// @public
 export function assertCount(count: Count, label: string): void;
 
 // @public
 export function assertLevel(level: number): void;
+
+// @public
+export interface BcaCluster {
+    readonly caseMeans: readonly number[];
+    readonly id: string;
+}
+
+// @public
+export function bcaInterval(input: readonly BcaCluster[], weighting: Weighting, rng: Rng, resamples: number, level?: number, sided?: Sided): BcaResult;
+
+// @public
+export type BcaRefusal = "BCA_UNDEFINED" | "ZERO_WIDTH";
+
+// @public
+export type BcaResult = {
+    readonly interval: Interval;
+    readonly z0: number;
+    readonly acceleration: number;
+    readonly refusal?: never;
+} | {
+    readonly interval?: never;
+    readonly z0?: never;
+    readonly acceleration?: never;
+    readonly refusal: BcaRefusal;
+    readonly estimate: number;
+};
 
 // @public
 export function benjaminiYekutieli(pValues: readonly number[]): number[];
@@ -31,12 +63,22 @@ export interface CaseCounts {
 }
 
 // @public
+export interface CaseDurations {
+    readonly base: readonly Duration[];
+    readonly candidate: readonly Duration[];
+    readonly id: string;
+}
+
+// @public
 export interface CaseScores {
     readonly base: readonly number[];
     readonly candidate: readonly number[];
     readonly family?: string;
     readonly id: string;
 }
+
+// @public
+export function clopperPearson(count: Count, level?: number, sided?: Sided): Interval;
 
 // @public
 export function clusterBootstrap(input: readonly ClusterObservation[], options: ClusterBootstrapOptions): ClusterBootstrapResult;
@@ -144,6 +186,9 @@ export interface Count {
 export function countsFromOutcomes(outcomes: readonly (0 | 1)[]): ArmCounts;
 
 // @public
+export type Coverage = "conservative" | "not-validated";
+
+// @public
 export function createRng(seed: number): Rng;
 
 // @public
@@ -153,11 +198,75 @@ export function critical(level: number, sided: "two" | "lower" | "upper"): numbe
 export const DEFAULT_RESAMPLES = 10000;
 
 // @public
+export interface Duration {
+    readonly censored: boolean;
+    readonly time: number;
+    readonly weight?: number;
+}
+
+// @public
 export type Estimand = "fixed-cases" | "sampled-cases";
 
 // @public
 export class EstimandError extends Error {
     readonly name = "EstimandError";
+}
+
+// @public
+export function estimate(input: EstimateInput): EstimateResult;
+
+// @public
+export interface EstimateCase {
+    readonly family?: string;
+    readonly id: string;
+    readonly planned?: number;
+    readonly values: readonly number[];
+}
+
+// @public
+export type EstimateEstimand = "these-cases" | "population";
+
+// @public
+export interface EstimateInput {
+    readonly cases: readonly EstimateCase[];
+    readonly estimand?: EstimateEstimand;
+    readonly level?: number;
+    readonly population?: {
+        readonly frame: boolean;
+        readonly rng: Rng;
+        readonly resamples: number;
+    };
+    readonly sided?: Sided;
+    readonly valueType: "binary" | "score";
+    readonly weighting?: Weighting;
+}
+
+// @public
+export interface EstimateInterval extends Interval {
+    readonly coverage: Coverage;
+}
+
+// @public
+export interface EstimateResult {
+    readonly cases: number;
+    readonly estimand: EstimateEstimand;
+    readonly estimate: number;
+    readonly interval: EstimateInterval | null;
+    readonly missingCases: number;
+    readonly noInterval?: NoInterval;
+    readonly operational: EstimateInterval;
+    readonly resampling?: {
+        readonly algorithm: string;
+        readonly seed: number;
+        readonly resamples: number;
+        readonly clusters: number;
+    };
+    readonly valueType: "binary" | "score";
+    readonly weighting: Weighting;
+    readonly worstCase: {
+        readonly low: number;
+        readonly high: number;
+    };
 }
 
 // @public
@@ -195,6 +304,9 @@ export interface FixedCasesMdeInput {
 export function gwetAc1(table: AgreementTable): number;
 
 // @public
+export function hoeffding(values: readonly number[], weights: readonly number[], level?: number, sided?: Sided): Interval;
+
+// @public
 export function holm(pValues: readonly number[]): number[];
 
 // @public
@@ -209,16 +321,38 @@ export interface Interval {
 }
 
 // @public
+export function kaplanMeier(sample: readonly Duration[]): SurvivalStep[];
+
+// @public
 export function krippendorffAlpha(units: readonly (readonly (number | null)[])[], metric: AlphaMetric): number;
 
 // @public
 export const MARGIN_FLOOR_NOT_SET = "the validated margin floor is not set yet";
 
 // @public
+export function missingDifferenceTest(cases: readonly {
+    readonly base: ArmMissing;
+    readonly candidate: ArmMissing;
+}[]): {
+    readonly p: number;
+    readonly method: "exact-stratified-conditional-two-sided";
+    readonly missing: {
+        readonly base: number;
+        readonly candidate: number;
+    };
+};
+
+// @public
+export type NoInterval = "NO_VALUES" | "NO_SAMPLING_FRAME" | "FEWER_THAN_30_CLUSTERS" | "BCA_UNDEFINED" | "ZERO_WIDTH";
+
+// @public
 export const NON_INFERIORITY_AT_ONE_TRIAL = "non-inferiority is not validated at one trial per case";
 
 // @public
 export const ONE_TRIAL_NEEDS_CHECKS = "one trial per case needs decide's checks of the trial order, the timestamps and the A/A runs";
+
+// @public
+export function oneArmScoreInterval(cells: readonly ScoreCell[], level?: number, sided?: Sided): Interval;
 
 // @public
 export interface OneTrialChecks {
@@ -238,10 +372,47 @@ export interface PairedTable {
 export function pnorm(x: number): number;
 
 // @public
+export function pooledClopperPearson(count: Count, level?: number, sided?: Sided): Interval;
+
+// @public
+export const POPULATION_MIN_CLUSTERS = 30;
+
+// @public
 export function qnorm(p: number): number;
 
 // @public
 export function rawAgreement(table: AgreementTable): number;
+
+// @public
+export function reduceTrials(values: readonly number[], reduction: Reduction): number;
+
+// @public
+export type Reduction = {
+    readonly all: {
+        readonly k: number;
+    };
+} | {
+    readonly any: {
+        readonly k: number;
+    };
+} | {
+    readonly majority: {
+        readonly tie: "pass" | "fail";
+    };
+};
+
+// @public
+export function restrictedDifference(cases: readonly CaseDurations[], limit: number): {
+    readonly estimate: number;
+    readonly cases: number;
+    readonly censored: {
+        readonly base: number;
+        readonly candidate: number;
+    };
+};
+
+// @public
+export function restrictedMean(sample: readonly Duration[], limit: number): number;
 
 // Warning: (ae-forgotten-export) The symbol "Restricted" needs to be exported by the entry point index.d.ts
 //
@@ -272,6 +443,13 @@ export const SCORE_PERMUTATION_RESAMPLES_NEAR_LEVEL = 100000;
 
 // @public
 export const SCORE_PERMUTATION_WORK_LIMIT = 50000000;
+
+// @public
+export interface ScoreCell {
+    readonly sum: number;
+    readonly trials: number;
+    readonly weight: number;
+}
 
 // @public
 export function scoreDifferenceInterval(strata: readonly Stratum[], level?: number, sided?: Sided, options?: ScoreOptions): Interval;
@@ -319,6 +497,21 @@ export interface Stratum {
 }
 
 // @public
+export function survivalQuantile(sample: readonly Duration[], q: number): {
+    readonly value: number;
+} | {
+    readonly atLeast: number;
+};
+
+// @public
+export interface SurvivalStep {
+    readonly atRisk: number;
+    readonly events: number;
+    readonly survival: number;
+    readonly time: number;
+}
+
+// @public
 export function tangoInterval(table: PairedTable, level?: number, sided?: Sided, skew?: boolean): Interval;
 
 // @public
@@ -357,7 +550,13 @@ export interface Validity {
 export type ValueType = "binary" | "proportion" | "score" | "ordinal";
 
 // @public
+export type Weighting = "per-case" | "per-family";
+
+// @public
 export function wilson(count: Count, level?: number, sided?: Sided): Interval;
+
+// @public
+export function wilsonMean(mean: number, n: number, level?: number, sided?: Sided): Interval;
 
 // @public
 export function withinCasePermutationTest(strata: ReadonlyArray<{
