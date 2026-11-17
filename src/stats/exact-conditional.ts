@@ -25,6 +25,9 @@ export function exactStratifiedTest(
 ): TestResult {
   let distribution = [1];
   let observed = 0;
+  // A stratum with one feasible count (none or all of its trials succeeded) adds that count to
+  // every total: a shift, kept as an offset instead of a convolution with a point mass of exactly 1.
+  let offset = 0;
   for (const s of strata) {
     const n1 = s.candidate.trials;
     const n2 = s.base.trials;
@@ -33,6 +36,10 @@ export function exactStratifiedTest(
     observed += s.candidate.successes;
     const lo = Math.max(0, total - n2);
     const hi = Math.min(n1, total);
+    if (lo === hi) {
+      offset += lo;
+      continue;
+    }
     const denominator = logChoose(n1 + n2, total);
     const pmf: number[] = [];
     for (let k = 0; k <= hi; k++)
@@ -45,7 +52,8 @@ export function exactStratifiedTest(
   }
   let p = 0;
   distribution.forEach((mass, t) => {
-    if (alternative === "less" ? t <= observed : t >= observed) p += mass;
+    const candidateTotal = t + offset;
+    if (alternative === "less" ? candidateTotal <= observed : candidateTotal >= observed) p += mass;
   });
   return { statistic: observed, p: Math.min(1, p), method: "exact-stratified-conditional" };
 }

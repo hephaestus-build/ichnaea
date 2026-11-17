@@ -1,0 +1,1 @@
+{"version":3,"file":"hoeffding.d.ts","sourceRoot":"","sources":["../../src/stats/hoeffding.ts"],"names":[],"mappings":"AAAA,OAAO,EAAe,KAAK,QAAQ,EAAE,KAAK,KAAK,EAAE,MAAM,YAAY,CAAC;AAEpE;;;;;GAKG;AACH,wBAAgB,SAAS,CACvB,MAAM,EAAE,SAAS,MAAM,EAAE,EACzB,OAAO,EAAE,SAAS,MAAM,EAAE,EAC1B,KAAK,SAAO,EACZ,KAAK,GAAE,KAAa,GACnB,QAAQ,CA8BV"}

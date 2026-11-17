@@ -1,5 +1,7 @@
 /** Which side of an interval is bounded. `lower` is a one-sided lower bound: [lower, max]. */
 export type Sided = "two" | "lower" | "upper";
+/** How cases weigh in a mean: each case equally, or each family equally. */
+export type Weighting = "per-case" | "per-family";
 /** An estimate with its interval. One-sided intervals extend to the parameter's bound. */
 export interface Interval {
     /** The point estimate. */

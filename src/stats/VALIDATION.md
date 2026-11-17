@@ -430,6 +430,106 @@ docker run --rm --network none -v "$PWD":/w -w /w \
   Rscript scripts/stats/reference-cluster-bootstrap.R
 ```
 
+## One-arm estimates
+
+`estimate` gives one arm's mean with its interval. It never decides a comparison. Each case weighs
+equally (`per-case`), or each family weighs equally and its cases share its weight
+(`per-family`). The interval states what its coverage rests on: `conservative` (a theorem bounds it
+at every true rate) or `not-validated` (no study has shown it, and the card says "coverage not
+validated").
+
+| Estimand      | Trials per case       | Values                | Weights | Interval                                   | Coverage      |
+| ------------- | --------------------- | --------------------- | ------- | ------------------------------------------ | ------------- |
+| `these-cases` | 1                     | binary                | equal   | Clopper–Pearson on the pooled count, at α′ | conservative  |
+| `these-cases` | 1                     | binary or score       | unequal | Hoeffding: half-width √(ln(2/α)·Σwᵢ²/2)    | conservative  |
+| `these-cases` | 1                     | score                 | equal   | Wilson on the pooled mean, n = cases       | not-validated |
+| `these-cases` | 2 or more in any case | binary or score       | any     | the one-arm stratified score interval      | not-validated |
+| `population`  | any                   | binary or score       | any     | BCa over the top clusters, at least 30     | not-validated |
+| operational   | planned               | binary, equal weights | —       | Clopper–Pearson over planned trials, at α′ | conservative  |
+| operational   | planned               | otherwise             | —       | Hoeffding over planned trials              | conservative  |
+
+- **Clopper–Pearson** is exact for one binomial count. Ichnaea uses Clopper–Pearson on the pooled
+  count at the adjusted level α′ = 1 − e^{−α} per bound (1 − e^{−α/2} per tail for a two-sided
+  interval). With independent trials at unequal rates, the count is Poisson-binomial. The bound then
+  misses the mean rate with probability below α, for every set of rates (Hoeffding 1956, Theorem 4,
+  as restated in Bancal and Sekatski 2022, § II; Greenberg and Mohri 2014; and Weierstrass's product
+  inequality). Unadjusted CP can miss at a rate
+  up to −ln(1 − α), at extreme means. The proof needs α′ ≤ 1/4 per bound, and a larger one is
+  refused. At α = 0.05 the adjusted level is 0.04877.
+- **Hoeffding's bound** holds for any weighted mean of independent terms in [0, 1]. Unequal family
+  sizes leave no binomial count, so it replaces Clopper–Pearson there. It is up to about 1.4 times
+  wider than a normal interval at a rate of 0.5. One side uses √(ln(1/α)·Σwᵢ²/2).
+- **Wilson on the pooled mean** uses the variance bound μ(1 − μ), which holds for any value in
+  [0, 1]. Its coverage is not guaranteed: its minimum at n = 20 is 0.838 (see "Not validated").
+- **The one-arm stratified score interval** inverts (θ̂ − θ)/√V(θ), with
+  V(θ) = Σ wᵢ²·p̃ᵢ(1 − p̃ᵢ)/rᵢ, where p̃ᵢ maximise the likelihood under Σ wᵢp̃ᵢ = θ. It has no
+  small-sample factor, so for one case it is Wilson. Scores enter as fractional sums.
+- **BCa** resamples the top clusters (families, else cases) and never the replicates of a case. It
+  needs a declared sampling frame, which the caller checks, and at least 30 clusters.
+  z₀ = Φ⁻¹((#{θ* < θ̂ − tol} + ½·#{|θ* − θ̂| ≤ tol})/B), with tol a relative 1e-12: on a lattice of
+  case means many resampled estimates equal the estimate exactly, and counting them as not below
+  would push z₀ down. The tolerance keeps the order of summation from moving z₀. The acceleration is the jackknife over clusters.
+  The bounds are type-7 quantiles at the adjusted levels, so they stay inside [0, 1]. The record
+  names the generator, the seed, the resamples and the clusters.
+- **No interval has zero width.** Such an interval, a sample with no value, a missing frame, fewer
+  than 30 clusters and a BCa with z₀ or its adjusted levels undefined each give no interval and a
+  reason code instead.
+- **The worst-case bounds** fill every missing planned trial with a failure (`low`) and with a pass
+  (`high`), under the same weighting. **The operational estimand** is `low`, with its own interval.
+
+**Reductions.** `reduceTrials` reduces a case's r binary trials to one value: pass^k as
+C(c, k)/C(r, k) and pass@k as 1 − C(r − c, k)/C(r, k), both unbiased, or the majority with a
+declared tie rule. r < k is refused. A reduced measure is estimate-only.
+
+**Censoring.** A trial that reaches the plan's limit L is censored at L. `kaplanMeier` gives the
+weighted product-limit curve, in which a trial censored at an event time is still at risk at that
+time. `survivalQuantile` gives the smallest event time where S ≤ 1 − q, or "at least" the largest
+time when the curve never falls that far. Where S sits on 1 − q over an interval (within R's √ε),
+the quantile is the midpoint up to the next event time, as R's survival takes it, which is the
+ordinary median of an uncensored sample of even size. A curve that sits on 1 − q to the last time gives
+"at least" the start of that plateau, because the curve beyond the last time is unknown. Here R
+takes the midpoint up to the last time instead, which is the one difference from R that the tests
+pin. `restrictedMean` is the area under the curve on [0, L], and
+`restrictedDifference` the mean over cases of the paired difference in mean min(t, L), with the
+censored trials counted per arm. All are descriptive.
+
+**Missingness.** `missingDifferenceTest` is the exact stratified conditional test over cases, with
+the missing trials as the outcome, two-sided as twice the smaller one-sided p-value. It flags a
+difference between the arms and decides nothing.
+
+**Oracles.** Ichnaea agrees with:
+
+| Source                                                                     | Set                                                                                                                                                 | Tolerance |
+| -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| R `binom.test` (`reference-estimate.R`)                                    | Clopper–Pearson, 17 counts up to n = 4,610, 3 levels, two-sided and both one-sided bounds                                                           | 1e-12     |
+| mpmath's regularised incomplete beta (`estimate_oracle.py`)                | Clopper–Pearson, 8 counts, 2 levels                                                                                                                 | 1e-12     |
+| A Python implementation by bisection at every level (`estimate_oracle.py`) | The one-arm stratified score interval, 9 fixtures (binary, fractional, mixed r, unequal weights, boundaries), 4 levels and sides                    | 1e-9      |
+| A Python implementation on numpy's MT19937 draws (`estimate_oracle.py`)    | BCa with z₀ and the acceleration, 4 fixtures of 30 and 45 clusters, per case and per family, one with about 14% of resamples tied with the estimate | 1e-12     |
+| Exact rational arithmetic (`estimate_oracle.py`)                           | pass^k and pass@k, every k, 4 trial vectors                                                                                                         | 1e-15     |
+| R `survival::survfit` (`reference-estimate.R`)                             | Weighted Kaplan–Meier curves, 6 quantiles each and the restricted mean, 4 samples                                                                   | 1e-12     |
+| R `mantelhaen.test(exact = TRUE)` (`reference-estimate.R`)                 | The missing-count test, 3 tables                                                                                                                    | 1e-12     |
+
+The Python oracle was written from the formulas alone. Each restricted rate comes from bisection on
+the case's own Lagrange condition (s − rp)/(p(1 − p)) = c, not from the root of the quadratic that
+the TypeScript uses. Regenerate from `packages/ichnaea`, as CI does:
+
+```sh
+docker run --rm --network none -v "$PWD":/w -w /w \
+  rocker/r-ver:4.5.2@sha256:fd4ccdd3a4a6f7ef805e2daeee2a0fe3bf126bc231f36351223baecf5a595a4c \
+  Rscript scripts/stats/reference-estimate.R
+docker run --rm -v "$PWD":/w -w /w \
+  python:3.13.18-slim@sha256:e48f59cdba69a3cbd9ed2cf0f348d90d45a8d350d98134cf1070bc106ee9ed90 sh -c \
+  "pip install --quiet --root-user-action=ignore --require-hashes -r scripts/stats/oracle-requirements.txt \
+  && python scripts/stats/estimate_oracle.py test/stats/reference-python-estimate.json"
+```
+
+**Mutants.** `scripts/stats/mutants.ts` changes these methods in 26 ways (those named `estimate:`):
+the denominator of the weighted mean, which keeps a mean of ones at exactly 1; the adjusted level of pooled Clopper–Pearson, per bound and per tail, and its limit of 1/4; the tail split, the beta shape and the closed form of Clopper–Pearson; the logarithm and the half of
+Hoeffding's bound; the squared weight and the reflection of the score interval; the two choices of
+path, the Wilson n, the worst case, the operational interval and the cluster minimum of `estimate`; the
+ties and the sign of the acceleration of BCa; pass^k, pass@k and the majority's tie; the events and
+the restricted mean of the curve; and the two sides of the missing-count test.
+
 ## Agreement between raters
 
 `rawAgreement`, `cohenKappa`, `gwetAc1` and `krippendorffAlpha` (nominal, ordinal and interval
