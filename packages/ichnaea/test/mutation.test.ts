@@ -14,7 +14,12 @@ import {
   runMutations,
   runTests,
 } from "../scripts/mutation.ts";
-import type { MutationError, MutationReport } from "../scripts/mutation-reporter.ts";
+import {
+  type ModuleTree,
+  type MutationError,
+  type MutationReport,
+  reportOf,
+} from "../scripts/mutation-reporter.ts";
 
 /** A frame in a test file, where an assertion raised by a test has its first own frame. */
 const TEST = "at /pkg/test/stats/x.test.ts:12:3";
@@ -38,12 +43,15 @@ const failing = (...errors: MutationError[]): MutationReport => ({
   passed: false,
   modules: [],
   failed: [{ test: "test/x.test.ts: a test", errors }],
+  suites: [],
   unhandled: [],
 });
 
 describe("what one test run under a mutant shows", () => {
   it("counts a passing run as a survivor", () => {
-    expect(classify(0, { passed: true, modules: [], failed: [], unhandled: [] })).toEqual({
+    expect(
+      classify(0, { passed: true, modules: [], failed: [], suites: [], unhandled: [] }),
+    ).toEqual({
       kind: "survived",
     });
   });
@@ -82,7 +90,7 @@ describe("what one test run under a mutant shows", () => {
     for (const name of ["TypeError", "RangeError", "IdentityError", "Error"])
       expect(classify(1, failing(error(name, "thrown by the code under test")))).toMatchObject({
         kind: "error",
-        reason: expect.stringContaining("without an assertion"),
+        reason: expect.stringContaining("no assertion failed"),
       });
     // The class decides, not a substring of the message.
     expect(
@@ -99,11 +107,18 @@ describe("what one test run under a mutant shows", () => {
         passed: false,
         modules: [{ module: "test/x.test.ts", errors: [error("SyntaxError", "Unexpected token")] }],
         failed: [],
+        suites: [],
         unhandled: [],
       }),
     ).toMatchObject({ kind: "error", reason: expect.stringContaining("did not run") });
     expect(
-      classify(1, { passed: false, modules: [], failed: [], unhandled: [error("Error", "boom")] }),
+      classify(1, {
+        passed: false,
+        modules: [],
+        failed: [],
+        suites: [],
+        unhandled: [error("Error", "boom")],
+      }),
     ).toMatchObject({ kind: "error", reason: expect.stringContaining("unhandled") });
     // A timeout is a detection, not an error: runMutations lists it and bounds its share.
     expect(classify(1, failing(error("Error", "Test timed out in 5000ms.")))).toEqual({
@@ -126,21 +141,100 @@ describe("type errors from the typecheck pass", () => {
 
   it("are an error when no test failed", () => {
     expect(
-      classify(1, { passed: false, modules: [], failed: [], unhandled: [typeError] }),
+      classify(1, { passed: false, modules: [], failed: [], suites: [], unhandled: [typeError] }),
     ).toMatchObject({
       kind: "error",
       reason: expect.stringContaining("does not type-check"),
     });
   });
 
-  it("do not excuse any other unhandled error", () => {
+  it("are not listed as a crash; any other unhandled error is", () => {
     const report = {
       ...failing(error("AssertionError", "x")),
       unhandled: [typeError, error("Error", "boom")],
     };
+    expect(classify(1, report)).toEqual({
+      kind: "killed",
+      by: ["test/x.test.ts: a test"],
+      alsoCrashed: ["unhandled Error: boom"],
+    });
+  });
+});
+
+describe("a run with an assertion failure and a crash", () => {
+  it("is a kill, because an assertion detected the mutant, and lists the crash", () => {
+    const report: MutationReport = {
+      passed: false,
+      modules: [],
+      failed: [
+        {
+          test: "test/a.test.ts: asserts",
+          errors: [error("AssertionError", "expected 1 to be 2")],
+        },
+        { test: "test/b.test.ts: crashes", errors: [error("TypeError", "x is not a function")] },
+      ],
+      suites: [],
+      unhandled: [],
+    };
+    expect(classify(1, report)).toEqual({
+      kind: "killed",
+      by: ["test/a.test.ts: asserts"],
+      alsoCrashed: ["test/b.test.ts: crashes: TypeError: x is not a function"],
+    });
+  });
+
+  it("is an error when nothing asserted: a crash alone never kills", () => {
+    expect(classify(1, failing(error("TypeError", "x is not a function")))).toMatchObject({
+      kind: "error",
+      reason: expect.stringContaining("no assertion failed"),
+    });
+  });
+});
+
+/** A test module whose nested suite's afterAll hook failed with `hook`, and whose tests all passed. */
+const moduleWithHook = (hook: { name: string; message: string }): ModuleTree => ({
+  moduleId: "test/x.test.ts",
+  ok: () => false,
+  errors: () => [],
+  children: {
+    allTests: () => [{ fullName: "outer > inner > a test", result: () => ({ state: "passed" }) }],
+    allSuites: () => [
+      { fullName: "outer", errors: () => [] },
+      { fullName: "outer > inner", errors: () => [hook] },
+    ],
+  },
+});
+
+describe("errors of a nested suite", () => {
+  it("are collected from every descendant suite", () => {
+    const report = reportOf(
+      [moduleWithHook({ name: "Error", message: "Hook timed out in 10000ms." })],
+      [],
+    );
+    expect(report.suites).toEqual([
+      {
+        suite: "test/x.test.ts: outer > inner",
+        errors: [expect.objectContaining({ name: "Error", message: "Hook timed out in 10000ms." })],
+      },
+    ]);
+  });
+
+  it("make a nested afterAll timeout a detection by timeout, never a survivor", () => {
+    const report = reportOf(
+      [moduleWithHook({ name: "Error", message: "Hook timed out in 10000ms." })],
+      [],
+    );
+    expect(classify(1, report)).toEqual({
+      kind: "timedOut",
+      test: "test/x.test.ts: outer > inner",
+    });
+  });
+
+  it("make any other hook error, with no assertion, a run error", () => {
+    const report = reportOf([moduleWithHook({ name: "TypeError", message: "cannot close" })], []);
     expect(classify(1, report)).toMatchObject({
       kind: "error",
-      reason: expect.stringContaining("unhandled Error"),
+      reason: expect.stringContaining("outer > inner"),
     });
   });
 });
@@ -242,7 +336,10 @@ describe("a run's report file", () => {
   it("is deleted before the run, so a run that writes none never reads a stale one", () => {
     const dir = mkdtempSync(join(tmpdir(), "mutation-"));
     const stale = join(dir, `${logName("a mutant")}.json`);
-    writeFileSync(stale, JSON.stringify({ passed: true, modules: [], failed: [], unhandled: [] }));
+    writeFileSync(
+      stale,
+      JSON.stringify({ passed: true, modules: [], failed: [], suites: [], unhandled: [] }),
+    );
     expect(runTests(dir, ["stats"], "a mutant", crashed, dir)).toMatchObject({
       kind: "error",
       reason: expect.stringContaining("no test report"),

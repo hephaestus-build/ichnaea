@@ -20,7 +20,12 @@ import type { MutationError, MutationReport } from "./mutation-reporter.ts";
 /** One test run under a mutant. */
 export type Outcome =
   | { readonly kind: "survived" }
-  | { readonly kind: "killed"; readonly by: readonly string[] }
+  | {
+      readonly kind: "killed";
+      readonly by: readonly string[];
+      /** Failures under the same mutant that were not assertions, kept visible in the report. */
+      readonly alsoCrashed?: readonly string[];
+    }
   /** Detected by a test that timed out under the mutant, as Stryker counts it. */
   | { readonly kind: "timedOut"; readonly test: string }
   | { readonly kind: "error"; readonly reason: string };
@@ -61,10 +66,15 @@ export function isAssertion(error: MutationError): boolean {
   return false;
 }
 
+/** An error in one line, for a list of crashes. */
+const short = (e: MutationError): string => `${e.name}: ${e.message.split("\n")[0]?.slice(0, 200)}`;
+
 /** The outcome of a run from its exit code and its report (undefined when there is none). */
 export function classify(exitCode: number | null, report: MutationReport | undefined): Outcome {
   if (report === undefined) return { kind: "error", reason: `no test report (exit ${exitCode})` };
-  if (exitCode === 0 && report.passed && report.failed.length === 0) return { kind: "survived" };
+  const suites = report.suites;
+  if (exitCode === 0 && report.passed && report.failed.length === 0 && suites.length === 0)
+    return { kind: "survived" };
   if (exitCode === 0 || report.passed)
     return { kind: "error", reason: `exit ${exitCode} disagrees with the report` };
   const loading = report.modules[0];
@@ -73,35 +83,37 @@ export function classify(exitCode: number | null, report: MutationReport | undef
       kind: "error",
       reason: `${loading.module} did not run: ${loading.errors[0]?.name}: ${loading.errors[0]?.message.slice(0, 300)}`,
     };
-  // A type error from the typecheck pass is not a crash of the tests: it counts only when no
-  // assertion failed, and then as an error, because the mutant does not type-check.
-  const typeErrors = report.unhandled.filter((e) => e.name === "TypeCheckError");
-  const unhandled = report.unhandled.find((e) => e.name !== "TypeCheckError");
-  if (unhandled !== undefined)
-    return {
-      kind: "error",
-      reason: `unhandled ${unhandled.name}: ${unhandled.message.slice(0, 300)}`,
-    };
-  if (report.failed.length === 0)
-    return {
-      kind: "error",
-      reason:
-        typeErrors[0] === undefined
-          ? "the run failed, but no test failed"
-          : `the mutant does not type-check: ${typeErrors[0].message.slice(0, 300)}`,
-    };
-  const timedOut = report.failed.find((f) => f.errors.some((e) => TIMEOUT.test(e.message)));
-  if (timedOut !== undefined) return { kind: "timedOut", test: timedOut.test };
+  // Every failure that is not an assertion: a test that threw something else, a suite's hook, an
+  // unhandled error. A type error from the typecheck pass is not a crash of the tests.
+  const crashes = [
+    ...report.failed.flatMap((f) =>
+      f.errors.filter((e) => !isAssertion(e)).map((e) => `${f.test}: ${short(e)}`),
+    ),
+    ...suites.flatMap((s) => s.errors.map((e) => `${s.suite}: ${short(e)}`)),
+    ...report.unhandled
+      .filter((e) => e.name !== "TypeCheckError")
+      .map((e) => `unhandled ${short(e)}`),
+  ];
+  // An assertion detected the mutant: that is a kill, whatever else crashed, as Stryker counts it.
   const by = report.failed.filter((f) => f.errors.some(isAssertion)).map((f) => f.test);
-  if (by.length === 0) {
-    const first = report.failed[0]!;
-    const e = first.errors[0];
-    return {
-      kind: "error",
-      reason: `tests failed without an assertion: ${first.test}: ${e?.name}: ${e?.message.slice(0, 300)}`,
-    };
-  }
-  return { kind: "killed", by };
+  if (by.length > 0)
+    return crashes.length === 0
+      ? { kind: "killed", by }
+      : { kind: "killed", by, alsoCrashed: crashes };
+  const timedOut =
+    report.failed.find((f) => f.errors.some((e) => TIMEOUT.test(e.message)))?.test ??
+    suites.find((s) => s.errors.some((e) => TIMEOUT.test(e.message)))?.suite;
+  if (timedOut !== undefined) return { kind: "timedOut", test: timedOut };
+  if (crashes.length > 0)
+    return { kind: "error", reason: `no assertion failed; it crashed: ${crashes[0]}` };
+  const typeError = report.unhandled.find((e) => e.name === "TypeCheckError");
+  return {
+    kind: "error",
+    reason:
+      typeError === undefined
+        ? "the run failed, but no test failed"
+        : `the mutant does not type-check: ${typeError.message.slice(0, 300)}`,
+  };
 }
 
 /** The directory that keeps each run's output, so that an error can be read afterwards. */
@@ -197,7 +209,9 @@ const describe = (o: Outcome): string =>
   o.kind === "error"
     ? `ERROR: ${o.reason}`
     : o.kind === "killed"
-      ? "killed"
+      ? o.alsoCrashed === undefined
+        ? "killed"
+        : `killed (also crashed: ${o.alsoCrashed.join("; ")})`
       : o.kind === "timedOut"
         ? `detected (timeout): ${o.test}`
         : "SURVIVED";
