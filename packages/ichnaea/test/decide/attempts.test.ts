@@ -190,6 +190,23 @@ describe("a trial's attempts", () => {
     );
   });
 
+  it("fail closed: a plan that runs arms but states no bound per trial is INVALID", async () => {
+    // Only a plan from before the bounds lacks callsPerTrial, and it has no runs either. A plan
+    // that marks arms as run but has no bound would otherwise skip every call check.
+    const s = await scenario({ ...options, usage: () => ({ calls: 50 }) });
+    const { callsPerTrial: _, ...budget } = s.plan.budget;
+    const plan = { ...s.plan, budget };
+    const d = await run({
+      ...s,
+      plan,
+      run: { ...s.run, plan: digest(plan) as Scenario["run"]["plan"] },
+    });
+    expect(d.verdict).toBe("INVALID");
+    expect(d.invalidReasons).toContain(
+      "the plan marks arm(s) base, candidate as run by Ichnaea but states no bound of calls per trial",
+    );
+  });
+
   it("leave a consistent mixed plan and a stored plan without a bound to decide", async () => {
     const m = await mixed(1);
     expect(m.plan.budget.worstCaseCalls).toBe(80);

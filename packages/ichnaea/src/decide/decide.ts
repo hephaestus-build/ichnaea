@@ -680,7 +680,8 @@ function importedCallsLimitation(input: DecideInput): string[] {
  *
  * A plan with `callsPerTrial` must book exactly its worst case: the trials of the arms with `runs`
  * times the bound. Without that, an arm that lost its `runs` would check no call and say nothing,
- * so the bounds fail closed.
+ * so the bounds fail closed. For the same reason, a plan that marks an arm as run must state
+ * `callsPerTrial`.
  */
 function attemptChecks(input: DecideInput): string[] {
   const invalid: string[] = [];
@@ -692,7 +693,15 @@ function attemptChecks(input: DecideInput): string[] {
       );
   }
   const sorted = callsByRunner(input);
-  if (sorted === undefined) return invalid;
+  if (sorted === undefined) {
+    // Only a plan from before the bounds lacks callsPerTrial, and it marks no arm as run.
+    const runs = input.plan.arms.filter((a) => a.runs === true).map((a) => a.name);
+    if (runs.length > 0)
+      invalid.push(
+        `the plan marks arm(s) ${runs.join(", ")} as run by Ichnaea but states no bound of calls per trial`,
+      );
+    return invalid;
+  }
   const { bound, ran } = sorted;
   const { worstCaseCalls } = input.plan.budget;
   const runs = new Set(input.plan.arms.filter((a) => a.runs === true).map((a) => a.name));
