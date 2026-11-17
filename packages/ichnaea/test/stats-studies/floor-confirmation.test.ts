@@ -1,6 +1,6 @@
 // The tooling of the margin-floor confirmation: the structure generator, the simulation runner,
-// and the skip log of the sweep (VALIDATION.md, "The bar"). test/stats/provenance.test.ts and
-// check-provenance.test.ts cover the provenance.
+// and the skip log of the sweep (VALIDATION.md, "The bar"). provenance.test.ts and
+// check-provenance.test.ts, beside this file, cover the provenance.
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -27,8 +27,8 @@ import {
   skipRecord,
   type Structure,
 } from "../../scripts/stats/study-heterogeneous.ts";
-import { exactGroupCoverage, type Group, truthOfGroups } from "./support/exact.ts";
-import { CONFIRM_SEED_OFFSET, estimate } from "./support/simulate.ts";
+import { exactGroupCoverage, type Group, truthOfGroups } from "../stats/support/exact.ts";
+import { CONFIRM_SEED_OFFSET, estimate } from "../stats/support/simulate.ts";
 
 const dir = mkdtempSync(path.join(tmpdir(), "floor-confirmation-"));
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
@@ -95,6 +95,8 @@ const oneTrialCells = (groups: readonly Group[]): number =>
 
 // The runner tests screen at 6,000 repetitions; a loaded machine needs more than the default 5 s.
 describe("the simulation runner", { timeout: 60_000 }, () => {
+  // A simulation of 4,000 repetitions per structure against exact enumeration: heavier than the default timeout
+  // assumes on a loaded runner.
   it("estimates the coverage that exact enumeration gives", () => {
     for (const [i, [s, margin]] of SMALL.entries()) {
       const groups = structure(s, margin);
@@ -103,7 +105,7 @@ describe("the simulation runner", { timeout: 60_000 }, () => {
       const simulated = estimate(coverageRun(groups), 4242 + i, reps);
       expect(Math.abs(simulated - exact)).toBeLessThan(3 * Math.sqrt((exact * (1 - exact)) / reps));
     }
-  });
+  }, 20_000);
 
   it("gives a structure the seed of its index, and confirmations seeds no screen uses", () => {
     expect([0, 1, 99_999, 100_000, 250_000].map((i) => seedOf(20_000_000, i))).toEqual([
@@ -124,6 +126,8 @@ describe("the simulation runner", { timeout: 60_000 }, () => {
     expect(() => parseStructure('{"id":"a\\tb"}')).toThrow(TypeError);
   });
 
+  // Runs the confirmation shard three times over three structures: heavier than the default timeout
+  // assumes on a loaded runner.
   it("resumes: skips finished ids, reruns a cut-off row, and keeps every seed", () => {
     const input = path.join(dir, "clear.jsonl");
     writeFileSync(input, CLEAR.map(([s, m], i) => line(`s${i}`, m, s)).join("\n"));
@@ -144,7 +148,7 @@ describe("the simulation runner", { timeout: 60_000 }, () => {
     expect(runShard(all, shard, partial)).toBe(2);
     expect(readFileSync(partial, "utf8")).toBe(readFileSync(full, "utf8"));
     expect(runShard(all, shard, partial)).toBe(0);
-  });
+  }, 20_000);
 
   it("shards by index and leaves structures below --min-k out", () => {
     const input = path.join(dir, "shard.jsonl");

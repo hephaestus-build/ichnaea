@@ -44,6 +44,13 @@ export function sizeDraw(
   sizes: readonly number[],
   { studies = 1000, resamples = 1000, seed = 10_000_000 } = {},
 ): SizeResult[] {
+  for (const [name, value] of [
+    ["studies", studies],
+    ["resamples", resamples],
+  ] as const) {
+    if (!Number.isSafeInteger(value) || value < 1)
+      throw new RangeError(`${name} must be a positive integer, got ${value}`);
+  }
   const rule = calibrationRule({ agreementTolerance: 0.15, rateTolerance: 0.1, resamples });
   return sizes.map((size, index) => {
     const cell = (judgeAccuracy: number, who: string): Cell => ({
@@ -140,6 +147,6 @@ if (import.meta.main) {
       ].join("\t"),
     );
   }
-  const smallest = results.find((r) => r.meets);
-  console.log(`smallest\t${smallest ? smallest.size : "none"}`);
+  const meeting = results.filter((r) => r.meets).map((r) => r.size);
+  console.log(`smallest\t${meeting.length > 0 ? Math.min(...meeting) : "none"}`);
 }

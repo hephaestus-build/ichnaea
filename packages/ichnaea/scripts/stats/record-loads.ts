@@ -7,7 +7,7 @@
 // module preloaded by an earlier --import, for example through NODE_OPTIONS. provenance.ts imports
 // the recorder too (loadRecord, pinLoads), but this preload has loaded it already, so the hooks
 // never see it load: a study's sidecar pins neither this file nor src/core/load-record.ts
-// (test/stats/provenance.test.ts asserts it). Neither can change an output: they only record loads.
+// (test/stats-studies/provenance.test.ts asserts it). Neither can change an output: they only record loads.
 import { recordLoads } from "../../src/core/load-record.ts";
 
 recordLoads();
