@@ -179,3 +179,25 @@ describe("a level measure", () => {
     ]);
   });
 });
+
+describe("what computes a measure", () => {
+  it("is named by every measure of the valid fixture: a scorer or a stage status", () => {
+    expect(problems(suite()).filter((p) => p.code === "MEASURE_NOT_COMPUTED")).toEqual([]);
+  });
+
+  it.each([
+    ["neither a scorer nor a stage", { type: "binary" }],
+    ["a stage without a status", { type: "binary", stage: "search" }],
+  ])("refuses a measure with %s", (_, measure) => {
+    const s = suite();
+    (s["measures"] as Rec)["orphan"] = measure;
+    expect(problems(s)).toEqual([
+      {
+        code: "MEASURE_NOT_COMPUTED",
+        path: "/measures/orphan",
+        message:
+          "measure 'orphan' names neither a scorer nor a stage status, so nothing computes its values",
+      },
+    ]);
+  });
+});

@@ -373,7 +373,9 @@ export interface MeasurementPins {
  * (`MEASUREMENT_RULE`), with the lock's pins: each source, each instrument's pin and each measure's
  * identity. A change to a measure's code changes its implementation digest and so this digest,
  * which keys the noise setup. Throws when the identities do not name exactly the suite's measures,
- * or when an identity's definition is not the digest of the suite's definition of that measure.
+ * or the pins exactly its instruments; when an identity's definition is not the digest of the
+ * suite's definition of that measure; or when a measure that reads an instrument's dimension has
+ * another implementation than the digest of that instrument's pin.
  */
 export function measurementDigest(suite: unknown, pins: MeasurementPins): Digest {
   const parsed = SuiteV2.parse(suite);
@@ -384,12 +386,27 @@ export function measurementDigest(suite: unknown, pins: MeasurementPins): Digest
     throw new IdentityError(
       `the identities name the measures ${identified.join(", ")}, the suite ${named.join(", ")}`,
     );
-  for (const [id, definition] of Object.entries(parsed.measures))
+  const instruments = z.record(z.string(), InstrumentPin).parse(pins.instruments);
+  const declared = Object.keys(parsed.instruments ?? {}).toSorted(compare);
+  const pinned = Object.keys(instruments).toSorted(compare);
+  if (declared.join("\0") !== pinned.join("\0"))
+    throw new IdentityError(
+      `the pins name the instruments ${pinned.join(", ")}, the suite ${declared.join(", ")}`,
+    );
+  for (const [id, definition] of Object.entries(parsed.measures)) {
     if (measures[id]?.definition !== measureDefinitionDigest(definition))
       throw new IdentityError(`the identity of measure '${id}' has another definition digest`);
+    const { scorer } = definition;
+    if (scorer === undefined || !("dimension" in scorer)) continue;
+    const pin = instruments[scorer.instrument];
+    if (pin === undefined || measures[id]?.implementation !== instrumentImplementation(pin))
+      throw new IdentityError(
+        `the implementation of measure '${id}' is not the pin of instrument '${scorer.instrument}'`,
+      );
+  }
   return digest({
     suite: { ...pick(parsed, MEASUREMENT_RULE.members), measures },
     sources: z.array(LockedSource).parse(pins.sources),
-    instruments: z.record(z.string(), InstrumentPin).parse(pins.instruments),
+    instruments,
   });
 }

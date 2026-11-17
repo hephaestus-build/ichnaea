@@ -13,7 +13,7 @@ export const MeasureIdentity = z.strictObject({
   definition: none(Digest.describe("The digest of the measure's definition in the suite.")),
   implementation: none(
     Digest.describe(
-      "The digest of the code that computes the values: an instrument's pin, the modules that a module measure loads, or Ichnaea's build for a built-in scorer and a stage status.",
+      "The digest of the code that computes the values: an instrument's pin; for a module measure, the modules that its module loads with the pin of its instrument; or Ichnaea's build for a built-in scorer and a stage status.",
     ),
   ),
 });
@@ -21,12 +21,16 @@ export const MeasureIdentity = z.strictObject({
 export type MeasureIdentity = z.infer<typeof MeasureIdentity>;
 
 /**
- * The key of a stored score: the trial result that was scored and the identity of the measure that
- * scored it. A score is reused only under an equal key, so a change to a measure's definition or
- * to its code scores the stored result again.
+ * The key of a stored score: the trial result that was scored, the case it was scored against and
+ * the identity of the measure that scored it. A score is reused only under an equal key, so a
+ * change to a measure's definition or code, or a corrected reference of the case, scores the
+ * stored result again.
  */
 export const ScoreKey = z.strictObject({
   result: none(Digest.describe("The digest of the stored trial result that was scored.")),
+  case: none(
+    Digest.describe("The digest of the case that it was scored against, its references included."),
+  ),
   measure: MeasureIdentity.describe("The identity of the measure that scored it."),
 });
 /** The key of a stored score. */

@@ -32,14 +32,28 @@ const suite = (): Rec => structuredClone(fixture("suite.2"));
 const lock = (): SuiteLock => SuiteLock.parse(fixture("suite.lock"));
 const d = (n: string): Digest => `sha256:${n.padStart(64, "0")}` as Digest;
 
-/** One identity for every measure of the fixture suite. */
+/**
+ * One identity for every measure of the fixture suite. A measure that reads an instrument's
+ * dimension takes the digest of that instrument's pin; any other takes `implementation(id)`.
+ */
 function identities(s: Rec, implementation: (id: string) => Digest = () => d("1")) {
-  const measures = s["measures"] as Rec;
+  const measures = s["measures"] as Record<string, Rec>;
+  const instruments = lock().instruments;
   return Object.fromEntries(
-    Object.entries(measures).map(([id, m]): [string, MeasureIdentity] => [
-      id,
-      { definition: measureDefinitionDigest(m), implementation: implementation(id) },
-    ]),
+    Object.entries(measures).map(([id, m]): [string, MeasureIdentity] => {
+      const scorer = m["scorer"] as Rec | undefined;
+      const pin =
+        scorer !== undefined && "dimension" in scorer
+          ? instruments[scorer["instrument"] as string]
+          : undefined;
+      return [
+        id,
+        {
+          definition: measureDefinitionDigest(m),
+          implementation: pin === undefined ? implementation(id) : instrumentImplementation(pin),
+        },
+      ];
+    }),
   );
 }
 
@@ -106,6 +120,25 @@ describe("the measurement digest", () => {
     expect(() =>
       measurementDigest(s, { ...p, measures: { ...p.measures, extra: p.measures["searched"]! } }),
     ).toThrow(IdentityError);
+  });
+
+  it("refuses pins that do not name exactly the suite's instruments", () => {
+    const s = suite();
+    const p = pins(s);
+    const { "ts-scorers": _, ...fewer } = p.instruments;
+    expect(() => measurementDigest(s, { ...p, instruments: fewer })).toThrow(IdentityError);
+    const more = { ...p.instruments, extra: { files: d("5") } };
+    expect(() => measurementDigest(s, { ...p, instruments: more })).toThrow(IdentityError);
+  });
+
+  it("refuses an instrument measure whose implementation is not its instrument's pin", () => {
+    const s = suite();
+    const p = pins(s);
+    const measures = {
+      ...p.measures,
+      correct: { ...p.measures["correct"]!, implementation: d("6") },
+    };
+    expect(() => measurementDigest(s, { ...p, measures })).toThrow(IdentityError);
   });
 
   it("refuses an identity whose definition is not the suite's", () => {
@@ -226,11 +259,22 @@ describe("the lock", () => {
 });
 
 describe("the key of a stored score", () => {
-  it("is the scored result's digest and both parts of the measure's identity", () => {
-    const key = { result: d("a"), measure: { definition: d("b"), implementation: d("c") } };
+  it("is the scored result, the case and both parts of the measure's identity", () => {
+    const key = {
+      result: d("a"),
+      case: d("d"),
+      measure: { definition: d("b"), implementation: d("c") },
+    };
     expect(ScoreKey.parse(key)).toEqual(key);
-    expect(ScoreKey.safeParse({ result: d("a"), measure: { definition: d("b") } }).success).toBe(
-      false,
-    );
+    expect(ScoreKey.safeParse({ ...key, measure: { definition: d("b") } }).success).toBe(false);
+  });
+
+  it("holds the case, so a corrected reference with the same result scores again", () => {
+    const { case: _, ...withoutCase } = {
+      result: d("a"),
+      case: d("d"),
+      measure: { definition: d("b"), implementation: d("c") },
+    };
+    expect(ScoreKey.safeParse(withoutCase).success).toBe(false);
   });
 });

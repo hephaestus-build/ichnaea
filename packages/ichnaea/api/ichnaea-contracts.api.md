@@ -3971,6 +3971,7 @@ export type ScoreFailure = z.infer<typeof ScoreFailure>;
 // @public
 export const ScoreKey: z.ZodObject<{
     result: z.ZodString;
+    case: z.ZodString;
     measure: z.ZodObject<{
         definition: z.ZodString;
         implementation: z.ZodString;
@@ -4442,7 +4443,7 @@ export const Suite: z.ZodObject<{
 export type Suite = z.infer<typeof Suite>;
 
 // @public
-export const SUITE_PROBLEM_CODES: readonly ["FIDELITY_MARGIN_MISSING", "FIDELITY_MARGIN_UNKNOWN", "LEVELS_NOT_ASCENDING", "LEVEL_CUT_NOT_A_LEVEL", "LEVEL_CUT_AT_LOWEST", "LEVEL_ANCHOR_NOT_A_LEVEL"];
+export const SUITE_PROBLEM_CODES: readonly ["FIDELITY_MARGIN_MISSING", "FIDELITY_MARGIN_UNKNOWN", "LEVELS_NOT_ASCENDING", "LEVEL_CUT_NOT_A_LEVEL", "LEVEL_CUT_AT_LOWEST", "LEVEL_ANCHOR_NOT_A_LEVEL", "MEASURE_NOT_COMPUTED"];
 
 // @public
 export const SuiteAbout: z.ZodObject<{

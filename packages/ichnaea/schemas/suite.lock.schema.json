@@ -605,7 +605,7 @@
           "implementation": {
             "type": "string",
             "pattern": "^sha256:[0-9a-f]{64}$",
-            "description": "The digest of the code that computes the values: an instrument's pin, the modules that a module measure loads, or Ichnaea's build for a built-in scorer and a stage status.",
+            "description": "The digest of the code that computes the values: an instrument's pin; for a module measure, the modules that its module loads with the pin of its instrument; or Ichnaea's build for a built-in scorer and a stage status.",
             "x-ichnaea-data": {
               "class": "none",
               "identifier": "none",
