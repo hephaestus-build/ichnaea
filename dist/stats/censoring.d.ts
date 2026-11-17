@@ -57,8 +57,10 @@ export interface CaseDurations {
 /**
  * The mean over cases of the paired difference in mean min(t, L), candidate minus base, with the
  * censored trials counted per arm. It is unweighted: every case counts equally, and every trial
- * within a case equally, so `Duration.weight` is not used. It is restricted: it says nothing about times beyond L. A case
- * without a trial in both arms is left out. Descriptive only.
+ * within a case equally, so `Duration.weight` is not used. It is restricted: it says nothing about
+ * times beyond L. The plain mean of min(t, L) is exact only when every censored trial is censored at
+ * L, so a censored trial below L, such as an infrastructure timeout, is refused. A case without a
+ * trial in both arms is left out. Descriptive only.
  */
 export declare function restrictedDifference(cases: readonly CaseDurations[], limit: number): {
     readonly estimate: number;

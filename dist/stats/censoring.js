@@ -85,8 +85,10 @@ export function restrictedMean(sample, limit) {
 /**
  * The mean over cases of the paired difference in mean min(t, L), candidate minus base, with the
  * censored trials counted per arm. It is unweighted: every case counts equally, and every trial
- * within a case equally, so `Duration.weight` is not used. It is restricted: it says nothing about times beyond L. A case
- * without a trial in both arms is left out. Descriptive only.
+ * within a case equally, so `Duration.weight` is not used. It is restricted: it says nothing about
+ * times beyond L. The plain mean of min(t, L) is exact only when every censored trial is censored at
+ * L, so a censored trial below L, such as an infrastructure timeout, is refused. A case without a
+ * trial in both arms is left out. Descriptive only.
  */
 export function restrictedDifference(cases, limit) {
     if (!(Number.isFinite(limit) && limit > 0))
@@ -95,6 +97,9 @@ export function restrictedDifference(cases, limit) {
     const differences = [];
     const mean = (trials) => {
         check(trials);
+        for (const d of trials)
+            if (d.censored && d.time < limit)
+                throw new RangeError(`a trial censored at ${d.time} < L = ${limit} has no known min(t, L)`);
         return trials.reduce((a, d) => a + Math.min(d.time, limit), 0) / trials.length;
     };
     for (const c of cases) {

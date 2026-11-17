@@ -1,0 +1,75 @@
+import { critical } from "./normal.js";
+import { scoreDifferenceInterval } from "./score-difference.js";
+const sum = (v) => v.reduce((a, b) => a + b, 0);
+/**
+ * The within-cell sum of squares Σd² − (Σd)²/r of the deviations d = y − y₀ from the cell's first
+ * value. A mean computed first can differ from every value of a constant cell by rounding
+ * ([0.1, 0.1, 0.1] sums to 0.30000000000000004), which gives that cell a variance it does not have;
+ * shifted, a constant cell's deviations are exactly 0.
+ */
+function squares(v) {
+    const d = v.map((y) => y - v[0]);
+    return Math.max(0, d.reduce((a, x) => a + x * x, 0) - sum(d) ** 2 / v.length);
+}
+/** The cell mean's variance s²/r, with s² the cell's own unbiased within-cell variance. */
+const cellVariance = (v) => squares(v) / (v.length - 1) / v.length;
+/**
+ * The replay fidelity check of attribution: TOST at 5% on each side, as the two-sided 90% interval
+ * of the mean per-case difference, replayed minus recorded, with every case weighted equally.
+ * Fidelity is shown when the interval lies inside (−margin, margin). Binary measures take the
+ * stratified score interval. Scores take the within-case bootstrap variance corrected by
+ * r/(r − 1), in closed form with no resampling noise: the bootstrap's limit s²(r − 1)/r² times
+ * r/(r − 1) is s²/r, with s² each cell's own unbiased within-cell variance. A pooled s² would need
+ * equal variances across cells, which score cells do not have: it is too small when the noisy cells
+ * have fewer trials, which is where missing trials collect. A score case with one trial in either
+ * run gives that cell no variance, so the check is refused. Coverage
+ * is not validated. The replayed run is later than the recording, so drift is part of what the
+ * check measures.
+ */
+export function fidelityCheck(input) {
+    const { valueType, cases, margin } = input;
+    if (!(margin > 0 && margin < 1))
+        throw new RangeError(`the margin must be in (0, 1), got ${margin}`);
+    if (cases.length === 0)
+        throw new RangeError("a fidelity check needs at least one case");
+    for (const c of cases) {
+        if (c.replayed.length === 0 || c.recorded.length === 0)
+            throw new RangeError("every case needs a trial in both the replayed and the recorded run");
+        for (const v of [...c.replayed, ...c.recorded]) {
+            const ok = valueType === "binary" ? v === 0 || v === 1 : Number.isFinite(v) && v >= 0 && v <= 1;
+            if (!ok)
+                throw new RangeError(`${v} is not a ${valueType} value`);
+        }
+    }
+    let interval;
+    if (valueType === "binary") {
+        const strata = cases.map((c) => ({
+            candidate: { successes: sum(c.replayed), trials: c.replayed.length },
+            base: { successes: sum(c.recorded), trials: c.recorded.length },
+        }));
+        interval = scoreDifferenceInterval(strata, 0.9, "two", { weights: "equal" });
+    }
+    else {
+        if (cases.some((c) => c.replayed.length < 2 || c.recorded.length < 2))
+            return { interval: null, shown: false, reason: "NOT_CHECKABLE_AT_ONE_TRIAL" };
+        const k = cases.length;
+        const estimate = cases.reduce((a, c) => a + sum(c.replayed) / c.replayed.length - sum(c.recorded) / c.recorded.length, 0) / k;
+        const variance = cases.reduce((a, c) => a + cellVariance(c.replayed) + cellVariance(c.recorded), 0) / (k * k);
+        const half = critical(0.9, "two") * Math.sqrt(variance);
+        interval = {
+            estimate,
+            lower: estimate - half,
+            upper: estimate + half,
+            level: 0.9,
+            sided: "two",
+            method: "within-case-variance",
+        };
+    }
+    if (interval.lower === interval.upper)
+        return { interval: null, shown: false, reason: "ZERO_WIDTH" };
+    return {
+        interval: { ...interval, coverage: "not-validated" },
+        shown: interval.lower > -margin && interval.upper < margin,
+    };
+}
+//# sourceMappingURL=fidelity.js.map
