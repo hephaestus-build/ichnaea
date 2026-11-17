@@ -1,6 +1,7 @@
 import { critical } from "./normal.ts";
 import { lowerRoot } from "./solve.ts";
 import { assertLevel, type Interval, type Sided } from "./types.ts";
+import { weightedMean } from "./weighted-mean.ts";
 
 /** One case's values in one arm: their sum, their count and the case's weight in the mean. */
 export interface ScoreCell {
@@ -85,7 +86,10 @@ export function oneArmScoreInterval(
   }
   if (Math.abs(total - 1) > 1e-9)
     throw new RangeError(`oneArmScoreInterval: weights sum to ${total}, not 1`);
-  const estimate = cells.reduce((a, c) => a + (c.weight * c.sum) / c.trials, 0);
+  const estimate = weightedMean(
+    cells.map((c) => c.sum / c.trials),
+    cells.map((c) => c.weight),
+  );
   const target = critical(level, sided);
   const flipped = cells.map((c) => ({ ...c, sum: c.trials - c.sum }));
   return {

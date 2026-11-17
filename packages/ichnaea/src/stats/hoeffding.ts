@@ -29,12 +29,14 @@ export function hoeffding(
     squares += weight * weight;
   });
   if (Math.abs(total - 1) > 1e-9) throw new RangeError(`hoeffding: weights sum to ${total}, not 1`);
+  // Divided by the same weights' sum, the mean stays inside [0, 1] in floating point.
+  const mean = point / total;
   const alpha = 1 - level;
   const half = Math.sqrt((Math.log((sided === "two" ? 2 : 1) / alpha) * squares) / 2);
   return {
-    estimate: point,
-    lower: sided === "upper" ? 0 : Math.max(0, point - half),
-    upper: sided === "lower" ? 1 : Math.min(1, point + half),
+    estimate: mean,
+    lower: sided === "upper" ? 0 : Math.max(0, mean - half),
+    upper: sided === "lower" ? 1 : Math.min(1, mean + half),
     level,
     sided,
     method: "hoeffding",

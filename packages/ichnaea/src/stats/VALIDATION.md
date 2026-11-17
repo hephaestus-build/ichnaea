@@ -517,8 +517,8 @@ docker run --rm -v "$PWD":/w -w /w \
   && python scripts/stats/estimate_oracle.py test/stats/reference-python-estimate.json"
 ```
 
-**Mutants.** `scripts/stats/mutants.ts` changes these methods in 22 ways (those named `estimate:`):
-the tail split, the beta shape and the closed form of Clopper–Pearson; the logarithm and the half of
+**Mutants.** `scripts/stats/mutants.ts` changes these methods in 23 ways (those named `estimate:`):
+the denominator of the weighted mean, which keeps a mean of ones at exactly 1; the tail split, the beta shape and the closed form of Clopper–Pearson; the logarithm and the half of
 Hoeffding's bound; the squared weight and the reflection of the score interval; the two choices of
 path, the Wilson n, the worst case, the operational interval and the cluster minimum of `estimate`; the
 ties and the sign of the acceleration of BCa; pass^k, pass@k and the majority's tie; the events and

@@ -259,8 +259,8 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "exact test counts ties out",
     file: "src/stats/exact-conditional.ts",
-    from: 'alternative === "less" ? t <= observed : t >= observed',
-    to: 'alternative === "less" ? t < observed : t > observed',
+    from: 'alternative === "less" ? candidateTotal <= observed : candidateTotal >= observed',
+    to: 'alternative === "less" ? candidateTotal < observed : candidateTotal > observed',
   },
   // Mutants that survived a review, and the missing-trial rules (decision 0009).
   {
@@ -835,6 +835,18 @@ export const MUTANTS: readonly Mutant[] = [
     file: "src/stats/score-permutation-core.ts",
     from: "const SEED_MODULUS = 4_294_967_295;",
     to: "const SEED_MODULUS = 4_294_967_296;",
+  },
+  {
+    id: "estimate: weighted mean without its denominator",
+    file: "src/stats/weighted-mean.ts",
+    from: "  return numerator / denominator;",
+    to: "  return numerator;",
+  },
+  {
+    id: "exact test ignores the fixed strata's offset",
+    file: "src/stats/exact-conditional.ts",
+    from: "    const candidateTotal = t + offset;",
+    to: "    const candidateTotal = t;",
   },
 ];
 

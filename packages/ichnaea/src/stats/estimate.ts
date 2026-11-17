@@ -5,6 +5,7 @@ import { oneArmScoreInterval } from "./one-arm-score.ts";
 import type { Rng } from "./rng.ts";
 import { assertLevel, type Interval, type Sided, type Weighting } from "./types.ts";
 import { wilsonMean } from "./wilson.ts";
+import { weightedMean } from "./weighted-mean.ts";
 
 /** What an estimate is about: the cases that ran, or a population they were drawn from. */
 export type EstimateEstimand = "these-cases" | "population";
@@ -216,16 +217,22 @@ export function estimate(input: EstimateInput): EstimateResult {
   if (planned.length === 0) throw new RangeError("an estimate needs at least one planned trial");
   const plannedWeights = weightsOf(planned, weighting);
   const worstCase = {
-    low: planned.reduce((a, c, i) => a + (plannedWeights[i]! * c.sum) / c.planned, 0),
-    high: planned.reduce(
-      (a, c, i) => a + (plannedWeights[i]! * (c.sum + c.planned - c.trials)) / c.planned,
-      0,
+    low: weightedMean(
+      planned.map((c) => c.sum / c.planned),
+      plannedWeights,
+    ),
+    high: weightedMean(
+      planned.map((c) => (c.sum + c.planned - c.trials) / c.planned),
+      plannedWeights,
     ),
   };
   const operational = operationalOf(input, planned, plannedWeights, level, sided);
   const observed = all.filter((c) => c.trials > 0);
   const weights = weightsOf(observed, weighting);
-  const point = observed.reduce((a, c, i) => a + (weights[i]! * c.sum) / c.trials, 0);
+  const point = weightedMean(
+    observed.map((c) => c.sum / c.trials),
+    weights,
+  );
   const base = {
     valueType: input.valueType,
     estimand,

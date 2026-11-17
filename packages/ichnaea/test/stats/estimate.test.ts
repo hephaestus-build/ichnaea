@@ -336,3 +336,28 @@ describe("estimate: the population study", () => {
     ).toThrow(RangeError);
   });
 });
+
+describe("estimate: means of extreme values", () => {
+  it("gives exactly 1 for perfect scores, where a sum of nine ninths rounds above 1", () => {
+    const cases = Array.from({ length: 9 }, (_, i) => ({ id: `c${i}`, values: [1], planned: 1 }));
+    for (const valueType of ["score", "binary"] as const) {
+      // A mean above 1 makes the Wilson interval refuse it: asserted not to happen.
+      expect(() => estimate({ valueType, cases })).not.toThrow();
+      const result = estimate({ valueType, cases });
+      expect(result.estimate).toBe(1);
+      expect(result.worstCase).toEqual({ low: 1, high: 1 });
+      expect(result.interval?.upper).toBe(1);
+    }
+  });
+
+  it("gives exactly 0 for all-zero scores", () => {
+    const cases = Array.from({ length: 9 }, (_, i) => ({
+      id: `c${i}`,
+      values: [0, 0],
+      planned: 2,
+    }));
+    const result = estimate({ valueType: "score", cases });
+    expect(result.estimate).toBe(0);
+    expect(result.worstCase).toEqual({ low: 0, high: 0 });
+  });
+});

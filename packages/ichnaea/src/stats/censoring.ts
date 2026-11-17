@@ -7,7 +7,11 @@ export interface Duration {
    * timeout as censored.
    */
   readonly censored: boolean;
-  /** The trial's weight, by default 1: 1/r per trial counts each case once. */
+  /**
+   * The trial's weight, by default 1: 1/r per trial counts each case once. The product-limit curve,
+   * its quantiles and the restricted mean use it; `restrictedDifference` does not, because it
+   * weights every case equally and every trial within a case equally.
+   */
   readonly weight?: number;
 }
 
@@ -79,7 +83,12 @@ export function survivalQuantile(
   if (!(q > 0 && q < 1)) throw new RangeError(`a quantile must be in (0, 1), got ${q}`);
   const steps = kaplanMeier(sample);
   const index = steps.findIndex((s) => s.survival <= 1 - q + PLATEAU);
-  if (index === -1) return { atLeast: Math.max(...sample.map((d) => d.time)) };
+  if (index === -1) {
+    // A loop, not Math.max(...times): spreading a large sample overflows the call stack.
+    let latest = 0;
+    for (const d of sample) if (d.time > latest) latest = d.time;
+    return { atLeast: latest };
+  }
   const step = steps[index]!;
   if (Math.abs(step.survival - (1 - q)) > PLATEAU) return { value: step.time };
   const next = steps[index + 1];
@@ -113,7 +122,8 @@ export interface CaseDurations {
 
 /**
  * The mean over cases of the paired difference in mean min(t, L), candidate minus base, with the
- * censored trials counted per arm. It is restricted: it says nothing about times beyond L. A case
+ * censored trials counted per arm. It is unweighted: every case counts equally, and every trial
+ * within a case equally, so `Duration.weight` is not used. It is restricted: it says nothing about times beyond L. A case
  * without a trial in both arms is left out. Descriptive only.
  */
 export function restrictedDifference(

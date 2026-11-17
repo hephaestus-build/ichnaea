@@ -96,6 +96,14 @@ describe("censoring at the plan's limit", () => {
     expect(restrictedMean(sample, 2.5)).toBeCloseTo(1 + 0.8 + 0.5 * 0.6, 14);
   });
 
+  it("gives the latest time of a large all-censored sample without spreading it onto the stack", () => {
+    const large = Array.from({ length: 300_000 }, (_, i) => ({
+      time: (i % 997) + 1,
+      censored: true,
+    }));
+    expect(survivalQuantile(large, 0.5)).toEqual({ atLeast: 997 });
+  });
+
   it("refuses a negative time, a weight of 0 and an empty sample", () => {
     expect(() => kaplanMeier([{ time: -1, censored: false }])).toThrow(RangeError);
     expect(() => kaplanMeier([{ time: 1, censored: false, weight: 0 }])).toThrow(RangeError);
