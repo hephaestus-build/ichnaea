@@ -14,6 +14,11 @@ export const SUBPATHS: ReadonlyArray<{ subpath: string; entry: string; report: s
   { subpath: ".", entry: "index.d.ts", report: "ichnaea.api.md" },
   { subpath: "./contracts", entry: "contracts/index.d.ts", report: "ichnaea-contracts.api.md" },
   { subpath: "./stats", entry: "stats/index.d.ts", report: "ichnaea-stats.api.md" },
+  {
+    subpath: "./calibration",
+    entry: "calibration/index.d.ts",
+    report: "ichnaea-calibration.api.md",
+  },
 ];
 
 if (import.meta.main) {

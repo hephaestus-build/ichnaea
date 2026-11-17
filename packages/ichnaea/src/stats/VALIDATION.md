@@ -504,7 +504,8 @@ answers, pass a rule. This study measures how often that rule admits a judge tha
 rater, a worse one, an uninformative one or a biased one. It describes the rule; it does not validate
 an interval or a decision method.
 
-**The rule studied** (`scripts/stats/calibration-rule.ts`; the study takes it as a parameter):
+**The rule studied** is the rule of `./calibration`. `scripts/stats/calibration-rule.ts` passes it
+to the study as a parameter:
 
 - **The rater floor, a precondition.** The one-sided 95 % lower bound of rater–rater agreement must
   be at least 0.60 (Gwet's AC1, yes/no labels) or 0.667 (Krippendorff's ordinal alpha, 5 levels).

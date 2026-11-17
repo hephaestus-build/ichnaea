@@ -24,7 +24,7 @@
       }
     },
     // The boundaries between the areas of the package. The statistics import nothing outside
-    // src/stats. The contracts import nothing outside src/contracts but zod. The other areas
+    // src/stats. Judge calibration imports only the statistics. The contracts import nothing outside src/contracts but zod. The other areas
     // import only the areas below them: core imports contracts; decide imports contracts, stats
     // and core; report imports contracts, decide and core. scripts/lint-boundaries.test.ts shows
     // that a forbidden import fails.
@@ -38,6 +38,22 @@
               {
                 "group": ["**", "!./**"],
                 "message": "src/stats imports only its own modules."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["packages/ichnaea/src/calibration/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**", "!./**", "!../stats/index.ts"],
+                "message": "src/calibration imports only its own modules and src/stats."
               }
             ]
           }
