@@ -253,25 +253,55 @@ const measureShape = {
 };
 
 /**
- * How a level measure is tested: as a score when its levels are equally spaced, or as binary with
- * success at or above a cut level registered before the run. With neither, it has no test.
+ * How a level measure is tested. With `"equal"`, the levels are equally spaced and the measure is
+ * tested as a score on (level − min)/(max − min). Its limits, fidelity margins and the ±0.15
+ * arm-bias bound therefore live on [0, 1], and a limit means the same for levels 1–5 as for 0–3.
+ * With `{ cut }`, it is tested as binary, with success at or above the cut level registered before
+ * the run. With neither, it has no test.
  */
 export const LevelSpacing = z.xor([
-  none(z.literal("equal").describe("The levels are equally spaced.")),
-  z.strictObject({ cut: none(z.number().describe("The lowest level that counts as success.")) }),
+  none(
+    z
+      .literal("equal")
+      .describe(
+        "The levels are equally spaced. The measure is tested as a score on (level − min)/(max − min), so its limits and margins live on [0, 1].",
+      ),
+  ),
+  z.strictObject({
+    cut: none(
+      z
+        .number()
+        .describe(
+          "The lowest level that counts as success: one of the levels, above the lowest. lock checks it.",
+        ),
+    ),
+  }),
 ]);
 
-/** A measure, by the type of its values. A quantity has a unit and is descriptive only. */
+/**
+ * A measure, by the type of its values. A quantity has a unit and is descriptive only. A level is a
+ * number, one of the measure's `levels`, and a scorer reports a level by that value. What a level
+ * measure's limits mean depends on its `spacing` (LevelSpacing).
+ */
 export const MeasureDefinition = z.discriminatedUnion("type", [
   z.strictObject({ type: none(z.literal("binary")), ...measureShape }),
   z.strictObject({ type: none(z.literal("score")), ...measureShape }),
   z.strictObject({
     type: none(z.literal("level")),
     levels: none(
-      z.array(z.number()).min(2).describe("The levels in ascending order. lock checks the order."),
+      z
+        .array(z.number())
+        .min(2)
+        .describe(
+          "The levels, strictly ascending. A scorer reports a level by its value. lock checks the order.",
+        ),
     ),
     anchors: none(
-      z.record(Text, Text).describe("For a level, the text that anchors it."),
+      z
+        .record(Text, Text)
+        .describe(
+          "For a level, written as JSON writes the number (2, 0.5), the text that anchors it. lock checks that each key is a level.",
+        ),
     ).optional(),
     spacing: LevelSpacing.optional(),
     ...measureShape,

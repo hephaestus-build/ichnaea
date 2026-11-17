@@ -2251,7 +2251,7 @@
                 "items": {
                   "type": "number"
                 },
-                "description": "The levels in ascending order. lock checks the order.",
+                "description": "The levels, strictly ascending. A scorer reports a level by its value. lock checks the order.",
                 "x-ichnaea-data": {
                   "class": "none",
                   "identifier": "none",
@@ -2271,7 +2271,7 @@
                   "type": "string",
                   "minLength": 1
                 },
-                "description": "For a level, the text that anchors it.",
+                "description": "For a level, written as JSON writes the number (2, 0.5), the text that anchors it. lock checks that each key is a level.",
                 "x-ichnaea-data": {
                   "class": "none",
                   "identifier": "none",
@@ -2286,7 +2286,7 @@
                   {
                     "type": "string",
                     "const": "equal",
-                    "description": "The levels are equally spaced.",
+                    "description": "The levels are equally spaced. The measure is tested as a score on (level − min)/(max − min), so its limits and margins live on [0, 1].",
                     "x-ichnaea-data": {
                       "class": "none",
                       "identifier": "none",
@@ -2301,7 +2301,7 @@
                     "properties": {
                       "cut": {
                         "type": "number",
-                        "description": "The lowest level that counts as success.",
+                        "description": "The lowest level that counts as success: one of the levels, above the lowest. lock checks it.",
                         "x-ichnaea-data": {
                           "class": "none",
                           "identifier": "none",

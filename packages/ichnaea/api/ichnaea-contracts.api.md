@@ -4144,7 +4144,7 @@ export const Suite: z.ZodObject<{
 export type Suite = z.infer<typeof Suite>;
 
 // @public
-export const SUITE_PROBLEM_CODES: readonly ["FIDELITY_MARGIN_MISSING"];
+export const SUITE_PROBLEM_CODES: readonly ["FIDELITY_MARGIN_MISSING", "LEVELS_NOT_ASCENDING", "LEVEL_CUT_NOT_A_LEVEL", "LEVEL_CUT_AT_LOWEST", "LEVEL_ANCHOR_NOT_A_LEVEL"];
 
 // @public
 export const SuiteAbout: z.ZodObject<{

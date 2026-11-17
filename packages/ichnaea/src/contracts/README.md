@@ -43,7 +43,13 @@ framework. A suite or project file (`suite.ts` or `suite.jsonc`, `ichnaea.config
   JSON Schema cannot express, each with a named code, and `lock` refuses a suite with any. A
   secondary measure that attribute compares needs its own fidelity margin
   (`FIDELITY_MARGIN_MISSING`): only a primary measure has a registered limit, inside (0, 1), whose
-  half is the default.
+  half is the default. A level measure's levels are strictly ascending, its `cut` is one of them
+  and above the lowest, and each `anchors` key is one of them (`LEVELS_NOT_ASCENDING`,
+  `LEVEL_CUT_NOT_A_LEVEL`, `LEVEL_CUT_AT_LOWEST`, `LEVEL_ANCHOR_NOT_A_LEVEL`).
+- **Level scale.** A level measure with `spacing: "equal"` is tested as a score on
+  (level − min)/(max − min). Its limits, fidelity margins and the ±0.15 arm-bias bound live on
+  [0, 1], so a limit means the same for levels 1–5 as for 0–3. A scorer reports a level by its
+  value.
 - **Two majors.** `suite/1` and `configuration/1` stay registered beside `suite/2` and
   `configuration/2` while the planner and the importer still read them. The newer major needs no
   migration until the older one leaves the registry (`majors.json`).
