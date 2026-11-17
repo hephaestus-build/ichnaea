@@ -7,14 +7,14 @@
 //   node scripts/stats/solver-snapshot.ts
 import { readFileSync, writeFileSync } from "node:fs";
 
+import { createRng } from "../../src/stats/rng.ts";
 import {
-  createRng,
-  type Sided,
   scoreDifferenceInterval,
   type ScoreOptions,
   type Stratum,
-  tangoInterval,
-} from "../../src/stats/index.ts";
+} from "../../src/stats/score-difference.ts";
+import { tangoInterval } from "../../src/stats/tango.ts";
+import type { Sided } from "../../src/stats/types.ts";
 import { runtime } from "./study-score-type-i.ts";
 
 interface Strata {

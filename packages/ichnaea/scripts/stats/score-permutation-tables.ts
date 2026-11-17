@@ -4,7 +4,7 @@
 //   node scripts/score-permutation-tables.ts
 import { writeFileSync } from "node:fs";
 
-import { createRng, type Rng } from "../../src/stats/index.ts";
+import { createRng, type Rng } from "../../src/stats/rng.ts";
 
 interface Table {
   readonly id: string;

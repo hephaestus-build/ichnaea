@@ -1,4 +1,4 @@
-import { createRng } from "../stats/index.ts";
+import { createRng } from "../stats/rng.ts";
 import {
   bootstrapCalibration,
   calibrated,

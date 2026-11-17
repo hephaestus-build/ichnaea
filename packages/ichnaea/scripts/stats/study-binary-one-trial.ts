@@ -3,10 +3,13 @@
 // computes the exact rejection probability of every structure at a true mean difference of 0, and
 // keeps the worst, at the level alpha = 0.05 and at the Holm levels alpha / m for m = 2, 3 and 4. An
 // exactly computed point fails above its level (decision 0006).
-//   node scripts/stats/study-binary-one-trial.ts validation/binary-one-trial.tsv
+//   node --import ./scripts/stats/record-loads.ts scripts/stats/study-binary-one-trial.ts \
+//     [--pull <N>] validation/binary-one-trial.tsv
+// A published output names its pull request with --pull (provenance.ts).
 import { writeFileSync } from "node:fs";
+import { parseArgs } from "node:util";
 
-import { createRng } from "../../src/stats/index.ts";
+import { createRng } from "../../src/stats/rng.ts";
 import {
   LEVELS,
   exactTypeI,
@@ -66,19 +69,8 @@ interface Row {
   readonly worstStructure: Structure;
 }
 
-const local = (file: string): string => new URL(file, import.meta.url).pathname;
-
-function main(output: string): void {
-  const meta = provenance(
-    local("./study-binary-one-trial.ts"),
-    [
-      local("./binary-one-trial.ts"),
-      local("../../src/stats/compare.ts"),
-      local("../../src/stats/exact-conditional.ts"),
-    ],
-    SEED_BASE,
-    process.argv.slice(2),
-  );
+function main(output: string, pull: number | undefined): void {
+  const meta = provenance(import.meta.filename, SEED_BASE, process.argv.slice(2), { pull });
   const rows: Row[] = [];
   // Every level searches the same space: each (family, k) keeps its seed at every level.
   for (const level of LEVELS) {
@@ -153,4 +145,13 @@ function main(output: string): void {
   console.log(`k1 per level: ${JSON.stringify(k1)}`);
 }
 
-if (import.meta.main) main(process.argv[2] ?? "validation/binary-one-trial.tsv");
+if (import.meta.main) {
+  const { values, positionals } = parseArgs({
+    allowPositionals: true,
+    options: { pull: { type: "string" } },
+  });
+  main(
+    positionals[0] ?? "validation/binary-one-trial.tsv",
+    values.pull === undefined ? undefined : Number(values.pull),
+  );
+}

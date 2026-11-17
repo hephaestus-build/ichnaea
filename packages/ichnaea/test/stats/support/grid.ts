@@ -1,6 +1,7 @@
 // The grid of the simulation studies: per-case rates for each scenario and the draw of per-case
 // counts, shared by every study file.
-import type { CaseCounts, Rng } from "../../../src/stats/index.ts";
+import type { CaseCounts } from "../../../src/stats/compare.ts";
+import type { Rng } from "../../../src/stats/rng.ts";
 import { binomial } from "./simulate.ts";
 
 export const LEVEL = 0.95;

@@ -1,10 +1,7 @@
-import {
-  type Case,
-  canonicalize,
-  digest,
-  type MeasureValue,
-  type Trial,
-} from "../contracts/index.ts";
+import { canonicalize, digest } from "../contracts/canonical.ts";
+import type { Case } from "../contracts/records/case.ts";
+import type { MeasureValue } from "../contracts/records/measure.ts";
+import type { Trial } from "../contracts/records/trial.ts";
 
 import type { MeasureDefinition } from "./plugin.ts";
 

@@ -1,7 +1,9 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { type CommandDefinition, FileStore, CORE_VERSION, type Plugin } from "../core/index.ts";
+import type { CommandDefinition, Plugin } from "../core/plugin.ts";
+import { FileStore } from "../core/store.ts";
+import { CORE_VERSION } from "../core/version.ts";
 
 import { recompute } from "./recompute.ts";
 import { lintReport, renderHtml, renderMarkdown } from "./render.ts";

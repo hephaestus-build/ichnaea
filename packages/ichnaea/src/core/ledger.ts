@@ -2,7 +2,8 @@ import { appendFile, mkdir, open, readFile, rm, stat } from "node:fs/promises";
 import { setTimeout as delay } from "node:timers/promises";
 import { join } from "node:path";
 
-import { canonicalize, Timestamp } from "../contracts/index.ts";
+import { canonicalize } from "../contracts/canonical.ts";
+import { Timestamp } from "../contracts/primitives.ts";
 import * as z from "zod";
 
 /** One booking in the monthly call ledger. */

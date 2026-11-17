@@ -3,7 +3,8 @@
 // Each repetition draws one data set and evaluates every method setting on it: the event is "the
 // one-sided 95% lower bound is at most −margin". At truth −margin its rate is the coverage; at
 // truth 0 its complement is π₀, the chance of showing non-inferiority when nothing changed.
-import { createRng, pnorm, type Rng } from "../../src/stats/index.ts";
+import { pnorm } from "../../src/stats/normal.ts";
+import { createRng, type Rng } from "../../src/stats/rng.ts";
 import {
   boundSC,
   pooledDispersion,

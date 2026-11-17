@@ -1,6 +1,6 @@
 // The judge calibration rule of ./calibration, in the shape that the operating-characteristics
 // study (calibration-rule-study.ts) receives as a parameter.
-import { CALIBRATION_DEFAULTS } from "../../src/calibration/index.ts";
+import { CALIBRATION_DEFAULTS } from "../../src/calibration/analyze.ts";
 import { bootstrapCalibration, calibrated } from "../../src/calibration/engine.ts";
 
 import type { CalibrationRule } from "./calibration-rule-study.ts";

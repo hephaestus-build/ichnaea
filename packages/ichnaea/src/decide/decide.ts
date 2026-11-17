@@ -1,20 +1,14 @@
-import {
-  candidateRunsFirst,
-  canonicalize,
-  type Configuration,
-  Decision,
-  digest,
-  FactorPart,
-  type GateResult,
-  type MeasuredValue,
-  type MeasureValue,
-  type Plan,
-  proportionProblem,
-  REFUSED_MARGIN,
-  type Run,
-  type Trial,
-  verifyArms,
-} from "../contracts/index.ts";
+import { canonicalize, digest } from "../contracts/canonical.ts";
+import { verifyArms } from "../contracts/identity.ts";
+import { candidateRunsFirst } from "../contracts/pair-order.ts";
+import type { MeasuredValue } from "../contracts/primitives.ts";
+import { type Configuration, FactorPart } from "../contracts/records/configuration.ts";
+import { Decision, type GateResult } from "../contracts/records/decision.ts";
+import type { MeasureValue } from "../contracts/records/measure.ts";
+import { type Plan, REFUSED_MARGIN } from "../contracts/records/plan.ts";
+import type { Run } from "../contracts/records/run.ts";
+import type { Trial } from "../contracts/records/trial.ts";
+import { proportionProblem } from "../contracts/values.ts";
 import { TRIGGER_VARIES } from "../core/planner.ts";
 import { recordProblems } from "../core/records.ts";
 import {
@@ -22,16 +16,15 @@ import {
   type Comparison,
   type ComparisonInput,
   compareCounts,
-  createRng,
   EstimandError,
-  fixedCasesMde,
-  holm,
   MARGIN_FLOOR_NOT_SET,
   type OneTrialChecks,
-  sampledCasesFloor,
   type ValueType,
-  wilson,
-} from "../stats/index.ts";
+} from "../stats/compare.ts";
+import { holm } from "../stats/multiplicity.ts";
+import { fixedCasesMde, sampledCasesFloor } from "../stats/power.ts";
+import { createRng } from "../stats/rng.ts";
+import { wilson } from "../stats/wilson.ts";
 import type * as z from "zod";
 
 import { describeCounts, plannedTrialsPerCase, planningPower } from "./planning.ts";

@@ -1,6 +1,7 @@
 // Simulation study: one-sided 95% lower bounds of Tango's paired score interval, with and without
 // Laud's skewness correction. Usage: node scripts/stats/study-tango.ts <reps>
-import { createRng, tangoInterval } from "../../src/stats/index.ts";
+import { createRng } from "../../src/stats/rng.ts";
+import { tangoInterval } from "../../src/stats/tango.ts";
 
 const reps = Number(process.argv[2] ?? 2000);
 let seed = 1;

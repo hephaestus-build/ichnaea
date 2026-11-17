@@ -3,7 +3,7 @@
 The confirmation sweep runs on GitHub Actions in `.github/workflows/confirmation-sweep.yml`.
 It searches for structures where the fixed-cases lower bound undercovers at a true difference of −margin.
 Its results set the validated domain of non-inferiority.
-Each output records the commit and the sha256 of each script that wrote it.
+Each output has a provenance sidecar (see [Provenance of a study output](#provenance-of-a-study-output)).
 
 ## The phases
 
@@ -94,13 +94,8 @@ It compares:
 Any difference makes the script fail.
 Before a full dispatch, run it on one margin with `--margins 0` and the server rows of that margin.
 
-The server outputs record commit `efc0201`.
-Check them with `check-sweep-provenance.ts` from a checkout of `efc0201`, not from `main`.
-The check requires each recorded file to have its recorded sha256 both at the recorded commit and at HEAD.
-D's server sidecars list `test/support/simulate.ts` at sha256 `230349cb…4374`.
-On `main` that file is `2e335859…8b81`, so the check fails at `main`'s HEAD.
-This is not a defect.
-The Actions outputs record `main`'s commit and pass at `main`.
+The server outputs record commit `efc0201` in sidecars of the first schema, `ichnaea.stats-provenance/1`.
+The check refuses that schema, so for these outputs the byte comparison above is the evidence.
 
 ## Results through a pull request
 
@@ -113,6 +108,55 @@ Its sha256 in `SHA256SUMS` identifies the copy.
 
 `sweep-job.ts` and `collect-sweep.ts` take `--margins i,j` and `--jobs n` to run a small subset of the matrix on one machine.
 The scripts refuse to run with uncommitted changes to tracked files.
+
+## Provenance of a study output
+
+Every study output has a sidecar `<output>.meta.json` (`provenance.ts`).
+It records:
+
+- the commit that the study ran from, and `pull`, the pull request whose head holds that commit;
+- the sha256 of every local module that the study's process loaded, the script included;
+- every third-party package that it loaded: `name@version`, the modules that imported it, and the sha256 of each file that it loaded from the package;
+- the Node version, the seed base and the arguments;
+- the output's sha256 when the output is complete.
+
+The modules are the ones that the process loads, not the ones that its source names.
+A study runs with `record-loads.ts` preloaded, from `packages/ichnaea`.
+It starts the package's load recorder (`src/core/load-record.ts`), which a measure's implementation digest uses too:
+
+```sh
+node --import ./scripts/stats/record-loads.ts scripts/stats/study-binary-one-trial.ts --pull <N> validation/binary-one-trial.tsv
+```
+
+A study refuses to write a sidecar without the recorder, with uncommitted changes to tracked files, or when a module that it loaded is untracked.
+It also refuses a loaded module that only re-exports: a barrel would pin every file that it re-exports.
+Inside the package, a module imports the file that defines what it uses, never a barrel and never the package by its name, and a lint rule enforces that.
+A study refuses to run when it loads `node:worker_threads`, because the recorder cannot see what a worker thread loads.
+The sidecar pins only modules, so a study must not read a repository file as data.
+The inputs that a study reads, such as a shard's output or a list of points, are artifacts of an earlier step, and the sidecar records their sha256.
+A study whose shards run in their own processes, such as `study-calibration-rule.ts`, writes a sidecar for each shard.
+The merge then pins the modules that every shard loaded, and refuses a shard of another commit, script, seed base or Node version.
+
+The `check` job of CI runs `check-sweep-provenance.ts --all` on every committed sidecar.
+It checks that the output is current: that it still describes the code at HEAD.
+
+- Every pinned file has its recorded sha256 at the run commit and at HEAD.
+- Every pinned package resolves to its recorded version from each module that imported it, in the `node_modules` that `pnpm install --frozen-lockfile` installs at HEAD.
+  Each file that the run loaded from it has its recorded sha256, so a patched package fails too.
+- The recorded Node version is the one that the study workflows pin.
+- The output is complete and has its recorded sha256.
+- The run commit is reachable from `refs/pull/<pull>/head`.
+  The check fetches that ref, because a plain clone has no pull request refs.
+
+The run commit need not be an ancestor of HEAD, because `main` merges by squash.
+The pull request's head keeps the run commit.
+If you rebase or force-push a branch after its study ran, the head no longer holds the run commit, and the pull request's CI fails.
+Merge `main` into the branch instead; a merge keeps the run commit reachable.
+
+When the check fails, rerun the study at the new commit with `--pull`, and commit the output and the sidecar that the run writes.
+Never edit a sidecar by hand.
+If the rerun's output is byte-identical, the rerun is the evidence.
+If it differs, the result changed: the output's claim is suspended until the statistics are reviewed.
 
 ## Sharded studies of the score methods
 

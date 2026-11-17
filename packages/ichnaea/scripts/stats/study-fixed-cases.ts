@@ -3,14 +3,13 @@
 // Usage: node scripts/stats/study-fixed-cases.ts <reps> <out.json>
 import { writeFileSync } from "node:fs";
 
+import { exactStratifiedTest } from "../../src/stats/exact-conditional.ts";
+import { createRng, type Rng } from "../../src/stats/rng.ts";
 import {
-  createRng,
-  exactStratifiedTest,
   scoreDifferenceInterval,
   scoreDifferenceTest,
-  type Rng,
   type Stratum,
-} from "../../src/stats/index.ts";
+} from "../../src/stats/score-difference.ts";
 
 const reps = Number(process.argv[2] ?? 2000);
 const out = process.argv[3] ?? "study-fixed-cases.json";

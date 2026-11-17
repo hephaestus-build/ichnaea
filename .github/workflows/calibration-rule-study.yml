@@ -3,9 +3,16 @@ name: Calibration rule study
 # The operating characteristics of the judge calibration rule
 # (packages/ichnaea/scripts/stats/study-calibration-rule.ts): one job runs four shard processes,
 # then merges them into the output with its provenance sidecar, kept as an artifact. Started by
-# hand only; nothing here writes to the repository.
+# hand only; nothing here writes to the repository. An output to publish runs on the head of its
+# pull request and names it: the sidecar records the number, and CI checks that the pull request
+# head still holds the run commit (scripts/stats/check-sweep-provenance.ts).
 on:
   workflow_dispatch:
+    inputs:
+      pull:
+        description: "The pull request that publishes the output; empty for a run to inspect"
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -32,17 +39,21 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
+      # Each process records the modules it loads (record-loads.ts), so the sidecar pins them.
       - name: Four shards, then the merge
         working-directory: packages/ichnaea
+        env:
+          PULL: ${{ inputs.pull }}
         run: |
+          study=(node --import ./scripts/stats/record-loads.ts scripts/stats/study-calibration-rule.ts)
           pids=()
           for i in 0 1 2 3; do
-            node scripts/stats/study-calibration-rule.ts shard --shard "$i/4" --out "$RUNNER_TEMP/shards" &
+            "${study[@]}" shard --shard "$i/4" --out "$RUNNER_TEMP/shards" &
             pids+=("$!")
           done
           # Every shard must succeed: a bare `wait` would hide a failed one.
           for pid in "${pids[@]}"; do wait "$pid"; done
-          node scripts/stats/study-calibration-rule.ts merge --in "$RUNNER_TEMP/shards" validation/calibration-rule.tsv
+          "${study[@]}" merge --in "$RUNNER_TEMP/shards" ${PULL:+--pull "$PULL"} validation/calibration-rule.tsv
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: calibration-rule

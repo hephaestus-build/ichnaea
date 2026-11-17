@@ -1,4 +1,5 @@
-import type { Decision, Run } from "../contracts/index.ts";
+import type { Decision } from "../contracts/records/decision.ts";
+import type { Run } from "../contracts/records/run.ts";
 
 import { lintReport, renderHtml, renderMarkdown } from "./render.ts";
 import { decisionView } from "./view.ts";
