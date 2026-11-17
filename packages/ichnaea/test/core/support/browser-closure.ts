@@ -37,13 +37,15 @@ const IMPURE: readonly (readonly [RegExp, string])[] = [
   [/\bgetRandomValues\s*\(/g, "a random draw: getRandomValues("],
   [/\brandomUUID\s*\(/g, "a random draw: randomUUID("],
 ];
-/** Keywords after which a `/` starts a regular expression, not a division. */
+/**
+ * Reserved words after which a `/` starts a regular expression, not a division. `of` is not one:
+ * it is a keyword only in a `for` head, and a name anywhere else (see `regexMayStart`).
+ */
 const BEFORE_REGEX = new Set([
   "return",
   "typeof",
   "instanceof",
   "in",
-  "of",
   "new",
   "delete",
   "void",
@@ -54,6 +56,8 @@ const BEFORE_REGEX = new Set([
   "yield",
   "await",
 ]);
+/** The characters that end a line in JavaScript, and so a line comment. */
+const LINE_END = new Set(["\n", "\r", "\u2028", "\u2029"]);
 const BUILTINS = new Set(builtinModules.map((m) => m.split("/")[0]));
 const PACKAGES = new Set(["zod"]);
 
@@ -62,7 +66,9 @@ const PACKAGES = new Set(["zod"]);
  * far is not an operand's end (a name, a number, a closing parenthesis or bracket, a string, a
  * postfix `++` or `--`, or a TypeScript non-null `!` right after an operand), or it is a keyword
  * after which an expression starts. A `++` or `--` just before a `/` is postfix: a prefix one is
- * followed by its operand.
+ * followed by its operand. A word is read in its token context: after a `.` it is a property name,
+ * and `of` is the `for` keyword only after a binding (a name that is not a keyword, or the `]` or
+ * `}` of a pattern).
  */
 function regexMayStart(out: readonly string[], at: number): boolean {
   let k = at - 1;
@@ -72,7 +78,18 @@ function regexMayStart(out: readonly string[], at: number): boolean {
   if (/[\w$]/.test(c)) {
     let start = k;
     while (start > 0 && /[\w$]/.test(out[start - 1] as string)) start--;
-    return BEFORE_REGEX.has(out.slice(start, k + 1).join(""));
+    const word = out.slice(start, k + 1).join("");
+    if (!BEFORE_REGEX.has(word) && word !== "of") return false;
+    let p = start - 1;
+    while (p >= 0 && /\s/.test(out[p] as string)) p--;
+    if (out[p] === "." && out[p - 1] !== ".") return false;
+    if (word !== "of") return true;
+    if (p >= 0 && /[\]}]/.test(out[p] as string)) return true;
+    let q = p;
+    while (q > 0 && /[\w$]/.test(out[q - 1] as string)) q--;
+    return (
+      p >= 0 && /[\w$]/.test(out[p] as string) && !BEFORE_REGEX.has(out.slice(q, p + 1).join(""))
+    );
   }
   const before = k > 0 ? (out[k - 1] as string) : "";
   if ((c === "+" || c === "-") && before === c) return false;
@@ -88,7 +105,7 @@ function regexEnd(source: string, at: number): number {
   let inClass = false;
   for (let i = at + 1; i < source.length; i++) {
     const c = source[i];
-    if (c === "\n") return -1;
+    if (LINE_END.has(c as string)) return -1;
     if (c === "\\") i++;
     else if (c === "[") inClass = true;
     else if (c === "]") inClass = false;
@@ -103,7 +120,8 @@ function regexEnd(source: string, at: number): number {
  * Offsets stay the same, and template expressions stay code.
  */
 export function codeOnly(source: string): string {
-  const out = [...source];
+  // One element per UTF-16 code unit, as `source[i]` and match offsets count.
+  const out = source.split("");
   const blank = (from: number, to: number): void => {
     for (let k = from; k < to; k++) if (out[k] !== "\n") out[k] = " ";
   };
@@ -115,7 +133,7 @@ export function codeOnly(source: string): string {
     const next = source[i + 1];
     if (c === "/" && next === "/") {
       const start = i;
-      while (i < source.length && source[i] !== "\n") i++;
+      while (i < source.length && !LINE_END.has(source[i] as string)) i++;
       blank(start, i);
     } else if (c === "/" && next === "*") {
       const end = source.indexOf("*/", i + 2);

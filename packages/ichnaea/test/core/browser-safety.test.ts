@@ -130,6 +130,36 @@ describe("the check", () => {
       "a random draw: Math.random(",
     ],
     [
+      "a division after a variable named of",
+      "const of = 2;\nexport const x = of / Date.now() / 2;",
+      "a read of the clock: Date.now(",
+    ],
+    [
+      "a division after a property named like a keyword",
+      "export const x = o.return / Date.now() / 2;",
+      "a read of the clock: Date.now(",
+    ],
+    [
+      "an import after an astral character",
+      'export const s = "\u{1F600}";\nimport "node:fs";',
+      "the Node built-in 'node:fs'",
+    ],
+    [
+      "an import after a comment that ends at a carriage return",
+      '// a note\rimport "node:fs";',
+      "the Node built-in 'node:fs'",
+    ],
+    [
+      "an import after a comment that ends at a line separator",
+      '// a note\u2028import "node:fs";',
+      "the Node built-in 'node:fs'",
+    ],
+    [
+      "an import after a comment that ends at a paragraph separator",
+      '// a note\u2029import "node:fs";',
+      "the Node built-in 'node:fs'",
+    ],
+    [
       "a dynamic import in a local module",
       'export const m = import("./other.ts" + suffix);',
       'a dynamic import of "./other.ts" + suffix',
@@ -183,6 +213,16 @@ describe("the check", () => {
     // A negation or a sum still starts an expression, so a `/` after it starts a literal.
     expect(codeOnly('y = !/"/.test(s);')).toBe("y = !/ /.test(s);");
     expect(codeOnly('y = a + /"/.source;')).toBe("y = a + / /.source;");
+    // `of` after a binding is the `for` keyword, so a `/` after it starts a literal; anywhere else
+    // `of` is a name, and so is a keyword after a `.`, so a `/` after them divides.
+    expect(codeOnly('for (const m of /"/g.exec(s)) f(m);')).toBe(
+      "for (const m of / /g.exec(s)) f(m);",
+    );
+    expect(codeOnly('for (const [k] of /"/g.exec(s)) f(k);')).toBe(
+      "for (const [k] of / /g.exec(s)) f(k);",
+    );
+    expect(codeOnly("y = typeof of / a / b;")).toBe("y = typeof of / a / b;");
+    expect(codeOnly("y = o.in / a / b;")).toBe("y = o.in / a / b;");
   });
 
   it("refuses a module it cannot read: brackets that do not balance once text is blanked", () => {
