@@ -3,12 +3,15 @@
 // No tracked file cites a private design record: state the rule in place, or cite a decision record
 // in docs/decisions by number.
 //
+// No tracked file is a changeset: the titles on main are the change log (decision 0019).
+//
 // `node scripts/check-purity.ts` checks the repository. `--stdin` and `--env NAME` check text for
 // private records only, such as a pull request title and body that CI passes in environment
 // variables.
-import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
+
+import { trackedFiles } from "./tracked-files.ts";
 
 /**
  * Terms that identify one application. Only the whole word `hephaestus-build`, the organisation and
@@ -75,6 +78,18 @@ export function findViolations(files: ReadonlyArray<{ path: string; text: string
   return findings;
 }
 
+/**
+ * Returns one finding per tracked file under `.changeset/`. Ichnaea keeps no Changesets: the
+ * conventional commit titles on signed `main` are the change log (decision 0019, point 9).
+ */
+export function findChangesets(paths: readonly string[]): string[] {
+  return paths
+    .filter((path) => path.startsWith(".changeset/"))
+    .map(
+      (path) => `${path}: a changeset, but the titles on main are the change log (decision 0019)`,
+    );
+}
+
 /** Reads the texts that `--stdin` and `--env` name. An unset variable is an error, not empty text. */
 function readTextInputs(args: {
   stdin?: boolean;
@@ -90,11 +105,7 @@ function readTextInputs(args: {
 }
 
 function checkRepository(): void {
-  const tracked = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard"], {
-    encoding: "utf8",
-  })
-    .split("\n")
-    .filter((f) => f && existsSync(f));
+  const tracked = trackedFiles();
   const texts = tracked
     .map((path) => ({ path, text: readFileSync(path, "utf8") }))
     .filter(({ text }) => !text.includes("\0"));
@@ -104,7 +115,11 @@ function checkRepository(): void {
       !/scripts\/check-purity(\.test)?\.ts$/.test(path) &&
       /\.(ts|tsx|js|mjs|json|md)$/.test(path),
   );
-  const findings = [...findViolations(sources), ...findPrivateReferences(texts)];
+  const findings = [
+    ...findViolations(sources),
+    ...findPrivateReferences(texts),
+    ...findChangesets(tracked),
+  ];
   if (findings.length > 0) {
     console.error(`Framework purity check failed (${findings.length}):\n${findings.join("\n")}`);
     process.exit(1);

@@ -47,21 +47,29 @@ const refinementSeeds = g2Cells
 
 describe("score type-I study: points and seeds", () => {
   it("follows the seed formulas exactly", () => {
-    for (const p of points)
+    // Every point is checked, and the points that break a formula are asserted once: one expect per
+    // point and formula would cost more than the checks themselves.
+    const broken = points.filter((p) => {
       if (p.generator === 2) {
         const s = p.seed % 1_000;
         const cPrime = (p.seed - 10_000_000 - s) / 1_000;
-        expect(Number(/\/s(\d+)$/.exec(p.id)?.[1])).toBe(s);
-        expect(p.seed).toBe(10_000_000 + 1_000 * cPrime + s);
-        expect(p.confirmSeed).toBe(20_000_000 + 1_000 * cPrime + s);
-        expect(p.recheckSeed).toBe(25_000_000 + 1_000 * cPrime + s);
-      } else {
-        const c = p.seed - 2_000_000 - 1_000 * p.generator;
-        expect(c).toBeGreaterThanOrEqual(0);
-        expect(c).toBeLessThan(1_000);
-        expect(p.confirmSeed).toBe(3_000_000 + 1_000 * p.generator + c);
-        expect(p.recheckSeed).toBe(4_000_000 + 1_000 * p.generator + c);
+        return (
+          Number(/\/s(\d+)$/.exec(p.id)?.[1]) !== s ||
+          p.seed !== 10_000_000 + 1_000 * cPrime + s ||
+          p.confirmSeed !== 20_000_000 + 1_000 * cPrime + s ||
+          p.recheckSeed !== 25_000_000 + 1_000 * cPrime + s
+        );
       }
+      const c = p.seed - 2_000_000 - 1_000 * p.generator;
+      return (
+        c < 0 ||
+        c >= 1_000 ||
+        p.confirmSeed !== 3_000_000 + 1_000 * p.generator + c ||
+        p.recheckSeed !== 4_000_000 + 1_000 * p.generator + c
+      );
+    });
+    expect(points.length).toBeGreaterThan(0);
+    expect(broken.map((p) => p.id)).toEqual([]);
     // Each G2 cell has one c′, the cells take 0, 1, 2, … in order, and the structure stream is
     // 2,002,000 + c′.
     const cPrimes = g2Cells.map((cell) => {
@@ -206,6 +214,8 @@ describe("score type-I study: points and seeds", () => {
     );
   });
 
+  // Runs the re-check of two points end to end, each with its own repetitions: heavier than the default
+  // timeout assumes on a loaded runner.
   it("re-checks symmetric G2 points end to end through the runner's re-check", () => {
     const byCell = new Map(all.map((c) => [c.id, c]));
     const ids = ["G2/symmetric-d0.05-nu10/k12-r2/s0", "G2/symmetric-d0.2-nu10/k17-r1/s0"];
@@ -245,7 +255,7 @@ describe("score type-I study: points and seeds", () => {
       expect(Number(r["exact"])).toBeGreaterThanOrEqual(0);
       expect(r["fails"]).toBe(String(failsAtAnyLevel(shipped, 20)));
     }
-  });
+  }, 20_000);
 
   it("finds every G2 point by its ID, a symmetric one too", () => {
     const byCell = new Map(all.map((c) => [c.id, c]));

@@ -34,6 +34,8 @@ const differing = (a: readonly SnapshotRow[], b: readonly SnapshotRow[]): number
 };
 
 describe("the root-finder", () => {
+  // Solves every binary bound of more than 2,000 reference inputs twice, with the solver now and
+  // before the change: heavier than the default timeout assumes on a loaded runner.
   it("gives every binary bound of the reference inputs bit for bit as the solver before the change", async () => {
     vi.resetModules();
     const now = (await import("../../scripts/stats/solver-snapshot.ts")).snapshotRows();
@@ -49,7 +51,7 @@ describe("the root-finder", () => {
       vi.doUnmock("../../src/stats/solve.ts");
       vi.resetModules();
     }
-  });
+  }, 20_000);
 
   it("gives the stored bounds bit for bit on the runtime that wrote them, within 1e-9 on another", async () => {
     const now = (await import("../../scripts/stats/solver-snapshot.ts")).snapshotRows();

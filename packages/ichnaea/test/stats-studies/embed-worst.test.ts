@@ -18,8 +18,8 @@ import {
 } from "../../scripts/stats/embed-worst.ts";
 import { coverageRun, readStructures, seedOf } from "../../scripts/stats/simulate-structures.ts";
 import { groupsOf, type Structure } from "../../scripts/stats/study-heterogeneous.ts";
-import { exactGroupCoverage, type Group, truthOfGroups } from "./support/exact.ts";
-import { estimate } from "./support/simulate.ts";
+import { exactGroupCoverage, type Group, truthOfGroups } from "../stats/support/exact.ts";
+import { estimate } from "../stats/support/simulate.ts";
 
 const dir = mkdtempSync(path.join(tmpdir(), "embed-worst-"));
 afterAll(() => rmSync(dir, { recursive: true, force: true }));

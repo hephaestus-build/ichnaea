@@ -11,7 +11,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { checkProvenance, STUDY_WORKFLOWS } from "../../scripts/stats/check-sweep-provenance.ts";
 import { metaPath, sha256 } from "../../scripts/stats/provenance.ts";
-import { commit, removeScratchRepos, runGit, scratchRepo } from "./support/git-repo.ts";
+import { commit, removeScratchRepos, runGit, scratchRepo } from "../stats/support/git-repo.ts";
 
 afterAll(removeScratchRepos);
 

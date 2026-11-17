@@ -23,6 +23,10 @@ export const UNIT_PROJECTS: TestProjectInlineConfiguration[] = [
     },
   })),
   { test: { name: "mutants", root, include: ["test/*/mutants.test.ts", "test/mutation.test.ts"] } },
+  // The tests of the study scripts (scripts/stats/*). They call the statistics, but no mutant needs
+  // them for its kill, so a mutant run that reran them would only cost time; they run in the unit
+  // suite instead.
+  { test: { name: "stats-studies", root, include: ["test/stats-studies/**/*.test.ts"] } },
 ];
 
 /**

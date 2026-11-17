@@ -16,7 +16,7 @@ import {
   type Provenance,
   reexportsOnly,
 } from "../../scripts/stats/provenance.ts";
-import { commit, removeScratchRepos, scratchRepo } from "./support/git-repo.ts";
+import { commit, removeScratchRepos, scratchRepo } from "../stats/support/git-repo.ts";
 
 afterAll(removeScratchRepos);
 

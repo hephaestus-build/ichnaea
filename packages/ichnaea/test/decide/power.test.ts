@@ -235,16 +235,25 @@ describe("the power statement (REQ-54)", () => {
     ]);
   });
 
-  it("no decision carries an empty planning statement, with or without the plugin", async () => {
-    const fixtures: readonly ScenarioOptions[] = [
-      stable,
-      { ...stable, maxCalls: 1 },
-      { ...stable, marginStatus: "placeholder" },
-      { ...stable, margin: 0.35 },
-      { ...stable, measures: ["app/correct", "app/grounded"] },
+  // One test per fixture: each runs a decision with and without the plugin, and nine of them in one
+  // test would add up past the default timeout on a loaded runner.
+  it.each<[string, ScenarioOptions]>([
+    ["stable", stable],
+    ["stable at one call", { ...stable, maxCalls: 1 }],
+    ["a placeholder margin", { ...stable, marginStatus: "placeholder" }],
+    ["a margin of 0.35", { ...stable, margin: 0.35 }],
+    ["two primary measures", { ...stable, measures: ["app/correct", "app/grounded"] }],
+    [
+      "a placeholder margin that does not apply",
       { ...stable, marginStatus: "placeholder", applies: () => false },
-      { cases: 20, replicates: 1, base: () => 0.9, candidate: () => 0.9 },
+    ],
+    ["20 cases at one trial", { cases: 20, replicates: 1, base: () => 0.9, candidate: () => 0.9 }],
+    [
+      "6 cases at rate 1",
       { cases: 6, replicates: 2, base: () => 1, candidate: () => 1, margin: 0.05 },
+    ],
+    [
+      "40 sampled cases",
       {
         cases: 40,
         replicates: 1,
@@ -254,8 +263,10 @@ describe("the power statement (REQ-54)", () => {
         selection: "random",
         family: (i) => `f${i}`,
       },
-    ];
-    for (const o of fixtures) {
+    ],
+  ])(
+    "no decision carries an empty planning statement, with or without the plugin: %s",
+    async (_, o) => {
       const bare = await scenario(o);
       // The plugin refuses a margin outside the validated margins: that plan exists only without it.
       const made = planningPower(bare.plan).refuse ? [bare] : [bare, await planned(o)];
@@ -265,8 +276,8 @@ describe("the power statement (REQ-54)", () => {
         expect(d.power.planning.length).toBeGreaterThan(0);
         expect(JSON.stringify(d.power.planning)).not.toMatch(/nonFinite|null/);
       }
-    }
-  });
+    },
+  );
 
   it("estimate-only and INCONCLUSIVE decisions keep the run-time estimate", async () => {
     const estimate = await run(

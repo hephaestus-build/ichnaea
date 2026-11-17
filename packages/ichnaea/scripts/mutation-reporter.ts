@@ -1,7 +1,7 @@
 // A vitest reporter for the mutant runners (scripts/mutation.ts). It writes, to the file named by
 // ICHNAEA_MUTATION_REPORT, the structure of every error of a run: each failed test's errors with
-// their name, whether they carry an expected and actual value, their cause and their first stack
-// frame; each test module that did not run; and the unhandled errors. The classifier decides from
+// their name, whether they carry an expected and actual value, their cause and their leading stack
+// frames; each test module that did not run; and the unhandled errors. The classifier decides from
 // this structure what the run shows.
 import { writeFileSync } from "node:fs";
 
@@ -13,8 +13,8 @@ export interface MutationError {
   readonly message: string;
   /** True when the error carries `actual` or `expected`, as an assertion error does. */
   readonly comparison: boolean;
-  /** The first frame of its stack, or "" when it has none. */
-  readonly frame: string;
+  /** The leading frames of its stack, at most 20, without the "at " prefix's indentation. */
+  readonly frames: readonly string[];
   readonly cause?: MutationError;
 }
 
@@ -27,7 +27,55 @@ export interface MutationReport {
     readonly errors: readonly MutationError[];
   }[];
   readonly failed: readonly { readonly test: string; readonly errors: readonly MutationError[] }[];
+  /** Errors of a suite at any depth, outside its tests: a failed or timed-out hook, for example. */
+  readonly suites: readonly { readonly suite: string; readonly errors: readonly MutationError[] }[];
   readonly unhandled: readonly MutationError[];
+}
+
+/** The parts of vitest's test module tree that the report reads. */
+export interface ModuleTree {
+  readonly moduleId: string;
+  ok(): boolean;
+  errors(): readonly unknown[];
+  readonly children: {
+    allTests(): Iterable<{
+      readonly fullName: string;
+      result(): { readonly state: string; readonly errors?: readonly unknown[] | undefined };
+    }>;
+    allSuites(): Iterable<{ readonly fullName: string; errors(): readonly unknown[] | undefined }>;
+  };
+}
+
+/** The report of one run, from its test modules and its unhandled errors. */
+export function reportOf(
+  modules: readonly ModuleTree[],
+  unhandledErrors: readonly unknown[],
+): MutationReport {
+  return {
+    passed: modules.every((m) => m.ok()) && unhandledErrors.length === 0,
+    modules: modules
+      .filter((m) => m.errors().length > 0)
+      .map((m) => ({ module: m.moduleId, errors: m.errors().map((e) => describe(e)) })),
+    failed: modules.flatMap((m) =>
+      [...m.children.allTests()]
+        .filter((t) => t.result().state === "failed")
+        .map((t) => ({
+          test: `${m.moduleId}: ${t.fullName}`,
+          errors: (t.result().errors ?? []).map((e) => describe(e)),
+        })),
+    ),
+    // allSuites() walks every descendant suite, so a hook error in a nested suite is kept.
+    suites: modules.flatMap((m) =>
+      [...m.children.allSuites()]
+        .map((suite) => ({ suite, errors: suite.errors() ?? [] }))
+        .filter(({ errors }) => errors.length > 0)
+        .map(({ suite, errors }) => ({
+          suite: `${m.moduleId}: ${suite.fullName}`,
+          errors: errors.map((e) => describe(e)),
+        })),
+    ),
+    unhandled: unhandledErrors.map((e) => describe(e)),
+  };
 }
 
 type ErrorLike = Partial<SerializedError> & {
@@ -40,14 +88,17 @@ function describe(error: unknown, depth = 0): MutationError {
   const e = (
     typeof error === "object" && error !== null ? error : { message: String(error) }
   ) as ErrorLike;
-  const frame =
-    (e.stack ?? "").split("\n").find((line) => line.trimStart().startsWith("at ")) ?? "";
+  const frames = (e.stack ?? "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("at "))
+    .slice(0, 20);
   return {
     // vitest names a serialised cause "Caused by: <class>"; the class is what counts.
     name: typeof e.name === "string" ? e.name.replace(/^Caused by: /, "") : "",
     message: typeof e.message === "string" ? e.message : "",
     comparison: "actual" in e || "expected" in e,
-    frame: frame.trim(),
+    frames,
     ...(e.cause !== undefined && depth < 5 ? { cause: describe(e.cause, depth + 1) } : {}),
   };
 }
@@ -56,21 +107,6 @@ export default class MutationReporter implements Reporter {
   onTestRunEnd(modules: readonly TestModule[], unhandledErrors: readonly SerializedError[]): void {
     const file = process.env["ICHNAEA_MUTATION_REPORT"];
     if (file === undefined) return;
-    const report: MutationReport = {
-      passed: modules.every((m) => m.ok()) && unhandledErrors.length === 0,
-      modules: modules
-        .filter((m) => m.errors().length > 0)
-        .map((m) => ({ module: m.moduleId, errors: m.errors().map((e) => describe(e)) })),
-      failed: modules.flatMap((m) =>
-        [...m.children.allTests()]
-          .filter((t) => t.result().state === "failed")
-          .map((t) => ({
-            test: `${m.moduleId}: ${t.fullName}`,
-            errors: (t.result().errors ?? []).map((e) => describe(e)),
-          })),
-      ),
-      unhandled: unhandledErrors.map((e) => describe(e)),
-    };
-    writeFileSync(file, `${JSON.stringify(report, null, 1)}\n`);
+    writeFileSync(file, `${JSON.stringify(reportOf(modules, unhandledErrors), null, 1)}\n`);
   }
 }
