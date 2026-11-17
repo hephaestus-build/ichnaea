@@ -41,6 +41,9 @@ const CHILD = fileURLToPath(
 // The tag of the child's message. The child exits right after it sends its record, so its record
 // is the last tagged message; one that the module sends while it loads comes earlier.
 const LOADS = "ichnaea.loads";
+// The tag of the child's report that the module failed to load. It goes over IPC, because a process
+// that dies can lose its last writes to standard error, where the error would be.
+const FAILURE = "ichnaea.failure";
 const LOAD_TIMEOUT_MS = 60_000;
 // How much of the child's standard error an error keeps: its end, where the error is.
 const STDERR_LIMIT = 8 * 1024;
@@ -91,6 +94,7 @@ export function moduleImplementation(
     });
     let stderr = "";
     let loads: PinnedLoads | undefined;
+    let failure: string | undefined;
     let settled = false;
     const settle = (finish: () => void): void => {
       if (settled) return;
@@ -101,6 +105,8 @@ export function moduleImplementation(
       stderr = (stderr + chunk.toString("utf8")).slice(-STDERR_LIMIT);
     });
     child.on("message", (message: unknown) => {
+      const reported = Reflect.get(Object(message), FAILURE);
+      if (typeof reported === "string") failure = reported.slice(0, STDERR_LIMIT);
       if (!Object.hasOwn(Object(message), LOADS)) return;
       const parsed = PinnedLoadsMessage.safeParse(Reflect.get(Object(message), LOADS));
       if (parsed.success) {
@@ -121,7 +127,7 @@ export function moduleImplementation(
             ? resolve({ ...loads, digest: digest(loads) })
             : reject(
                 new Error(
-                  `the loads of ${module} could not be recorded (${signal ?? `exit ${code}`}):\n${stderr.trim()}`,
+                  `the loads of ${module} could not be recorded (${signal ?? `exit ${code}`}):\n${failure ?? stderr.trim()}`,
                 ),
               ),
         );
