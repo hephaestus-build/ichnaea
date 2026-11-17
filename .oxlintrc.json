@@ -30,8 +30,9 @@
     // decide and core. Inside the package, and in the study scripts and the test support they
     // load, a module imports the file that defines what it uses, never an index.ts barrel: a
     // barrel is only a public entry of the package, and a study's provenance pins every module it
-    // loads, so a barrel would pin every file it re-exports. scripts/lint-boundaries.test.ts shows
-    // that a forbidden import fails.
+    // loads, so a barrel would pin every file it re-exports. For the same reason they never import
+    // the package by its own name. The rule covers a dynamic import() of a literal too.
+    // scripts/lint-boundaries.test.ts shows that a forbidden import fails.
     {
       "files": ["packages/ichnaea/scripts/stats/**", "packages/ichnaea/test/stats/support/**"],
       "rules": {
@@ -42,6 +43,10 @@
               {
                 "group": ["**/index.ts"],
                 "message": "A module imports the file that defines what it uses, never an index.ts barrel."
+              },
+              {
+                "group": ["@*/ichnaea", "@*/ichnaea/**"],
+                "message": "A module inside the package imports its files by path, never the package by its name."
               }
             ]
           }
@@ -128,6 +133,10 @@
                   "**/index.ts"
                 ],
                 "message": "src/core imports only src/contracts from the other areas. A module imports the file that defines what it uses, never an index.ts barrel."
+              },
+              {
+                "group": ["@*/ichnaea", "@*/ichnaea/**"],
+                "message": "A module inside the package imports its files by path, never the package by its name."
               }
             ]
           }
@@ -144,6 +153,10 @@
               {
                 "group": ["../report/**", "../index.ts", "**/index.ts"],
                 "message": "src/decide imports only src/contracts, src/stats and src/core from the other areas. A module imports the file that defines what it uses, never an index.ts barrel."
+              },
+              {
+                "group": ["@*/ichnaea", "@*/ichnaea/**"],
+                "message": "A module inside the package imports its files by path, never the package by its name."
               }
             ]
           }
@@ -160,6 +173,10 @@
               {
                 "group": ["../stats/**", "../index.ts", "**/index.ts"],
                 "message": "src/report imports only src/contracts, src/decide and src/core from the other areas. A module imports the file that defines what it uses, never an index.ts barrel."
+              },
+              {
+                "group": ["@*/ichnaea", "@*/ichnaea/**"],
+                "message": "A module inside the package imports its files by path, never the package by its name."
               }
             ]
           }

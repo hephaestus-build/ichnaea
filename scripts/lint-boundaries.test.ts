@@ -15,14 +15,22 @@ afterAll(() => {
   for (const root of roots) rmSync(root, { recursive: true, force: true });
 });
 
-/** Lints `packages/ichnaea/<path>`, a file that imports `specifier`, and returns the errors. */
-function lint(path: string, specifier: string): string[] {
+/**
+ * Lints `packages/ichnaea/<path>`, a file that imports `specifier` (with `import()` when `dynamic`),
+ * and returns the errors.
+ */
+function lint(path: string, specifier: string, dynamic = false): string[] {
   const root = mkdtempSync(join(tmpdir(), "ichnaea-boundaries-"));
   roots.push(root);
   copyFileSync(join(repository, ".oxlintrc.json"), join(root, ".oxlintrc.json"));
   const file = join(root, "packages", "ichnaea", path);
   mkdirSync(dirname(file), { recursive: true });
-  writeFileSync(file, `import { x } from "${specifier}";\n\nexport const y: unknown = x;\n`);
+  writeFileSync(
+    file,
+    dynamic
+      ? `export const y: unknown = await import("${specifier}");\n`
+      : `import { x } from "${specifier}";\n\nexport const y: unknown = x;\n`,
+  );
   // JSON output, because oxlint picks another text format on GitHub Actions.
   const { status, stdout, stderr } = spawnSync(
     OXLINT,
@@ -39,6 +47,7 @@ function lint(path: string, specifier: string): string[] {
 }
 
 const BARREL = "imports the file that defines what it uses, never an index.ts barrel";
+const SELF = "imports its files by path, never the package by its name";
 
 describe("the boundaries between the areas of the package", () => {
   it.each([
@@ -89,6 +98,27 @@ describe("the boundaries between the areas of the package", () => {
     const errors = lint(path, specifier);
     expect(errors).toHaveLength(1);
     expect(errors[0]).toContain(BARREL);
+  });
+
+  it.each([
+    ["src/decide/a.ts", "../stats/index.ts"],
+    ["scripts/stats/a.ts", "../../src/stats/index.ts"],
+  ])("refuses a dynamic import in %s of the barrel %s", (path, specifier) => {
+    const errors = lint(path, specifier, true);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toContain(BARREL);
+  });
+
+  it.each([
+    ["src/core/a.ts", "@hephaestus-build/ichnaea/contracts"],
+    ["src/decide/a.ts", "@hephaestus-build/ichnaea/stats"],
+    ["src/report/a.ts", "@hephaestus-build/ichnaea"],
+    ["scripts/stats/a.ts", "@hephaestus-build/ichnaea/stats"],
+    ["test/stats/support/a.ts", "@hephaestus-build/ichnaea/stats"],
+  ])("refuses an import in %s of the package itself, %s", (path, specifier) => {
+    const errors = lint(path, specifier);
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toContain(SELF);
   });
 
   it.each([
