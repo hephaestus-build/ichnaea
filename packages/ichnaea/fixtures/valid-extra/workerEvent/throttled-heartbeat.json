@@ -1,0 +1,18 @@
+{
+  "schema": "ichnaea.workerEvent/1",
+  "trial": {
+    "id": "refund-window-de/a/r1",
+    "suite": "support-assistant",
+    "case": "refund-window-de",
+    "arm": "a",
+    "replicate": 1,
+    "attempt": 1
+  },
+  "kind": "heartbeat",
+  "calls": 2,
+  "throttled": {
+    "count": 1,
+    "ms": 1200,
+    "firstAcceptedAt": "2026-11-15T10:01:01.300Z"
+  }
+}

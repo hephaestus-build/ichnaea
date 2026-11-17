@@ -1,0 +1,19 @@
+{
+  "schema": "ichnaea.scoreResult/1",
+  "request": "score-0001",
+  "dataClass": "none",
+  "values": [
+    {
+      "trial": "refund-window-de/b/r0",
+      "measure": "correct",
+      "status": "missing",
+      "reason": "JUDGE_REPLY_UNPARSABLE",
+      "observed": {
+        "model": "example-judge-2026-10",
+        "responseIds": [
+          "resp_j3"
+        ]
+      }
+    }
+  ]
+}

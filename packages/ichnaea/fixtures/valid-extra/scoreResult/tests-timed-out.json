@@ -1,0 +1,14 @@
+{
+  "schema": "ichnaea.scoreResult/1",
+  "request": "score-0001",
+  "dataClass": "none",
+  "values": [
+    {
+      "trial": "refund-window-de/b/r0",
+      "measure": "tests-pass",
+      "status": "ok",
+      "value": false,
+      "why": "tests timed out"
+    }
+  ]
+}
