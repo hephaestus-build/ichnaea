@@ -1,5 +1,4 @@
-// The gamma and beta functions behind Student's t and Clopper–Pearson. Internal: not exported
-// from the package.
+// The gamma and beta functions behind Student's t, Clopper–Pearson and the χ² quantile.
 
 /** log Γ(x) for x > 0, Lanczos (g = 7, 9 terms). */
 export function logGamma(x: number): number {
@@ -51,4 +50,38 @@ export function incompleteBeta(x: number, a: number, b: number): number {
     if (Math.abs(step - 1) < 1e-16) break;
   }
   return (front * f) / a;
+}
+
+/** The regularized lower incomplete gamma P(a, x): by its series below a + 1, else its continued fraction. */
+export function regularizedGammaP(a: number, x: number): number {
+  if (x <= 0) return 0;
+  const front = Math.exp(-x + a * Math.log(x) - logGamma(a));
+  if (x < a + 1) {
+    let term = 1 / a;
+    let sum = term;
+    for (let n = 1; n < 10000; n++) {
+      term *= x / (a + n);
+      sum += term;
+      if (Math.abs(term) < Math.abs(sum) * 1e-17) break;
+    }
+    return Math.min(1, front * sum);
+  }
+  const tiny = 1e-300;
+  let b = x + 1 - a;
+  let c = 1 / tiny;
+  let d = 1 / b;
+  let h = d;
+  for (let i = 1; i < 10000; i++) {
+    const an = -i * (i - a);
+    b += 2;
+    d = an * d + b;
+    if (Math.abs(d) < tiny) d = tiny;
+    c = b + an / c;
+    if (Math.abs(c) < tiny) c = tiny;
+    d = 1 / d;
+    const step = d * c;
+    h *= step;
+    if (Math.abs(step - 1) < 1e-16) break;
+  }
+  return Math.max(0, 1 - front * h);
 }

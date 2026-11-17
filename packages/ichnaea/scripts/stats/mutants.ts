@@ -47,6 +47,102 @@ export const CONTROL: Mutant = {
 
 export const MUTANTS: readonly Mutant[] = [
   {
+    id: "fidelity: score variance without the correction",
+    file: "src/stats/fidelity.ts",
+    from: "squares(v) / (v.length - 1) / v.length;",
+    to: "squares(v) / v.length / v.length;",
+  },
+  {
+    id: "estimate: restricted difference takes a trial censored below L",
+    file: "src/stats/censoring.ts",
+    from: "if (d.censored && d.time < limit)",
+    to: "if (d.censored && d.time < 0)",
+  },
+  {
+    id: "fidelity: pooled within-cell variance",
+    file: "src/stats/fidelity.ts",
+    from: "a + cellVariance(c.replayed) + cellVariance(c.recorded), 0)",
+    to: "a + cases.reduce((s, x) => s + squares(x.replayed), 0) / cases.reduce((s, x) => s + x.replayed.length - 1, 0) / c.replayed.length + cases.reduce((s, x) => s + squares(x.recorded), 0) / cases.reduce((s, x) => s + x.recorded.length - 1, 0) / c.recorded.length, 0)",
+  },
+  {
+    id: "fidelity: shown at the 95% level",
+    file: "src/stats/fidelity.ts",
+    from: 'critical(0.9, "two")',
+    to: 'critical(0.95, "two")',
+  },
+  {
+    id: "fidelity: one-sided margin",
+    file: "src/stats/fidelity.ts",
+    from: "shown: interval.lower > -margin && interval.upper < margin,",
+    to: "shown: interval.upper < margin,",
+  },
+  {
+    id: "alert: design effect from the plain mean size",
+    file: "src/stats/alert.ts",
+    from: "return 1 + (squares / total - 1) * rho;",
+    to: "return 1 + (total / sizes.length - 1) * rho;",
+  },
+  {
+    id: "alert: ρ with m₀ in place of m₀ − 1",
+    file: "src/stats/alert.ts",
+    from: "const denominator = msb + (m0 - 1) * msw;",
+    to: "const denominator = msb + m0 * msw;",
+  },
+  {
+    id: "alert: power ignores the design effect",
+    file: "src/stats/alert.ts",
+    from: "const nEff = traces / designEffect;",
+    to: "const nEff = traces;",
+  },
+  {
+    id: "never: no split of the level",
+    file: "src/stats/never.ts",
+    from: 'detector.kind === "model" ? 1 - (1 - confidence) / 2 : confidence;',
+    to: "confidence;",
+  },
+  {
+    id: "never: sensitivity multiplies the bound",
+    file: "src/stats/never.ts",
+    from: "Math.min(1, flagged / sensitivity)",
+    to: "Math.min(1, flagged * sensitivity)",
+  },
+  {
+    id: "never: flagged-only at the split level",
+    file: "src/stats/never.ts",
+    from: '      confidence,\n      "upper",\n    );',
+    to: '      0.975,\n      "upper",\n    );',
+  },
+  {
+    id: "never: planning claim one case short",
+    file: "src/stats/never.ts",
+    from: "1 - alpha ** (1 / k) <= target",
+    to: "1 - alpha ** (1 / (k + 1)) <= target",
+  },
+  {
+    id: "overdispersion: variance without n − 1",
+    file: "src/stats/overdispersion.ts",
+    from: "(n * n * (n - 1))",
+    to: "(n * n * n)",
+  },
+  {
+    id: "overdispersion: interval tails swapped",
+    file: "src/stats/overdispersion.ts",
+    from: "lower: sum / chiSquareQuantile(1 - tail, n),",
+    to: "lower: sum / chiSquareQuantile(tail, n),",
+  },
+  {
+    id: "overdispersion: a run with V = 0 kept",
+    file: "src/stats/overdispersion.ts",
+    from: "return variance > 0 ?",
+    to: "return variance >= 0 ?",
+  },
+  {
+    id: "overdispersion: χ² at twice the degrees of freedom",
+    file: "src/stats/chi-square.ts",
+    from: "regularizedGammaP(df / 2, x / 2)",
+    to: "regularizedGammaP(df, x / 2)",
+  },
+  {
     id: "estimate: Clopper–Pearson tail not split",
     file: "src/stats/clopper-pearson.ts",
     from: 'const tail = sided === "two" ? (1 - level) / 2 : 1 - level;',

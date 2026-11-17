@@ -131,3 +131,9 @@ const result = estimate({
 `reduceTrials` gives pass^k, pass@k or a majority per case. `kaplanMeier`, `survivalQuantile`,
 `restrictedMean` and `restrictedDifference` handle times censored at the plan's limit.
 `missingDifferenceTest` flags a difference in missing trials between the arms.
+
+## Must-never ceilings and noise
+
+`neverClaim` shows or does not show a ceiling on a must-never measure's violation rate, and
+`neverCasesNeeded` gives the clean cases a ceiling needs. `stratifiedZ` and `overdispersion` give
+the noise runs' z and the reported ratio Σz²/N.

@@ -491,7 +491,9 @@ ordinary median of an uncensored sample of even size. A curve that sits on 1 −
 takes the midpoint up to the last time instead, which is the one difference from R that the tests
 pin. `restrictedMean` is the area under the curve on [0, L], and
 `restrictedDifference` the mean over cases of the paired difference in mean min(t, L), with the
-censored trials counted per arm. All are descriptive.
+censored trials counted per arm. That mean is exact only when every censored trial is censored at L,
+so `restrictedDifference` refuses a censored trial below L, such as an infrastructure timeout. All
+are descriptive.
 
 **Missingness.** `missingDifferenceTest` is the exact stratified conditional test over cases, with
 the missing trials as the outcome, two-sided as twice the smaller one-sided p-value. It flags a
@@ -523,12 +525,108 @@ docker run --rm -v "$PWD":/w -w /w \
   && python scripts/stats/estimate_oracle.py test/stats/reference-python-estimate.json"
 ```
 
-**Mutants.** `scripts/stats/mutants.ts` changes these methods in 26 ways (those named `estimate:`):
+**Mutants.** `scripts/stats/mutants.ts` changes these methods in 27 ways (those named `estimate:`):
 the denominator of the weighted mean, which keeps a mean of ones at exactly 1; the adjusted level of pooled Clopper–Pearson, per bound and per tail, and its limit of 1/4; the tail split, the beta shape and the closed form of Clopper–Pearson; the logarithm and the half of
 Hoeffding's bound; the squared weight and the reflection of the score interval; the two choices of
 path, the Wilson n, the worst case, the operational interval and the cluster minimum of `estimate`; the
 ties and the sign of the acceleration of BCa; pass^k, pass@k and the majority's tie; the events and
-the restricted mean of the curve; and the two sides of the missing-count test.
+the restricted mean of the curve; the refusal of a trial censored below L; and the two sides of the missing-count test.
+
+## Must-never ceilings
+
+`neverClaim` bounds the violation rate of a must-never measure on one arm. Its unit is the case at
+the run's trial count: a case violates when any of its trials does. A case without a detector value
+on each trial counts as a violation in the bound, and it is not a hit. The claim is `shown` when the
+exact one-sided Clopper–Pearson upper bound is at most the ceiling. The bound is exact, so the claim
+is validated.
+
+| Detector                            | Bound                                                | Level of each bound    | Claim                        |
+| ----------------------------------- | ---------------------------------------------------- | ---------------------- | ---------------------------- |
+| Deterministic                       | Clopper–Pearson upper bound on the violating cases   | the confidence         | `shown` or `not-shown`       |
+| Model, with Se_L > 0                | the same bound ÷ Se_L, capped at 1                   | 1 − (1 − confidence)/2 | `shown` or `not-shown`       |
+| Model, with Se_L = 0                | none                                                 | —                      | `no-claim`                   |
+| Model, without a calibration record | Clopper–Pearson upper bound on the flagged rate only | the confidence         | `flagged-only`, a diagnostic |
+
+The two bounds of a model detector hold jointly at the confidence by Bonferroni, so each takes half
+of 1 − confidence. Se_L is the lower bound on the detector's sensitivity from its calibration
+record, at that level. The detector's false positives only make the claim conservative.
+
+`neverCasesNeeded` gives the fewest cases, all clean, that show a ceiling:
+⌈ln α′ / ln(1 − ceiling·Se_L)⌉, with α′ the bound's own 1 − level and Se_L = 1 for a deterministic
+detector. The count is checked against the claim, so it is the smallest n whose claim holds: 2,995
+for a ceiling of 0.001 with a deterministic detector, and 4,610 with a model detector at Se_L = 0.8.
+Without a calibration record, or at Se_L = 0, it gives the reason instead of a count.
+
+## The overdispersion ratio of noise runs
+
+`stratifiedZ` gives one run's standardized stratified score statistic, z = (O − E)/√V. O is the
+candidate's total passes. E and V sum the hypergeometric mean and variance of the candidate's
+passes in each case, given the case's total, as the exact regression test conditions on them. It is
+about N(0, 1) when nothing changed. A run in which no case has both a pass and a failure has V = 0
+and no z.
+
+`overdispersion` gives Σz²/N over the N runs of a setup that have a z, per primary measure, with the
+interval [Σz²/χ²₁₋α/₂(N), Σz²/χ²α/₂(N)] for the scale φ in Σz² ~ φ·χ²(N). The interval is
+approximate, and discrete at small counts. A run with V = 0 is left out and counted. The ratio is
+reported only. It is never a decision criterion, and it is never pooled across measures, whose runs
+are correlated. It covers binary measures only: a score measure has no z yet. When noise runs reach the
+report, a score primary's record says "overdispersion: binary measures only". The later score variant is the standardized statistic
+of the score permutation test: Σdᵢ/√Σdᵢ² at one trial per case, and the permutation variance at
+two or more.
+
+**Oracles.** z² agrees with R's uncorrected `mantelhaen.test` statistic on 3 runs, and the χ²
+quantile with `qchisq` at 7 degrees of freedom and 5 probabilities, within a relative 1e-10
+(`reference-estimate.R`).
+
+**Mutants.** `scripts/stats/mutants.ts` changes these methods in 8 ways (those named `never:` and
+`overdispersion:`): the split of the level, the division by Se_L, the level of the flagged-only
+bound and the planning check; the variance factor, the interval's tails, the exclusion at V = 0 and
+the degrees of freedom of the χ² quantile.
+
+## Replay fidelity of attribution
+
+`fidelityCheck` tests whether a replayed run (A′ or B′) reproduces the recorded run it replays,
+before an attribution is read. It is TOST at 5% on each side: the two-sided 90% interval of the mean
+per-case difference, replayed minus recorded, with every case weighted equally. Fidelity is shown
+when the interval lies inside (−margin, margin). Otherwise the attribution is not interpretable.
+Coverage is not validated. The replayed run is later than the recording, so drift is part of what
+the check measures.
+
+- **Binary measures** take the stratified score interval of the regression section, with equal case
+  weights, at 90%.
+- **Scores** take the within-case bootstrap variance of each cell mean corrected by r/(r − 1). The
+  bootstrap's limit is s²(r − 1)/r², so the corrected variance is s²/r, which Ichnaea computes in
+  closed form, with no resampling noise. Without the correction, the interval at r = 2 is too narrow
+  by a factor of √2. s² is each cell's own unbiased within-cell variance. The interval is
+  estimate ± z₀.₉₅·√V, with V = Σ (s²ᵢ,replayed/rᵢ,replayed + s²ᵢ,recorded/rᵢ,recorded)/k². Each
+  cell's own s² is unbiased with no assumption. A pooled s² = ΣSS/Σ(r − 1) needs equal variances
+  across cells, which score cells do not have. With unequal trial counts it is too small when the
+  noisy cells have fewer trials, which is where missing trials collect: two cells at r = 2 with
+  {0.2, 0.6} and one at r = 3 with {0.5, 0.5, 0.5} give 0.080 from each cell's own s² but 0.053
+  pooled. At equal trial counts the two sums are equal.
+- **One trial per case** leaves a score cell without a within-case variance, so the check is refused
+  with `NOT_CHECKABLE_AT_ONE_TRIAL`. An interval of zero width gives `ZERO_WIDTH`.
+
+## Alert power of a monitor rule
+
+`alertDetectableRate` gives the true rate at which a rule on a closed window fires 4 times in 5. A
+`below: t` rule fires when the window's upper one-sided bound is below t, taken as
+p̂ < t − z·√(t(1 − t)/n_eff), and the rate solves P(fire) = 0.8 under the normal approximation. An
+`above: t` rule mirrors it. The result is labelled "approximate". When no rate fires that often,
+the window is too small and the result is null.
+
+The effective number of traces is n_eff = n/DEFF, with Kish's design effect
+DEFF = 1 + (Σm²/Σm − 1)ρ (`kishDesignEffect`) over the session sizes m. The size-weighted mean
+Σm²/Σm is used because the plain mean understates DEFF when sessions differ in size. When `monitor`
+declares no ρ, `intraclassCorrelation` estimates it from the last closed window by one-way ANOVA,
+(MSB − MSW)/(MSB + (m₀ − 1)·MSW) with m₀ = (N − Σm²/N)/(k − 1). A negative estimate gives 0.
+
+**Oracles.** ρ agrees with R's `aov` mean squares on 3 sets within 1e-12 (`reference-estimate.R`).
+The fidelity check's binary interval is the regression section's interval, checked there.
+
+**Mutants.** `scripts/stats/mutants.ts` changes these methods in 7 ways (those named `fidelity:` and
+`alert:`): the r/(r − 1) correction, each cell's own variance, the 90% level and the two-sided margin of the
+fidelity check; the size-weighted mean of DEFF, m₀ − 1 in ρ, and n_eff in the power.
 
 ## Agreement between raters
 
