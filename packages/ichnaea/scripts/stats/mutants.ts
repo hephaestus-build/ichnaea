@@ -3,9 +3,12 @@
 //   node scripts/stats/mutants.ts            # every mutant
 //   node scripts/stats/mutants.ts "level"     # selected mutants
 // A mutant that survives is a test that cannot fail: kill it, or justify it as equivalent here.
+// What counts as a kill, and the two controls that every run applies first: scripts/mutation.ts.
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+
+import { CONTROLS, type Outcome, runTests } from "../mutation.ts";
 
 export interface Mutant {
   readonly id: string;
@@ -25,6 +28,17 @@ export const CANARY: Mutant = {
   file: "src/stats/types.ts",
   from: "/** Successes out of trials. */",
   to: "/** Successes out of trials (the mutation canary). */",
+};
+
+/**
+ * The control: a deliberate break of the Wilson centre, which the reference values assert. It runs
+ * second and must be killed; otherwise this run cannot show a kill.
+ */
+export const CONTROL: Mutant = {
+  id: "control: the Wilson centre broken",
+  file: "src/stats/wilson.ts",
+  from: "const centre = (p + z2 / (2 * n)) / (1 + z2 / n);",
+  to: "const centre = (p + z2 / (3 * n)) / (1 + z2 / n);",
 };
 
 export const MUTANTS: readonly Mutant[] = [
@@ -716,17 +730,27 @@ function run(cmd: string, args: string[], root: string): boolean {
   }
 }
 
+const describe = (o: Outcome): string =>
+  o.kind === "error" ? `ERROR: ${o.reason}` : o.kind === "killed" ? "killed" : "SURVIVED";
+
+/**
+ * Runs the selected mutants against the stats tests in `root` and returns the exit code. Every
+ * anchor is checked before any source changes: one that does not apply fails the whole run. The
+ * canary must survive and the control must be killed, or nothing counts. Only an assertion failure
+ * kills; an error (scripts/mutation.ts) fails the run.
+ */
 export function runMutants(
   mutants: readonly Mutant[],
   root: string,
   wanted: readonly string[],
   log: (line: string) => void = console.log,
-  testsPass: () => boolean = () =>
-    run("pnpm", ["exec", "vitest", "run", "--project", "stats"], root),
+  test: (name: string) => Outcome = (name) => runTests(root, ["stats"], name),
   canary: Mutant = CANARY,
+  control: Mutant = CONTROL,
 ): number {
   const selected = [
     canary,
+    control,
     ...mutants.filter((x) => wanted.length === 0 || wanted.some((w) => x.id.startsWith(w))),
   ];
   const problems = anchorProblems(selected, root);
@@ -737,17 +761,20 @@ export function runMutants(
   }
 
   const survivors: string[] = [];
+  const errors: string[] = [];
   for (const m of selected) {
     const path = join(root, m.file);
     const original = readFileSync(path, "utf8");
     writeFileSync(path, original.replace(m.from, m.to));
-    let killed: boolean;
+    let outcome: Outcome;
     try {
-      if (m.regen) {
-        run("node", ["scripts/contracts/generate-schemas.ts"], root);
-        run("node", ["scripts/contracts/write-fixtures.ts"], root);
-      }
-      killed = !testsPass();
+      const regenerated =
+        m.regen !== true ||
+        (run("node", ["scripts/contracts/generate-schemas.ts"], root) &&
+          run("node", ["scripts/contracts/write-fixtures.ts"], root));
+      outcome = regenerated
+        ? test(m.id)
+        : { kind: "error", reason: "the schemas or fixtures could not be regenerated" };
     } finally {
       writeFileSync(path, original);
       if (m.regen) {
@@ -755,19 +782,24 @@ export function runMutants(
         run("node", ["scripts/contracts/write-fixtures.ts"], root);
       }
     }
-    if (m === canary) {
-      log(`${m.id}: ${killed ? "killed" : "survived, as it must"}`);
-      if (killed) {
-        log("the canary was killed: some test fails whatever the mutant does, so no kill counts");
+    const role = m === canary ? CONTROLS.canary : m === control ? CONTROLS.control : undefined;
+    if (role !== undefined) {
+      if (outcome.kind !== role.must) {
+        log(`${m.id}: ${describe(outcome)}`);
+        log(role.otherwise);
         return 1;
       }
+      log(`${m.id}: ${outcome.kind}, as it must be`);
       continue;
     }
-    log(`${m.id}: ${killed ? "killed" : "SURVIVED"}`);
-    if (!killed) survivors.push(m.id);
+    log(`${m.id}: ${describe(outcome)}`);
+    if (outcome.kind === "survived") survivors.push(m.id);
+    if (outcome.kind === "error") errors.push(m.id);
   }
-  log(survivors.length === 0 ? "all mutants killed" : `survivors: ${survivors.join(", ")}`);
-  return survivors.length === 0 ? 0 : 1;
+  if (errors.length > 0) log(`errors (no result): ${errors.join(", ")}`);
+  if (survivors.length > 0) log(`survivors: ${survivors.join(", ")}`);
+  if (errors.length === 0 && survivors.length === 0) log("all mutants killed");
+  return errors.length === 0 && survivors.length === 0 ? 0 : 1;
 }
 
 // Importing this file runs nothing: only running it mutates the sources.

@@ -5,7 +5,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { CANARY, editsOf, MUTANTS, mutate } from "../../scripts/contracts/mutants.ts";
+import { CANARY, CONTROL, editsOf, MUTANTS, mutate } from "../../scripts/contracts/mutants.ts";
 
 const root = join(import.meta.dirname, "..", "..");
 
@@ -15,7 +15,7 @@ describe("mutants", () => {
     expect(ids.filter((id, i) => ids.indexOf(id) !== i)).toEqual([]);
   });
 
-  it.each([CANARY, ...MUTANTS].map((m) => [m.id, m] as const))(
+  it.each([CANARY, CONTROL, ...MUTANTS].map((m) => [m.id, m] as const))(
     "%s: every anchor occurs exactly once and the edit changes the file",
     (_, m) => {
       const original = readFileSync(join(root, m.file), "utf8");

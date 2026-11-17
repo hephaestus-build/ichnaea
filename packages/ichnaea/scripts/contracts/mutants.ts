@@ -6,10 +6,13 @@
 // `test/contracts/mutants.test.ts` checks that every anchor still occurs exactly once, so a refactor that
 // moves one fails the test run instead of leaving a mutant that silently tests nothing. That test is
 // in the `mutants` project, not in `contracts`, which the mutated runs execute: its anchor check
-// would fail under every mutant. A comment-only canary runs first and must survive.
+// would fail under every mutant. What counts as a kill, and the two controls that every run
+// applies first: scripts/mutation.ts.
 import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+
+import { CONTROLS, type Outcome, runTests } from "../mutation.ts";
 
 export interface Mutant {
   readonly id: string;
@@ -66,6 +69,17 @@ export const CANARY: Mutant = {
   file: "src/contracts/canonical.ts",
   from: "/** Thrown when a value has no JSON representation. */",
   to: "/** Thrown when a value has no JSON representation (the mutation canary). */",
+};
+
+/**
+ * The control: canonical JSON with its members in reverse order, which the committed vectors
+ * assert. It runs second and must be killed; otherwise this run cannot show a kill.
+ */
+export const CONTROL: Mutant = {
+  id: "control: canonical member order reversed",
+  file: "src/contracts/canonical.ts",
+  from: "entries.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));",
+  to: "entries.sort(([a], [b]) => (a < b ? 1 : a > b ? -1 : 0));",
 };
 
 export const MUTANTS: readonly Mutant[] = [
@@ -439,6 +453,9 @@ export const MUTANTS: readonly Mutant[] = [
   },
 ];
 
+const describe = (o: Outcome): string =>
+  o.kind === "error" ? `ERROR: ${o.reason}` : o.kind === "killed" ? "killed" : "SURVIVED";
+
 if (import.meta.main) {
   const root = join(import.meta.dirname, "..", "..");
   const wanted = process.argv.slice(2);
@@ -451,8 +468,11 @@ if (import.meta.main) {
     }
   };
   const survivors: string[] = [];
+  const errors: string[] = [];
+  let failed = false;
   for (const m of [
     CANARY,
+    CONTROL,
     ...MUTANTS.filter((x) => wanted.length === 0 || wanted.some((w) => x.id.startsWith(w))),
   ]) {
     const path = join(root, m.file);
@@ -460,29 +480,19 @@ if (import.meta.main) {
     const mutated = mutate(original, m);
     if ("missing" in mutated) {
       console.log(`${m.id}: anchor not found (update the mutant)`);
-      survivors.push(m.id);
+      errors.push(m.id);
       continue;
     }
     writeFileSync(path, mutated.text);
+    let outcome: Outcome;
     try {
-      if (m.regen) {
-        run("node", ["scripts/contracts/generate-schemas.ts"]);
-        run("node", ["scripts/contracts/write-fixtures.ts"]);
-      }
-      const killed = !run("pnpm", ["exec", "vitest", "run", "--project", "contracts"]);
-      if (m === CANARY) {
-        console.log(`${m.id}: ${killed ? "killed" : "survived, as it must"}`);
-        if (killed) {
-          console.log(
-            "the canary was killed: some test fails whatever the mutant does, so no kill counts",
-          );
-          process.exitCode = 1;
-          break;
-        }
-        continue;
-      }
-      console.log(`${m.id}: ${killed ? "killed" : "SURVIVED"}`);
-      if (!killed) survivors.push(m.id);
+      const regenerated =
+        m.regen !== true ||
+        (run("node", ["scripts/contracts/generate-schemas.ts"]) &&
+          run("node", ["scripts/contracts/write-fixtures.ts"]));
+      outcome = regenerated
+        ? runTests(root, ["contracts"], m.id)
+        : { kind: "error", reason: "the schemas or fixtures could not be regenerated" };
     } finally {
       writeFileSync(path, original);
       if (m.regen) {
@@ -490,11 +500,25 @@ if (import.meta.main) {
         run("node", ["scripts/contracts/write-fixtures.ts"]);
       }
     }
+    const role = m === CANARY ? CONTROLS.canary : m === CONTROL ? CONTROLS.control : undefined;
+    if (role !== undefined) {
+      if (outcome.kind !== role.must) {
+        console.log(`${m.id}: ${describe(outcome)}`);
+        console.log(role.otherwise);
+        failed = true;
+        break;
+      }
+      console.log(`${m.id}: ${outcome.kind}, as it must be`);
+      continue;
+    }
+    console.log(`${m.id}: ${describe(outcome)}`);
+    if (outcome.kind === "survived") survivors.push(m.id);
+    if (outcome.kind === "error") errors.push(m.id);
   }
-  if (process.exitCode !== 1) {
-    console.log(
-      survivors.length === 0 ? "all mutants killed" : `survivors: ${survivors.join(", ")}`,
-    );
-    process.exitCode = survivors.length === 0 ? 0 : 1;
+  if (!failed) {
+    if (errors.length > 0) console.log(`errors (no result): ${errors.join(", ")}`);
+    if (survivors.length > 0) console.log(`survivors: ${survivors.join(", ")}`);
+    if (errors.length === 0 && survivors.length === 0) console.log("all mutants killed");
   }
+  process.exitCode = !failed && errors.length === 0 && survivors.length === 0 ? 0 : 1;
 }
