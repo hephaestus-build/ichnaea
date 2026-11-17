@@ -1,12 +1,12 @@
 {
   "schema": "ichnaea.stats-provenance/1",
   "script": "packages/ichnaea/scripts/stats/study-calibration-rule.ts",
-  "commit": "552a81defc19babc25f66d8930b9916046dbbe3f",
+  "commit": "f4cc61ca866918378231db6574a121b63fe995e9",
   "files": {
-    "packages/ichnaea/scripts/stats/calibration-rule-study.ts": "acbe9784d40afafc711669ee935f5860fa3d04ff5b78bacd70f9074fe1d04650",
-    "packages/ichnaea/scripts/stats/calibration-rule.ts": "7f19a21e391d8ac8c96b4eb153029dbf9a33abd5464ef2fbadde68c5f7e00edc",
+    "packages/ichnaea/scripts/stats/calibration-rule-study.ts": "38a63d56547384d976847e3480fb57981e46e0f36ace2cfda6a1759f5b4457da",
+    "packages/ichnaea/scripts/stats/calibration-rule.ts": "10e392f96e15927f8d7fb5e512b5c260b1415fbbe93a2b5e8ee1224200fa15a6",
     "packages/ichnaea/scripts/stats/provenance.ts": "5c1c46f01671e1068dc5cb7bb0266ccc7a82b752fa0a3478080afa36ff864700",
-    "packages/ichnaea/scripts/stats/study-calibration-rule.ts": "eb9eb7288ef011dde7560ed8569acce8fd0046705fdce4f1521f4e2df8f7a8e9",
+    "packages/ichnaea/scripts/stats/study-calibration-rule.ts": "fd6b53786420134fe3444f4288a344c822d3a9ca822ef36cd85970765715d187",
     "packages/ichnaea/src/stats/agreement.ts": "48eb2419d6407ce1315c610d9c0b7495b5a3c395791b8da9870b752e23f607df",
     "packages/ichnaea/src/stats/cluster-bootstrap.ts": "aab7f0bfe56b4fa5307dc8c93aac4d5cf80895ff4bc47475276d63f3033c25e0",
     "packages/ichnaea/src/stats/compare.ts": "0d4ff75b4fdb17ac3c282073e7aff6d1a8287fbfdb9b1cd477b2d5a90569473d",
@@ -31,15 +31,15 @@
   "arguments": [
     "merge",
     "--in",
-    "/tmp/calibration-rule-study.M3VzaL/shards",
+    "/tmp/calibration-rule-study.2oOzou/shards",
     "validation/calibration-rule.tsv"
   ],
   "node": "v24.22.2",
-  "started": "2026-11-16T15:45:58.379Z",
+  "started": "2026-11-16T22:34:45.098Z",
   "studies": 2000,
   "resamples": 2000,
-  "cells": 13,
+  "cells": 55,
   "output": "calibration-rule.tsv",
   "complete": true,
-  "outputSha256": "f6f5180a9b58071554d702c83199b86c0278644debe7e052e12d3a8d16478903"
+  "outputSha256": "00542378d457bba44d447fb6689c65e7a2d3f05dbbfa07ca418c3c9f31605a72"
 }

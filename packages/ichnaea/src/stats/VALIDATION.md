@@ -499,78 +499,165 @@ network. The base-R script does not.
 
 ## The judge calibration rule: operating characteristics
 
-A model judge is `calibrated` only when its agreement with two human raters, and its bias between
-the two configurations a plan names, pass a rule. This study measures how often that rule admits a
-judge that is as good as a rater, a worse one, or a biased one. It describes the rule; it does not
-validate an interval or a decision method.
+A model judge is `calibrated` only when its labels, set against two human raters' labels on the same
+answers, pass a rule. This study measures how often that rule admits a judge that is as good as a
+rater, a worse one, an uninformative one or a biased one. It describes the rule; it does not validate
+an interval or a decision method.
 
 **The rule studied** (`scripts/stats/calibration-rule.ts`; the study takes it as a parameter):
 
-- The agreement statistic is Gwet's AC1 for yes/no labels and Krippendorff's ordinal alpha for 5
-  levels. The gap is judge–rater agreement (the mean over the two raters) minus rater–rater
-  agreement. The agreement condition holds when the gap's one-sided 95 % lower bound is at least −0.15.
-- The bias between the two configurations is, per case, the judge's change minus the raters' mean
-  change, on [0, 1]. Levels are normalised as (level − 1)/4. Its shown bound is max(|lower|, |upper|)
-  of the two-sided 90 % interval of its mean. An equivalence check at tolerance m, or a measure's
-  limit m, passes when the shown bound is at most m.
-- Both come from one case-cluster percentile bootstrap of 2,000 resamples per study.
+- **The rater floor, a precondition.** The one-sided 95 % lower bound of rater–rater agreement must
+  be at least 0.60 (Gwet's AC1, yes/no labels) or 0.667 (Krippendorff's ordinal alpha, 5 levels).
+- **The gap form.** For a statistic S(x, y) of reader x against reference y, the judge J and the
+  raters H1 and H2:
+
+  G = ½ [S(J, H1) + S(J, H2)] − ½ [S(H2, H1) + S(H1, H2)]
+
+  Both halves come from the same resampled cases, so the interval counts the raters' sampling error
+  as well as the judge's. A condition holds when G's one-sided 95 % lower bound is at least
+  −tolerance. The rule bounds this gap, never the judge's own value of S.
+  - Yes/no labels: AC1 at tolerance 0.15, and sensitivity and specificity at tolerance 0.10 each.
+  - Levels: ordinal alpha at tolerance 0.15.
+
+- **The bias gate.** Per answer, the judge's value minus the raters' mean value, on [0, 1] (a level
+  l counts as (l − 1)/4). The bias is its mean on the candidate's answers minus its mean on the
+  base's. The gate holds when the bias's two-sided 90 % interval lies within ±0.20 (yes/no) or ±0.15
+  (levels). The shown bound is max(|lower|, |upper|). Answers from a known-worse configuration take
+  no part in it. The gate applies to every judge measure, secondary measures too.
+- **Calibrated** means that every condition holds. The `pass` column is the share of studies in which
+  they all held.
+- Every statistic is weighted by 1/π, for inclusion probability π. One bootstrap of 2,000 resamples
+  per study resamples whole cases within their strata. A resample with an undefined statistic (no
+  positive or no negative to condition on) is left out of that statistic's quantile; `nanShare`
+  counts it.
 
 **The synthetic studies** (`scripts/stats/calibration-rule-study.ts`):
 
-- Each study has 60 cases with two items each, one per configuration. A shared case effect is drawn
-  as N(0, 0.7²).
-- Yes/no: an item is positive with probability prevalence · e^(0.5 · case effect), clamped to
-  [0.02, 0.95]. Each rater reads it correctly with probability 0.90, and the judge with its own
-  accuracy. A biased judge misses positives more often under the second configuration.
-- Levels: a latent quality (case effect plus N(0, 0.7²)) is cut into 5 levels at −1.2, −0.4, 0.4 and
-  1.2. Rater readings add N(0, 0.6²). The judge adds its own noise, and a biased judge shifts its
-  reading under the second configuration.
+- **Generic cells.** 60 cases (or the size the cell names), each with one answer from the base and
+  one from the candidate, and a shared case effect drawn as N(0, 0.7²). Every answer weighs 1.
+  - Yes/no: an answer is positive (a defect) with probability prevalence · e^(0.5 · case effect),
+    clamped to [0.02, 0.95]. Each rater reads it correctly with probability 0.90, and the judge with
+    its own accuracy. A biased judge misses positives more often on the candidate. A chance judge
+    says yes at the prevalence without reading; an always-no judge never says yes. The "oversampled"
+    cells have positives at 0.35 of the sample.
+  - Levels: a latent quality (case effect plus N(0, 0.7²)) is cut into 5 levels at −1.2, −0.4, 0.4
+    and 1.2. Rater readings add N(0, 0.6²). The judge adds its own noise, and a biased judge shifts
+    its reading on the candidate.
+- **Draw cells** reproduce the chatbot's registered calibration draw:
+  - a screen of 127 items, 2 runs per item from each of the base (C1), the candidate (C2) and a
+    known-worse configuration (C3);
+  - defect rates 0.15, 0.15 and 0.35 per answer, with within-item correlation ρ = 0.3 of the defects
+    and of each reader's errors;
+  - a deterministic proxy that catches 0.65 of the defects (the obvious ones) and flags 0.01 of the
+    good answers; readers are 0.07 more accurate on an obvious defect and 0.07 less on a subtle one;
+  - a draw of n answers: 0.29 n each from C1 and C2 and the rest from C3, with proxy-positive shares
+    0.20, 0.20 and 0.40, at most 2 proxy-positive answers per item, each answer weighted 1/π;
+  - raters at accuracy 0.90 (raw agreement 0.82), a good judge at 0.90 and a clearly worse judge at
+    0.80.
+
+  The 360-answer draw is then rerun with one assumption changed: ρ = 0 or 0.6, raters at 0.93 (raw
+  agreement 0.87), or a C1→C3 defect-rate rise of 0.10 or 0.30 instead of 0.20. "Without C3" is a
+  140-answer draw of C1 and C2 alone, with positive shares 0.35.
 
 **Results.** 2,000 studies per cell, seed 6,000,000 + cell index, from
 `validation/calibration-rule.tsv` and its sidecar. The Monte Carlo standard error of a rate is at most
-0.011. "Mean bias" is the per-case bias between the configurations, averaged over the cell's studies.
+0.011. "Floor" is the share of studies whose raters meet the floor; "Bias ≤ m" is the share whose
+shown bias bound is at most m.
 
-| Cell                           | Judge                          | Mean bias | P(agreement passes) | P(bound ≤ 0.10) | P(bound ≤ 0.15) | P(bound ≤ 0.20) | P(bound ≤ 0.25) |
-| ------------------------------ | ------------------------------ | --------- | ------------------- | --------------- | --------------- | --------------- | --------------- |
-| Yes/no, prevalence 0.2         | as good as a rater (0.90)      | 0.00      | 0.788               | 0.039           | 0.508           | 0.825           | 0.963           |
-|                                | slightly worse (0.85)          | 0.00      | 0.298               | 0.004           | 0.322           | 0.708           | 0.907           |
-|                                | clearly worse (0.80)           | 0.00      | 0.066               | 0.000           | 0.155           | 0.571           | 0.828           |
-| Yes/no, prevalence 0.1         | as good as a rater             | 0.00      | 0.836               | 0.036           | 0.484           | 0.836           | 0.963           |
-|                                | clearly worse                  | 0.00      | 0.079               | 0.002           | 0.183           | 0.579           | 0.833           |
-| Yes/no, prevalence 0.2, biased | as good as a rater             | −0.068    | 0.752               | 0.027           | 0.318           | 0.624           | 0.839           |
-|                                |                                | −0.136    | 0.696               | 0.006           | 0.096           | 0.267           | 0.532           |
-|                                |                                | −0.204    | 0.640               | 0.000           | 0.012           | 0.070           | 0.192           |
-| 5 levels                       | as good as a rater (noise 0.6) | 0.00      | 0.925               | 0.627           | 0.968           | 1.000           | 1.000           |
-|                                | noisier (0.9)                  | 0.00      | 0.253               | 0.292           | 0.838           | 0.981           | 0.999           |
-|                                | much noisier (1.2)             | 0.00      | 0.017               | 0.106           | 0.654           | 0.933           | 0.993           |
-| 5 levels, biased               | as good as a rater             | 0.065     | 0.885               | 0.223           | 0.711           | 0.961           | 0.998           |
-|                                |                                | 0.130     | 0.720               | 0.009           | 0.142           | 0.554           | 0.914           |
+Generic cells, yes/no labels, 60 cases:
 
-No resample had an undefined agreement statistic (`nanShare` 0 in every cell).
+| Cell                   | Judge                     | Pass  | Floor | AC1   | Sensitivity | Specificity | Bias gate | Mean bias | Bias ≤ 0.10 | Bias ≤ 0.20 |
+| ---------------------- | ------------------------- | ----- | ----- | ----- | ----------- | ----------- | --------- | --------- | ----------- | ----------- |
+| Prevalence 0.2         | as good as a rater (0.90) | 0.120 | 0.474 | 0.788 | 0.479       | 0.797       | 0.825     | 0.00      | 0.039       | 0.825       |
+|                        | slightly worse (0.85)     | 0.019 | 0.506 | 0.298 | 0.309       | 0.332       | 0.708     | 0.00      | 0.004       | 0.708       |
+|                        | clearly worse (0.80)      | 0.002 | 0.467 | 0.066 | 0.220       | 0.077       | 0.571     | 0.00      | 0.000       | 0.571       |
+| Prevalence 0.1         | as good as a rater        | 0.172 | 0.730 | 0.836 | 0.381       | 0.817       | 0.836     | 0.00      | 0.036       | 0.836       |
+|                        | clearly worse             | 0.006 | 0.735 | 0.079 | 0.300       | 0.064       | 0.579     | 0.00      | 0.002       | 0.579       |
+| Prevalence 0.2, biased | as good as a rater        | 0.022 | 0.481 | 0.752 | 0.102       | 0.904       | 0.624     | −0.068    | 0.027       | 0.624       |
+|                        |                           | 0.001 | 0.469 | 0.696 | 0.012       | 0.960       | 0.267     | −0.136    | 0.006       | 0.267       |
+|                        |                           | 0.000 | 0.471 | 0.640 | 0.001       | 0.989       | 0.070     | −0.204    | 0.000       | 0.070       |
+| Prevalence 0.1         | chance                    | 0.000 | 0.729 | 0.380 | 0.000       | 0.879       | 0.625     | 0.00      | 0.002       | 0.625       |
+|                        | always no                 | 0.000 | 0.732 | 0.981 | 0.000       | 1.000       | 0.939     | 0.00      | 0.120       | 0.939       |
+| Prevalence 0.05        | chance                    | 0.004 | 0.832 | 0.973 | 0.004       | 1.000       | 0.867     | 0.00      | 0.063       | 0.867       |
+|                        | always no                 | 0.001 | 0.832 | 1.000 | 0.001       | 1.000       | 0.980     | 0.00      | 0.333       | 0.980       |
+| Positives at 0.35      | as good as a rater        | 0.051 | 0.242 | 0.739 | 0.595       | 0.742       | 0.828     | 0.00      | 0.043       | 0.828       |
+|                        | clearly worse             | 0.000 | 0.231 | 0.053 | 0.153       | 0.097       | 0.572     | 0.00      | 0.000       | 0.572       |
+|                        | chance                    | 0.000 | 0.244 | 0.000 | 0.000       | 0.002       | 0.107     | 0.00      | 0.000       | 0.107       |
+|                        | always no                 | 0.000 | 0.252 | 0.001 | 0.000       | 1.000       | 0.675     | 0.00      | 0.001       | 0.675       |
 
-**What the table shows.**
+Generic cells, positives at 0.35, by study size (good judge at 0.90, worse at 0.80):
 
-- At 60 cases, the agreement condition admits a judge as good as a rater 79–92 % of the time and a
-  clearly worse one 7–8 % of the time (yes/no). A noisier level judge (noise 1.5 times a rater's) is
-  still admitted 25 % of the time.
-- On yes/no values, the bias bound of an unbiased judge is about 0.16 on average. So an equivalence
-  check at ±0.10 passes it only 4 % of the time; ±0.20 passes it 83 % of the time. A bound of 0.10
-  or less on yes/no values needs a larger study.
-- On levels, the bound of an unbiased judge is about 0.10. It is at most 0.10 in 63 % of studies and
-  at most 0.15 in 97 %.
-- The agreement condition alone still admits a biased yes/no judge (mean bias −0.20) 64 % of the
-  time. The bias check is what catches it.
+| Cases | Good: pass | Good: floor | Good: sensitivity | Good: bias gate | Worse: pass |
+| ----- | ---------- | ----------- | ----------------- | --------------- | ----------- |
+| 120   | 0.204      | 0.331       | 0.814             | 0.990           | 0.000       |
+| 135   | 0.249      | 0.347       | 0.872             | 0.997           | 0.001       |
+| 150   | 0.268      | 0.351       | 0.888             | 1.000           | 0.000       |
+| 180   | 0.339      | 0.401       | 0.925             | 1.000           | 0.000       |
+
+Generic cells, 5 levels, 60 cases:
+
+| Judge                          | Mean bias | Pass  | Floor | Ordinal alpha | Bias gate | Bias ≤ 0.10 | Bias ≤ 0.15 |
+| ------------------------------ | --------- | ----- | ----- | ------------- | --------- | ----------- | ----------- |
+| as good as a rater (noise 0.6) | 0.00      | 0.056 | 0.070 | 0.919         | 0.962     | 0.609       | 0.962       |
+| noisier (0.9)                  | 0.00      | 0.002 | 0.061 | 0.256         | 0.818     | 0.313       | 0.818       |
+| much noisier (1.2)             | 0.00      | 0.000 | 0.077 | 0.017         | 0.659     | 0.107       | 0.659       |
+| as good as a rater, shifted    | 0.065     | 0.038 | 0.074 | 0.858         | 0.695     | 0.234       | 0.695       |
+|                                | 0.128     | 0.008 | 0.067 | 0.733         | 0.147     | 0.010       | 0.147       |
+
+Draw cells (the chatbot's registered draw):
+
+| Draw              | Good: pass | Good: floor | Good: sensitivity | Good: bias gate | Worse: pass | Positives drawn | Effective positives (Kish) |
+| ----------------- | ---------- | ----------- | ----------------- | --------------- | ----------- | --------------- | -------------------------- |
+| 140               | 0.134      | 0.545       | 0.587             | 0.579           | 0.002       | 46              | 39                         |
+| 200               | 0.258      | 0.630       | 0.688             | 0.774           | 0.006       | 68              | 56                         |
+| 260               | 0.434      | 0.710       | 0.776             | 0.891           | 0.004       | 87              | 72                         |
+| 300               | 0.544      | 0.759       | 0.833             | 0.934           | 0.007       | 99              | 83                         |
+| 360               | 0.641      | 0.805       | 0.860             | 0.975           | 0.014       | 114             | 99                         |
+| 460               | 0.815      | 0.889       | 0.938             | 0.993           | 0.022       | 129             | 119                        |
+| 360, ρ = 0        | 0.732      | 0.867       | 0.888             | 0.966           | 0.012       | 117             | 102                        |
+| 360, ρ = 0.6      | 0.535      | 0.738       | 0.810             | 0.979           | 0.012       | 109             | 95                         |
+| 360, raters 0.93  | 0.918      | 0.999       | 0.932             | 0.994           | 0.032       | 114             | 99                         |
+| 360, C3 rise 0.10 | 0.690      | 0.870       | 0.841             | 0.978           | 0.013       | 96              | 83                         |
+| 360, C3 rise 0.30 | 0.630      | 0.748       | 0.911             | 0.978           | 0.011       | 126             | 112                        |
+| 140, raters 0.93  | 0.458      | 0.932       | 0.702             | 0.758           | 0.011       | 46              | 39                         |
+| 140, without C3   | 0.168      | 0.608       | 0.499             | 0.782           | 0.003       | 49              | 32                         |
+
+No resample had an undefined statistic in the draw cells or the level cells. In the rare-positive
+yes/no cells, at most 0.002 % of resamples had one.
+
+**What the tables show.**
+
+- **No uninformative judge passes.** At prevalence 0.05, a chance judge and an always-no judge pass
+  AC1 in 97–100 % of studies, because AC1 rewards agreement on the many negatives. The sensitivity
+  gap stops them: they pass the whole rule in at most 0.4 % of studies.
+- **The bias gate catches what agreement misses.** A yes/no judge with a mean bias of −0.20 passes
+  AC1 in 64 % of studies and the bias gate in 7 %.
+- **The clearly worse judge stays out.** It passes in at most 0.6 % of generic studies and at most
+  3.2 % of draws, below the 5 % target everywhere.
+- **The rater floor binds before the judge does.** At 60 cases, raters at raw agreement 0.82 reach
+  the floor in 47 % of studies at prevalence 0.2, and level raters reach it in 6–8 %. A good judge
+  therefore passes in at most 17 % of 60-case studies. At 60 cases, the rule mostly reports that the
+  raters' own agreement is not shown.
+- **The chatbot's draw.** With raters at accuracy 0.90, the good judge passes 64 % of 360-answer
+  draws and 82 % of 460-answer draws. The 80 % target needs about 460 answers. With raters at 0.93
+  (raw agreement 0.87), 360 answers give 92 %. Raters' agreement, measured in the rater check
+  before the draw is fixed, therefore decides the size more than any other assumption. At ρ = 0.6 the
+  360-answer draw falls to 53 %.
+- **The bias gate costs little in a large draw.** It holds in 97–99 % of 360- and 460-answer draws.
+  In 140-answer draws it holds in 58–78 %, so a small draw often fails the gate even for an unbiased judge.
 
 **Limits.** The raters and the judge are synthetic. The numbers describe this rule on these
-generators, at 60 cases. They are not the coverage of an interval, and they do not validate a
-decision method. A rule or generator change needs a rerun.
+generators. They are not the coverage of an interval, and they do not validate a decision method. The
+draw cells use assumed defect rates, proxy recall and ρ; the chatbot's screen measures them. A rule,
+generator or allocation change needs a rerun.
 
-Rerun from `packages/ichnaea` (about 14 minutes on 4 cores), or with the `Calibration rule study`
-workflow:
+Rerun from `packages/ichnaea` (about an hour on 4 cores), or with the `Calibration rule study`
+workflow. `$out` is an empty directory:
 
 ```sh
-for i in 0 1 2 3; do node scripts/stats/study-calibration-rule.ts shard --shard "$i/4" --out /tmp/shards & done; wait
-node scripts/stats/study-calibration-rule.ts merge --in /tmp/shards validation/calibration-rule.tsv
+out=$(mktemp -d)
+for i in 0 1 2 3; do node scripts/stats/study-calibration-rule.ts shard --shard "$i/4" --out "$out" & done; wait
+node scripts/stats/study-calibration-rule.ts merge --in "$out" validation/calibration-rule.tsv
 ```
 
 ## Floors and the minimum detectable effect
