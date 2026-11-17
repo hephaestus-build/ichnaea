@@ -128,6 +128,19 @@ describe("the replay fidelity check", () => {
       margin: 0.1,
     });
     expect(far.shown).toBe(false);
+    // The mirror: a replay far below its recording leaves the interval under −margin, which only
+    // the lower side of the check refuses.
+    const below = fidelityCheck({
+      valueType: "score",
+      cases: [
+        { replayed: [0.1, 0.2], recorded: [0.9, 0.8] },
+        { replayed: [0.2, 0.1], recorded: [0.7, 0.9] },
+      ],
+      margin: 0.1,
+    });
+    expect(below.interval!.upper).toBeLessThan(0.1);
+    expect(below.interval!.lower).toBeLessThan(-0.1);
+    expect(below.shown).toBe(false);
     const flat = fidelityCheck({
       valueType: "score",
       cases: [{ replayed: [0.5, 0.5], recorded: [0.5, 0.5] }],
