@@ -1,4 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { appendFileSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+
+import { afterAll, describe, expect, it } from "vitest";
 
 import {
   ARM_BIAS_MARGIN,
@@ -13,8 +17,17 @@ import {
   drawStudy,
   runCell,
   type CalibrationRule,
+  type Cell,
 } from "../../scripts/stats/calibration-rule-study.ts";
-import { COLUMNS, row, seedOf } from "../../scripts/stats/study-calibration-rule.ts";
+import { sizeDraw } from "../../scripts/stats/size-calibration-draw.ts";
+import { type Provenance, PROVENANCE_SCHEMA, writeMeta } from "../../scripts/stats/provenance.ts";
+import {
+  COLUMNS,
+  orderRows,
+  readShards,
+  row,
+  seedOf,
+} from "../../scripts/stats/study-calibration-rule.ts";
 import { weightedAc1 } from "../../src/calibration/statistics.ts";
 import { createRng, gwetAc1 } from "../../src/stats/index.ts";
 
@@ -79,7 +92,7 @@ describe("the judge calibration rule study, smoke run", () => {
       expect(smoke(id).pass).toBe(0);
       expect(holds(id, "ac1")).toBeGreaterThan(0.8);
     }
-    expect(smoke("binary-chance-oversampled").pass).toBe(0);
+    expect(smoke("binary-chance-prev0.35").pass).toBe(0);
   });
 
   it("reports each scale's own conditions, and NA for the other's", () => {
@@ -187,5 +200,136 @@ describe("the rule is a parameter of the study", () => {
     });
     expect(outcome.shownBound).toBe(0);
     expect(outcome.armBias).toBe(0);
+  });
+});
+
+// A yes/no cell with perfect raters, so their label is the truth.
+const perfectRaters = (armBias: number): Cell => ({
+  id: "bias",
+  scale: "binary",
+  prevalence: 0.2,
+  raterAccuracy: 1,
+  judge: "reads",
+  judgeAccuracy: 0.9,
+  armBias,
+  cases: 2000,
+});
+
+describe("a judge biased between base and candidate", () => {
+  const unbiased = drawStudy(perfectRaters(0), createRng(7));
+  const biased = drawStudy(perfectRaters(0.15), createRng(7));
+
+  it("misses true positives on the candidate, and only those", () => {
+    let missed = 0;
+    unbiased.judge.forEach((j, i) => {
+      if (biased.judge[i] === j) return;
+      expect([j, biased.judge[i], unbiased.first[i], unbiased.configurationOf[i]]).toEqual([
+        1, 0, 1, 1,
+      ]);
+      missed += 1;
+    });
+    expect(missed).toBeGreaterThan(0);
+    expect(biased.first).toEqual(unbiased.first);
+  });
+
+  it("keeps its false positives on the candidate", () => {
+    const negatives = biased.first.flatMap((t, i) =>
+      t === 0 && biased.configurationOf[i] === 1 ? [i] : [],
+    );
+    const falsePositives = negatives.filter((i) => biased.judge[i] === 1).length;
+    expect(falsePositives / negatives.length).toBeCloseTo(0.1, 1);
+  });
+});
+
+describe("the judge biased at the gate's bound", () => {
+  it("has a mean bias of −0.20 between the configurations", () => {
+    const cell = CELLS.find((c) => c.id === "binary-bias-at-bound-prev0.35");
+    if (cell?.scale !== "binary") throw new Error("the at-bound cell is a yes/no cell");
+    const study = drawStudy({ ...cell, cases: 200_000 }, createRng(11));
+    const mean = [0, 0];
+    const count = [0, 0];
+    study.judge.forEach((j, i) => {
+      const k = study.configurationOf[i]!;
+      mean[k]! += j - (study.first[i]! + study.second[i]!) / 2;
+      count[k]! += 1;
+    });
+    expect(mean[1]! / count[1]! - mean[0]! / count[0]!).toBeCloseTo(-0.2, 2);
+  });
+
+  it("comes last, so its seed moves no other cell", () => {
+    expect(CELLS.at(-1)!.id).toBe("binary-bias-at-bound-prev0.35");
+  });
+});
+
+describe("the merge of the shards", () => {
+  const rows = CELLS.map((cell) => `${cell.id}\t1`);
+
+  it("orders one row per cell into cell order", () => {
+    expect(orderRows(rows.toReversed())).toEqual(rows);
+  });
+
+  it("refuses a duplicated and a missing cell, even when the row count is right", () => {
+    const wrong = [rows[0]!, ...rows.slice(0, -1)];
+    expect(() => orderRows(wrong)).toThrow(/exactly one row.*\(2 rows\).*\(0 rows\)/);
+  });
+
+  it("refuses a row for an unknown cell", () => {
+    expect(() => orderRows([...rows, "not-a-cell\t1"])).toThrow(/unknown cell 'not-a-cell'/);
+  });
+});
+
+describe("reading the shards", () => {
+  const merge: Provenance = {
+    schema: PROVENANCE_SCHEMA,
+    script: "packages/ichnaea/scripts/stats/study-calibration-rule.ts",
+    commit: "a".repeat(40),
+    files: { "packages/ichnaea/scripts/stats/study-calibration-rule.ts": "b".repeat(64) },
+    seedBase: 6_000_000,
+    arguments: [],
+    node: process.version,
+    started: "2026-11-17T00:00:00.000Z",
+  };
+  const dirs: string[] = [];
+  afterAll(() => {
+    for (const dir of dirs) rmSync(dir, { recursive: true });
+  });
+  const shardIn = (rows: string, provenance: Provenance = merge): string => {
+    const dir = mkdtempSync(path.join(tmpdir(), "calibration-shards-"));
+    dirs.push(dir);
+    const file = path.join(dir, "shard-0.tsv");
+    writeFileSync(file, rows);
+    writeMeta(file, provenance, true);
+    return file;
+  };
+
+  it("returns the rows of the bytes it checked", () => {
+    const file = shardIn("binary-equal\t1\nbinary-worse\t2\n");
+    expect(readShards(path.dirname(file), merge)).toEqual({
+      rows: ["binary-equal\t1", "binary-worse\t2"],
+      starts: [merge.started],
+    });
+  });
+
+  it("refuses a shard whose rows changed after its sidecar was written", () => {
+    const file = shardIn("binary-equal\t1\n");
+    appendFileSync(file, "binary-worse\t2\n");
+    expect(() => readShards(path.dirname(file), merge)).toThrow(/rows do not match its sidecar/);
+  });
+
+  it("refuses a shard from another commit", () => {
+    const file = shardIn("binary-equal\t1\n", { ...merge, commit: "c".repeat(40) });
+    expect(() => readShards(path.dirname(file), merge)).toThrow(/ran at c+, the merge runs at a+/);
+  });
+});
+
+describe("the draw sizing tool", () => {
+  it.each([
+    ["studies", { studies: Number.POSITIVE_INFINITY }],
+    ["studies", { studies: 1.5 }],
+    ["resamples", { resamples: 0 }],
+  ])("refuses a %s count that is not a positive integer", (name, counts) => {
+    expect(() => sizeDraw(REGISTERED_DRAW, [140], counts)).toThrow(
+      new RegExp(`${name} must be a positive integer`),
+    );
   });
 });

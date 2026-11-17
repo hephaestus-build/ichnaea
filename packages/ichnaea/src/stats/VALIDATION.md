@@ -538,17 +538,21 @@ to the study as a parameter:
   one from the candidate, and a shared case effect drawn as N(0, 0.7²). Every answer weighs 1.
   - Yes/no: an answer is positive (a defect) with probability prevalence · e^(0.5 · case effect),
     clamped to [0.02, 0.95]. Each rater reads it correctly with probability 0.90, and the judge with
-    its own accuracy. A biased judge misses positives more often on the candidate. A chance judge
-    says yes at the prevalence without reading; an always-no judge never says yes. The "oversampled"
-    cells have positives at 0.35 of the sample.
+    its own accuracy. A biased judge misses true positives more often on the candidate; its false
+    positives stay as they are. A chance judge says yes at the prevalence without reading; an
+    always-no judge never says yes. The prev0.35 cells draw positives at 0.35, and every answer weighs 1.
+    They study no weighting. Only the draw cells study an oversampled, weighted draw. The
+    at-bound cell's judge has a mean bias of −0.20 on the candidate, the bias gate's bound.
   - Levels: a latent quality (case effect plus N(0, 0.7²)) is cut into 5 levels at −1.2, −0.4, 0.4
     and 1.2. Rater readings add N(0, 0.6²). The judge adds its own noise, and a biased judge shifts
     its reading on the candidate.
 - **Draw cells** reproduce the registered draw:
   - a screen of 127 items, 2 runs per item from each of the base (C1), the candidate (C2) and a
     known-worse configuration (C3);
-  - defect rates 0.15, 0.15 and 0.35 per answer, with within-item correlation ρ = 0.3 of the defects
-    and of each reader's errors;
+  - defect rates 0.15, 0.15 and 0.35 per answer. Within an item, the latent Gaussian scores behind
+    the defects, and behind each reader's errors, correlate at ρ = 0.3: an answer's score is
+    √ρ · (item's score) + √(1 − ρ) · (its own), cut at a threshold. ρ is not the correlation of the
+    yes/no outcomes, which is smaller and depends on the threshold;
   - a deterministic proxy that catches 0.65 of the defects (the obvious ones) and flags 0.01 of the
     good answers; readers are 0.07 more accurate on an obvious defect and 0.07 less on a subtle one;
   - a draw of n answers: 0.29 n each from C1 and C2 and the rest from C3, with proxy-positive shares
@@ -556,7 +560,7 @@ to the study as a parameter:
   - raters at accuracy 0.90 (raw agreement 0.82), a good judge at 0.90 and a clearly worse judge at
     0.80.
 
-  The 360-answer draw is then rerun with one assumption changed: ρ = 0 or 0.6, raters at 0.93 (raw
+  The 360-answer draw is then rerun with one assumption changed: latent ρ = 0 or 0.6, raters at 0.93 (raw
   agreement 0.87), or a C1→C3 defect-rate rise of 0.10 or 0.30 instead of 0.20. "Without C3" is a
   140-answer draw of C1 and C2 alone, with positive shares 0.35.
 
@@ -567,26 +571,27 @@ shown bias bound is at most m.
 
 Generic cells, yes/no labels, 60 cases:
 
-| Cell                   | Judge                     | Pass  | Floor | AC1   | Sensitivity | Specificity | Bias gate | Mean bias | Bias ≤ 0.10 | Bias ≤ 0.20 |
-| ---------------------- | ------------------------- | ----- | ----- | ----- | ----------- | ----------- | --------- | --------- | ----------- | ----------- |
-| Prevalence 0.2         | as good as a rater (0.90) | 0.120 | 0.474 | 0.788 | 0.479       | 0.797       | 0.825     | 0.00      | 0.039       | 0.825       |
-|                        | slightly worse (0.85)     | 0.019 | 0.506 | 0.298 | 0.309       | 0.332       | 0.708     | 0.00      | 0.004       | 0.708       |
-|                        | clearly worse (0.80)      | 0.002 | 0.467 | 0.066 | 0.220       | 0.077       | 0.571     | 0.00      | 0.000       | 0.571       |
-| Prevalence 0.1         | as good as a rater        | 0.172 | 0.730 | 0.836 | 0.381       | 0.817       | 0.836     | 0.00      | 0.036       | 0.836       |
-|                        | clearly worse             | 0.006 | 0.735 | 0.079 | 0.300       | 0.064       | 0.579     | 0.00      | 0.002       | 0.579       |
-| Prevalence 0.2, biased | as good as a rater        | 0.022 | 0.481 | 0.752 | 0.102       | 0.904       | 0.624     | −0.068    | 0.027       | 0.624       |
-|                        |                           | 0.001 | 0.469 | 0.696 | 0.012       | 0.960       | 0.267     | −0.136    | 0.006       | 0.267       |
-|                        |                           | 0.000 | 0.471 | 0.640 | 0.001       | 0.989       | 0.070     | −0.204    | 0.000       | 0.070       |
-| Prevalence 0.1         | chance                    | 0.000 | 0.729 | 0.380 | 0.000       | 0.879       | 0.625     | 0.00      | 0.002       | 0.625       |
-|                        | always no                 | 0.000 | 0.732 | 0.981 | 0.000       | 1.000       | 0.939     | 0.00      | 0.120       | 0.939       |
-| Prevalence 0.05        | chance                    | 0.004 | 0.832 | 0.973 | 0.004       | 1.000       | 0.867     | 0.00      | 0.063       | 0.867       |
-|                        | always no                 | 0.001 | 0.832 | 1.000 | 0.001       | 1.000       | 0.980     | 0.00      | 0.333       | 0.980       |
-| Positives at 0.35      | as good as a rater        | 0.051 | 0.242 | 0.739 | 0.595       | 0.742       | 0.828     | 0.00      | 0.043       | 0.828       |
-|                        | clearly worse             | 0.000 | 0.231 | 0.053 | 0.153       | 0.097       | 0.572     | 0.00      | 0.000       | 0.572       |
-|                        | chance                    | 0.000 | 0.244 | 0.000 | 0.000       | 0.002       | 0.107     | 0.00      | 0.000       | 0.107       |
-|                        | always no                 | 0.000 | 0.252 | 0.001 | 0.000       | 1.000       | 0.675     | 0.00      | 0.001       | 0.675       |
+| Cell                    | Judge                     | Pass  | Floor | AC1   | Sensitivity | Specificity | Bias gate | Mean bias | Bias ≤ 0.10 | Bias ≤ 0.20 |
+| ----------------------- | ------------------------- | ----- | ----- | ----- | ----------- | ----------- | --------- | --------- | ----------- | ----------- |
+| Prevalence 0.2          | as good as a rater (0.90) | 0.120 | 0.474 | 0.788 | 0.479       | 0.797       | 0.825     | 0.00      | 0.039       | 0.825       |
+|                         | slightly worse (0.85)     | 0.019 | 0.506 | 0.298 | 0.309       | 0.332       | 0.708     | 0.00      | 0.004       | 0.708       |
+|                         | clearly worse (0.80)      | 0.002 | 0.467 | 0.066 | 0.220       | 0.077       | 0.571     | 0.00      | 0.000       | 0.571       |
+| Prevalence 0.1          | as good as a rater        | 0.172 | 0.730 | 0.836 | 0.381       | 0.817       | 0.836     | 0.00      | 0.036       | 0.836       |
+|                         | clearly worse             | 0.006 | 0.735 | 0.079 | 0.300       | 0.064       | 0.579     | 0.00      | 0.002       | 0.579       |
+| Prevalence 0.2, biased  | as good as a rater        | 0.019 | 0.481 | 0.643 | 0.111       | 0.821       | 0.680     | −0.048    | 0.015       | 0.680       |
+|                         |                           | 0.001 | 0.469 | 0.491 | 0.015       | 0.845       | 0.415     | −0.097    | 0.003       | 0.415       |
+|                         |                           | 0.000 | 0.471 | 0.338 | 0.002       | 0.855       | 0.196     | −0.146    | 0.000       | 0.196       |
+| Prevalence 0.1          | chance                    | 0.000 | 0.729 | 0.380 | 0.000       | 0.879       | 0.625     | 0.00      | 0.002       | 0.625       |
+|                         | always no                 | 0.000 | 0.732 | 0.981 | 0.000       | 1.000       | 0.939     | 0.00      | 0.120       | 0.939       |
+| Prevalence 0.05         | chance                    | 0.004 | 0.832 | 0.973 | 0.004       | 1.000       | 0.867     | 0.00      | 0.063       | 0.867       |
+|                         | always no                 | 0.001 | 0.832 | 1.000 | 0.001       | 1.000       | 0.980     | 0.00      | 0.333       | 0.980       |
+| Prevalence 0.35         | as good as a rater        | 0.051 | 0.242 | 0.739 | 0.595       | 0.742       | 0.828     | 0.00      | 0.043       | 0.828       |
+|                         | clearly worse             | 0.000 | 0.231 | 0.053 | 0.153       | 0.097       | 0.572     | 0.00      | 0.000       | 0.572       |
+|                         | chance                    | 0.000 | 0.244 | 0.000 | 0.000       | 0.002       | 0.107     | 0.00      | 0.000       | 0.107       |
+|                         | always no                 | 0.000 | 0.252 | 0.001 | 0.000       | 1.000       | 0.675     | 0.00      | 0.001       | 0.675       |
+| Prevalence 0.35, biased | as good as a rater        | 0.000 | 0.249 | 0.091 | 0.002       | 0.823       | 0.056     | −0.200    | 0.000       | 0.056       |
 
-Generic cells, positives at 0.35, by study size (good judge at 0.90, worse at 0.80):
+Generic cells, prevalence 0.35, by study size (good judge at 0.90, worse at 0.80):
 
 | Cases | Good: pass | Good: floor | Good: sensitivity | Good: bias gate | Worse: pass |
 | ----- | ---------- | ----------- | ----------------- | --------------- | ----------- |
@@ -631,8 +636,10 @@ yes/no cells, at most 0.002 % of resamples had one.
 - **No uninformative judge passes.** At prevalence 0.05, a chance judge and an always-no judge pass
   AC1 in 97–100 % of studies, because AC1 rewards agreement on the many negatives. The sensitivity
   gap stops them: they pass the whole rule in at most 0.4 % of studies.
-- **The bias gate catches what agreement misses.** A yes/no judge with a mean bias of −0.20 passes
-  AC1 in 64 % of studies and the bias gate in 7 %.
+- **The bias gate catches what agreement misses.** A yes/no judge with a mean bias of −0.146 passes
+  AC1 in 34 % of studies and the bias gate in 20 %.
+- **The bias gate's size at its bound.** For a judge whose mean bias is −0.20, the gate's bound,
+  the gate holds in 5.6 % ± 0.5 % of studies at the bound (nominal 5 %), over 2,000 studies.
 - **The clearly worse judge stays out.** It passes in at most 0.6 % of generic studies and at most
   3.2 % of draws, below the 5 % target everywhere.
 - **The rater floor binds before the judge does.** At 60 cases, raters at raw agreement 0.82 reach

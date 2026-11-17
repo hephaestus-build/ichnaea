@@ -1,16 +1,12 @@
 {
   "schema": "ichnaea.stats-provenance/1",
   "script": "packages/ichnaea/scripts/stats/study-calibration-rule.ts",
-  "commit": "55bd5648489c9b2815d0669b8acf13d0657ea44b",
+  "commit": "1625c871b529e6b316360365d33085bcd422a470",
   "files": {
-    "packages/ichnaea/scripts/stats/calibration-rule-study.ts": "26bc04a449b3691ca3d36dee0c496cc8a8ccfcec24376ac501fa185f6d8c6430",
-    "packages/ichnaea/scripts/stats/calibration-rule.ts": "994ab161473c30e8e0b7b1a470008b07e3401af5337aa7ac782e1e10b028a1e3",
+    "packages/ichnaea/scripts/stats/calibration-rule-study.ts": "0157663a4e6e3cdddf87f21d7f57a4d576bd4e00f9e9d7579e2d7c286b3bf855",
+    "packages/ichnaea/scripts/stats/calibration-rule.ts": "10e392f96e15927f8d7fb5e512b5c260b1415fbbe93a2b5e8ee1224200fa15a6",
     "packages/ichnaea/scripts/stats/provenance.ts": "5c1c46f01671e1068dc5cb7bb0266ccc7a82b752fa0a3478080afa36ff864700",
-    "packages/ichnaea/scripts/stats/study-calibration-rule.ts": "fd6b53786420134fe3444f4288a344c822d3a9ca822ef36cd85970765715d187",
-    "packages/ichnaea/src/calibration/analyze.ts": "910669c7a7eb8f7202ff4f0dae10a850df5cd1cb66a6b30ff7eae91d6b8bc468",
-    "packages/ichnaea/src/calibration/engine.ts": "c893fb4681e4e0946411f424b2f7d3d2445bf1d9a35da89946acfbe9a71b00dc",
-    "packages/ichnaea/src/calibration/index.ts": "837de19b5220c124807e4a1bc9cec14726a509fa7c9e12d1e5a35d4cbdf90489",
-    "packages/ichnaea/src/calibration/statistics.ts": "4785bd3aa09a345bf98d0e22c0d2591ca7b471d63fc93dfed9cb60879acc33d2",
+    "packages/ichnaea/scripts/stats/study-calibration-rule.ts": "37a5998d28874967eedcf602b43b0d791bda6d67ed61c895279c4b19f9ed9cd1",
     "packages/ichnaea/src/stats/agreement.ts": "48eb2419d6407ce1315c610d9c0b7495b5a3c395791b8da9870b752e23f607df",
     "packages/ichnaea/src/stats/cluster-bootstrap.ts": "aab7f0bfe56b4fa5307dc8c93aac4d5cf80895ff4bc47475276d63f3033c25e0",
     "packages/ichnaea/src/stats/compare.ts": "0d4ff75b4fdb17ac3c282073e7aff6d1a8287fbfdb9b1cd477b2d5a90569473d",
@@ -35,15 +31,15 @@
   "arguments": [
     "merge",
     "--in",
-    "/tmp/calibration-rule-study-pr73.dGJOlb/shards",
+    "/tmp/calibration-rule-study-pr65.5uxSOS/shards",
     "validation/calibration-rule.tsv"
   ],
   "node": "v24.22.2",
-  "started": "2026-11-17T02:40:44.470Z",
+  "started": "2026-11-17T10:34:11.131Z",
   "studies": 2000,
   "resamples": 2000,
-  "cells": 55,
+  "cells": 56,
   "output": "calibration-rule.tsv",
   "complete": true,
-  "outputSha256": "00542378d457bba44d447fb6689c65e7a2d3f05dbbfa07ca418c3c9f31605a72"
+  "outputSha256": "f173a8b91444158027c2d83fa9b039d21ce0cf21379104bee4a77a82cd702f4a"
 }

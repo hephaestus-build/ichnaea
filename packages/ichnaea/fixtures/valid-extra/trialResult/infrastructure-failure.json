@@ -9,7 +9,16 @@
     "replicate": 0,
     "attempt": 1
   },
-  "calls": 1,
+  "usage": {
+    "calls": 1,
+    "responseIds": [
+      "resp_01"
+    ],
+    "throttled": {
+      "count": 3,
+      "ms": 9000
+    }
+  },
   "observed": {
     "code": {
       "commit": "0123456789abcdef0123456789abcdef01234567"
@@ -18,6 +27,14 @@
     "route": "sha256:e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1",
     "parameters": {
       "temperature": 0
+    },
+    "configuration": "sha256:c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3",
+    "configurationRead": [
+      "answer.prompt",
+      "answer.temperature"
+    ],
+    "environment": {
+      "helpCentreIndex": "snapshot-2026-11-01"
     }
   },
   "failure": {

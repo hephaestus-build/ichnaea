@@ -4,6 +4,8 @@ import { digest as rawDigest, NonJsonValueError, sha256 } from "./canonical.ts";
 import type { ConfigurationIdentity, Digest } from "./primitives.ts";
 import { Case, CaseSetEntry } from "./records/case.ts";
 import { Configuration } from "./records/configuration.ts";
+import { ProjectConfig } from "./records/project.ts";
+import { SuiteV2 } from "./records/suite-v2.ts";
 
 /** Thrown when a record cannot have a well-defined identity. */
 export class IdentityError extends Error {
@@ -274,4 +276,26 @@ export function verifyArms(
     }
   }
   return errors;
+}
+
+/** The record without its `$schema` editor pointer, which enters no digest. */
+function withoutSchemaPointer(record: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(record).filter(([key]) => key !== "$schema"));
+}
+
+/**
+ * The digest of a suite (`ichnaea.suite/2`): SHA-256 over the RFC 8785 canonical JSON of the
+ * record without its `$schema` member, so the TypeScript and JSONC forms of one suite share a
+ * digest. Comments and layout of a JSONC file never reach the record.
+ */
+export function suiteDigest(input: unknown): Digest {
+  return digest(withoutSchemaPointer(SuiteV2.parse(input)));
+}
+
+/**
+ * The digest of a project config (`ichnaea.project/1`): SHA-256 over the RFC 8785 canonical JSON
+ * of the record without its `$schema` member, as for a suite.
+ */
+export function projectDigest(input: unknown): Digest {
+  return digest(withoutSchemaPointer(ProjectConfig.parse(input)));
 }

@@ -1,6 +1,9 @@
 // Invariant 12: a trial's attempts are numbered 1 to k with no gap, and every attempt's calls count
 // against the bound of calls per trial and the run's budget, so a retry cannot hide an overrun.
-import { type Decision, digest } from "../../src/contracts/index.ts";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+
+import { type Decision, digest, Plan } from "../../src/contracts/index.ts";
 import { describe, expect, it } from "vitest";
 
 import { decide } from "../../src/decide/index.ts";
@@ -159,6 +162,86 @@ describe("a trial's attempts", () => {
     expect(decision.invalidReasons).toEqual([]);
     expect(recompute({ ...over, decision }).matches).toBe(true);
     expect(decision).toEqual(await run(stored));
+  });
+
+  it("fail closed: a plan whose worst case is not its run trials times the bound is INVALID", async () => {
+    // An absent runs means "not checked", so a plan with a bound per trial but no arm that
+    // Ichnaea runs would otherwise check no call at all, without a word.
+    const s = await scenario(options);
+    expect(s.plan.budget.worstCaseCalls).toBe(160);
+    const restamp = (plan: Scenario["plan"]): Scenario => ({
+      ...s,
+      plan,
+      run: { ...s.run, plan: digest(plan) as Scenario["run"]["plan"] },
+    });
+    const unmarked = await run(
+      restamp({ ...s.plan, arms: s.plan.arms.map(({ runs: _r, ...arm }) => arm) }),
+    );
+    expect(unmarked.verdict).toBe("INVALID");
+    expect(unmarked.invalidReasons).toContain(
+      "the plan books 160 calls in the worst case, but its 0 trial(s) of the arms Ichnaea runs need 0 at the bound of 2 per trial",
+    );
+    const understated = await run(
+      restamp({ ...s.plan, budget: { ...s.plan.budget, worstCaseCalls: 100 } }),
+    );
+    expect(understated.verdict).toBe("INVALID");
+    expect(understated.invalidReasons).toContain(
+      "the plan books 100 calls in the worst case, but its 80 trial(s) of the arms Ichnaea runs need 160 at the bound of 2 per trial",
+    );
+  });
+
+  it("fail closed: a plan that runs arms but states no bound per trial is INVALID", async () => {
+    // Only a plan from before the bounds lacks callsPerTrial, and it has no runs either. A plan
+    // that marks arms as run but has no bound would otherwise skip every call check.
+    const s = await scenario({ ...options, usage: () => ({ calls: 50 }) });
+    const { callsPerTrial: _, ...budget } = s.plan.budget;
+    const plan = { ...s.plan, budget };
+    const d = await run({
+      ...s,
+      plan,
+      run: { ...s.run, plan: digest(plan) as Scenario["run"]["plan"] },
+    });
+    expect(d.verdict).toBe("INVALID");
+    expect(d.invalidReasons).toContain(
+      "the plan marks arm(s) base, candidate as run by Ichnaea but states no bound of calls per trial",
+    );
+  });
+
+  it("leave a consistent mixed plan and a stored plan without a bound to decide", async () => {
+    const m = await mixed(1);
+    expect(m.plan.budget.worstCaseCalls).toBe(80);
+    expect((await run(m)).invalidReasons).toEqual([]);
+    // A stored plan books its worst case but no bound per trial: it is not checked.
+    const s = await scenario(options);
+    const plan = beforeBounds(s.plan);
+    expect(plan.budget.worstCaseCalls).toBe(160);
+    const stored: Scenario = {
+      ...s,
+      plan,
+      run: { ...s.run, plan: digest(plan) as Scenario["run"]["plan"] },
+    };
+    const decision = await run(stored);
+    expect(decision.invalidReasons).toEqual([]);
+    expect(recompute({ ...stored, decision }).matches).toBe(true);
+  });
+
+  it("of every valid plan fixture with a bound per trial are booked as decide checks them", () => {
+    // No valid fixture may show a plan that decide refuses for its call bounds.
+    const fixtures = join(import.meta.dirname, "..", "..", "fixtures");
+    const extra = join(fixtures, "valid-extra", "plan");
+    const files = [
+      join(fixtures, "valid", "plan.json"),
+      ...readdirSync(extra).map((f) => join(extra, f)),
+    ];
+    const bounded = files
+      .map((f) => Plan.parse(JSON.parse(readFileSync(f, "utf8"))))
+      .filter((p) => p.budget.callsPerTrial !== undefined);
+    expect(bounded.length).toBeGreaterThan(0);
+    for (const p of bounded) {
+      const runs = new Set(p.arms.filter((a) => a.runs === true).map((a) => a.name));
+      const runTrials = p.trials.filter((t) => runs.has(t.arm)).length;
+      expect(p.budget.worstCaseCalls).toBe(runTrials * (p.budget.callsPerTrial ?? 0));
+    }
   });
 
   it("are numbered 1 to k with no gap", async () => {
