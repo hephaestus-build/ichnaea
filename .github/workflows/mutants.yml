@@ -46,7 +46,8 @@ jobs:
           if [ "$EVENT" != pull_request ]; then echo "run=true" >> "$GITHUB_OUTPUT"; exit 0; fi
           changed="$(git diff --name-only "$BASE...$HEAD" -- \
             packages/ichnaea/src packages/ichnaea/test \
-            packages/ichnaea/scripts/contracts packages/ichnaea/scripts/decide packages/ichnaea/scripts/stats)"
+            packages/ichnaea/scripts/contracts packages/ichnaea/scripts/decide packages/ichnaea/scripts/stats \
+            packages/ichnaea/scripts/calibration)"
           if [ -n "$changed" ]; then echo "run=true" >> "$GITHUB_OUTPUT"; else echo "run=false" >> "$GITHUB_OUTPUT"; fi
       - if: steps.scope.outputs.run == 'true'
         uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
@@ -69,3 +70,7 @@ jobs:
         name: Statistics mutants
         working-directory: packages/ichnaea
         run: node scripts/stats/mutants.ts
+      - if: ${{ !cancelled() && steps.scope.outputs.run == 'true' }}
+        name: Calibration mutants
+        working-directory: packages/ichnaea
+        run: node scripts/calibration/mutants.ts
