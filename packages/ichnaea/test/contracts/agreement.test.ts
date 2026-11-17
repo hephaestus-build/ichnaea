@@ -121,6 +121,16 @@ describe("shared fixtures", () => {
     expect(ajvValidate(ajv, contract.name, value, "reader")).toBe(true);
     expect(readRecord(contract, value).ok).toBe(true);
   });
+
+  // A digest hashes the parsed record. A default, transform or coercion that a later minor adds
+  // would change what parsing returns, and with it every stored digest, unnoticed.
+  it.each([
+    ...RECORD_CONTRACTS.map((c) => [`${c.name}.json`, join("valid", `${c.name}.json`), c] as const),
+    ...extras.map(([file, c]) => [file, join("valid-extra", file), c] as const),
+  ])("%s parses to itself", (_, path, contract) => {
+    const value = read(join(fixtures, path));
+    expect(contract.schema.parse(structuredClone(value))).toStrictEqual(value);
+  });
 });
 
 describe("generated records", () => {

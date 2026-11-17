@@ -1,0 +1,17 @@
+{
+  "schema": "ichnaea.scoreResult/1",
+  "request": "score-0001",
+  "dataClass": "none",
+  "values": [
+    {
+      "trial": "refund-window-de/b/r0",
+      "measure": "correct",
+      "status": "error",
+      "failure": {
+        "class": "infrastructure",
+        "kind": "timeout",
+        "message": "judge endpoint timed out"
+      }
+    }
+  ]
+}

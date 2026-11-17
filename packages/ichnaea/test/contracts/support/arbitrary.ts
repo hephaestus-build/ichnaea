@@ -16,6 +16,25 @@ const isoDateTime = fc
   })
   .map((d) => d.toISOString());
 
+/** A pattern with every `(?!…)` group removed, balancing parentheses and skipping escapes. */
+function withoutNegativeLookaheads(pattern: string): string {
+  let out = "";
+  for (let i = 0; i < pattern.length; i++) {
+    if (pattern[i] === "\\") {
+      out += pattern.slice(i, i + 2);
+      i++;
+    } else if (pattern.startsWith("(?!", i)) {
+      let depth = 0;
+      for (; i < pattern.length; i++) {
+        if (pattern[i] === "\\") i++;
+        else if (pattern[i] === "(") depth++;
+        else if (pattern[i] === ")" && --depth === 0) break;
+      }
+    } else out += pattern[i];
+  }
+  return out;
+}
+
 function fromJsonSchema(node: JsonSchema): fc.Arbitrary<unknown> {
   if (typeof node["$ref"] === "string") {
     if (node["$ref"] !== "#/$defs/JsonValue")
@@ -37,9 +56,12 @@ function fromJsonSchema(node: JsonSchema): fc.Arbitrary<unknown> {
       if (node["format"] === "date") return isoDateTime.map((s) => s.slice(0, 10));
       if (typeof node["pattern"] === "string") {
         const max = typeof node["maxLength"] === "number" ? node["maxLength"] : 200;
+        // fast-check cannot generate from a lookahead, so generate from the pattern without its
+        // negative lookaheads and keep the strings that the whole pattern matches.
+        const full = new RegExp(node["pattern"]);
         return fc
-          .stringMatching(new RegExp(node["pattern"]))
-          .filter((s) => s.length <= max && s.length <= 200);
+          .stringMatching(new RegExp(withoutNegativeLookaheads(node["pattern"])))
+          .filter((s) => s.length <= max && s.length <= 200 && full.test(s));
       }
       // Full Unicode, including astral characters, so canonical ordering and escaping are tested.
       return fc.string({

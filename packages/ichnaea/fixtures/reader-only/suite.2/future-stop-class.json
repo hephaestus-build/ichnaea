@@ -1,0 +1,200 @@
+{
+  "schema": "ichnaea.suite/2",
+  "id": "answers",
+  "version": "4",
+  "about": {
+    "objective": "Answers about study programmes are correct and grounded in the official pages.",
+    "decision": "Release check before a deploy of a new model, prompt or retrieval setting.",
+    "construct": "Grounded correctness on curated questions; not user satisfaction.",
+    "scope": "German and English questions about admission and programmes.",
+    "nonCoverage": [
+      "multi-turn follow-ups",
+      "small talk"
+    ],
+    "threats": [
+      "judge bias",
+      "retrieval drift between runs"
+    ]
+  },
+  "cases": {
+    "from": [
+      {
+        "dataset": "answers-public",
+        "path": "answers/cases.jsonl"
+      },
+      {
+        "dataset": "answers-private",
+        "path": "answers/real.jsonl"
+      }
+    ],
+    "pools": {
+      "development": {
+        "label": "dev"
+      },
+      "validation": {
+        "label": "test",
+        "maxReads": 40
+      }
+    }
+  },
+  "worker": "assistant",
+  "stages": [
+    "search",
+    "rank",
+    "answer"
+  ],
+  "environment": {
+    "index": {
+      "service": {
+        "fromEnv": "INDEX_URL"
+      },
+      "identity": "snapshot-id",
+      "class": "none",
+      "exposure": "public"
+    }
+  },
+  "instruments": {
+    "quality-judge": {
+      "command": [
+        "poetry",
+        "run",
+        "python",
+        "-m",
+        "judges.quality"
+      ],
+      "prepare": [
+        "poetry",
+        "install",
+        "--no-root"
+      ],
+      "files": [
+        "judges/**",
+        "rubrics/quality.md",
+        "pyproject.toml",
+        "poetry.lock"
+      ],
+      "judge": {
+        "model": "provider/model-x@2026-10-01",
+        "prompt": "judges/prompt.md",
+        "rubric": "rubrics/quality.md",
+        "parameters": {
+          "temperature": 0
+        }
+      },
+      "env": [
+        {
+          "name": "JUDGE_API_KEY",
+          "secret": true
+        }
+      ],
+      "endpoints": [
+        "eu-llm"
+      ]
+    },
+    "ts-scorers": {
+      "files": [
+        "scorers/**",
+        "package-lock.json"
+      ]
+    }
+  },
+  "measures": {
+    "searched": {
+      "type": "binary",
+      "stage": "search",
+      "status": "ok",
+      "appliesTo": {
+        "slice": "needs-search"
+      },
+      "direction": "higher"
+    },
+    "grounded": {
+      "type": "binary",
+      "scorer": {
+        "builtin": "links-grounded"
+      }
+    },
+    "cites-page": {
+      "type": "binary",
+      "scorer": {
+        "instrument": "ts-scorers",
+        "module": "scorers/cites.ts",
+        "export": "citesPage"
+      }
+    },
+    "correct": {
+      "type": "binary",
+      "scorer": {
+        "instrument": "quality-judge",
+        "dimension": "correctness"
+      }
+    },
+    "rank-ndcg": {
+      "type": "score",
+      "stage": "rank",
+      "scorer": {
+        "builtin": "ndcg",
+        "options": {
+          "k": 5
+        }
+      }
+    },
+    "latency-ms": {
+      "type": "quantity",
+      "unit": "ms",
+      "scorer": {
+        "builtin": "wall-time"
+      }
+    }
+  },
+  "policy": {
+    "primary": {
+      "grounded": {
+        "limit": 0.05,
+        "owner": "answers-owner",
+        "reason": "Pass needs any drop to stay under 5 points."
+      },
+      "searched": {
+        "limit": 0.1,
+        "owner": "answers-owner",
+        "reason": "Search is how answers get grounded."
+      }
+    },
+    "secondary": [
+      "latency-ms"
+    ],
+    "diagnostic": [
+      "correct",
+      "rank-ndcg",
+      "cites-page"
+    ]
+  },
+  "profiles": {
+    "try": {
+      "trials": 1,
+      "pool": "development",
+      "cases": 10
+    },
+    "pr": {
+      "trials": 2,
+      "pool": "development",
+      "mode": "fast"
+    },
+    "release": {
+      "trials": 2,
+      "pool": "validation",
+      "mode": "confirm"
+    }
+  },
+  "budget": {
+    "calls": 2000,
+    "callsPerTrial": 12,
+    "judgeCalls": 600
+  },
+  "stopReasons": {
+    "COMPLETED": "partial",
+    "RATE_LIMITED": "infrastructure",
+    "NO_RESULTS": "system",
+    "SEARCH_SKIPPED": "not_invoked"
+  }
+}

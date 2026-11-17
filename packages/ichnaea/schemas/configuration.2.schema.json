@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ichnaea:schema:configuration:2",
+  "title": "ichnaea.configuration/2",
+  "description": "An arm's configuration: the digest of its configuration file and the fields the suite keeps.",
+  "x-ichnaea-stability": "alpha",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "ichnaea.configuration/2",
+      "description": "The record type and its major version.",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
+      }
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "SHA-256 over the RFC 8785 canonical JSON of the whole configuration file.",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
+      }
+    },
+    "fields": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "description": "The allow-listed fields of the file, such as model, temperature or prompt.",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
+      }
+    }
+  },
+  "required": [
+    "schema",
+    "digest",
+    "fields"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "JsonValue": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/JsonValue"
+          }
+        },
+        {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          }
+        }
+      ]
+    }
+  }
+}

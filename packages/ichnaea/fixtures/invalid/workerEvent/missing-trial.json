@@ -1,0 +1,5 @@
+{
+  "schema": "ichnaea.workerEvent/1",
+  "kind": "heartbeat",
+  "calls": 2
+}
