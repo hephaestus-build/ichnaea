@@ -1,11 +1,8 @@
 // Exact coverage and type-I error for few cases with identical rates, by enumerating every outcome.
 // The fixed-cases bound and the exact test depend only on the multiset of per-case outcome pairs, so
 // each multiset is evaluated once per (k, r) and reweighted for every pair of rates.
-import {
-  exactStratifiedTest,
-  fixedCasesInterval,
-  type CaseCounts,
-} from "../../../src/stats/index.ts";
+import { fixedCasesInterval, type CaseCounts } from "../../../src/stats/compare.ts";
+import { exactStratifiedTest } from "../../../src/stats/exact-conditional.ts";
 
 function binom(n: number, k: number, p: number): number {
   let c = 1;

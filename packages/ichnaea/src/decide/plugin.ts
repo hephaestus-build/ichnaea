@@ -1,8 +1,12 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { canonicalize, type Decision, type Plan } from "../contracts/index.ts";
-import { type CommandDefinition, FileStore, CORE_VERSION, type Plugin } from "../core/index.ts";
+import { canonicalize } from "../contracts/canonical.ts";
+import type { Decision } from "../contracts/records/decision.ts";
+import type { Plan } from "../contracts/records/plan.ts";
+import type { CommandDefinition, Plugin } from "../core/plugin.ts";
+import { FileStore } from "../core/store.ts";
+import { CORE_VERSION } from "../core/version.ts";
 
 import { decide } from "./decide.ts";
 import { planningPower } from "./planning.ts";

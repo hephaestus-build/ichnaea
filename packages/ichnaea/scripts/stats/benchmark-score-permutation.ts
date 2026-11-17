@@ -2,7 +2,7 @@
 // test"): the exact path's time against its work estimate W, on tables shaped like real suites and
 // on the worst shapes a review found. Prints one row per table and the time per unit of W.
 //   node scripts/benchmark-score-permutation.ts
-import { createRng, type Rng } from "../../src/stats/index.ts";
+import { createRng, type Rng } from "../../src/stats/rng.ts";
 import {
   type CaseScores,
   exactPathIgnoringWork,

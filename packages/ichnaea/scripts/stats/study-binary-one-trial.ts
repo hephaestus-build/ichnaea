@@ -6,7 +6,7 @@
 //   node scripts/stats/study-binary-one-trial.ts validation/binary-one-trial.tsv
 import { writeFileSync } from "node:fs";
 
-import { createRng } from "../../src/stats/index.ts";
+import { createRng } from "../../src/stats/rng.ts";
 import {
   LEVELS,
   exactTypeI,

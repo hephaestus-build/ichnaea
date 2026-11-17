@@ -30,7 +30,7 @@ import { appendFileSync, existsSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
 
-import { createRng } from "../../src/stats/index.ts";
+import { createRng } from "../../src/stats/rng.ts";
 import type { Group } from "../../test/stats/support/exact.ts";
 import { provenance, writeMeta } from "./provenance.ts";
 import {

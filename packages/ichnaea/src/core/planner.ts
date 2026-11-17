@@ -1,17 +1,10 @@
-import {
-  armNames,
-  type Case,
-  type CaseSet,
-  caseDigest,
-  caseSetDigest,
-  candidateRunsFirst,
-  type Configuration,
-  configurationIdentity,
-  digest,
-  type FactorPart,
-  Plan,
-  type Suite,
-} from "../contracts/index.ts";
+import { digest } from "../contracts/canonical.ts";
+import { caseDigest, caseSetDigest, configurationIdentity } from "../contracts/identity.ts";
+import { armNames, candidateRunsFirst } from "../contracts/pair-order.ts";
+import type { Case, CaseSet } from "../contracts/records/case.ts";
+import type { Configuration, FactorPart } from "../contracts/records/configuration.ts";
+import { Plan } from "../contracts/records/plan.ts";
+import type { Suite } from "../contracts/records/suite.ts";
 
 import { testMeasure } from "./measures.ts";
 import type { GateDefinition, MeasureDefinition } from "./plugin.ts";

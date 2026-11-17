@@ -309,7 +309,7 @@ describe("the provenance of a study", () => {
         "scripts/stats/simulate-structures.ts",
         "scripts/stats/provenance.ts",
         "test/stats/support/simulate.ts",
-        "src/stats/index.ts",
+        "src/stats/rng.ts",
         "src/stats/compare.ts",
         "test/stats/support/exact.ts",
       ]),

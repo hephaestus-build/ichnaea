@@ -1,20 +1,15 @@
 import { readFile } from "node:fs/promises";
 
-import {
-  Case,
-  CaseSet,
-  canonicalize,
-  Configuration,
-  type Decision,
-  digest,
-  type GateResult,
-  type MeasureValue,
-  type Plan,
-  proportionProblem,
-  Run,
-  Suite,
-  type Trial,
-} from "../contracts/index.ts";
+import { canonicalize, digest } from "../contracts/canonical.ts";
+import { Case, CaseSet } from "../contracts/records/case.ts";
+import { Configuration } from "../contracts/records/configuration.ts";
+import type { Decision, GateResult } from "../contracts/records/decision.ts";
+import type { MeasureValue } from "../contracts/records/measure.ts";
+import type { Plan } from "../contracts/records/plan.ts";
+import { Run } from "../contracts/records/run.ts";
+import { Suite } from "../contracts/records/suite.ts";
+import type { Trial } from "../contracts/records/trial.ts";
+import { proportionProblem } from "../contracts/values.ts";
 
 import type { Host } from "./host.ts";
 import { scoreTrials } from "./measures.ts";

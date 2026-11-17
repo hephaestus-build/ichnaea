@@ -9,7 +9,7 @@ import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
 
-import { createRng } from "../../src/stats/index.ts";
+import { createRng } from "../../src/stats/rng.ts";
 import { CONDITIONS, calibrationRule } from "./calibration-rule.ts";
 import {
   CELLS,

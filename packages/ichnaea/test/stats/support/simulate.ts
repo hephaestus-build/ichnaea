@@ -1,6 +1,6 @@
 // Monte Carlo harness for coverage and type-I error (REQ-50, REQ-111) under the two-stage rule of
 // validation rule (decision 0006). Every run prints its table and the thresholds in effect.
-import { createRng, type Rng } from "../../../src/stats/index.ts";
+import { createRng, type Rng } from "../../../src/stats/rng.ts";
 
 /** Screening repetitions per grid point: 6,000 on pull requests, 10,000 nightly. */
 export const REPS: number = Number(process.env["ICHNAEA_SIM_REPS"] ?? 6000);

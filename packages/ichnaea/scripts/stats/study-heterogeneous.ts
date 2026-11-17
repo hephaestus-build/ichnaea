@@ -47,7 +47,7 @@ import { appendFileSync, existsSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
 
-import { createRng, type Rng } from "../../src/stats/index.ts";
+import { createRng, type Rng } from "../../src/stats/rng.ts";
 import { exactGroupCoverage, type Group, truthOfGroups } from "../../test/stats/support/exact.ts";
 import { provenance, writeMeta } from "./provenance.ts";
 

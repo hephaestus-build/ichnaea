@@ -18,7 +18,7 @@ import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { createRng } from "../../src/stats/index.ts";
+import { createRng } from "../../src/stats/rng.ts";
 import { boundSC, scoreBound } from "../../src/stats/score-interval.ts";
 import type { CaseScores } from "../../src/stats/score-permutation-core.ts";
 import { provenance, writeMeta } from "./provenance.ts";

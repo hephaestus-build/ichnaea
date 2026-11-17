@@ -33,7 +33,8 @@ import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs
 import path from "node:path";
 import { parseArgs } from "node:util";
 
-import { fixedCasesInterval, type CaseCounts, type Rng } from "../../src/stats/index.ts";
+import { fixedCasesInterval, type CaseCounts } from "../../src/stats/compare.ts";
+import type { Rng } from "../../src/stats/rng.ts";
 import { type Group, truthOfGroups } from "../../test/stats/support/exact.ts";
 import {
   binomial,

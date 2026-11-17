@@ -8,7 +8,7 @@
 // It prints one row per size and the smallest size that meets both targets, or "none".
 import { parseArgs } from "node:util";
 
-import { createRng } from "../../src/stats/index.ts";
+import { createRng } from "../../src/stats/rng.ts";
 import { CONDITIONS, calibrationRule } from "./calibration-rule.ts";
 import { WORSE_BY, designOf, runCell, type Cell, type Nuisance } from "./calibration-rule-study.ts";
 

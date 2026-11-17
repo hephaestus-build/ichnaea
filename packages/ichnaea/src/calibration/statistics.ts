@@ -1,7 +1,7 @@
 // The weighted calibration statistics over a set's answers. Every statistic weights each answer by
 // 1/π, its inverse inclusion probability. Ordinal alpha is the exception: it takes unweighted sets
 // only, and the analysis refuses weighted levels.
-import { krippendorffAlpha } from "../stats/index.ts";
+import { krippendorffAlpha } from "../stats/agreement.ts";
 
 /**
  * A labelled calibration set in columns: one entry per answer, answers grouped into items (the
