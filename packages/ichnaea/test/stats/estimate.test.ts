@@ -198,6 +198,9 @@ describe("estimate: the these-cases study", () => {
 
   it("takes the score interval when only some cases have one trial", () => {
     const cases = binaryCases([[1], [0, 1], [1, 1], [0], [1, 0, 1]]);
+    // Clopper–Pearson needs one trial in every case: asserted not to be reached, so that taking it
+    // fails as an assertion, not as its count error.
+    expect(() => estimate({ valueType: "binary", cases })).not.toThrow();
     const result = estimate({ valueType: "binary", cases });
     expect(result.interval?.method).toBe("one-arm-stratified-score");
   });
@@ -254,13 +257,16 @@ describe("estimate: missing trials", () => {
   });
 
   it("uses Hoeffding's bound for the operational estimand of scores", () => {
-    const result = estimate({
-      valueType: "score",
+    const input = {
+      valueType: "score" as const,
       cases: [
         { id: "a", values: [0.5, 0.25], planned: 2 },
         { id: "b", values: [1], planned: 2 },
       ],
-    });
+    };
+    // Clopper–Pearson cannot take a fractional count: asserted not to be reached.
+    expect(() => estimate(input)).not.toThrow();
+    const result = estimate(input);
     expect(result.operational.method).toBe("hoeffding");
     expect(result.operational.estimate).toBeCloseTo((0.375 + 0.5) / 2, 14);
   });
