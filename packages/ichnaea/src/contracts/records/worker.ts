@@ -306,7 +306,10 @@ export type Artifact = z.infer<typeof Artifact>;
 export const Throttling = z.strictObject({
   /** The calls that the provider rejected for its rate limit. */
   count: none(z.int().min(0)),
-  /** The milliseconds spent waiting before calls: holds under the endpoint's budget and back-offs. */
+  /**
+   * The milliseconds spent waiting before calls: holds under the endpoint's budget and back-offs.
+   * The time limit does not count them.
+   */
   ms: none(z.number().min(0)),
   /**
    * When the trial's first accepted call started. Ichnaea accepts it only between the request and
@@ -352,7 +355,8 @@ export type TrialUsage = z.infer<typeof TrialUsage>;
 
 /**
  * The times that the worker reports for a trial. Ichnaea measures when the trial started and ended
- * itself, and its own times decide. From this report it takes the first chunk and the waits.
+ * itself, and its own times decide. From this report it takes the first chunk. The waits on
+ * throttling have one home, `usage.throttled.ms`.
  */
 export const Timing = z.strictObject({
   /** When the system started the trial. */
@@ -361,8 +365,6 @@ export const Timing = z.strictObject({
   firstChunkAt: none(Timestamp).optional(),
   /** When the system ended the trial. */
   endedAt: none(Timestamp),
-  /** The milliseconds that the trial waited on throttling. The time limit does not count them. */
-  waitedMs: none(z.number().min(0)),
 });
 /** A timing report. */
 export type Timing = z.infer<typeof Timing>;

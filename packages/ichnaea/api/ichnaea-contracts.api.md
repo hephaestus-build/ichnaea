@@ -2999,7 +2999,7 @@ export const Schedule: z.ZodObject<{
 export function schemaUri(contract: RecordContract, variant?: "writer" | "reader"): string;
 
 // @public
-export const ScoredValue: z.ZodUnion<readonly [z.ZodBoolean, z.ZodNumber, z.ZodString, z.ZodObject<{
+export const ScoredValue: z.ZodUnion<readonly [z.ZodBoolean, z.ZodNumber, z.ZodObject<{
     numerator: z.ZodInt;
     denominator: z.ZodInt;
 }, z.core.$strict>]>;
@@ -3102,7 +3102,7 @@ export const ScoreResult: z.ZodObject<{
             responseIds: z.ZodArray<z.ZodString>;
         }, z.core.$strict>>;
         status: z.ZodLiteral<"ok">;
-        value: z.ZodUnion<readonly [z.ZodBoolean, z.ZodNumber, z.ZodString, z.ZodObject<{
+        value: z.ZodUnion<readonly [z.ZodBoolean, z.ZodNumber, z.ZodObject<{
             numerator: z.ZodInt;
             denominator: z.ZodInt;
         }, z.core.$strict>]>;
@@ -3432,7 +3432,6 @@ export const Timing: z.ZodObject<{
     startedAt: z.ZodISODateTime;
     firstChunkAt: z.ZodOptional<z.ZodISODateTime>;
     endedAt: z.ZodISODateTime;
-    waitedMs: z.ZodNumber;
 }, z.core.$strict>;
 
 // @public
@@ -3725,7 +3724,6 @@ export const TrialResult: z.ZodObject<{
         startedAt: z.ZodISODateTime;
         firstChunkAt: z.ZodOptional<z.ZodISODateTime>;
         endedAt: z.ZodISODateTime;
-        waitedMs: z.ZodNumber;
     }, z.core.$strict>>;
     observed: z.ZodObject<{
         code: z.ZodUnion<readonly [z.ZodObject<{
@@ -3818,7 +3816,7 @@ export const UnitScore: z.ZodDiscriminatedUnion<[z.ZodObject<{
         responseIds: z.ZodArray<z.ZodString>;
     }, z.core.$strict>>;
     status: z.ZodLiteral<"ok">;
-    value: z.ZodUnion<readonly [z.ZodBoolean, z.ZodNumber, z.ZodString, z.ZodObject<{
+    value: z.ZodUnion<readonly [z.ZodBoolean, z.ZodNumber, z.ZodObject<{
         numerator: z.ZodInt;
         denominator: z.ZodInt;
     }, z.core.$strict>]>;

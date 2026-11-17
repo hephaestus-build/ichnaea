@@ -7,7 +7,7 @@
       "trial": "refund-window-de/b/r0",
       "measure": "correct",
       "status": "ok",
-      "value": "mostly-correct",
+      "value": 3,
       "why": "States the 30-day window from the policy.",
       "observed": {
         "model": "example-judge-2026-10",

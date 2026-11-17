@@ -55,17 +55,15 @@
     ],
     "throttled": {
       "count": 0,
-      "ms": 0,
-      "firstAcceptedAt": "2026-11-15T10:01:00.100Z"
+      "ms": {
+        "nonFinite": "inf"
+      }
     }
   },
   "timing": {
     "startedAt": "2026-11-15T10:01:00.050Z",
     "firstChunkAt": "2026-11-15T10:01:01.200Z",
-    "endedAt": "2026-11-15T10:01:02.000Z",
-    "waitedMs": {
-      "nonFinite": "inf"
-    }
+    "endedAt": "2026-11-15T10:01:02.000Z"
   },
   "observed": {
     "code": {

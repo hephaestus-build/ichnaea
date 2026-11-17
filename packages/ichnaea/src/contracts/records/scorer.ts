@@ -90,8 +90,9 @@ export const ScoreRequest = z.strictObject({
 export type ScoreRequest = z.infer<typeof ScoreRequest>;
 
 /**
- * A raw value as a scorer gives it: a boolean for a binary measure, a number for a score or a
- * quantity, a level's name, or a proportion of items inside the trial. A number is finite: NaN and
+ * A raw value as a scorer gives it: a boolean for a binary measure, a number for a score, a
+ * quantity or a level (one of the measure's level values, never a level's name), or a proportion of
+ * items inside the trial. A number is finite: NaN and
  * the infinities are not JSON, so a scorer that computes one reports the value as missing with
  * reason `NON_FINITE`. A schema cannot compare two fields, so a proportion whose numerator exceeds
  * its denominator validates here, and Ichnaea refuses it when it reads the value.
@@ -99,7 +100,6 @@ export type ScoreRequest = z.infer<typeof ScoreRequest>;
 export const ScoredValue = z.union([
   z.boolean(),
   z.number(),
-  Text,
   z.strictObject({
     /** The items that pass. */
     numerator: none(z.int().min(0)),

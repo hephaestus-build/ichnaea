@@ -273,7 +273,6 @@ export const VALID: Record<string, Record<string, unknown>> = {
       startedAt: "2026-11-15T10:01:00.050Z",
       firstChunkAt: "2026-11-15T10:01:01.200Z",
       endedAt: "2026-11-15T10:01:02.000Z",
-      waitedMs: 0,
     },
     observed: {
       code: { commit: "0123456789abcdef0123456789abcdef01234567" },
@@ -747,9 +746,11 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
     "usage-fractional-cost": (r) => ((r["usage"] as Record<string, unknown>)["costMicros"] = 1.5),
     "throttled-negative-wait": (r) =>
       ((r["usage"] as Record<string, unknown>)["throttled"] = { count: 1, ms: -5 }),
-    "timing-without-waits": (r) => delete (r["timing"] as Record<string, unknown>)["waitedMs"],
-    "timing-non-finite-wait": (r) =>
-      ((r["timing"] as Record<string, unknown>)["waitedMs"] = { nonFinite: "inf" }),
+    "throttled-non-finite-wait": (r) =>
+      ((r["usage"] as Record<string, unknown>)["throttled"] = {
+        count: 0,
+        ms: { nonFinite: "inf" },
+      }),
     "observed-without-keys-read": (r) =>
       delete (r["observed"] as Record<string, unknown>)["configurationRead"],
     "observed-configuration-as-path": (r) =>
@@ -865,6 +866,9 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
     "missing-request": (r) => delete r["request"],
     "no-values": (r) => (r["values"] = []),
     "ok-without-value": (r) => delete (r["values"] as Array<Record<string, unknown>>)[0]!["value"],
+    // A level is reported by its value, as the measure lists its levels, never by a name.
+    "level-by-name": (r) =>
+      ((r["values"] as Array<Record<string, unknown>>)[0]!["value"] = "mostly-correct"),
     "non-finite-score": (r) =>
       ((r["values"] as Array<Record<string, unknown>>)[1]!["value"] = { nonFinite: "nan" }),
     "error-without-failure": (r) =>
@@ -1228,7 +1232,7 @@ export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
       ]),
     "level-and-proportion": (r) => {
       const values = r["values"] as Array<Record<string, unknown>>;
-      values[0]!["value"] = "mostly-correct";
+      values[0]!["value"] = 3;
       values[1]!["value"] = { numerator: 3, denominator: 4 };
     },
     // A hanging test run inside the deadline is a measured failure, not an error.
@@ -1303,6 +1307,9 @@ export const READER_ONLY: Record<string, Record<string, Mutation>> = {
     "future-failure-class": (r) => (r["failure"] = { class: "quality", kind: "wrong-answer" }),
     // `usage.calls` is the one count: a reader ignores a top-level count as an unknown member.
     "top-level-calls": (r) => (r["calls"] = 3),
+    // The throttle wait has one home, usage.throttled.ms: a writer sends no timing wait, and a
+    // reader ignores one.
+    "timing-with-a-wait": (r) => ((r["timing"] as Record<string, unknown>)["waitedMs"] = 0),
     // The base derives a stage's status: a worker sends none, and a reader ignores one.
     "event-with-status": (r) =>
       ((r["events"] as Array<Record<string, unknown>>)[0]!["status"] = "ok"),

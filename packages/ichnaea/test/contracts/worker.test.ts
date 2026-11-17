@@ -302,12 +302,13 @@ describe("the worker protocol", () => {
 
   it("takes no non-finite number anywhere, as strict JSON cannot hold one", () => {
     const result = fixture("valid", "trialResult.json");
-    const timing = result["timing"] as Record<string, unknown>;
-    expect(TrialResult.safeParse({ ...result, timing: { ...timing } }).success).toBe(true);
-    for (const waitedMs of [Number.NaN, Number.POSITIVE_INFINITY, { nonFinite: "inf" }])
-      expect(TrialResult.safeParse({ ...result, timing: { ...timing, waitedMs } }).success).toBe(
-        false,
-      );
+    const usage = result["usage"] as Record<string, unknown>;
+    expect(TrialResult.safeParse(result).success).toBe(true);
+    for (const ms of [Number.NaN, Number.POSITIVE_INFINITY, { nonFinite: "inf" }])
+      expect(
+        TrialResult.safeParse({ ...result, usage: { ...usage, throttled: { count: 0, ms } } })
+          .success,
+      ).toBe(false);
   });
 
   it("announces ready with its capacity and the requests it reads", () => {

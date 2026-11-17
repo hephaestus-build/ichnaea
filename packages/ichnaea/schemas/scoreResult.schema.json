@@ -136,10 +136,6 @@
                     "type": "number"
                   },
                   {
-                    "type": "string",
-                    "minLength": 1
-                  },
-                  {
                     "type": "object",
                     "properties": {
                       "numerator": {

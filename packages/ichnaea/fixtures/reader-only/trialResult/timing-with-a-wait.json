@@ -62,7 +62,8 @@
   "timing": {
     "startedAt": "2026-11-15T10:01:00.050Z",
     "firstChunkAt": "2026-11-15T10:01:01.200Z",
-    "endedAt": "2026-11-15T10:01:02.000Z"
+    "endedAt": "2026-11-15T10:01:02.000Z",
+    "waitedMs": 0
   },
   "observed": {
     "code": {
