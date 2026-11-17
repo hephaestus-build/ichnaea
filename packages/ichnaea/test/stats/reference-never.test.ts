@@ -42,10 +42,11 @@ describe("the overdispersion z against R", () => {
 describe("the intraclass correlation against R's aov", () => {
   it("agrees within 1e-12, with a negative estimate at 0", () => {
     expect(r.intraclass.length).toBe(3);
-    for (const set of r.intraclass)
-      expect(intraclassCorrelation(set.clusters)).toBeCloseTo(
-        Math.min(1, Math.max(0, set.rho)),
-        12,
-      );
+    for (const set of r.intraclass) {
+      // R writes ρ with %.14g (VALIDATION.md § Reference values); |ρ| ≤ 1, so this is 1e-12.
+      const expected = Math.min(1, Math.max(0, set.rho));
+      const error = Math.abs(intraclassCorrelation(set.clusters) - expected);
+      expect(error).toBeLessThanOrEqual(1e-12 * Math.max(1, Math.abs(expected)));
+    }
   });
 });

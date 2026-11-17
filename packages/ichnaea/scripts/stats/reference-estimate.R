@@ -7,10 +7,13 @@
 # - weighted Kaplan–Meier curves, quantiles and restricted means from survival::survfit;
 # - one-sided exact stratified conditional p-values from mantelhaen.test(exact = TRUE);
 # - the uncorrected Mantel-Haenszel statistic, the overdispersion z squared, and qchisq;
-# - the intraclass correlation from aov's mean squares.
+# - the intraclass correlation from aov's mean squares, to 14 significant digits.
 suppressPackageStartupMessages(library(survival))
 number <- function(value) sprintf("%.17g", value)
 numbers <- function(values) paste0("[", paste(vapply(values, number, ""), collapse = ","), "]")
+# A value computed through BLAS or LAPACK, such as aov's QR, is written with %.14g:
+# VALIDATION.md § Reference values.
+blas <- function(value) sprintf("%.14g", value)
 
 counts <- list(c(0, 1), c(1, 1), c(0, 5), c(3, 20), c(7, 20), c(10, 20), c(19, 20), c(20, 20),
                c(1, 60), c(31, 60), c(0, 299), c(2, 299), c(150, 299), c(4, 1000), c(997, 1000),
@@ -118,7 +121,7 @@ for (set in icc_sets) {
   m0 <- (n - sum(lengths(set)^2) / n) / (length(set) - 1)
   rho <- (msb - msw) / (msb + (m0 - 1) * msw)
   icc <- c(icc, sprintf('{"clusters":[%s],"rho":%s}',
-                        paste(vapply(set, numbers, ""), collapse = ","), number(rho)))
+                        paste(vapply(set, numbers, ""), collapse = ","), blas(rho)))
 }
 
 writeLines(c(

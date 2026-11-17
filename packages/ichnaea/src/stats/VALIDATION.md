@@ -87,6 +87,10 @@ each is pinned against an independent implementation:
   R on arm64 gives slightly different last digits. Each committed reference file is the oracle's
   output byte for byte: the formatter skips them, and the `stats oracle` CI job reruns every oracle
   and fails if a file changes. The ratesci values come from an R package build and are not rerun.
+- Any R reference value computed through BLAS or LAPACK (`lm`, `aov`, `qr`, `%*%`, `solve`) is
+  written with `%.14g` and compared within at least 1e-12. In the same pinned image, BLAS gives
+  last bits that vary with the runner's CPU, so a value written at full precision would make the
+  byte comparison fail on some runners.
 
 Property tests add that both functions never decrease by more than 4 ε·|v| (rounding makes
 neighbouring doubles wobble by up to 2.4 ε·|v|), and that `qnorm(pnorm(x)) = x` at or below the
@@ -622,6 +626,7 @@ declares no ρ, `intraclassCorrelation` estimates it from the last closed window
 (MSB − MSW)/(MSB + (m₀ − 1)·MSW) with m₀ = (N − Σm²/N)/(k − 1). A negative estimate gives 0.
 
 **Oracles.** ρ agrees with R's `aov` mean squares on 3 sets within 1e-12 (`reference-estimate.R`).
+`aov` fits through BLAS, so R writes ρ with `%.14g` (§ Reference values).
 The fidelity check's binary interval is the regression section's interval, checked there.
 
 **Mutants.** `scripts/stats/mutants.ts` changes these methods in 7 ways (those named `fidelity:` and
