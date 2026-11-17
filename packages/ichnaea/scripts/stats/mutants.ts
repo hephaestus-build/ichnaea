@@ -47,6 +47,138 @@ export const CONTROL: Mutant = {
 
 export const MUTANTS: readonly Mutant[] = [
   {
+    id: "estimate: Clopper–Pearson tail not split",
+    file: "src/stats/clopper-pearson.ts",
+    from: 'const tail = sided === "two" ? (1 - level) / 2 : 1 - level;',
+    to: "const tail = 1 - level;",
+  },
+  {
+    id: "estimate: Clopper–Pearson lower beta shape",
+    file: "src/stats/clopper-pearson.ts",
+    from: "incompleteBeta(p, x, n - x + 1)",
+    to: "incompleteBeta(p, x, n - x)",
+  },
+  {
+    id: "estimate: Clopper–Pearson closed form at zero",
+    file: "src/stats/clopper-pearson.ts",
+    from: "x === 0 ? 1 - tail ** (1 / n)",
+    to: "x === 0 ? 1 - tail ** (1 / (n + 1))",
+  },
+  {
+    id: "estimate: Hoeffding two sides at ln(1/α)",
+    file: "src/stats/hoeffding.ts",
+    from: '(sided === "two" ? 2 : 1) / alpha',
+    to: "1 / alpha",
+  },
+  {
+    id: "estimate: Hoeffding without the half",
+    file: "src/stats/hoeffding.ts",
+    from: "* squares) / 2);",
+    to: "* squares));",
+  },
+  {
+    id: "estimate: one-arm score weight not squared",
+    file: "src/stats/one-arm-score.ts",
+    from: "cells[i]!.weight ** 2 * p * (1 - p)",
+    to: "cells[i]!.weight * p * (1 - p)",
+  },
+  {
+    id: "estimate: one-arm score upper bound not reflected",
+    file: "src/stats/one-arm-score.ts",
+    from: "1 - lowerBound(flipped, 1 - estimate, target)",
+    to: "1 - lowerBound(flipped, estimate, target)",
+  },
+  {
+    id: "estimate: unequal weights take the binomial path",
+    file: "src/stats/estimate.ts",
+    from: "if (!allEqual(weights)) {",
+    to: "if (allEqual(weights)) {",
+  },
+  {
+    id: "estimate: one-trial path on any case with one trial",
+    file: "src/stats/estimate.ts",
+    from: "if (observed.every((c) => c.trials === 1)) {",
+    to: "if (observed.some((c) => c.trials === 1)) {",
+  },
+  {
+    id: "estimate: Wilson on one case fewer",
+    file: "src/stats/estimate.ts",
+    from: "wilsonMean(point, observed.length, level, sided)",
+    to: "wilsonMean(point, observed.length - 1, level, sided)",
+  },
+  {
+    id: "estimate: worst case high ignores missing trials",
+    file: "src/stats/estimate.ts",
+    from: "(c.sum + c.planned - c.trials)",
+    to: "(c.sum)",
+  },
+  {
+    id: "estimate: operational Clopper–Pearson for scores",
+    file: "src/stats/estimate.ts",
+    from: 'if (input.valueType === "binary" && allEqual(trialWeights)) {',
+    to: "if (allEqual(trialWeights)) {",
+  },
+  {
+    id: "estimate: population from 29 clusters",
+    file: "src/stats/estimate.ts",
+    from: "export const POPULATION_MIN_CLUSTERS = 30;",
+    to: "export const POPULATION_MIN_CLUSTERS = 29;",
+  },
+  {
+    id: "estimate: BCa ties count as not below",
+    file: "src/stats/bca.ts",
+    from: "const share = (below + 0.5 * ties) / resamples;",
+    to: "const share = below / resamples;",
+  },
+  {
+    id: "estimate: BCa acceleration sign",
+    file: "src/stats/bca.ts",
+    from: "const d = centre - value;",
+    to: "const d = value - centre;",
+  },
+  {
+    id: "estimate: pass^k over k − 1",
+    file: "src/stats/reduce.ts",
+    from: "? chooseRatio(c, r, k)",
+    to: "? chooseRatio(c, r, k - 1)",
+  },
+  {
+    id: "estimate: pass@k over r − 1",
+    file: "src/stats/reduce.ts",
+    from: "1 - chooseRatio(r - c, r, k)",
+    to: "1 - chooseRatio(r - c, r - 1, k)",
+  },
+  {
+    id: "estimate: majority tie always fails",
+    file: "src/stats/reduce.ts",
+    from: 'reduction.majority.tie === "pass" ? 1 : 0',
+    to: "0",
+  },
+  {
+    id: "estimate: Kaplan–Meier counts a censored trial as an event",
+    file: "src/stats/censoring.ts",
+    from: "if (!sorted[i]!.censored) events += w;",
+    to: "events += w;",
+  },
+  {
+    id: "estimate: survival quantile at the plateau's start",
+    file: "src/stats/censoring.ts",
+    from: "next ? { value: (step.time + next.time) / 2 } : { atLeast: step.time };",
+    to: "next ? { value: step.time } : { atLeast: step.time };",
+  },
+  {
+    id: "estimate: restricted mean stops at the last event",
+    file: "src/stats/censoring.ts",
+    from: "return area + survival * (limit - last);",
+    to: "return area;",
+  },
+  {
+    id: "estimate: missing-count test one-sided",
+    file: "src/stats/missingness.ts",
+    from: "p: Math.min(1, 2 * Math.min(less, greater)),",
+    to: "p: Math.min(less, greater),",
+  },
+  {
     id: "NI null at +margin",
     file: "src/stats/compare.ts",
     from: 'scoreDifferenceTest(strata, -input.margin, "greater", options)',
@@ -127,8 +259,8 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "exact test counts ties out",
     file: "src/stats/exact-conditional.ts",
-    from: 'alternative === "less" ? t <= observed : t >= observed',
-    to: 'alternative === "less" ? t < observed : t > observed',
+    from: 'alternative === "less" ? candidateTotal <= observed : candidateTotal >= observed',
+    to: 'alternative === "less" ? candidateTotal < observed : candidateTotal > observed',
   },
   // Mutants that survived a review, and the missing-trial rules (decision 0009).
   {
@@ -703,6 +835,36 @@ export const MUTANTS: readonly Mutant[] = [
     file: "src/stats/score-permutation-core.ts",
     from: "const SEED_MODULUS = 4_294_967_295;",
     to: "const SEED_MODULUS = 4_294_967_296;",
+  },
+  {
+    id: "estimate: weighted mean without its denominator",
+    file: "src/stats/weighted-mean.ts",
+    from: "  return numerator / denominator;",
+    to: "  return numerator;",
+  },
+  {
+    id: "exact test ignores the fixed strata's offset",
+    file: "src/stats/exact-conditional.ts",
+    from: "    const candidateTotal = t + offset;",
+    to: "    const candidateTotal = t;",
+  },
+  {
+    id: "estimate: pooled Clopper–Pearson unadjusted",
+    file: "src/stats/clopper-pearson.ts",
+    from: 'const tail = sided === "two" ? 1 - Math.exp(-alpha / 2) : 1 - Math.exp(-alpha);',
+    to: 'const tail = sided === "two" ? alpha / 2 : alpha;',
+  },
+  {
+    id: "estimate: pooled Clopper–Pearson two-sided at α per tail",
+    file: "src/stats/clopper-pearson.ts",
+    from: 'const tail = sided === "two" ? 1 - Math.exp(-alpha / 2) : 1 - Math.exp(-alpha);',
+    to: 'const tail = sided === "two" ? 1 - Math.exp(-alpha) : 1 - Math.exp(-alpha);',
+  },
+  {
+    id: "estimate: pooled Clopper–Pearson past an adjusted level of 1/4",
+    file: "src/stats/clopper-pearson.ts",
+    from: "const MAX_ADJUSTED_TAIL = 0.25;",
+    to: "const MAX_ADJUSTED_TAIL = 0.5;",
   },
 ];
 
