@@ -80,3 +80,15 @@ This record supersedes decision 0005.
   scope state the weaker claim: the drop is significant on these cases.
 - A suite that wants the noise claim runs at least 2 trials per case and arm and keeps them.
 - Every test that can give REGRESSION is held to the type-I rule of decision 0006.
+
+## Note (2026-11-16): where the cited files are now
+
+The merge into one package (#35) moved the files that this decision cites. The decision is unchanged. The files are now:
+
+- `packages/decide/scripts/mutants.ts` is `packages/ichnaea/scripts/decide/mutants.ts`.
+- `packages/decide/src/decide.ts` is `packages/ichnaea/src/decide/decide.ts`.
+- `packages/decide/test/decide.test.ts` is `packages/ichnaea/test/decide/decide.test.ts`.
+- `packages/decide/test/verdict.test.ts` is `packages/ichnaea/test/decide/verdict.test.ts`.
+- `packages/report/test/report.test.ts` is `packages/ichnaea/test/report/report.test.ts`.
+
+The mutants it names run in `.github/workflows/mutants.yml`, so the claim that the tests kill them rests on that workflow's latest green run on main.

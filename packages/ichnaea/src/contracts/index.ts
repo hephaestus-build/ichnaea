@@ -18,6 +18,7 @@ export * from "./records/plan.ts";
 export * from "./records/run.ts";
 export * from "./records/suite.ts";
 export * from "./records/trial.ts";
+export * from "./records/worker.ts";
 export * from "./registry.ts";
 export * from "./target-view.ts";
 export * from "./values.ts";

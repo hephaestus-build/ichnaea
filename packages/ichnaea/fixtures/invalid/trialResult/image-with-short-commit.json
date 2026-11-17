@@ -1,0 +1,30 @@
+{
+  "schema": "ichnaea.trialResult/1",
+  "dataClass": "none",
+  "trial": {
+    "id": "refund-window-de/b/r0",
+    "suite": "support-assistant",
+    "case": "refund-window-de",
+    "arm": "b",
+    "replicate": 0,
+    "attempt": 1
+  },
+  "output": {
+    "text": "Nein, die Frist beträgt 30 Tage.",
+    "sources": [
+      "policy.md"
+    ]
+  },
+  "calls": 3,
+  "observed": {
+    "code": {
+      "image": "sha256:b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2",
+      "commit": "abc"
+    },
+    "model": "example-model-2026-10",
+    "route": "sha256:e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1",
+    "parameters": {
+      "temperature": 0
+    }
+  }
+}

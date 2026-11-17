@@ -1,8 +1,16 @@
 name: Docs
 
-# Builds the docs site on every pull request and on main, and deploys it to GitHub Pages from main
-# only. The github-pages environment allows main only (.github/environments/github-pages.json), so
-# no other ref can deploy even if this file changes.
+# Builds the docs site, and deploys it to GitHub Pages from main only. The github-pages environment
+# allows main only (.github/environments/github-pages.json), so no other ref can deploy even if this
+# file changes.
+#
+# The build is also the library's browser check. The library has no bundler of its own. The site
+# bundles the interactive pages from the library's sources, and docs/site/browser-only.ts fails the
+# build when browser code imports a Node built-in.
+#
+# `docs build` can be a required check, so the workflow runs on every pull request, with no path
+# filter: a check that a path filter skips never reports, and the pull request waits for it. The
+# build takes about a minute.
 
 on:
   pull_request:
@@ -19,7 +27,7 @@ concurrency:
 
 jobs:
   build:
-    name: build
+    name: docs build
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

@@ -16,8 +16,8 @@ statistics, and says plainly when the cases cannot decide.
 - **Evaluates a whole system configuration.** Code, prompts, model, parameters, tools and settings
   resolve to one record with an identity. Any change to it is a trigger.
 - **Decides with paired statistics.** A change is compared with its base on the same cases, with
-  intervals, per-case flips and a stated estimand. The verdict is PASS, REGRESSION, INCONCLUSIVE or
-  INVALID. Before a run, the planner prints a power statement for the suite.
+  intervals, per-case flips and a stated estimand. The verdict is Pass, Regression, Inconclusive or
+  Invalid. Before a run, the planner prints a power statement for the suite.
 - **Keeps every planned trial.** Failures, abstentions and missing data stay visible. A skipped or
   over-budget run is never a pass.
 - **Keeps data where it lives.** Ichnaea opens no network port and makes no network call of its
@@ -151,7 +151,8 @@ pnpm exec ichnaea decide --run regressed
 pnpm exec ichnaea report --run regressed
 ```
 
-`decide` prints the verdict line and exits by the CI policy of the plan: 1 blocks the change.
+`decide` prints the verdict line. Its exit code is 1 when the plan's policy says to stop, so a script
+can act on it.
 
 <!-- The build consumer test checks these verdict lines and exit codes. -->
 

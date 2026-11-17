@@ -211,6 +211,49 @@ export const VALID: Record<string, Record<string, unknown>> = {
     startedAt: "2026-11-15T10:01:00Z",
     endedAt: "2026-11-15T10:01:02Z",
   },
+  trialRequest: {
+    schema: "ichnaea.trialRequest/1",
+    dataClass: "none",
+    plan: d("f1"),
+    trial: {
+      // An opaque arm name, as a plan assigns it: never base or candidate (REQ-22).
+      id: "refund-window-de/b/r0",
+      suite: "support-assistant",
+      case: "refund-window-de",
+      arm: "b",
+      replicate: 0,
+      attempt: 1,
+    },
+    case: {
+      id: "refund-window-de",
+      digest: d("a7"),
+      unit: "session",
+      input: { question: "Kann ich nach 40 Tagen noch zurückgeben?" },
+    },
+    limits: { calls: 12 },
+  },
+  trialResult: {
+    schema: "ichnaea.trialResult/1",
+    dataClass: "none",
+    trial: {
+      // An opaque arm name, as a plan assigns it: never base or candidate (REQ-22).
+      id: "refund-window-de/b/r0",
+      suite: "support-assistant",
+      case: "refund-window-de",
+      arm: "b",
+      replicate: 0,
+      attempt: 1,
+    },
+    output: { text: "Nein, die Frist beträgt 30 Tage.", sources: ["policy.md"] },
+    calls: 3,
+    observed: {
+      code: { commit: "0123456789abcdef0123456789abcdef01234567" },
+      model: "example-model-2026-10",
+      route: d("e1"),
+      parameters: { temperature: 0 },
+    },
+  },
+  workerError: { schema: "ichnaea.workerError/1", dataClass: "none", kind: "bad-json" },
   run: {
     schema: "ichnaea.run/1",
     id: "run-2026-11-15-a",
@@ -555,6 +598,26 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
     "missing-data-class": (r) => delete r["dataClass"],
     "fractional-replicate": (r) => (r["replicate"] = 0.5),
   },
+  trialRequest: {
+    "attempt-zero": (r) => ((r["trial"] as Record<string, unknown>)["attempt"] = 0),
+    "missing-case-digest": (r) => delete (r["case"] as Record<string, unknown>)["digest"],
+  },
+  trialResult: {
+    "missing-calls": (r) => delete r["calls"],
+    "negative-calls": (r) => (r["calls"] = -1),
+    "route-as-url": (r) =>
+      ((r["observed"] as Record<string, unknown>)["route"] = "https://api.example.com/v1"),
+    "short-commit": (r) =>
+      ((r["observed"] as Record<string, unknown>)["code"] = { commit: "0123456" }),
+    "code-without-commit-or-image": (r) =>
+      ((r["observed"] as Record<string, unknown>)["code"] = {}),
+    "image-with-short-commit": (r) =>
+      ((r["observed"] as Record<string, unknown>)["code"] = { image: d("b2"), commit: "abc" }),
+  },
+  workerError: {
+    "missing-kind": (r) => delete r["kind"],
+    "empty-kind": (r) => (r["kind"] = ""),
+  },
   run: {
     "missing-ledger": (r) => delete r["ledger"],
     "missing-lineage": (r) => delete r["lineage"],
@@ -688,6 +751,38 @@ export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
   measureValue: {
     "non-finite-score": (r) => (r["value"] = { type: "score", value: { nonFinite: "-inf" } }),
   },
+  trialResult: {
+    "infrastructure-failure": (r) => {
+      delete r["output"];
+      r["failure"] = {
+        class: "infrastructure",
+        kind: "rate-limited",
+        message: "429 from the endpoint",
+      };
+      r["calls"] = 1;
+    },
+    "image-released-service": (r) =>
+      ((r["observed"] as Record<string, unknown>)["code"] = { image: d("b2") }),
+    "commit-and-image": (r) =>
+      ((r["observed"] as Record<string, unknown>)["code"] = {
+        commit: "0123456789abcdef0123456789abcdef01234567",
+        image: d("b2"),
+      }),
+    "with-usage": (r) => (r["usage"] = { inputTokens: 812, outputTokens: 64 }),
+    "output-behind-pointer": (r) => {
+      delete r["output"];
+      r["pointer"] = "trace://composer/8f2c";
+    },
+    // A malformed request is the harness's fault: class protocol, never a system failure.
+    "bad-request": (r) => {
+      delete r["output"];
+      r["failure"] = { class: "protocol", kind: "bad-request" };
+      r["calls"] = 0;
+    },
+  },
+  workerError: {
+    "with-message": (r) => (r["message"] = "line 3 is not JSON: unexpected end of input"),
+  },
   label: { "rater-cannot-tell": (r) => (r["value"] = { type: "unknown" }) },
   configuration: {
     "model-version-route-and-informational": (r) => {
@@ -731,6 +826,27 @@ export const READER_ONLY: Record<string, Record<string, Mutation>> = {
     "future-preference-value": (r) => (r["value"] = { type: "preference", preferred: "both" }),
   },
   trial: { "future-outcome": (r) => (r["outcome"] = "partial") },
+  trialRequest: {
+    // Scoring comes from the base suite: a writer never sends a case's references.
+    "case-with-references": (r) =>
+      ((r["case"] as Record<string, unknown>)["references"] = { answer: "30 Tage" }),
+    // The request never says which side an arm is; a reader ignores a role if one is sent.
+    "arm-role": (r) => (r["arm"] = { name: "candidate", role: "candidate" }),
+  },
+  trialResult: {
+    // Ichnaea measures the times itself (REQ-25): a worker never sends them, and a reader ignores
+    // them as unknown members.
+    "worker-start-time": (r) => (r["startedAt"] = "2026-11-15T10:00:00Z"),
+    "worker-end-time": (r) => (r["endedAt"] = "2026-11-15T10:00:05Z"),
+    // The base suite scores the output: a worker sends no score, and a reader ignores one.
+    "worker-score": (r) => (r["values"] = { "support/facts-stated": true }),
+    "future-failure-class": (r) => (r["failure"] = { class: "quality", kind: "wrong-answer" }),
+  },
+  workerError: {
+    // A worker never guesses which trial an unreadable line was for: a writer refuses a trial
+    // identity, and a reader ignores one as an unknown member.
+    "guessed-trial": (r) => (r["trial"] = structuredClone(VALID["trialResult"]!["trial"])),
+  },
   run: {
     "future-ledger-state": (r) =>
       ((r["ledger"] as Array<Record<string, unknown>>)[0]!["state"] = "skipped"),

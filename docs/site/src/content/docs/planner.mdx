@@ -1,0 +1,39 @@
+---
+title: Planning explorer
+description: See what a suite of a given size can detect, what it costs, and how often a fixed threshold raises a false alarm, before you run anything.
+---
+
+import PlanningExplorer from "../../components/PlanningExplorer.astro";
+
+Before you run a suite, find out what it can tell you.
+Enter the size of your suite. The explorer simulates comparisons with Ichnaea's own statistics.
+
+<PlanningExplorer />
+
+## How to read the results
+
+- **Best-case floor.** The smallest limit that any run of this suite can clear, even when every trial passes. It is exact, not simulated.
+- **Smallest decrease detected in 80% of runs.** In these simulated runs, each case's pass rate falls by the same amount, or to zero if it is lower. A decrease this large then gives a Regression in 4 of 5 runs. Smaller decreases are often missed. The search finds this number to within 1 point. That is its resolution, not its precision: another seed can give a different number.
+- **No change between the base and the candidate.** This is a noise check: every alarm here is false. Compare Ichnaea with a rule that blocks whenever the mean falls by 3 points.
+- **Bound clears the limit when nothing changes.** The share of runs whose bound clears your limit. Pass would also need both statistical results validated for this design. Today no run can pass.
+
+## Where these numbers come from
+
+This page computes them in your browser. It calls the library's own tests on simulated trials.
+The command line tool's planner prints each primary measure's best-case floor, labelled 'smallest detectable drop', and whether that floor is below the limit. Below two trials per case it prints no number. It does not run these simulations.
+
+## What the simulation assumes
+
+- Cases are independent. Each trial passes with its case's pass rate.
+- The cases have the two pass rates you enter: some always pass, and the rest pass at one rate. With the defaults, 10 of the 12 cases always pass, so only 2 cases can vary.
+- For the detected decrease, each case's pass rate falls by the same amount, capped at zero. A case that passes 5% of the time loses at most 5 points.
+- At one trial per case, your records pass the order, timing and noise checks. [Noise checks](/ichnaea/explanation/noise-checks/) explains them.
+
+Real suites have more varied cases. Use the explorer to compare designs, not to predict one run.
+Each result names its number of simulated runs. With 100 runs, a simulated share is uncertain by several points.
+The same inputs give the same numbers, because the simulation uses a fixed seed. Add `seed=` to the address to draw again.
+
+## Evidence
+
+- [Limits](/ichnaea/explanation/limits/): the floor, and why you set the limit first.
+- [What "validated" means](/ichnaea/explanation/validated/): which designs have a validated test.

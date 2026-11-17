@@ -159,3 +159,15 @@ writeFileSync(
   new URL("../../test/stats/reference-agreement-inputs.json", import.meta.url),
   `${JSON.stringify({ tables, pairs, reliability })}\n`,
 );
+
+// The same reliability matrices as one row per cell, for the base-R alpha oracle, which reads no
+// JSON because it uses no package.
+const cells = reliability.flatMap(({ id, units }) =>
+  units.flatMap((unit, u) =>
+    unit.map((value, rater) => `${id}\t${u + 1}\t${rater + 1}\t${value === null ? "NA" : value}`),
+  ),
+);
+writeFileSync(
+  new URL("../../test/stats/reference-alpha-units.tsv", import.meta.url),
+  `matrix\tunit\trater\tvalue\n${cells.join("\n")}\n`,
+);

@@ -1,0 +1,66 @@
+---
+title: How Ichnaea compares with other tools
+description: Where other evaluation tools are better, where Ichnaea is different, and how to use them together. Checked against their own documentation on November 16, 2026.
+sidebar:
+  order: 6
+---
+
+Ichnaea answers one question: did this change make this feature worse?
+Most evaluation tools answer other questions well. This page says which, from each tool's own documentation, read on November 16, 2026.
+
+## Where other tools are better
+
+| You want to                                                    | Use                                                                                                                   | Why                                                                                             |
+| -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Run a model on a task, with agents, tools and sandboxes        | [Inspect](https://inspect.aisi.org.uk/)                                                                               | A full runner with a log viewer and more than 200 ready evaluations. Ichnaea has no runner yet. |
+| Compare prompts and models side by side, or test for attacks   | [promptfoo](https://www.promptfoo.dev/docs/getting-started/)                                                          | A matrix view and a red-team mode, from one config file.                                        |
+| Rank models on public benchmarks                               | [lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness), [HELM](https://crfm.stanford.edu/helm/) | Standard benchmarks and published leaderboards.                                                 |
+| Trace a production system and review its outputs               | [Arize Phoenix](https://arize.com/docs/phoenix), [Langfuse](https://langfuse.com/docs)                                | Tracing, a UI and human review of outputs. Ichnaea has no UI.                                   |
+| A hosted platform with datasets, playgrounds and review queues | [Braintrust](https://docs.braintrust.dev/), [LangSmith](https://docs.langchain.com/langsmith/evaluation-quickstart)   | Hosted experiments and a comparison view for teams.                                             |
+
+## Where Ichnaea is different
+
+**It tests the difference, case by case.**
+The tools above report a score per configuration. To compare two, you put the scores side by side.
+Some show which cases improved or got worse, for example [Braintrust](https://docs.braintrust.dev/evaluate/compare-experiments) and [LangSmith](https://docs.langchain.com/langsmith/compare-experiment-results).
+[Inspect](https://inspect.aisi.org.uk/metrics.html) gives each model a confidence interval, and suggests checking whether two intervals overlap.
+Ichnaea runs a paired test of the difference on the same cases, with a stated estimand. See [why paired comparisons](/ichnaea/explanation/paired/).
+
+**It can say "cannot tell".**
+A verdict is Pass, Regression, Inconclusive or Invalid, with its reason in words and an exit code for scripts.
+A fixed threshold always gives an answer, even when the suite is too small to decide.
+The [planning explorer](/ichnaea/planner/) shows how often such a threshold raises a false alarm.
+
+**It keeps missing trials visible.**
+Several tools leave out errored samples or score them as 0.
+[Inspect](https://inspect.aisi.org.uk/scoring-policy.html) is careful here: it separates errors, unscored samples and wrong answers.
+Ichnaea goes one step further. It checks whether the missing trials could change the verdict. See [missing trials](/ichnaea/explanation/missing-trials/).
+
+**It publishes the evidence for its statistics.**
+Each method that gives a verdict has its type-I error and coverage measured against a written bar, and the results are public. The score test and the Tango interval give no verdict, because their studies have not run yet. See [what "validated" means](/ichnaea/explanation/validated/).
+
+**It will run both versions side by side (planned).**
+The planned runner keeps one worker for the base and one for the candidate.
+It sends both the same case one after the other, in a random order for each case.
+A slow hour or a change at the model provider then hits both versions alike.
+A tool that runs one version and then the other also compares two different hours.
+Today you run both versions yourself. Interleave them case by case to keep this property.
+
+**It needs no account and no API key to decide.**
+Ichnaea decides from result files. It listens on no port and makes no network call of its own.
+
+## Where Ichnaea is behind
+
+- **No runner of its own yet.** You bring results from your runner. A runner is planned.
+- **No UI.** It writes a static report and a Markdown card.
+- **TypeScript only.** Other languages write JSON records that match the [record schemas](/ichnaea/reference/schemas/).
+- **Only pass/fail measures decide.** Scores and model judges show estimates without a verdict.
+- **Judge calibration is planned.** Today only its schemas exist.
+- **No Pass yet.** Non-inferiority is not validated yet.
+- **Early.** Ichnaea is 0.x and has one maintainer.
+
+## Use them together
+
+Run your system with your own runner, Inspect or promptfoo.
+Map their results of the base and the candidate to Ichnaea's records with a function you write. Ichnaea has no built-in importer for these tools.
+Then let Ichnaea decide whether the change made things worse.
