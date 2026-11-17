@@ -22,7 +22,7 @@ export const UNIT_PROJECTS: TestProjectInlineConfiguration[] = [
       typecheck: { enabled: true, include: [`test/${area}/**/*.test-d.ts`] },
     },
   })),
-  { test: { name: "mutants", root, include: ["test/*/mutants.test.ts"] } },
+  { test: { name: "mutants", root, include: ["test/*/mutants.test.ts", "test/mutation.test.ts"] } },
 ];
 
 /**

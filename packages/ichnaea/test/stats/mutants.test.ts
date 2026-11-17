@@ -9,7 +9,7 @@ import { join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { classify, type Outcome, type VitestReport } from "../../scripts/mutation.ts";
+import type { Outcome } from "../../scripts/mutation.ts";
 import {
   anchorProblems,
   CANARY,
@@ -69,7 +69,10 @@ describe("the mutation harness", () => {
   it("runs the mutants against a project that leaves out this file, whose anchor check every mutant breaks", () => {
     expect(project("stats")?.exclude).toContain("test/stats/mutants.test.ts");
     expect(project("contracts")?.exclude).toContain("test/contracts/mutants.test.ts");
-    expect(project("mutants")?.include).toEqual(["test/*/mutants.test.ts"]);
+    expect(project("mutants")?.include).toEqual([
+      "test/*/mutants.test.ts",
+      "test/mutation.test.ts",
+    ]);
   });
 
   it("names a mutant whose file is missing, whose anchor is gone, or occurs twice", () => {
@@ -198,70 +201,5 @@ describe("the mutation harness", () => {
       "applies: ERROR: a suite did not run",
       "errors (no result): applies",
     ]);
-  });
-});
-
-/** A vitest JSON report with one suite and the given test results. */
-const report = (
-  tests: { status: string; messages?: string[] }[],
-  suite: { status?: string; message?: string } = {},
-): VitestReport => ({
-  success: tests.every((t) => t.status === "passed") && suite.status !== "failed",
-  numFailedTests: tests.filter((t) => t.status === "failed").length,
-  testResults: [
-    {
-      name: "test/stats/x.test.ts",
-      status: suite.status ?? (tests.some((t) => t.status === "failed") ? "failed" : "passed"),
-      message: suite.message ?? "",
-      assertionResults: tests.map((t, i) => ({
-        title: `test ${i}`,
-        status: t.status,
-        failureMessages: t.messages ?? [],
-      })),
-    },
-  ],
-});
-
-describe("what one test run under a mutant shows", () => {
-  it("counts a passing run as a survivor and an assertion failure as a kill", () => {
-    expect(classify(0, report([{ status: "passed" }]))).toEqual({ kind: "survived" });
-    expect(
-      classify(
-        1,
-        report([
-          { status: "passed" },
-          { status: "failed", messages: ["AssertionError: expected 1 to be 2"] },
-        ]),
-      ),
-    ).toEqual({ kind: "killed", by: ["test/stats/x.test.ts: test 1"] });
-  });
-
-  it("counts a property failure that wraps an assertion as a kill", () => {
-    const wrapped =
-      "Error: Property failed after 10 tests\nGot error: AssertionError: expected 0.5 to be 0.4";
-    expect(classify(1, report([{ status: "failed", messages: [wrapped] }])).kind).toBe("killed");
-  });
-
-  it("counts a crash, a suite that did not load, a timeout or a missing report as an error", () => {
-    expect(classify(1, undefined)).toMatchObject({ kind: "error" });
-    expect(
-      classify(1, report([], { status: "failed", message: "SyntaxError: Unexpected token" })),
-    ).toMatchObject({ kind: "error", reason: expect.stringContaining("did not run") });
-    expect(
-      classify(1, report([{ status: "failed", messages: ["Error: Test timed out in 5000ms."] }])),
-    ).toMatchObject({ kind: "error", reason: expect.stringContaining("timed out") });
-    expect(
-      classify(1, report([{ status: "failed", messages: ["TypeError: x is not a function"] }])),
-    ).toMatchObject({ kind: "error", reason: expect.stringContaining("without an assertion") });
-    // A failed run in which no test failed: an unhandled error.
-    expect(classify(1, { ...report([{ status: "passed" }]), success: false })).toMatchObject({
-      kind: "error",
-    });
-    // An exit code that disagrees with the report.
-    expect(classify(0, report([{ status: "failed", messages: ["AssertionError"] }]))).toMatchObject(
-      {
-        kind: "error",
-      },
-    );
   });
 });
