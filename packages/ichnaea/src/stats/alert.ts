@@ -70,6 +70,7 @@ export function alertDetectableRate(input: {
   if (!(traces > 0) || !(designEffect >= 1))
     throw new RangeError("traces must be positive and DEFF at least 1");
   if (!(power > 0.5 && power < 1)) throw new RangeError("the power must be in (0.5, 1)");
+  if (!(level > 0.5 && level < 1)) throw new RangeError("the level must be in (0.5, 1)");
   const nEff = traces / designEffect;
   const t = rule === "below" ? threshold : 1 - threshold;
   const sd = (x: number): number => Math.sqrt((x * (1 - x)) / nEff);

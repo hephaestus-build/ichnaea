@@ -1,4 +1,4 @@
-import { pooledClopperPearson } from "./clopper-pearson.ts";
+import { adjustedTail, pooledClopperPearson } from "./clopper-pearson.ts";
 import { assertLevel } from "./types.ts";
 
 /**
@@ -125,12 +125,21 @@ export function neverCasesNeeded(input: {
     return { cases: null, reason: "NO_DETECTOR_CALIBRATION" };
   const sensitivity = detector.kind === "model" ? detector.sensitivityLower! : 1;
   if (sensitivity === 0) return { cases: null, reason: "SENSITIVITY_NOT_BOUNDED" };
-  const alpha = 1 - Math.exp(-(1 - boundLevel(confidence, detector)));
+  const tail = adjustedTail(boundLevel(confidence, detector), "upper");
   const target = ceiling * sensitivity;
-  let n = Math.max(1, Math.ceil(Math.log(alpha) / Math.log1p(-target)));
-  // The closed form can sit one off where the logarithms round; the claim decides.
-  const holds = (k: number): boolean => 1 - alpha ** (1 / k) <= target;
-  while (n > 1 && holds(n - 1)) n--;
-  while (!holds(n)) n++;
-  return { cases: n };
+  // The closed form can sit off where the logarithms round; the claim decides. The smallest count
+  // whose claim holds lies in (low, high]. Both searches are bounded: near a target of 2^−53 the
+  // claim's arithmetic stops resolving counts, and a target that underflows to 0 has none.
+  const holds = (k: number): boolean => 1 - tail ** (1 / k) <= target;
+  let low = 0;
+  let high = Math.max(1, Math.ceil(Math.log(tail) / Math.log1p(-target)));
+  for (let i = 0; i < 64 && !holds(high); i++) [low, high] = [high, 2 * high];
+  for (let i = 0; i < 64 && high - low > 1; i++) {
+    const mid = Math.floor((low + high) / 2);
+    if (holds(mid)) high = mid;
+    else low = mid;
+  }
+  if (!(Number.isSafeInteger(high) && high - low === 1))
+    throw new RangeError(`no count of cases up to 2^53 shows the ceiling ${ceiling}`);
+  return { cases: high };
 }

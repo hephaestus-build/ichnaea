@@ -43,24 +43,32 @@ export function clopperPearson(count: Count, level = 0.95, sided: Sided = "two")
 const MAX_ADJUSTED_TAIL = 0.25;
 
 /**
- * Clopper–Pearson on the pooled count at the adjusted level α′ = 1 − e^{−α} per bound
- * (1 − e^{−α/2} per tail for a two-sided interval). With independent trials at unequal rates, the
- * count is Poisson-binomial. The bound then misses the mean rate with probability below α, for every
- * set of rates (Hoeffding 1956, Theorem 4, as restated in Bancal and Sekatski 2022, § II; Greenberg
- * and Mohri 2014; and Weierstrass's product inequality). Unadjusted CP can miss at a rate up to
- * −ln(1 − α), at extreme means.
- *
- * The proof needs α′ ≤ 1/4 per bound, so a larger one is refused. The result carries the level
- * asked for, and the method "clopper-pearson-adjusted".
+ * The adjusted level α′ = 1 − e^{−α} per bound (1 − e^{−α/2} per tail for a two-sided interval) that
+ * `pooledClopperPearson` runs at. The proof needs α′ ≤ 1/4 per bound, so a larger one is refused,
+ * here, for every caller that plans or computes the pooled bound.
  */
-export function pooledClopperPearson(count: Count, level = 0.95, sided: Sided = "two"): Interval {
+export function adjustedTail(level: number, sided: Sided): number {
   assertLevel(level);
   const alpha = 1 - level;
   const tail = sided === "two" ? 1 - Math.exp(-alpha / 2) : 1 - Math.exp(-alpha);
   if (tail > MAX_ADJUSTED_TAIL)
     throw new RangeError(
-      `pooledClopperPearson: the adjusted level ${tail} per bound is above 1/4, where the bound is not proven`,
+      `the adjusted level ${tail} per bound is above 1/4, where the pooled bound is not proven`,
     );
+  return tail;
+}
+
+/**
+ * Clopper–Pearson on the pooled count at the adjusted level of `adjustedTail`. With independent
+ * trials at unequal rates, the count is Poisson-binomial. The bound then misses the mean rate with
+ * probability below α, for every set of rates (Hoeffding 1956, Theorem 4, as restated in Bancal and
+ * Sekatski 2022, § II; Greenberg and Mohri 2014; and Weierstrass's product inequality). Unadjusted
+ * CP can miss at a rate up to −ln(1 − α), at extreme means.
+ *
+ * The result carries the level asked for, and the method "clopper-pearson-adjusted".
+ */
+export function pooledClopperPearson(count: Count, level = 0.95, sided: Sided = "two"): Interval {
+  const tail = adjustedTail(level, sided);
   const adjusted = clopperPearson(count, sided === "two" ? 1 - 2 * tail : 1 - tail, sided);
   return { ...adjusted, level, method: "clopper-pearson-adjusted" };
 }

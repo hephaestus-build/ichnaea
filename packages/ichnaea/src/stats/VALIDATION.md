@@ -585,10 +585,12 @@ two or more.
 quantile with `qchisq` at 7 degrees of freedom and 5 probabilities, within a relative 1e-10
 (`reference-estimate.R`).
 
-**Mutants.** `scripts/stats/mutants.ts` changes these methods in 9 ways (those named `never:` and
+**Mutants.** `scripts/stats/mutants.ts` changes these methods in 13 ways (those named `never:` and
 `overdispersion:`): the split of the level, the division by Se_L, the level of the flagged-only
-bound, the planning check and the adjusted level of the planning count; the variance factor, the interval's tails, the exclusion at V = 0 and
-the degrees of freedom of the χ² quantile.
+bound, the planning check, the adjusted level of the planning count, its 1/4 restriction and its
+refusal of a count past 2^53; the variance factor, the interval's tails, the exclusion at V = 0,
+the degrees of freedom of the χ² quantile, and the direct upper tail of the χ² quantile and of the
+incomplete gamma function.
 
 ## Replay fidelity of attribution
 
@@ -632,9 +634,10 @@ declares no ρ, `intraclassCorrelation` estimates it from the last closed window
 `aov` fits through BLAS, so R writes ρ with `%.14g` (§ Reference values).
 The fidelity check's binary interval is the regression section's interval, checked there.
 
-**Mutants.** `scripts/stats/mutants.ts` changes these methods in 7 ways (those named `fidelity:` and
-`alert:`): the r/(r − 1) correction, each cell's own variance, the 90% level and the two-sided margin of the
-fidelity check; the size-weighted mean of DEFF, m₀ − 1 in ρ, and n_eff in the power.
+**Mutants.** `scripts/stats/mutants.ts` changes these methods in 9 ways (those named `fidelity:` and
+`alert:`): the r/(r − 1) correction, each cell's own variance, the sum of squares taken about a mean
+computed first, the 90% level and the two-sided margin of the fidelity check; the size-weighted mean of
+DEFF, m₀ − 1 in ρ, n_eff in the power, and the range of the level.
 
 ## Agreement between raters
 

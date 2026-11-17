@@ -26,10 +26,15 @@ export interface FidelityResult {
 
 const sum = (v: readonly number[]): number => v.reduce((a, b) => a + b, 0);
 
-/** The within-cell sum of squares. */
+/**
+ * The within-cell sum of squares Σd² − (Σd)²/r of the deviations d = y − y₀ from the cell's first
+ * value. A mean computed first can differ from every value of a constant cell by rounding
+ * ([0.1, 0.1, 0.1] sums to 0.30000000000000004), which gives that cell a variance it does not have;
+ * shifted, a constant cell's deviations are exactly 0.
+ */
 function squares(v: readonly number[]): number {
-  const mean = sum(v) / v.length;
-  return v.reduce((a, y) => a + (y - mean) ** 2, 0);
+  const d = v.map((y) => y - v[0]!);
+  return Math.max(0, d.reduce((a, x) => a + x * x, 0) - sum(d) ** 2 / v.length);
 }
 
 /** The cell mean's variance s²/r, with s² the cell's own unbiased within-cell variance. */

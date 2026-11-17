@@ -149,6 +149,20 @@ describe("the replay fidelity check", () => {
     expect(flat).toMatchObject({ interval: null, shown: false, reason: "ZERO_WIDTH" });
   });
 
+  it("gives constant score cells no variance, where a mean taken first rounds off every value", () => {
+    // 0.1 + 0.1 + 0.1 = 0.30000000000000004, so a mean taken first is not 0.1, and the cells
+    // would get a width of about 1e-16 that the data does not have.
+    const constant = fidelityCheck({
+      valueType: "score",
+      cases: [
+        { replayed: [0.1, 0.1, 0.1], recorded: [0.1, 0.1, 0.1] },
+        { replayed: [0.7, 0.7, 0.7], recorded: [0.7, 0.7, 0.7] },
+      ],
+      margin: 0.1,
+    });
+    expect(constant).toMatchObject({ interval: null, shown: false, reason: "ZERO_WIDTH" });
+  });
+
   it("refuses a margin outside (0, 1) and a case without trials in both runs", () => {
     expect(() =>
       fidelityCheck({
@@ -247,5 +261,20 @@ describe("the true rate that an alert rule finds 4 times in 5", () => {
       designEffect: 1,
     });
     expect(result.rate).toBeNull();
+  });
+
+  it("refuses a level outside (0.5, 1) before it computes the cutoff", () => {
+    for (const level of [0, 0.5, 1, Number.NaN])
+      expect(
+        () =>
+          alertDetectableRate({
+            threshold: 0.9,
+            rule: "below",
+            traces: 400,
+            designEffect: 1,
+            level,
+          }),
+        `${level}`,
+      ).toThrow(RangeError);
   });
 });

@@ -10,6 +10,7 @@ import {
   type Stratum,
   stratifiedZ,
 } from "../../src/stats/index.ts";
+import { regularizedGammaQ } from "../../src/stats/beta.ts";
 
 /** The one-sided level at which pooled Clopper–Pearson runs for a bound at α: e^{−α}. */
 const adjusted = (alpha: number): number => Math.exp(-alpha);
@@ -214,6 +215,64 @@ describe("the must-never planning count", () => {
       }),
     ).toEqual({ cases: null, reason: "SENSITIVITY_NOT_BOUNDED" });
   });
+
+  it("refuses a confidence whose adjusted level is above 1/4, as the claim does", () => {
+    // A deterministic detector at 0.5 runs at α′ = 1 − e^(−0.5) = 0.39; a model detector splits the
+    // level, so it runs at 1 − e^(−0.25) = 0.22, which holds.
+    const deterministic = { kind: "deterministic" } as const;
+    expect(() =>
+      neverCasesNeeded({ ceiling: 0.1, confidence: 0.5, detector: deterministic }),
+    ).toThrow(RangeError);
+    expect(() =>
+      neverClaim({
+        violations: 0,
+        cases: 30,
+        ceiling: 0.1,
+        confidence: 0.5,
+        detector: deterministic,
+      }),
+    ).toThrow(RangeError);
+    const model = { kind: "model", sensitivityLower: 1 } as const;
+    const { cases } = neverCasesNeeded({ ceiling: 0.1, confidence: 0.5, detector: model }) as {
+      cases: number;
+    };
+    const claim = (n: number) =>
+      neverClaim({ violations: 0, cases: n, ceiling: 0.1, confidence: 0.5, detector: model })
+        .status;
+    expect(claim(cases)).toBe("shown");
+    expect(claim(cases - 1)).toBe("not-shown");
+  });
+
+  it("refuses a ceiling that no count up to 2^53 shows, and stays exact near it", () => {
+    const deterministic = { kind: "deterministic" } as const;
+    // Number.MIN_VALUE: ln(1 − ceiling) rounds to −MIN_VALUE, and at Se_L = 1/2 the target
+    // underflows to 0, so the closed form is infinite.
+    for (const detector of [deterministic, { kind: "model", sensitivityLower: 0.5 } as const])
+      expect(
+        () => neverCasesNeeded({ ceiling: Number.MIN_VALUE, confidence: 0.5, detector }),
+        detector.kind,
+      ).toThrow(RangeError);
+    // Below about 1e-16, 1 − α′^(1/n) cannot resolve the ceiling at any count up to 2^53.
+    expect(() =>
+      neverCasesNeeded({ ceiling: 1e-17, confidence: 0.95, detector: deterministic }),
+    ).toThrow(RangeError);
+    const { cases } = neverCasesNeeded({
+      ceiling: 1e-12,
+      confidence: 0.95,
+      detector: deterministic,
+    }) as { cases: number };
+    const claim = (n: number) =>
+      neverClaim({
+        violations: 0,
+        cases: n,
+        ceiling: 1e-12,
+        confidence: 0.95,
+        detector: deterministic,
+      }).status;
+    expect(Number.isSafeInteger(cases)).toBe(true);
+    expect(claim(cases)).toBe("shown");
+    expect(claim(cases - 1)).toBe("not-shown");
+  });
 });
 
 describe("the stratified score statistic of a noise run", () => {
@@ -268,5 +327,15 @@ describe("the χ² quantile", () => {
     expect(chiSquareQuantile(0.975, 10)).toBeCloseTo(20.48317735080739, 9);
     expect(() => chiSquareQuantile(1, 3)).toThrow(RangeError);
     expect(() => chiSquareQuantile(0.5, 0)).toThrow(RangeError);
+  });
+
+  it("inverts the upper tail directly for p near 1, where 1 − P rounds the tail away", () => {
+    // p = 1 − 2^−53 at 2 degrees of freedom: −2·ln(2^−53) = 106·ln 2 = 73.4736…
+    expect(chiSquareQuantile(1 - 2 ** -53, 2) / (106 * Math.LN2)).toBeCloseTo(1, 12);
+    expect(chiSquareQuantile(1 - 1e-12, 2) / (-2 * Math.log(1e-12))).toBeCloseTo(1, 4);
+    // Q(1, x) = e^(−x): at x = 40 the tail is 4.2e−18, which 1 − P(1, 40) gives as 0.
+    expect(regularizedGammaQ(1, 40) / Math.exp(-40)).toBeCloseTo(1, 12);
+    expect(regularizedGammaQ(1, 0.5) / Math.exp(-0.5)).toBeCloseTo(1, 12);
+    expect(regularizedGammaQ(3, 0)).toBe(1);
   });
 });

@@ -65,6 +65,12 @@ export const MUTANTS: readonly Mutant[] = [
     to: "a + cases.reduce((s, x) => s + squares(x.replayed), 0) / cases.reduce((s, x) => s + x.replayed.length - 1, 0) / c.replayed.length + cases.reduce((s, x) => s + squares(x.recorded), 0) / cases.reduce((s, x) => s + x.recorded.length - 1, 0) / c.recorded.length, 0)",
   },
   {
+    id: "fidelity: the sum of squares about a mean taken first",
+    file: "src/stats/fidelity.ts",
+    from: "const d = v.map((y) => y - v[0]!);\n  return Math.max(0, d.reduce((a, x) => a + x * x, 0) - sum(d) ** 2 / v.length);",
+    to: "const mean = sum(v) / v.length;\n  return v.reduce((a, y) => a + (y - mean) ** 2, 0);",
+  },
+  {
     id: "fidelity: shown at the 95% level",
     file: "src/stats/fidelity.ts",
     from: 'critical(0.9, "two")',
@@ -95,6 +101,12 @@ export const MUTANTS: readonly Mutant[] = [
     to: "const nEff = traces;",
   },
   {
+    id: "alert: the level unchecked",
+    file: "src/stats/alert.ts",
+    from: 'if (!(level > 0.5 && level < 1)) throw new RangeError("the level must be in (0.5, 1)");',
+    to: 'if (!(level > 0 && level < 1)) throw new RangeError("the level must be in (0, 1)");',
+  },
+  {
     id: "never: no split of the level",
     file: "src/stats/never.ts",
     from: 'detector.kind === "model" ? 1 - (1 - confidence) / 2 : confidence;',
@@ -115,14 +127,26 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "never: planning claim one case short",
     file: "src/stats/never.ts",
-    from: "1 - alpha ** (1 / k) <= target",
-    to: "1 - alpha ** (1 / (k + 1)) <= target",
+    from: "1 - tail ** (1 / k) <= target",
+    to: "1 - tail ** (1 / (k + 1)) <= target",
   },
   {
     id: "never: planning count unadjusted",
     file: "src/stats/never.ts",
-    from: "const alpha = 1 - Math.exp(-(1 - boundLevel(confidence, detector)));",
-    to: "const alpha = 1 - boundLevel(confidence, detector);",
+    from: 'const tail = adjustedTail(boundLevel(confidence, detector), "upper");',
+    to: "const tail = 1 - boundLevel(confidence, detector);",
+  },
+  {
+    id: "never: planning count without the 1/4 restriction",
+    file: "src/stats/never.ts",
+    from: 'const tail = adjustedTail(boundLevel(confidence, detector), "upper");',
+    to: "const tail = 1 - Math.exp(-(1 - boundLevel(confidence, detector)));",
+  },
+  {
+    id: "never: an unrepresentable planning count returned",
+    file: "src/stats/never.ts",
+    from: "if (!(Number.isSafeInteger(high) && high - low === 1))",
+    to: "if (Number.isNaN(high))",
   },
   {
     id: "overdispersion: variance without n − 1",
@@ -147,6 +171,18 @@ export const MUTANTS: readonly Mutant[] = [
     file: "src/stats/chi-square.ts",
     from: "regularizedGammaP(df / 2, x / 2)",
     to: "regularizedGammaP(df, x / 2)",
+  },
+  {
+    id: "overdispersion: χ² upper quantile from 1 − P",
+    file: "src/stats/chi-square.ts",
+    from: "regularizedGammaQ(df / 2, x / 2) > 1 - p",
+    to: "1 - regularizedGammaP(df / 2, x / 2) > 1 - p",
+  },
+  {
+    id: "overdispersion: upper incomplete gamma from 1 − P",
+    file: "src/stats/beta.ts",
+    from: ": Math.min(1, upperFraction(a, x, front));",
+    to: ": Math.max(0, 1 - Math.max(0, 1 - upperFraction(a, x, front)));",
   },
   {
     id: "estimate: Clopper–Pearson tail not split",
