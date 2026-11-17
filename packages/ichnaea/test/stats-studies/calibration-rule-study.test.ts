@@ -20,7 +20,12 @@ import {
   type Cell,
 } from "../../scripts/stats/calibration-rule-study.ts";
 import { sizeDraw } from "../../scripts/stats/size-calibration-draw.ts";
-import { type Provenance, PROVENANCE_SCHEMA, writeMeta } from "../../scripts/stats/provenance.ts";
+import {
+  metaPath,
+  type Provenance,
+  PROVENANCE_SCHEMA,
+  sha256,
+} from "../../scripts/stats/provenance.ts";
 import {
   COLUMNS,
   orderRows,
@@ -283,7 +288,9 @@ describe("reading the shards", () => {
     schema: PROVENANCE_SCHEMA,
     script: "packages/ichnaea/scripts/stats/study-calibration-rule.ts",
     commit: "a".repeat(40),
+    pull: null,
     files: { "packages/ichnaea/scripts/stats/study-calibration-rule.ts": "b".repeat(64) },
+    packages: {},
     seedBase: 6_000_000,
     arguments: [],
     node: process.version,
@@ -298,7 +305,14 @@ describe("reading the shards", () => {
     dirs.push(dir);
     const file = path.join(dir, "shard-0.tsv");
     writeFileSync(file, rows);
-    writeMeta(file, provenance, true);
+    // The sidecar a shard's run writes (writeMeta), for a provenance made here.
+    const sidecar = {
+      ...provenance,
+      output: "shard-0.tsv",
+      complete: true,
+      outputSha256: sha256(rows),
+    };
+    writeFileSync(metaPath(file), JSON.stringify(sidecar));
     return file;
   };
 
@@ -306,8 +320,20 @@ describe("reading the shards", () => {
     const file = shardIn("binary-equal\t1\nbinary-worse\t2\n");
     expect(readShards(path.dirname(file), merge)).toEqual({
       rows: ["binary-equal\t1", "binary-worse\t2"],
-      starts: [merge.started],
+      provenance: merge,
     });
+  });
+
+  it("pins in the merge a module that only a shard loaded, and the earliest start", () => {
+    const only = "packages/ichnaea/scripts/stats/only-in-shard.ts";
+    const file = shardIn("binary-equal\t1\n", {
+      ...merge,
+      files: { ...merge.files, [only]: "c".repeat(64) },
+      started: "2026-11-16T00:00:00.000Z",
+    });
+    const { provenance } = readShards(path.dirname(file), merge);
+    expect(provenance.files[only]).toBe("c".repeat(64));
+    expect(provenance.started).toBe("2026-11-16T00:00:00.000Z");
   });
 
   it("refuses a shard whose rows changed after its sidecar was written", () => {

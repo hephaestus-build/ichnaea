@@ -1,17 +1,21 @@
 // The study of the judge calibration rule (VALIDATION.md, "The judge calibration rule"): every cell
 // of CELLS, STUDIES studies each, RESAMPLES case resamples per study, one seeded stream per cell.
-//   node scripts/stats/study-calibration-rule.ts shard --shard i/n --out <dir>
+//   node --import ./scripts/stats/record-loads.ts scripts/stats/study-calibration-rule.ts \
+//     shard --shard i/n --out <dir>
 //     runs the cells i, i + n, i + 2n, … and writes <dir>/shard-i.tsv with its provenance sidecar;
-//   node scripts/stats/study-calibration-rule.ts merge --in <dir> validation/calibration-rule.tsv
-//     joins the shards in cell order and writes the output with its provenance sidecar. It refuses
-//     a shard whose sidecar names another commit, other source files or another Node version, and
-//     a set of shards without exactly one row per cell.
+//   node --import ./scripts/stats/record-loads.ts scripts/stats/study-calibration-rule.ts \
+//     merge --in <dir> [--pull <N>] validation/calibration-rule.tsv
+//     joins the shards in cell order and writes the output with its provenance sidecar, which pins
+//     the modules that the merge and every shard loaded (provenance.ts). It refuses a shard whose
+//     rows do not match its sidecar, or whose sidecar names another commit, Node version, script or
+//     seed base or another sha256 for a file, and a set of shards without exactly one row per
+//     cell. A published output names its pull request with --pull.
 // A cell's rows depend only on its seed, never on the shard that ran it.
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { parseArgs } from "node:util";
 
-import { createRng } from "../../src/stats/index.ts";
+import { createRng } from "../../src/stats/rng.ts";
 import { CONDITIONS, calibrationRule } from "./calibration-rule.ts";
 import {
   CELLS,
@@ -20,7 +24,7 @@ import {
   runCell,
   type CellResult,
 } from "./calibration-rule-study.ts";
-import { type Provenance, provenance, sha256, writeMeta } from "./provenance.ts";
+import { mergeShards, type Provenance, provenance, sha256, writeMeta } from "./provenance.ts";
 
 export const STUDIES = 2000;
 export const RESAMPLES = 2000;
@@ -110,21 +114,28 @@ export function orderRows(rows: readonly string[]): string[] {
 
 /**
  * Reads the shards in `dir` and checks each against the merge's provenance: its sidecar must exist,
- * be complete, match the shard's bytes, and name the same commit, files and Node version. Each
- * shard is read once, and its rows come from the bytes that were checked. Returns the rows and the
- * shards' start times.
+ * be complete, match the shard's bytes, and name the same commit and Node version. Each shard is
+ * read once, and its rows come from the bytes that were checked. Returns the rows, and the merge's
+ * provenance with the modules and packages that each shard loaded (`mergeShards`, which also
+ * refuses another script, seed base or sha256 for a file, and takes the earliest start).
  */
 export function readShards(
   dir: string,
   merge: Provenance,
-): { readonly rows: string[]; readonly starts: string[] } {
+): { readonly rows: string[]; readonly provenance: Provenance } {
   const shards = readdirSync(dir)
     .filter((f) => /^shard-\d+\.tsv$/.test(f))
     .map((f) => readShard(path.join(dir, f), merge));
-  return { rows: shards.flatMap((s) => s.rows), starts: shards.map((s) => s.started) };
+  return {
+    rows: shards.flatMap((s) => s.rows),
+    provenance: mergeShards(
+      merge,
+      shards.map((s) => s.provenance),
+    ),
+  };
 }
 
-function readShard(file: string, merge: Provenance): { rows: string[]; started: string } {
+function readShard(file: string, merge: Provenance): { rows: string[]; provenance: Provenance } {
   const bytes = readFileSync(file);
   const metaFile = `${file}.meta.json`;
   if (!existsSync(metaFile)) throw new Error(`${file} has no provenance sidecar; rerun the shard`);
@@ -139,13 +150,14 @@ function readShard(file: string, merge: Provenance): { rows: string[]; started: 
         ? "its rows do not match its sidecar"
         : shard.commit !== merge.commit
           ? `it ran at ${shard.commit}, the merge runs at ${merge.commit}`
-          : JSON.stringify(shard.files) !== JSON.stringify(merge.files)
-            ? "it ran other source files"
-            : shard.node !== merge.node
-              ? `it ran on Node ${shard.node}, the merge on ${merge.node}`
-              : undefined;
+          : shard.node !== merge.node
+            ? `it ran on Node ${shard.node}, the merge on ${merge.node}`
+            : undefined;
   if (mismatch !== undefined) throw new Error(`${file}: ${mismatch}; rerun the shard`);
-  return { rows: bytes.toString("utf8").split("\n").filter(Boolean), started: shard.started! };
+  return {
+    rows: bytes.toString("utf8").split("\n").filter(Boolean),
+    provenance: shard as Provenance,
+  };
 }
 
 function parseShard(text: string | undefined): [number, number] {
@@ -162,18 +174,18 @@ if (import.meta.main) {
   const { values, positionals } = parseArgs({
     args: rest,
     allowPositionals: true,
-    options: { shard: { type: "string" }, out: { type: "string" }, in: { type: "string" } },
+    options: {
+      shard: { type: "string" },
+      out: { type: "string" },
+      in: { type: "string" },
+      pull: { type: "string" },
+    },
   });
   if (phase === "shard") {
     const [shard, shards] = parseShard(values.shard);
     const out = values.out ?? "calibration-rule-shards";
     // Each shard records its own provenance, so the merge can refuse shards from other code.
-    const meta = provenance(
-      new URL(import.meta.url).pathname,
-      [],
-      SEED_BASE,
-      process.argv.slice(2),
-    );
+    const meta = provenance(import.meta.filename, SEED_BASE, process.argv.slice(2));
     mkdirSync(out, { recursive: true });
     const file = path.join(out, `shard-${shard}.tsv`);
     writeFileSync(file, `${runShard(shard, shards, STUDIES, RESAMPLES).join("\n")}\n`);
@@ -182,16 +194,13 @@ if (import.meta.main) {
     const output = positionals[0];
     const dir = values.in;
     if (!output || !dir) throw new RangeError("merge needs --in <dir> and an output path");
-    const meta = provenance(
-      new URL(import.meta.url).pathname,
-      [],
-      SEED_BASE,
-      process.argv.slice(2),
-    );
-    const { rows, starts } = readShards(dir, meta);
+    const meta = provenance(import.meta.filename, SEED_BASE, process.argv.slice(2), {
+      pull: values.pull === undefined ? undefined : Number(values.pull),
+    });
+    const { rows, provenance: merged } = readShards(dir, meta);
     const sorted = orderRows(rows);
     writeFileSync(output, `${COLUMNS.join("\t")}\n${sorted.join("\n")}\n`);
-    writeMeta(output, { ...meta, started: starts.toSorted()[0] ?? meta.started }, true, {
+    writeMeta(output, merged, true, {
       studies: STUDIES,
       resamples: RESAMPLES,
       cells: CELLS.length,

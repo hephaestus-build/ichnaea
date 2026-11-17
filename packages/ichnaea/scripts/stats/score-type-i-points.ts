@@ -1,16 +1,11 @@
 // The points of the type-I study of the score permutation test (VALIDATION.md, "Score measures: the
 // regression test"): every generator, grid shape, seed and test, fixed before any run. A point
 // draws one data set per repetition; its test rejects at each level of score-type-i-rule.ts.
-import {
-  type CaseScores,
-  createRng,
-  exactStratifiedTest,
-  pnorm,
-  qnorm,
-  type Rng,
-  scorePermutationTest,
-  type ScorePermutationResult,
-} from "../../src/stats/index.ts";
+import { exactStratifiedTest } from "../../src/stats/exact-conditional.ts";
+import { pnorm, qnorm } from "../../src/stats/normal.ts";
+import { createRng, type Rng } from "../../src/stats/rng.ts";
+import type { CaseScores, ScorePermutationResult } from "../../src/stats/score-permutation-core.ts";
+import { scorePermutationTest } from "../../src/stats/score-permutation.ts";
 import { scorePermutationCore } from "../../src/stats/score-permutation-core.ts";
 import { ALPHA, LEVELS, STUDY_RESAMPLES, studyRejects } from "./score-type-i-rule.ts";
 

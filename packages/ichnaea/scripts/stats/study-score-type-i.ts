@@ -1,13 +1,15 @@
 // The type-I study of the score permutation test (VALIDATION.md, "Score measures: the regression
 // test"), one shard at a time. Two phases, each sharded:
 //
-//   node scripts/study-score-type-i.ts screen --shard 3/80 --out results/
+//   node --import ./scripts/stats/record-loads.ts scripts/stats/study-score-type-i.ts \
+//     screen --shard 3/80 --out results/
 //     Screens every point of the shard's cells at ICHNAEA_SIM_REPS repetitions (6,000), counting
 //     its rejections at each level from the same repetitions, refines each G2 cell by hill-climbing
 //     from its worst structures, and confirms every candidate with its confirmation seed until the
 //     standard error is at most 0.0005 at every level. Writes screen-3-of-80.tsv.
 //
-//   node scripts/study-score-type-i.ts recheck --points results/recheck.json --shard 3/20 --out results/
+//   node --import ./scripts/stats/record-loads.ts scripts/stats/study-score-type-i.ts \
+//     recheck --points results/recheck.json --shard 3/20 --out results/
 //     Re-checks the points that the collector selected at 20,000 repetitions: each repetition draws
 //     one data set from the re-check seed and runs both the shipped test (exact, or 10,000 resamples
 //     with the rerun near a level) and the study's test on it. Writes recheck-3-of-20.tsv.
@@ -20,7 +22,7 @@ import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { createRng } from "../../src/stats/index.ts";
+import { createRng } from "../../src/stats/rng.ts";
 import { provenance, writeMeta } from "./provenance.ts";
 import {
   type Cell,
@@ -188,17 +190,6 @@ const runner = (): Record<string, string> =>
   );
 
 const local = (file: string): string => fileURLToPath(new URL(file, import.meta.url));
-const SCRIPTS = [
-  local("./score-type-i-points.ts"),
-  local("./score-type-i-rule.ts"),
-  local("./provenance.ts"),
-  local("../../src/stats/score-permutation.ts"),
-  local("../../src/stats/score-permutation-core.ts"),
-  local("../../src/stats/exact-conditional.ts"),
-  local("../../src/stats/normal.ts"),
-  local("../../src/stats/mt19937.ts"),
-  local("../../src/stats/rng.ts"),
-];
 
 interface Screened {
   readonly point: Point;
@@ -212,7 +203,7 @@ function screen(args: readonly string[]): void {
   const dir = argument(args, "--out") ?? "results";
   mkdirSync(dir, { recursive: true });
   const output = path.join(dir, `screen-${index}-of-${count}.tsv`);
-  const meta = provenance(local("./study-score-type-i.ts"), SCRIPTS, 2_000_000, [...args]);
+  const meta = provenance(local("./study-score-type-i.ts"), 2_000_000, [...args]);
   const mine: Cell[] = shardOf(cells(), index, count);
   const seeds: number[] = [];
   // Refinement steps whose perturbation left [0.01, 0.99]: no row, recorded here, so the collector
@@ -341,7 +332,7 @@ function recheck(args: readonly string[]): void {
   if (list === undefined) throw new RangeError("--points is required");
   mkdirSync(dir, { recursive: true });
   const output = path.join(dir, `recheck-${index}-of-${count}.tsv`);
-  const meta = provenance(local("./study-score-type-i.ts"), SCRIPTS, 4_000_000, [...args]);
+  const meta = provenance(local("./study-score-type-i.ts"), 4_000_000, [...args]);
   const listText = readFileSync(list, "utf8");
   const selected = shardOfList(listText, index, count);
   // The collector checks that every shard ran the list it rebuilds from the screen outputs.

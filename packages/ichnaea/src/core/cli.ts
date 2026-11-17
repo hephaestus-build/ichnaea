@@ -3,12 +3,9 @@ import { basename, dirname, extname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 
-import {
-  notComputedReason,
-  RECORD_CONTRACTS,
-  toJsonSchema,
-  TriggerKind,
-} from "../contracts/index.ts";
+import { toJsonSchema } from "../contracts/json-schema.ts";
+import { notComputedReason, TriggerKind } from "../contracts/records/plan.ts";
+import { RECORD_CONTRACTS } from "../contracts/registry.ts";
 
 import { CORE_COMMANDS, createHost, type Host } from "./host.ts";
 import { importRun } from "./import.ts";

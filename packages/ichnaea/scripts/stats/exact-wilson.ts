@@ -1,6 +1,6 @@
 // Exact two-sided coverage of the Wilson interval at n, by enumerating x = 0..n, over a fine p grid.
 // Usage: node scripts/stats/exact-wilson.ts 20
-import { wilson } from "../../src/stats/index.ts";
+import { wilson } from "../../src/stats/wilson.ts";
 
 const n = Number(process.argv[2] ?? 20);
 const pmf = (x: number, p: number): number => {

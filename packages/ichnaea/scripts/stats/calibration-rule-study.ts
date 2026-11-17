@@ -6,9 +6,10 @@
 // correlation). The rule is a parameter: this module never imports one, so the rule can live
 // wherever the calibration code does, and a changed rule only needs a rerun (VALIDATION.md, "The
 // judge calibration rule").
-import type { Slope } from "../../src/calibration/index.ts";
+import type { Slope } from "../../src/calibration/engine.ts";
 import type { LabelColumns } from "../../src/calibration/statistics.ts";
-import { qnorm, type Rng } from "../../src/stats/index.ts";
+import { qnorm } from "../../src/stats/normal.ts";
+import type { Rng } from "../../src/stats/rng.ts";
 
 /**
  * One simulated calibration study: the labels in the columns that ./calibration reads, with the

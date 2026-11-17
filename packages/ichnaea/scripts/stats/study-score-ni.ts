@@ -1,12 +1,14 @@
 // Stage 1 of the score non-inferiority study (VALIDATION.md, "Score measures: non-inferiority"),
 // one shard at a time. Two phases, each sharded:
 //
-//   node scripts/stats/study-score-ni.ts screen --shard 3/80 --out results/
+//   node --import ./scripts/stats/record-loads.ts scripts/stats/study-score-ni.ts \
+//     screen --shard 3/80 --out results/
 //     Screens every point of the shard's cells at ICHNAEA_SIM_REPS repetitions (6,000) and refines
 //     each G2 cell around its worst structures. Every repetition evaluates all method settings on
 //     one data set. Writes screen-3-of-80.tsv.
 //
-//   node scripts/stats/study-score-ni.ts confirm --points results/confirm.json --shard 3/20 --out results/
+//   node --import ./scripts/stats/record-loads.ts scripts/stats/study-score-ni.ts \
+//     confirm --points results/confirm.json --shard 3/20 --out results/
 //     Runs the points that the collector selected from their confirmation seeds until the standard
 //     error is at most 0.0005 at 0.95 (190,000 repetitions). Writes confirm-3-of-20.tsv.
 //
@@ -18,7 +20,7 @@ import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { createRng } from "../../src/stats/index.ts";
+import { createRng } from "../../src/stats/rng.ts";
 import { boundSC, scoreBound } from "../../src/stats/score-interval.ts";
 import type { CaseScores } from "../../src/stats/score-permutation-core.ts";
 import { provenance, writeMeta } from "./provenance.ts";
@@ -148,7 +150,7 @@ function screen(args: readonly string[]): void {
   const dir = argument(args, "--out") ?? "results";
   mkdirSync(dir, { recursive: true });
   const output = path.join(dir, `screen-${index}-of-${shards}.tsv`);
-  const meta = provenance(local("./study-score-ni.ts"), [], 30_000_000, [...args]);
+  const meta = provenance(local("./study-score-ni.ts"), 30_000_000, [...args]);
   const mine: NiCell[] = niShardOf(niCells(), index, shards);
   let points = 0;
   const extra = (): Record<string, unknown> => ({
@@ -197,7 +199,7 @@ function confirm(args: readonly string[]): void {
   if (list === undefined) throw new RangeError("--points is required");
   mkdirSync(dir, { recursive: true });
   const output = path.join(dir, `confirm-${index}-of-${shards}.tsv`);
-  const meta = provenance(local("./study-score-ni.ts"), [], 40_000_000, [...args]);
+  const meta = provenance(local("./study-score-ni.ts"), 40_000_000, [...args]);
   const listText = readFileSync(list, "utf8");
   const selected = (
     JSON.parse(listText) as { points: { id: string; structure?: string }[] }
