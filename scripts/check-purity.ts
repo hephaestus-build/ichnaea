@@ -8,9 +8,10 @@
 // `node scripts/check-purity.ts` checks the repository. `--stdin` and `--env NAME` check text for
 // private records only, such as a pull request title and body that CI passes in environment
 // variables.
-import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { parseArgs } from "node:util";
+
+import { trackedFiles } from "./tracked-files.ts";
 
 /**
  * Terms that identify one application. Only the whole word `hephaestus-build`, the organisation and
@@ -104,11 +105,7 @@ function readTextInputs(args: {
 }
 
 function checkRepository(): void {
-  const tracked = execFileSync("git", ["ls-files", "--cached", "--others", "--exclude-standard"], {
-    encoding: "utf8",
-  })
-    .split("\n")
-    .filter((f) => f && existsSync(f));
+  const tracked = trackedFiles();
   const texts = tracked
     .map((path) => ({ path, text: readFileSync(path, "utf8") }))
     .filter(({ text }) => !text.includes("\0"));

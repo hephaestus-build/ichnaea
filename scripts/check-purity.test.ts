@@ -167,6 +167,12 @@ describe("the purity command", () => {
     return { status, stderr };
   }
 
+  it("fails on a changeset with a non-ASCII name, which git lists unquoted with -z", () => {
+    const { status, stderr } = run({ ".changeset/größe ändern.md": "---\n---\nA change.\n" }, true);
+    expect(status).toBe(1);
+    expect(stderr).toContain(".changeset/größe ändern.md: a changeset");
+  });
+
   it("fails on a changeset, which Ichnaea does not keep (decision 0019)", () => {
     const { status, stderr } = run({ ".changeset/a-change.md": "---\n---\nA change.\n" }, true);
     expect(status).toBe(1);

@@ -35,6 +35,7 @@ const ASSERTION_CLASSES = new Set(["AssertionError", "JestAssertionError"]);
 const PROPERTY_FAILED = "Property failed after";
 const RETURNED_FALSE = "Property failed by returning false";
 const TIMEOUT = /^(Test|Hook) timed out/;
+const timesOut = (e: MutationError): boolean => TIMEOUT.test(e.message);
 
 /** A stack frame in a test file: `x.test.ts:12:3`, or a `.test-d.ts`, `.test.mts`, … file. */
 const TEST_FRAME = /\.test(-d)?\.[cm]?[jt]sx?:\d+/;
@@ -47,7 +48,7 @@ const TEST_FRAME = /\.test(-d)?\.[cm]?[jt]sx?:\d+/;
 export function raisedByTest(error: MutationError): boolean {
   // Frames with no file (`<anonymous>`, `node:` internals, `index 0`) say nothing about who raised it.
   const first = error.frames.find(
-    (f) => /[/\\]/.test(f) && !f.includes("/node_modules/") && !f.includes("(node:"),
+    (f) => /[/\\]/.test(f) && !/[/\\]node_modules[/\\]/.test(f) && !f.includes("(node:"),
   );
   return first !== undefined && TEST_FRAME.test(first);
 }
@@ -77,7 +78,9 @@ export function classify(exitCode: number | null, report: MutationReport | undef
     return { kind: "survived" };
   if (exitCode === 0 || report.passed)
     return { kind: "error", reason: `exit ${exitCode} disagrees with the report` };
-  const loading = report.modules[0];
+  // A file-level hook (beforeAll, afterAll) that timed out lands on the module; it is a detection
+  // by timeout. Any other module error, a collection failure for one, means the module did not run.
+  const loading = report.modules.find((m) => !m.errors.every(timesOut));
   if (loading !== undefined)
     return {
       kind: "error",
@@ -102,7 +105,8 @@ export function classify(exitCode: number | null, report: MutationReport | undef
       : { kind: "killed", by, alsoCrashed: crashes };
   const timedOut =
     report.failed.find((f) => f.errors.some((e) => TIMEOUT.test(e.message)))?.test ??
-    suites.find((s) => s.errors.some((e) => TIMEOUT.test(e.message)))?.suite;
+    suites.find((s) => s.errors.some((e) => TIMEOUT.test(e.message)))?.suite ??
+    report.modules.find((m) => m.errors.some(timesOut))?.module;
   if (timedOut !== undefined) return { kind: "timedOut", test: timedOut };
   if (crashes.length > 0)
     return { kind: "error", reason: `no assertion failed; it crashed: ${crashes[0]}` };

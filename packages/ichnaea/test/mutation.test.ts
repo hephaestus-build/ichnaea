@@ -347,3 +347,51 @@ describe("a run's report file", () => {
     expect(existsSync(stale)).toBe(false);
   });
 });
+
+/** A report in which a test module itself failed with one error. */
+const atModule = (message: string, name = "Error"): MutationReport => ({
+  passed: false,
+  modules: [{ module: "test/x.test.ts", errors: [error(name, message)] }],
+  failed: [],
+  suites: [],
+  unhandled: [],
+});
+
+describe("a file-level hook that timed out", () => {
+  it("is a detection by timeout, not a module that did not run", () => {
+    expect(classify(1, atModule("Hook timed out in 10000ms."))).toEqual({
+      kind: "timedOut",
+      test: "test/x.test.ts",
+    });
+  });
+
+  it("leaves a collection failure, or any other module error, a module that did not run", () => {
+    for (const report of [
+      atModule("Failed to load url ../src/x.ts", "Error"),
+      atModule("Unexpected token", "SyntaxError"),
+    ])
+      expect(classify(1, report)).toMatchObject({
+        kind: "error",
+        reason: expect.stringContaining("did not run"),
+      });
+  });
+});
+
+describe("stack frames on Windows", () => {
+  it("skip a dependency's frames with backslash separators, so a real assertion still kills", () => {
+    const frames = [
+      "at _Assertion.__VITEST_REJECTS__ (C:\\r\\node_modules\\.pnpm\\vitest@5.1.0\\node_modules\\vitest\\dist\\index.js:2178:33)",
+      "at Reflect.get (<anonymous>)",
+      "at C:\\pkg\\test\\stats\\x.test.ts:12:3",
+    ];
+    expect(isAssertion(error("AssertionError", "promise resolved", undefined, frames))).toBe(true);
+  });
+
+  it("still refuse an AssertionError that a Windows dependency raised from the source", () => {
+    const frames = [
+      "at check (C:\\r\\node_modules\\some-dep\\index.js:3:9)",
+      "at measure (C:\\pkg\\src\\stats\\wilson.ts:20:5)",
+    ];
+    expect(isAssertion(error("AssertionError", "invariant", undefined, frames))).toBe(false);
+  });
+});
