@@ -22,6 +22,7 @@ export * from "./reduce.ts";
 export * from "./rng.ts";
 export * from "./score-difference.ts";
 export * from "./score-permutation.ts";
+export * from "./sentinel.ts";
 export * from "./tango.ts";
 export * from "./types.ts";
 export * from "./wilson.ts";

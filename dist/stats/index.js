@@ -22,6 +22,7 @@ export * from "./reduce.js";
 export * from "./rng.js";
 export * from "./score-difference.js";
 export * from "./score-permutation.js";
+export * from "./sentinel.js";
 export * from "./tango.js";
 export * from "./types.js";
 export * from "./wilson.js";
