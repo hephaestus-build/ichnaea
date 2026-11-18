@@ -16,19 +16,35 @@ const screen: Row[] = [
   {
     id: "G1/a/m0.050/margin",
     truth: "margin",
+    reported: "false",
     reps: "6000",
     events: events(0.9445),
     structure: "",
   },
-  { id: "G1/b/m0.050/margin", truth: "margin", reps: "6000", events: events(0.99), structure: "" },
+  {
+    id: "G1/b/m0.050/margin",
+    truth: "margin",
+    reported: "false",
+    reps: "6000",
+    events: events(0.99),
+    structure: "",
+  },
   {
     id: "G2/top-nu2/k12-r2/m0.050/s100",
     truth: "margin",
+    reported: "false",
     reps: "6000",
     events: events(0.93),
     structure: "[[0.95,0.9]]",
   },
-  { id: "G1/a/m0.050/zero", truth: "zero", reps: "6000", events: events(0.2), structure: "" },
+  {
+    id: "G1/a/m0.050/zero",
+    truth: "zero",
+    reported: "false",
+    reps: "6000",
+    events: events(0.2),
+    structure: "",
+  },
 ];
 const listOf = (points: unknown): string => `${JSON.stringify({ points }, null, 1)}\n`;
 const sha = (text: string): string => createHash("sha256").update(text).digest("hex");

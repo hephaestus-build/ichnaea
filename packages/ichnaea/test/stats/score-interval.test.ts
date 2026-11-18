@@ -17,6 +17,8 @@ import {
   studentQuantile,
 } from "../../src/stats/score-interval.ts";
 import type { CaseScores } from "../../src/stats/score-permutation-core.ts";
+import { createRng } from "../../src/stats/index.ts";
+import { scoreDifferenceInterval } from "../../src/stats/score-difference.ts";
 
 interface Table {
   id: string;
@@ -89,6 +91,47 @@ describe("score bounds: definition", () => {
   it("has φ̂ = 1 for 0/1 values, so S-B is S-A on binary data at every floor", () => {
     expect(pooledDispersion(binary)).toBe(1);
     for (const f of FLOORS) expect(boundSB(binary, 0.95, Number(f))).toBe(boundSA(binary, 0.95));
+  });
+
+  it("reduces S-B to S-A on 1,000 random binary tables, and S-A to the shipped binary interval", () => {
+    // Seeded, so every run checks the same tables: 1 to 40 cases, 1 to 4 trials per arm with
+    // unequal counts, one-trial cells and cases where an arm is all 0 or all 1.
+    const rng = createRng(20_261_117);
+    const pick = (n: number): number => Math.floor(rng.uniform() * n);
+    let unequal = 0;
+    for (let t = 0; t < 1_000; t++) {
+      const p = rng.uniform();
+      const value = (): number => (rng.uniform() < p ? 1 : 0);
+      const cases: CaseScores[] = Array.from({ length: 1 + pick(40) }, (_, i) => {
+        const nc = 1 + pick(4);
+        const nb = pick(3) === 0 ? 1 + pick(4) : nc;
+        if (nb !== nc) unequal++;
+        return {
+          id: `c${i}`,
+          candidate: Array.from({ length: nc }, value),
+          base: Array.from({ length: nb }, value),
+        };
+      });
+      expect(pooledDispersion(cases), `table ${t}`).toBe(1);
+      const sa = boundSA(cases, 0.95);
+      for (const f of FLOORS)
+        expect(Object.is(boundSB(cases, 0.95, Number(f)), sa), `table ${t}, φ_min ${f}`).toBe(true);
+      const shipped = scoreDifferenceInterval(
+        cases.map((c) => ({
+          candidate: {
+            successes: c.candidate.filter((v) => v === 1).length,
+            trials: c.candidate.length,
+          },
+          base: { successes: c.base.filter((v) => v === 1).length, trials: c.base.length },
+        })),
+        0.95,
+        "lower",
+        {},
+      ).lower;
+      // The two compute Z separately, so they agree to rounding, not bit for bit.
+      expect(Math.abs(sa - shipped), `table ${t}`).toBeLessThanOrEqual(1e-12);
+    }
+    expect(unequal).toBeGreaterThan(1_000);
   });
 
   it("keeps φ̂ at most 1 for any values in [0, 1]", () => {
