@@ -215,6 +215,14 @@ export function critical(level: number, sided: "two" | "lower" | "upper"): numbe
 export const DEFAULT_RESAMPLES = 10000;
 
 // @public
+export interface DriftDirection {
+    readonly caught: boolean;
+    readonly drift: number | null;
+    readonly largest: number;
+    readonly power: number;
+}
+
+// @public
 export interface Duration {
     readonly censored: boolean;
     readonly time: number;
@@ -586,6 +594,49 @@ export interface ScorePermutationResult {
 
 // @public
 export function scorePermutationTest(cases: readonly CaseScores[], options?: ScorePermutationOptions): ScorePermutationResult;
+
+// @public
+export function sentinelDetectableDrift(input: {
+    readonly cases: number;
+    readonly trials: number;
+    readonly rate: number;
+    readonly level?: number;
+    readonly target?: number;
+    readonly seed?: number;
+}): SentinelDrift;
+
+// @public
+export interface SentinelDrift {
+    readonly cases: number;
+    readonly down: DriftDirection;
+    readonly draws?: number;
+    readonly level: number;
+    readonly method: "exact" | "simulated";
+    readonly rate: number;
+    readonly seed?: number;
+    readonly target: number;
+    readonly trials: number;
+    readonly up: DriftDirection;
+}
+
+// @public
+export function sentinelMethod(cases: number, trials: number): "exact" | "simulated";
+
+// @public
+export function sentinelPowerExact(cases: number, trials: number, stored: number, fresh: number, level?: number): number;
+
+// @public
+export function sentinelPowerSimulated(cases: number, trials: number, stored: number, fresh: number, draws: number, seed: number, level?: number): number;
+
+// @public
+export function sentinelTest(strata: readonly Stratum[], level?: number): SentinelTestResult;
+
+// @public
+export interface SentinelTestResult {
+    readonly drifted: boolean;
+    readonly method: "exact-stratified-conditional-two-sided";
+    readonly p: number;
+}
 
 // @public
 export type Sided = "two" | "lower" | "upper";

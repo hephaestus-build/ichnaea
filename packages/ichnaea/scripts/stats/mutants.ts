@@ -1004,6 +1004,74 @@ export const MUTANTS: readonly Mutant[] = [
     from: "const MAX_ADJUSTED_TAIL = 0.25;",
     to: "const MAX_ADJUSTED_TAIL = 0.5;",
   },
+  {
+    id: "sentinel: one-sided test",
+    file: "src/stats/sentinel.ts",
+    from: "  const p = Math.min(1, 2 * Math.min(less, greater));",
+    to: "  const p = Math.min(1, Math.min(less, greater));",
+  },
+  {
+    id: "sentinel: one-sided power",
+    file: "src/stats/sentinel.ts",
+    from: "rejects(Math.min(1, 2 * Math.min(below[s]!, above[s]!)), level)",
+    to: "rejects(Math.min(1, Math.min(below[s]!, above[s]!)), level)",
+  },
+  {
+    id: "sentinel: reference not at the stored rate",
+    file: "src/stats/sentinel.ts",
+    from: "? sentinelPowerExact(cases, trials, rate, fresh, level)",
+    to: "? sentinelPowerExact(cases, trials, 0.5, fresh, level)",
+  },
+  {
+    id: "sentinel: drift rounded down",
+    file: "src/stats/sentinel.ts",
+    from: "if (at >= target) return { largest, caught: true, drift: m / STEPS, power: at };",
+    to: "if (at >= target) return { largest, caught: true, drift: (m - 1) / STEPS, power: at };",
+  },
+  {
+    id: "sentinel: exact up to 10⁴ terms",
+    file: "src/stats/sentinel.ts",
+    from: "const EXACT_TERMS = 1e5;",
+    to: "const EXACT_TERMS = 1e4;",
+  },
+  {
+    id: "sentinel: 1,000 draws",
+    file: "src/stats/sentinel.ts",
+    from: "const DRAWS = 10_000;",
+    to: "const DRAWS = 1_000;",
+  },
+  {
+    id: "sentinel: new draws at each fresh rate",
+    file: "src/stats/sentinel.ts",
+    from: "  const rng = createRng(seed);",
+    // A seed that changes with the fresh rate and stays a valid 32-bit seed, so the mutant changes
+    // the draws instead of being refused by createRng.
+    to: "  const rng = createRng(1 + ((seed + Math.round(fresh * 1e12)) % 4_000_000_000));",
+  },
+  {
+    id: "sentinel: upward drift as downward",
+    file: "src/stats/sentinel.ts",
+    from: "    up: direction(1),",
+    to: "    up: direction(-1),",
+  },
+  {
+    id: "sentinel: Y short of the extreme",
+    file: "src/stats/sentinel.ts",
+    from: "const at = power(sign > 0 ? 1 : 0);",
+    to: "const at = power(rate + (sign * largest) / 2);",
+  },
+  {
+    id: "sentinel: trials per case past the overflow",
+    file: "src/stats/sentinel.ts",
+    from: "const MAX_TRIALS = 500;",
+    to: "const MAX_TRIALS = 600;",
+  },
+  {
+    id: "sentinel: target 3 in 4",
+    file: "src/stats/sentinel.ts",
+    from: "const target = input.target ?? 0.8;",
+    to: "const target = input.target ?? 0.75;",
+  },
 ];
 
 /**

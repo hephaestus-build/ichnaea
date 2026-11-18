@@ -351,13 +351,14 @@ Two workflows run the studies with `pnpm --filter @hephaestus-build/ichnaea run 
 - The `Nightly` workflow (`.github/workflows/nightly.yml`), job `simulation`: every day at 02:17
   UTC and on demand, with `ICHNAEA_SIM_REPS=10000` and a limit of 120 minutes.
 
-`test:sim` runs seven study files in parallel: `test/stats/coverage.sim.test.ts`,
+`test:sim` runs eight study files in parallel: `test/stats/coverage.sim.test.ts`,
 `test/stats/checks-coverage.sim.test.ts`, `test/stats/type-i-exact.sim.test.ts`,
 `test/stats/type-i-permutation-17.sim.test.ts`, `test/stats/type-i-permutation-60.sim.test.ts`,
 `test/stats/score-permutation-work.sim.test.ts`, which times the score permutation test at its work
 limit and judges no grid, and `test/stats/score-ni-equivalence.sim.test.ts`, which checks the score
-non-inferiority study's decision against the root-finder and judges no grid. Candidates are
-confirmed in the same run.
+non-inferiority study's decision against the root-finder and judges no grid, and
+`test/stats/sentinel.sim.test.ts`, which checks the drift guard's simulated power against its exact
+power and judges no grid. Candidates are confirmed in the same run.
 
 The results at 6,000 repetitions, by the grid title that the CI log prints. Each study compares its
 result with its row here and fails if they differ, so a change to a grid or to its results changes
@@ -909,6 +910,60 @@ for K cases with r trials each. It depends on K(r − ½), not on the total numb
 `scripts/stats/floors.ts` prints this table, and a test pins the closed form. `fixedCasesMde` simulates the
 method itself: the power quantile (nearest rank) of the margins that pass when both arms share the
 observed per-case rates.
+
+## The drift guard of a `fast` run
+
+A `fast` run compares the candidate with stored base trials. Its drift guard reruns a sentinel of
+the base cases at the stored r, interleaved with the candidate. `sentinelTest` is the exact
+stratified conditional test of the fresh base trials against the stored ones, two-sided as twice
+the smaller one-sided p-value, because a drift in either direction invalidates the baseline. A
+p-value within a relative 1e-9 of the level rejects, in the test and in its power alike.
+
+**Detectable drift.** `sentinelDetectableDrift` gives, for each direction, the drift X that the
+guard catches 4 times in 5 when the drift moves every case together. It is computed at plan time
+from the stored base, never from the fresh trials:
+
+- **Reference.** Every case starts at the stored rate p of the sentinel cases, and every case moves
+  to the same drifted rate, p + X upward or p − X downward. In a simulation of spread and bimodal rates per case, different rates gave equal
+  or higher power, so this is the pessimistic reference, but it is not a bound.
+- **Rounding.** X is the smallest multiple of 0.05 at which the power reaches 0.8. When only the
+  largest possible drift (to 1.0 upward, to 0 downward) reaches it, X is that drift.
+- **Both directions.** An upward drift (fresh above stored) can give a false Pass, so it is the
+  dangerous one. When no possible drift reaches 0.8, the result gives Y, the power of a drift to
+  the extreme, and X is null. The card then says: "an upward drift is not caught reliably: even a
+  drift to 1.0 is caught Y % of the time", and "a `fast` Pass is a screening; `confirm` decides".
+- **Method.** Never a normal approximation, which overstates the power (0.85 where the exact power
+  is 0.80 at 15 cases × 2 trials). The exact power sums over the counts of cases at each case
+  total, which the test conditions on: C(k + 2r, 2r) terms. It is exact while that is at most
+  10⁵ (46,376 at 30 cases × 2 trials). Above that, the power is simulated with
+  the same exact test: 10,000 draws from a recorded seed, with the same uniforms at every drift.
+  The result names its method, and the draws and seed when simulated.
+
+| Sentinel     | p   | Down X | Up X | Up Y |
+| ------------ | --- | ------ | ---- | ---- |
+| 15 cases × 2 | 0.8 | 0.40   | —    | 63%  |
+| 15 cases × 2 | 0.5 | 0.40   | 0.40 |      |
+| 15 cases × 2 | 0.3 | 0.30   | 0.40 |      |
+| 5 cases × 2  | 0.9 | 0.70   | —    | 0.1% |
+| 10 cases × 3 | 0.6 | 0.40   | 0.35 |      |
+| 40 cases × 1 | 0.5 | 0.35   | 0.35 |      |
+
+The card text: "The drift guard catches a drift of about X or more, 4 times in 5, when the drift
+moves every case together (computed at the stored rate p, with the same rate in every case)."
+
+**Oracles.** A Python implementation written from the definition alone
+(`sentinel_drift_oracle.py`) enumerates every vector of case counts, with the rejection regions in
+exact rational arithmetic and the power in floats without `pow`, so its output is the same on every
+CPU. Ichnaea gives the same X, the same caught or not caught, and every power on the grid within
+1e-12, at the 6 settings above and at p = 0 and p = 1 with 15 cases × 2. A unit test also enumerates every outcome of 3
+cases × 2 trials through `sentinelTest` and matches the exact power, which ties the test and its
+power together. The simulated power agrees with the exact power within 4 standard errors, and the
+simulated X with the exact power on either side of it (`test/stats/sentinel.sim.test.ts`).
+
+**Mutants.** `scripts/stats/mutants.ts` changes these methods in 11 ways (those named `sentinel:`):
+the two-sided test and the two-sided power; the reference rate; the rounding up; the 10⁵ terms, the
+10,000 draws and the shared draws of the simulation; the upward direction; Y at the extreme; the
+target of 4 in 5; and the limit of 500 trials per case, past which C(2r, r) overflows.
 
 ## Not validated
 
