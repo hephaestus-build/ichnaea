@@ -1,4 +1,4 @@
-# Judge calibration: `@hephaestus-build/ichnaea/calibration`
+# Judge calibration: `@tumaet/ichnaea/calibration`
 
 A model judge reads answers the way a person would, and labels them. Before its labels are shown
 beside a measure, it is calibrated: two human raters and the judge label the same answers, and
@@ -53,7 +53,7 @@ names each condition that does not hold.
   [VALIDATION.md](../stats/VALIDATION.md#the-judge-calibration-rule-operating-characteristics)).
 
 ```ts
-import { analyzeCalibration } from "@hephaestus-build/ichnaea/calibration";
+import { analyzeCalibration } from "@tumaet/ichnaea/calibration";
 
 const analysis = analyzeCalibration(
   {

@@ -38,9 +38,12 @@
     "zod"
   ],
   "license": "MIT",
-  "name": "@hephaestus-build/ichnaea",
+  "name": "@tumaet/ichnaea",
   "peerDependencies": {
     "zod": "^4.6.0"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "repository": {
     "type": "git",

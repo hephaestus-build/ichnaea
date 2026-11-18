@@ -1,6 +1,6 @@
 # Statistics validation
 
-This page records the evidence behind each method in `@hephaestus-build/ichnaea/stats`: agreement
+This page records the evidence behind each method in `@tumaet/ichnaea/stats`: agreement
 with an independent implementation, exact computation where it is cheap, and simulation studies of
 coverage and type-I error. No verdict may rest on a method or a call outside the validated domain
 (decision 0008). Each rule is stated here; `docs/decisions/` records why it was chosen.
@@ -344,7 +344,7 @@ output").
 
 ## Results of the CI gate
 
-Two workflows run the studies with `pnpm --filter @hephaestus-build/ichnaea run test:sim:stats`:
+Two workflows run the studies with `pnpm --filter @tumaet/ichnaea run test:sim:stats`:
 
 - The `CI` workflow (`.github/workflows/ci.yml`), job `simulation`: on every pull request, every
   push to `main` and in the merge queue, with `ICHNAEA_SIM_REPS=6000` and a limit of 60 minutes.

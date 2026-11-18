@@ -226,7 +226,7 @@ export async function importRun(input) {
             id,
             version: host.gates.get(id)?.version ?? "unknown",
         })),
-        { kind: "package", id: "@hephaestus-build/ichnaea", version: input.ichnaea },
+        { kind: "package", id: "@tumaet/ichnaea", version: input.ichnaea },
     ];
     const run = Run.parse({
         schema: "ichnaea.run/1",
