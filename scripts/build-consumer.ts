@@ -1,10 +1,13 @@
-// Follows the README as a consumer who installs a build commit would, against the built output: the
+// Follows the README as a consumer who installs the package would, against the built output: the
 // artifact tested is the artifact shipped.
 //
 // By default it assembles the build tree of the working tree (scripts/build-package.ts), and a second
 // one from a clone of the working tree at another path, and fails unless the two are byte-identical.
 // It checks the tree's manifest and SBOM, packs exactly that tree, and installs the tarball into a
-// new pnpm project outside the repository, with the README's install block. Then it fails unless:
+// new pnpm project outside the repository, with the README's install block: its `pnpm add` adds the
+// tarball in place of the package's name, and its `npm audit signatures` runs in pnpm's layout.
+// For a published version (`--spec @tumaet/ichnaea@<version>`), the audit must also show the
+// package's own provenance. Then it fails unless:
 // - installing runs no script, and one zod is installed;
 // - each subpath (`.`, `./contracts`, `./stats`, `./calibration`, `./schemas/<record>.schema.json`)
 //   loads in Node;
@@ -14,9 +17,12 @@
 //   API, prints its verdict line, exits with its code and stores its verdict.
 //
 // Usage: node scripts/build-consumer.ts                  # the working tree, built twice
-//        node scripts/build-consumer.ts --tree <dir>     # an assembled tree, as the build workflow has
+//        node scripts/build-consumer.ts --tree <dir>     # an assembled tree, as the workflows have
+//        node scripts/build-consumer.ts --tarball <file> # a packed tarball, as a release stages it
+//        node scripts/build-consumer.ts --spec @tumaet/ichnaea@<version>
 //        node scripts/build-consumer.ts --spec github:hephaestus-build/ichnaea#<build-commit>
-// The last form installs a build commit from GitHub instead of a tarball, and runs the same checks.
+// The --spec forms install a published version from npm, or a build commit from GitHub, and run
+// the same checks.
 import { execFileSync, spawnSync } from "node:child_process";
 import {
   cpSync,
@@ -42,13 +48,15 @@ import {
 } from "./build-package.ts";
 import { checkBuildTree } from "./check-sbom.ts";
 import {
-  BUILD_SPEC,
   decides,
+  installCommands,
   PACKAGE_NAME,
   readmeExample,
   readmeInstall,
   type Scenario,
 } from "./readme-example.ts";
+import { RELEASE_VERSION } from "./release-version.ts";
+import { hasProvenance } from "./verify-published.ts";
 
 const readme = readFileSync(join(REPOSITORY, "README.md"), "utf8");
 const install = readmeInstall(readme);
@@ -231,15 +239,22 @@ function consume(spec: string, work: string): void {
     join(project, "package.json"),
     `${JSON.stringify({ private: true, packageManager: root.packageManager }, null, 2)}\n`,
   );
-  const commands = install.commands.map((c) => c.replaceAll(`'${BUILD_SPEC}'`, `'${spec}'`));
-  if (!commands.some((c) => c.includes(spec)))
-    throw new Error(`the README's install does not add '${BUILD_SPEC}'`);
-  const installed = spawnSync("sh", ["-ec", commands.join("\n")], {
+  const installed = spawnSync("sh", ["-ec", installCommands(install, spec).join("\n")], {
     cwd: project,
     encoding: "utf8",
   });
   process.stdout.write(installed.stdout + installed.stderr);
   if (installed.status !== 0) throw new Error("the README's install failed");
+  const published = `${PACKAGE_NAME}@`;
+  if (spec.startsWith(published)) {
+    const audit = spawnSync("npm", ["audit", "signatures", "--json", "--include-attestations"], {
+      cwd: project,
+      encoding: "utf8",
+    });
+    if (!hasProvenance(JSON.parse(audit.stdout) as unknown, spec.slice(published.length)))
+      throw new Error(`npm audit signatures in pnpm's layout shows no provenance for ${spec}`);
+    console.log(`consumer: npm audit signatures shows the provenance of ${spec} in pnpm's layout`);
+  }
 
   // Installing runs no script: the manifest has none, and pnpm reports no lifecycle script.
   const pkg = join(project, "node_modules", ...PACKAGE_NAME.split("/"));
@@ -377,15 +392,25 @@ function consume(spec: string, work: string): void {
 }
 
 if (import.meta.main) {
-  const { values } = parseArgs({ options: { tree: { type: "string" }, spec: { type: "string" } } });
-  if (values.tree && values.spec) throw new Error("give --tree or --spec, not both");
-  if (values.spec && !/^github:hephaestus-build\/ichnaea#[0-9a-f]{40}$/.test(values.spec))
+  const { values } = parseArgs({
+    options: { tree: { type: "string" }, tarball: { type: "string" }, spec: { type: "string" } },
+  });
+  if ([values.tree, values.tarball, values.spec].filter((v) => v !== undefined).length > 1)
+    throw new Error("give one of --tree, --tarball and --spec");
+  const published = `${PACKAGE_NAME}@`;
+  if (
+    values.spec &&
+    !/^github:hephaestus-build\/ichnaea#[0-9a-f]{40}$/.test(values.spec) &&
+    !(
+      values.spec.startsWith(published) && RELEASE_VERSION.test(values.spec.slice(published.length))
+    )
+  )
     throw new Error(
-      `--spec must be github:hephaestus-build/ichnaea#<build commit SHA>, not ${values.spec}`,
+      `--spec must be ${published}<version> or github:hephaestus-build/ichnaea#<build commit SHA>, not ${values.spec}`,
     );
   const work = mkdtempSync(join(tmpdir(), "ichnaea-consumer-"));
   try {
-    let spec = values.spec;
+    let spec = values.spec ?? (values.tarball ? `file:${resolve(values.tarball)}` : undefined);
     if (!spec) {
       let tree = values.tree ? resolve(values.tree) : undefined;
       if (!tree) {

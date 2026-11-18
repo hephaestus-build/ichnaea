@@ -14,8 +14,8 @@ import { parseArgs } from "node:util";
 import { trackedFiles } from "./tracked-files.ts";
 
 /**
- * Terms that identify one application. Only the whole word `hephaestus-build`, the organisation and
- * npm scope, is allowed: it also appears in tarball names such as `hephaestus-build-ichnaea-core`.
+ * Terms that identify one application. Only the whole word `hephaestus-build`, the GitHub
+ * organisation, is allowed: it appears in the repository URL and in pins of the `build` branch.
  */
 export const TERMS: ReadonlyArray<readonly [RegExp, string]> = [
   [/hephaestus(?!-build\b)/i, "an application name"],

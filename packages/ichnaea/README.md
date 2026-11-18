@@ -1,4 +1,4 @@
-# @hephaestus-build/ichnaea
+# @tumaet/ichnaea
 
 Ichnaea evaluates GenAI features whenever their configuration changes, and gives each change a
 verdict from paired statistics. This package holds all of it: the record contracts, the statistics,
@@ -8,13 +8,13 @@ and runs a five-minute example.
 
 ## Subpaths
 
-| Import                                                   | Content                                                                                                                        |
-| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `@hephaestus-build/ichnaea`                              | The [core](src/core/README.md) with its CLI, the [decision rule](src/decide/README.md) and the [reports](src/report/README.md) |
-| `@hephaestus-build/ichnaea/contracts`                    | The [record contracts](src/contracts/README.md): zod schemas, canonical hashing, data classes                                  |
-| `@hephaestus-build/ichnaea/stats`                        | The [statistics](src/stats/README.md), with their [validation](src/stats/VALIDATION.md)                                        |
-| `@hephaestus-build/ichnaea/calibration`                  | [Judge calibration](src/calibration/README.md) against two human raters                                                        |
-| `@hephaestus-build/ichnaea/schemas/<record>.schema.json` | The normative JSON Schema 2020-12 file of each record, for callers in other languages                                          |
+| Import                                         | Content                                                                                                                        |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `@tumaet/ichnaea`                              | The [core](src/core/README.md) with its CLI, the [decision rule](src/decide/README.md) and the [reports](src/report/README.md) |
+| `@tumaet/ichnaea/contracts`                    | The [record contracts](src/contracts/README.md): zod schemas, canonical hashing, data classes                                  |
+| `@tumaet/ichnaea/stats`                        | The [statistics](src/stats/README.md), with their [validation](src/stats/VALIDATION.md)                                        |
+| `@tumaet/ichnaea/calibration`                  | [Judge calibration](src/calibration/README.md) against two human raters                                                        |
+| `@tumaet/ichnaea/schemas/<record>.schema.json` | The normative JSON Schema 2020-12 file of each record, for callers in other languages                                          |
 
 The `ichnaea` command runs the CLI. The package needs Node 24.3 or later. zod 4 (4.6 or later) is
 a peer dependency: install it once, at the root of your project. The package has no other

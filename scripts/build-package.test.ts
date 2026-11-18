@@ -69,6 +69,27 @@ describe("the shipped manifest", () => {
     expect(JSON.stringify(shippedManifest(reversed))).toBe(JSON.stringify(shipped));
   });
 
+  it("keeps main's version, or has the release's version stamped in its place", () => {
+    expect(shipped["version"]).toBe("0.0.0");
+    for (const version of ["0.3.1", "0.3.1-rc.1", "0.4.0-beta.2.x-y"]) {
+      const stamped = shippedManifest(development, version);
+      expect(stamped).toEqual({ ...shipped, version });
+      expect(Object.keys(stamped)).toEqual(Object.keys(shipped));
+    }
+    for (const wrong of ["v0.3.1", "0.3", "0.03.1", "0.3.1-", "0.3.1-01", "0.3.1+build", ""])
+      expect(() => shippedManifest(development, wrong), wrong).toThrow(
+        `${wrong} is not a release version`,
+      );
+  });
+
+  it("is publishable to npm, where the development manifest is not", () => {
+    expect(development["private"]).toBe(true);
+    expect(shipped).not.toHaveProperty("private");
+    expect(shipped["name"]).toBe("@tumaet/ichnaea");
+    expect(shipped["publishConfig"]).toEqual({ access: "public" });
+    expect(manifestProblems({ ...shipped, private: true })).toEqual(["the manifest is private"]);
+  });
+
   it.each(["prepare", "install", "postinstall", "preinstall", "prepack", "postpack"])(
     "refuses a manifest with a %s script",
     (script) => {

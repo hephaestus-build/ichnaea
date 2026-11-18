@@ -54,7 +54,7 @@ if (import.meta.main) {
     // The temporary reports that API Extractor names are gone after the check.
     if (stale.length > 0) {
       console.error(
-        `the API report of ${stale.join(", ")} is not current: run \`pnpm --filter @hephaestus-build/ichnaea run api\``,
+        `the API report of ${stale.join(", ")} is not current: run \`pnpm --filter @tumaet/ichnaea run api\``,
       );
       process.exitCode = 1;
     }

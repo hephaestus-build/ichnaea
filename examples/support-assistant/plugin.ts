@@ -2,13 +2,8 @@
 // for the result files the application's existing runner writes.
 import { readFile } from "node:fs/promises";
 
-import { Case, type MeasureValue, Trial } from "@hephaestus-build/ichnaea/contracts";
-import {
-  defineMeasure,
-  definePlugin,
-  type Importer,
-  NOT_CAPTURED,
-} from "@hephaestus-build/ichnaea";
+import { Case, type MeasureValue, Trial } from "@tumaet/ichnaea/contracts";
+import { defineMeasure, definePlugin, type Importer, NOT_CAPTURED } from "@tumaet/ichnaea";
 
 const facts = (c: Case): string[] => (c.references?.["facts"] as string[] | undefined) ?? [];
 

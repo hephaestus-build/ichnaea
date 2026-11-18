@@ -1,8 +1,8 @@
 {
-  "name": "release tags: nobody creates them while releases are paused",
+  "name": "release tags: only the release team creates them",
   "target": "tag",
   "enforcement": "active",
   "conditions": { "ref_name": { "include": ["refs/tags/v*"], "exclude": [] } },
   "rules": [{ "type": "creation" }],
-  "bypass_actors": []
+  "bypass_actors": [{ "actor_id": 19248737, "actor_type": "Team", "bypass_mode": "always" }]
 }

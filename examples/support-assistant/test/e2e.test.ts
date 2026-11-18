@@ -4,7 +4,7 @@ import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
-import { FLOOR_NOT_SET_REASON, main } from "@hephaestus-build/ichnaea";
+import { FLOOR_NOT_SET_REASON, main } from "@tumaet/ichnaea";
 import { describe, expect, it } from "vitest";
 
 const here = join(import.meta.dirname, "..");

@@ -1,4 +1,4 @@
-# Contracts: `@hephaestus-build/ichnaea/contracts`
+# Contracts: `@tumaet/ichnaea/contracts`
 
 The record contracts of Ichnaea: zod schemas, the normative JSON Schema 2020-12 files, shared
 fixtures, RFC 8785 canonical hashing, the configuration identity and data policies.

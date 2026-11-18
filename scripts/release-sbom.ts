@@ -6,19 +6,17 @@
 // timestamp is the source commit's committer date and its serial number derives from the source
 // commit, so two builds of one commit give the same bytes.
 //
-// The release SBOM is the paused design of decision 0013. pnpm gives each tarball's path on this
-// machine as its distribution URL; the release SBOM gives the tarball's download URL on the release
-// instead.
-// Usage: node scripts/release-sbom.ts <directory with .tgz files> <output file> [<tag>]
-// Without a tag, the URLs name the placeholder tag `untagged`, and no release has them.
+// The release SBOM describes the tarball that a release stages on npm, and the GitHub release
+// carries it. pnpm gives the tarball's path on this machine as its distribution URL; the release
+// SBOM gives the URL that the npm registry serves the published version from instead.
+// Usage: node scripts/release-sbom.ts <directory with .tgz files> <output file>
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 
-import { installTarballs } from "./tarball-project.ts";
-import { downloadUrl } from "./release-notes.ts";
+import { installTarballs, registryUrl, type Tarball } from "./tarball-project.ts";
 
 /**
  * The namespace of the build SBOMs' serial numbers: each serial number is the UUID version 5 of a
@@ -132,16 +130,6 @@ export function buildSbom(
   }
 }
 
-/** The tag in the download URLs of an SBOM that is not for a release. It is not a release tag. */
-export const UNTAGGED = "untagged";
-
-/** The tag that a script's optional tag argument names: a release tag, or {@link UNTAGGED}. */
-export function tagArgument(arg: string | undefined): string {
-  if (arg === undefined) return UNTAGGED;
-  if (!/^v0\.\d+\.\d+$/.test(arg)) throw new Error(`release tag ${arg} is not v0.x.y`);
-  return arg;
-}
-
 interface Bom {
   readonly components?: ReadonlyArray<{
     readonly externalReferences?: Array<{ readonly type?: string; url?: string }>;
@@ -149,38 +137,35 @@ interface Bom {
 }
 
 /**
- * Changes each distribution URL that is a path to one of the tarballs into that tarball's download
- * URL for the tag. A path to any other file is an error: the SBOM would publish a path on this
- * machine.
+ * Changes each distribution URL that is a path to one of the tarballs into the URL that the npm
+ * registry serves that version from. A path to any other file is an error: the SBOM would publish
+ * a path on this machine.
  */
-export function withDownloadUrls(bom: Bom, tag: string, tarballs: readonly string[]): Bom {
+export function withRegistryUrls(
+  bom: Bom,
+  tarballs: ReadonlyArray<Pick<Tarball, "file" | "name" | "version">>,
+): Bom {
   for (const component of bom.components ?? [])
     for (const reference of component.externalReferences ?? []) {
       if (reference.type !== "distribution" || !reference.url?.startsWith("file:")) continue;
-      const file = basename(reference.url);
-      if (!tarballs.includes(file))
+      const tarball = tarballs.find((t) => basename(t.file) === basename(reference.url ?? ""));
+      if (!tarball)
         throw new Error(`the SBOM has a path that is not a shipped tarball: ${reference.url}`);
-      reference.url = downloadUrl(tag, file);
+      reference.url = registryUrl(tarball.name, tarball.version);
     }
   return bom;
 }
 
 if (import.meta.main) {
-  const [dir, out, tagArg] = process.argv.slice(2);
-  if (!dir || !out)
-    throw new Error("usage: release-sbom.ts <tarball directory> <output file> [<tag>]");
-  const tag = tagArgument(tagArg);
+  const [dir, out] = process.argv.slice(2);
+  if (!dir || !out) throw new Error("usage: release-sbom.ts <tarball directory> <output file>");
   const { project, tarballs } = installTarballs(dir);
   try {
     const sbom = execFileSync("pnpm", ["sbom", "--sbom-format", "cyclonedx", "--prod"], {
       cwd: project,
       encoding: "utf8",
     });
-    const bom = withDownloadUrls(
-      JSON.parse(sbom) as Bom,
-      tag,
-      tarballs.map((t) => basename(t.file)),
-    );
+    const bom = withRegistryUrls(JSON.parse(sbom) as Bom, tarballs);
     writeFileSync(out, `${JSON.stringify(bom, null, 2)}\n`);
   } finally {
     rmSync(project, { recursive: true, force: true });

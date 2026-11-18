@@ -1,6 +1,6 @@
 # 0019. One built package on a build branch
 
-Status: Accepted
+Status: Superseded by 0021
 Date: 2026-11-16
 
 ## Context

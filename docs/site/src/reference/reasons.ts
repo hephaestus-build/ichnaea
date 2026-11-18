@@ -8,7 +8,7 @@ import {
   REASONS,
   type Reason,
   type ReasonCode,
-} from "@hephaestus-build/ichnaea/contracts";
+} from "@tumaet/ichnaea/contracts";
 
 /** One reason, with the slots its sentences use, split by who fills them. */
 export type ReasonEntry = { readonly code: ReasonCode } & Reason & {

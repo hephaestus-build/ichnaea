@@ -1,11 +1,12 @@
-// Fails unless the release runs on main and its commit is reachable from main, so that a release
-// is always built from reviewed code. Needs the full history (`fetch-depth: 0`).
+// Fails unless a pushed v* tag started the release and the tagged commit is reachable from main,
+// so that a release is always built from reviewed code. Needs the full history (`fetch-depth: 0`).
+// The tag's form is checked by scripts/check-release-tag.ts.
 // Usage: node scripts/check-on-main.ts <ref> <commit>
 import { execFileSync } from "node:child_process";
 
 /** Returns why the commit may not be released, or nothing if it may. */
 export function notOnMain(ref: string, commit: string, cwd = process.cwd()): string | undefined {
-  if (ref !== "refs/heads/main") return `the release must run on refs/heads/main, not ${ref}`;
+  if (!ref.startsWith("refs/tags/v")) return `the release must run on a pushed v* tag, not ${ref}`;
   try {
     execFileSync("git", ["merge-base", "--is-ancestor", commit, "refs/remotes/origin/main"], {
       cwd,

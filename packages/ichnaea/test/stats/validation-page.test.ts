@@ -40,11 +40,11 @@ describe("VALIDATION.md states what CI runs", () => {
   it("gives each workflow's repetitions and command, and records the pull-request run", () => {
     for (const { file, text } of workflows) {
       const reps = /ICHNAEA_SIM_REPS: "(\d+)"/.exec(text)?.[1];
-      expect(text).toContain("run: pnpm --filter @hephaestus-build/ichnaea run test:sim:stats");
+      expect(text).toContain("run: pnpm --filter @tumaet/ichnaea run test:sim:stats");
       const line = section.split("\n- ").find((item) => item.includes(`.github/workflows/${file}`));
       expect(line, file).toContain(`ICHNAEA_SIM_REPS=${reps}`);
       if (file === "ci.yml") expect(Number(reps)).toBe(DOCUMENTED_REPS);
     }
-    expect(section).toContain("`pnpm --filter @hephaestus-build/ichnaea run test:sim:stats`");
+    expect(section).toContain("`pnpm --filter @tumaet/ichnaea run test:sim:stats`");
   });
 });

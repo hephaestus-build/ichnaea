@@ -8,8 +8,9 @@ Ichnaea evaluates GenAI features whenever their configuration changes: code, pro
 its parameters or the application's settings. It gives each change a clear verdict from paired
 statistics, and says plainly when the cases cannot decide.
 
-> **Status: early development.** There are no releases yet: you pin a commit of the `build` branch.
-> Interfaces can change in any commit.
+> **Status: early development.** Ichnaea is 0.x on npm as `@tumaet/ichnaea`, and interfaces can
+> change in any minor version. The first release, 0.1.0, is not published yet: until then, pin a
+> commit of the `build` branch, as [below](#before-the-first-npm-release).
 
 ## What it is built to do
 
@@ -30,16 +31,16 @@ are plain JSON files, and it runs no server, dashboard or labelling tool.
 
 ## Packages
 
-Ichnaea is one package, `@hephaestus-build/ichnaea`. Its subpaths:
+Ichnaea is one package, `@tumaet/ichnaea`. Its subpaths:
 
-| Import                                                   | Content                                                                                                                                | State     |
-| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| `@hephaestus-build/ichnaea`                              | Plugin host, lifecycle, planner, import mode, file store, call ledger and CLI; the decision rule with its power statement; the reports | available |
-| `@hephaestus-build/ichnaea/contracts`                    | zod schemas, RFC 8785 canonical hashing, configuration identity, data classes                                                          | available |
-| `@hephaestus-build/ichnaea/stats`                        | Intervals, paired and stratified tests, power. The regression test is validated; non-inferiority is not, until the margin floor is set | available |
-| `@hephaestus-build/ichnaea/calibration`                  | Judge calibration against two human raters. A calibrated judge's measures are secondary: shown, never deciding                         | available |
-| `@hephaestus-build/ichnaea/schemas/<record>.schema.json` | The normative JSON Schema 2020-12 file of each record                                                                                  | available |
-| Runner and conformance kits                              |                                                                                                                                        | planned   |
+| Import                                         | Content                                                                                                                                | State     |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| `@tumaet/ichnaea`                              | Plugin host, lifecycle, planner, import mode, file store, call ledger and CLI; the decision rule with its power statement; the reports | available |
+| `@tumaet/ichnaea/contracts`                    | zod schemas, RFC 8785 canonical hashing, configuration identity, data classes                                                          | available |
+| `@tumaet/ichnaea/stats`                        | Intervals, paired and stratified tests, power. The regression test is validated; non-inferiority is not, until the margin floor is set | available |
+| `@tumaet/ichnaea/calibration`                  | Judge calibration against two human raters. A calibrated judge's measures are secondary: shown, never deciding                         | available |
+| `@tumaet/ichnaea/schemas/<record>.schema.json` | The normative JSON Schema 2020-12 file of each record                                                                                  | available |
+| Runner and conformance kits                    |                                                                                                                                        | planned   |
 
 The package ships JavaScript and declarations, built from its TypeScript sources, and the sources
 too. It needs Node 24.3 or later. zod 4 (4.6 or later) is a peer dependency. The package has no
@@ -47,36 +48,55 @@ other dependency.
 
 ## Use Ichnaea from a TypeScript project
 
-Install a commit of the `build` branch. Each commit there holds the built package of one commit
-on `main`, and nothing else. Its message names that commit in a `Source-Commit:` trailer. Releases
-to npm come at 1.0.
-
-Pick the newest build commit:
-
-```sh
-gh api repos/hephaestus-build/ichnaea/commits/build --jq .sha
-```
-
-Then, at the root of your project, add zod and Ichnaea at that commit. The CLI loads
-`ichnaea.config.ts` as an ES module:
+At the root of your project, add Ichnaea and zod from npm, then check what you installed. The CLI
+loads `ichnaea.config.ts` as an ES module:
 
 <!-- The build consumer test runs this install. -->
 
 ```sh
 pnpm pkg set type=module
+pnpm add @tumaet/ichnaea zod@4.6.7
+npm audit signatures
+```
+
+zod 4.6.7 is the version that each release is tested with, and the copy at the root is the one
+that Ichnaea uses. Run the CLI with Node 24.3 or later: `pnpm exec ichnaea <command>`. Installing
+the package runs no script: its `package.json` has none. A pre-release has the dist-tag `next`, so
+you add it by its version, for example `pnpm add @tumaet/ichnaea@0.2.0-rc.1`.
+
+### Check what you installed
+
+`npm audit signatures` checks that the registry signed every installed package, and that each
+provenance attestation is valid. It does not check who built a package or from which commit.
+
+No workflow can publish a version on its own: the release workflow only stages it, and a package
+owner approves each staged version on npm with two-factor authentication. After the approval,
+Ichnaea's finish workflow checks more before it creates the version's GitHub release: the
+provenance names `.github/workflows/release.yml` at the version's `v*` tag, and the tag's
+commit, which is reachable from `main`. A version that fails that check stays on npm, with no
+GitHub release, and a maintainer deprecates it. So install a version that has a
+[GitHub release](https://github.com/hephaestus-build/ichnaea/releases), with the same tarball,
+its SBOM, `sbom.cdx.json`, and `SHA256SUMS`. To check the commit yourself, read it in the
+provenance, which the version's page on npmjs.com links, and run
+`git merge-base --is-ancestor <commit> origin/main` in a clone.
+[Decision 0021](docs/decisions/0021-npm-staged-publishing.md) gives the chain.
+
+Run `npm audit signatures` again after each update: `pnpm update @tumaet/ichnaea`.
+
+### Before the first npm release
+
+Until 0.1.0 is on npm, pin a commit of the `build` branch. Each commit there holds the built package
+of one commit on `main`, and its message names that commit in a `Source-Commit:` trailer. Pick the
+newest build commit, then add it with zod:
+
+```sh
+gh api repos/hephaestus-build/ichnaea/commits/build --jq .sha
 pnpm add zod@4.6.7 'github:hephaestus-build/ichnaea#<build-commit>'
 ```
 
-Your `package.json` then has
-`"@hephaestus-build/ichnaea": "github:hephaestus-build/ichnaea#<build-commit>"`, and your lockfile
-pins it. zod at the root is the one copy that Ichnaea uses. Run the CLI with Node 24.3 or later:
-`pnpm exec ichnaea <command>`. Installing the package runs no script: its `package.json` has none.
-
-### Check a build commit
-
-Integrity comes from reproducibility. A build commit names a signed, reviewed commit on `main`,
-and anyone can build that commit again and get the same bytes. Before you pin or update, rebuild
-the build commit in an Ichnaea checkout:
+A build commit is not signed: anyone can build its source commit again and get the same bytes.
+Before you pin or update, rebuild it in an Ichnaea checkout, with the Node version that its
+`build.json` records:
 
 ```sh
 git clone https://github.com/hephaestus-build/ichnaea && cd ichnaea
@@ -84,39 +104,27 @@ pnpm install --frozen-lockfile
 node scripts/verify-build.ts <build-commit>
 ```
 
-`verify-build.ts` reads the `Source-Commit` trailer and checks that the commit is on `main` and
-that GitHub shows its signature as verified. It
-builds that commit in a temporary worktree, with the Node and pnpm versions that the build
-commit's `build.json` records, and compares the result with the build commit byte for byte: the
-same paths, bytes and modes. It refuses on the first difference and names the file. It also checks
-the build commit's SBOM, `sbom.cdx.json`, which lists what the package ships and its peer
-dependency. Run it with the Node version that `build.json` names (24.22.2 today); it refuses
-another.
-
-Only the build workflow writes `build`, with a deploy key that only a main-only environment
-holds. [Decision 0019](docs/decisions/0019-built-package-on-a-build-branch.md) gives the chain.
-
-### Update the pin
-
-Run `pnpm add 'github:hephaestus-build/ichnaea#<newer build commit>'` after you checked the newer
-commit.
+`verify-build.ts` checks that the source commit is on `main` and signed, builds it in a temporary
+worktree, and refuses the first path whose bytes or mode differ.
+[Decision 0019](docs/decisions/0019-built-package-on-a-build-branch.md) describes the build branch.
+It stays until the consumers that pin it move to npm.
 
 ### Develop Ichnaea and your project together
 
 In the Ichnaea checkout, build on every change:
 
 ```sh
-pnpm --filter @hephaestus-build/ichnaea build --watch
+pnpm --filter @tumaet/ichnaea build --watch
 ```
 
-In your project, link the package of that checkout instead of the build commit:
+In your project, link the package of that checkout instead of the installed version:
 
 ```sh
 pnpm link <path to the Ichnaea checkout>/packages/ichnaea
 ```
 
-To undo it, run `pnpm unlink @hephaestus-build/ichnaea` and then `pnpm install`, so that your
-lockfile's build commit is installed again. Stop the watch with Ctrl-C. Never commit the link: it
+To undo it, run `pnpm unlink @tumaet/ichnaea` and then `pnpm install`, so that your
+lockfile's version is installed again. Stop the watch with Ctrl-C. Never commit the link: it
 changes your `package.json` and lockfile to a path on your machine.
 
 ## Five-minute example
@@ -175,7 +183,7 @@ INCONCLUSIVE and does not block, so `decide` exits with 0.
 
 Records cross every boundary as JSON. The JSON Schema files in
 [`packages/ichnaea/schemas`](packages/ichnaea/schemas) are the normative contract, and the package
-exports them as `@hephaestus-build/ichnaea/schemas/<record>.schema.json`. They are
+exports them as `@tumaet/ichnaea/schemas/<record>.schema.json`. They are
 generated from the zod sources. CI runs a shared fixture set and generated records through zod and
 ajv, for the writer and the reader schemas, and checks digests against an implementation in another
 language. An application in any language can write records that validate against them.
@@ -188,8 +196,8 @@ sources. The CLI and the example run the build.
 ```sh
 pnpm install
 pnpm check                                    # format, lint, type check, tests, generated files current
-pnpm --filter @hephaestus-build/ichnaea build # dist/, for the CLI and the example
-node scripts/build-package.ts <directory>     # the tree that the build branch holds for this commit
+pnpm --filter @tumaet/ichnaea build           # dist/, for the CLI and the example
+node scripts/build-package.ts <directory>     # the tree that a release packs, and the build branch holds
 node scripts/build-consumer.ts                # that tree, built twice, installed and run as the README says
 ```
 

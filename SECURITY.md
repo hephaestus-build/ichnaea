@@ -23,7 +23,7 @@ Include as much as you can:
 - We follow **coordinated disclosure**: give us time to ship a fix before you disclose the
   vulnerability in public. If we cannot agree on a date, the default disclosure date is **90 days**
   after your report. It is earlier when the vulnerability is actively exploited.
-- We fix a confirmed vulnerability as soon as we can, in a new pre-release, and publish it as a
+- We fix a confirmed vulnerability as soon as we can, in a new version on npm, and publish it as a
   [GitHub security advisory](https://github.com/hephaestus-build/ichnaea/security/advisories). We
   credit you unless you prefer to stay anonymous.
 
@@ -39,13 +39,17 @@ its tags or its releases to show it.
 
 ## Supported versions
 
-There are no releases before 1.0. You pin a commit of the `build` branch, as the
-[README](README.md#use-ichnaea-from-a-typescript-project) shows. **Only the latest commit on `main`
-receives security fixes.** A fix ships as a new commit on `main`, and the build workflow writes
-its build commit. Update your pin to take it.
+Ichnaea is 0.x on npm as `@tumaet/ichnaea`. **Only the latest version receives security fixes.**
+A fix ships as a new version: a patch version, or a minor version when the fix breaks an
+interface. Update to take it, and run `npm audit signatures`, as the
+[README](README.md#check-what-you-installed) shows.
 
-Every commit on `main` is signed. A build commit names its `main` commit and is reproducible from
-it: rebuild the commit that you pin, as the [README](README.md#check-a-build-commit) shows.
+Every commit on `main` is signed. The release workflow stages a version only from a `v*` tag whose
+commit is reachable from `main`, and a package owner approves each version on npm. The finish
+workflow, which runs only `main`'s code, gives a version a GitHub release only if its provenance
+names that tag and its commit on `main`. Until the first version is on npm, consumers pin a commit
+of the `build` branch. A build commit names its `main` commit and is reproducible from it, as the
+[README](README.md#before-the-first-npm-release) shows.
 
 ## Scope
 
@@ -54,7 +58,8 @@ Ichnaea is a library and a CLI that run on your machine. In scope:
 - the code of the packages in this repository, the CLI included;
 - the build branch: the build workflow, the build tree, its manifest and its SBOM, and the
   reproducibility check;
-- the paused release process: the release workflow, the attestations, the SBOM and the checksums;
+- the release process: the release workflows, the staged tarball and its provenance, the SBOM and
+  the checksums;
 - the GitHub Actions workflows in this repository.
 
 Trust model: Ichnaea runs plugins and configuration files as trusted code and does not sandbox
@@ -69,8 +74,8 @@ Out of scope:
 - the application under evaluation, its model providers and the services that it calls;
 - vulnerabilities in third-party dependencies, zod included, without an Ichnaea-specific exploit
   path: report those upstream;
-- code that does not come from a signed commit on `main`, or from a build commit that is
-  reproducible from one;
+- code that does not come from a signed commit on `main`: a version on npm without a provenance by
+  the release workflow, or a build commit that is not reproducible from `main`;
 - denial of service through input that you control, and scanner output without a demonstrated
   impact;
 - social engineering or phishing of maintainers or users.
@@ -99,7 +104,8 @@ Independent of this reporting channel, the repository has:
   writes the `build` branch, and nobody force-pushes it. Each build commit has an SBOM and a
   manifest without install scripts, and CI rebuilds it byte for byte from its source commit
   ([MAINTAINERS.md § The build branch](MAINTAINERS.md#the-build-branch)).
-- **Release integrity, at 1.0:** nobody creates a release tag while releases are paused, nobody
-  moves one, and releases are immutable
-  ([MAINTAINERS.md § Repository settings](MAINTAINERS.md#repository-settings)).
+- **Release integrity:** only the release team creates a `v*` tag, and nobody moves or deletes
+  one. The release workflow can only stage a version on npm, with provenance and no token. A
+  package owner approves each version with two-factor authentication, and GitHub releases are
+  immutable ([MAINTAINERS.md § Releases](MAINTAINERS.md#releases), decision 0021).
 - **Native alerts:** GitHub secret scanning with push protection, and Dependabot alerts.

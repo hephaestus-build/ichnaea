@@ -1,6 +1,7 @@
 {
-  "name": "@hephaestus-build/ichnaea",
+  "name": "@tumaet/ichnaea",
   "version": "0.0.0",
+  "private": true,
   "description": "Ichnaea: statistically sound evaluation of GenAI applications. Record contracts, statistics, plugin host, decision rule, reports and CLI.",
   "keywords": [
     "confidence-interval",
@@ -47,6 +48,9 @@
     },
     "./schemas/*.json": "./schemas/*.json",
     "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

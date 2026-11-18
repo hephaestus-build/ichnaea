@@ -1,4 +1,4 @@
-// The planning explorer's numbers. Every statistic comes from `@hephaestus-build/ichnaea/stats`,
+// The planning explorer's numbers. Every statistic comes from `@tumaet/ichnaea/stats`,
 // the same functions a real comparison calls. This module only draws simulated trials and counts
 // outcomes, so the page teaches the library's behaviour, not a copy of it.
 import {
@@ -7,7 +7,7 @@ import {
   fixedCasesFloor,
   type CaseCounts,
   type Rng,
-} from "@hephaestus-build/ichnaea/stats";
+} from "@tumaet/ichnaea/stats";
 
 /** A suite design, as the reader enters it. Rates and margins are fractions, not points. */
 export interface Design {

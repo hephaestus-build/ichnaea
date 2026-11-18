@@ -1,45 +1,48 @@
 name: Release
 
-# Releases are paused until 1.0: consumers pin a commit of the `build` branch (README § Use Ichnaea
-# from a TypeScript project, decision 0019). The build job's first step fails every run. At 1.0 the
-# same build tree that the build branch holds is packed and published to npm with provenance, and a
-# new decision record replaces this design. The `release` environment has no deploy key now, and
-# the release tag ruleset lets nobody create a v* tag. The rest of this comment describes the
-# paused design of decision 0013.
+# A release is a version of `@tumaet/ichnaea` on npm (decision 0021). Pushing a `v*` tag starts
+# it, and only the release team may create one (the `v*` tag rulesets). This workflow never
+# publishes: it stages the exact tarball that it checked, with provenance, and a package owner
+# approves the staged version on npmjs.com with two-factor authentication. Then
+# release-finish.yml verifies the published version and creates the GitHub release.
 #
-# A maintainer starts a pre-release by hand, on main, with its tag `v0.<minor>.<patch>`. The
-# workflow creates the tag itself: no pushed tag starts a release. The build job has read access
-# only. It checks that the commit is on main, runs the checks, packs every package once, and writes
-# the SBOM, the checksums and the notes. The release job runs in the `release` environment. It
-# attests the tarballs, creates the tag with the release deploy key and publishes the GitHub
-# release. Nothing is published to a registry. MAINTAINERS.md § Releases has the procedure, and
-# § Repository settings the settings that this workflow relies on.
+# - The check job has read access only. It checks that the tagged commit is on main, that the tag
+#   is a version above every other v* tag, and that a breaking change bumps the minor version.
+#   Then it runs `pnpm run check`.
+# - The pack job assembles the build tree with the tag's version, runs publint and attw on it,
+#   packs it once, records the tarball's SHA-512 as npm writes it, and writes the SBOM, SHA256SUMS
+#   and the release notes. The artifact holds them until the release is finished.
+# - The consumer job installs exactly that tarball as the README says, on the Node floor and on
+#   the current Node, and runs the example.
+# - The stage job runs in the `npm` environment, which only `v*` tags may deploy to. It has no
+#   checkout and runs no repository code. It checks the SHA-512, takes an exact npm, then
+#   stages the tarball. npm's trusted publisher for this workflow and environment may only stage,
+#   never publish, and the package refuses tokens, so no token exists to store.
+#
+# MAINTAINERS.md § Releases has the procedure, and § Repository settings the settings.
 
 on:
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: "Tag to release, v0.<minor>.<patch>. It must equal the version of every package on main."
-        required: true
-        type: string
+  push:
+    tags: ["v*"]
 
-permissions:
-  contents: read
+permissions: {}
 
 concurrency:
   group: release
   cancel-in-progress: false
 
 jobs:
-  build:
-    name: build and check
+  check:
+    name: check
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.tag.outputs.version }}
+      dist-tag: ${{ steps.tag.outputs.dist-tag }}
     steps:
-      - name: Releases are paused
-        run: |
-          echo "::error::Releases are paused: consumers pin a commit. See README.md § Use Ichnaea from a TypeScript project."
-          exit 1
+      # Every tag and the whole history: the tag check reads them with git.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
@@ -50,94 +53,179 @@ jobs:
           node-version: 24
           # A release restores no cache, so that no other run's files can enter it.
           package-manager-cache: false
-      - name: The commit is on main
+      - name: The tagged commit is on main
         run: node scripts/check-on-main.ts "$GITHUB_REF" "$GITHUB_SHA"
-      - name: Versions match the tag
+      - name: The tag is a version above every other v* tag, and bumps minor on a breaking change
+        id: tag
         env:
-          TAG: ${{ inputs.tag }}
-        run: node scripts/check-release-versions.ts "$TAG"
+          TAG: ${{ github.ref_name }}
+        run: node scripts/check-release-tag.ts "$TAG" "$GITHUB_SHA" >> "$GITHUB_OUTPUT"
       - run: pnpm install --frozen-lockfile
       - run: pnpm run check
-      - name: Pack every package
-        run: pnpm -r --filter './packages/*' exec pnpm pack --pack-destination "$GITHUB_WORKSPACE/release"
-      - name: SBOM of what the tarballs install, with their download URLs on the release
+
+  pack:
+    name: pack
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    outputs:
+      tarball: ${{ steps.pack.outputs.tarball }}
+      integrity: ${{ steps.integrity.outputs.integrity }}
+    steps:
+      # The history and the tags: the notes list the commits since the previous tag.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - run: pnpm install --frozen-lockfile --filter '!ichnaea-docs'
+      # main's package.json keeps 0.0.0. The tag's version goes into the shipped package.json only.
+      - name: Assemble the build tree at the tag's version
         env:
-          TAG: ${{ inputs.tag }}
+          VERSION: ${{ needs.check.outputs.version }}
+        run: node scripts/build-package.ts "$RUNNER_TEMP/tree" --source-commit "$GITHUB_SHA" --version "$VERSION"
+      - name: The packed tree passes publint and attw
+        run: node scripts/check-package.ts "$RUNNER_TEMP/tree"
+      - name: Pack the tree once
+        id: pack
+        env:
+          VERSION: ${{ needs.check.outputs.version }}
+        working-directory: ${{ runner.temp }}/tree
         run: |
-          node scripts/release-sbom.ts release release/sbom.cdx.json "$TAG"
-          node scripts/check-sbom.ts release/sbom.cdx.json release "$TAG"
+          pnpm pack --pack-destination "$GITHUB_WORKSPACE/release/assets"
+          test -f "$GITHUB_WORKSPACE/release/assets/tumaet-ichnaea-$VERSION.tgz"
+          echo "tarball=tumaet-ichnaea-$VERSION.tgz" >> "$GITHUB_OUTPUT"
+      # The form of npm's dist.integrity, which the stage job and release-finish.yml compare.
+      - name: The tarball's SHA-512
+        id: integrity
+        env:
+          TARBALL: ${{ steps.pack.outputs.tarball }}
+        run: |
+          integrity="sha512-$(openssl dgst -sha512 -binary "release/assets/$TARBALL" | base64 -w0)"
+          printf '%s\n' "$integrity" > release/integrity
+          echo "integrity=$integrity" >> "$GITHUB_OUTPUT"
+      - name: SBOM of what the tarball installs, with its URL on the npm registry
+        run: |
+          node scripts/release-sbom.ts release/assets release/assets/sbom.cdx.json
+          node scripts/check-sbom.ts release/assets/sbom.cdx.json release/assets
       - name: Checksums
-        working-directory: release
-        run: sha256sum -- *.tgz > SHA256SUMS
+        working-directory: release/assets
+        run: sha256sum -- *.tgz sbom.cdx.json > SHA256SUMS
       - name: Release notes
         env:
-          TAG: ${{ inputs.tag }}
-        run: node scripts/release-notes.ts "$TAG" > release-notes.md
+          TAG: ${{ github.ref_name }}
+        run: node scripts/release-notes.ts "$TAG" "$GITHUB_SHA" > release/release-notes.md
+      - name: The dist-tag of the GitHub release
+        env:
+          DIST_TAG: ${{ needs.check.outputs.dist-tag }}
+        run: printf '%s\n' "$DIST_TAG" > release/dist-tag
+      # Kept until a package owner approved the version and release-finish.yml read it.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release
-          path: |
-            release/
-            release-notes.md
+          path: release/
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 90
 
-  release:
-    name: attest, tag and publish
-    needs: build
+  consumer:
+    name: consumer (node ${{ matrix.node }})
+    needs: pack
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    # Only main may deploy to this environment, and a maintainer approves each run. It holds the
-    # deploy key, the only actor that the tag ruleset lets create a v* tag.
-    environment: release
+    timeout-minutes: 20
     permissions:
-      contents: write # create the GitHub release
-      id-token: write # sign the attestations with the workflow's identity
-      attestations: write # store the attestations
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        # The floor that the package names in `engines`, and the current Node.
+        node: ["24.3.0", "26"]
     steps:
-      # First, before anything is attested or tagged: a job that names a missing environment
-      # creates it without rules, and a missing secret is empty. Only whether the key is set enters
-      # the step, not the key.
-      - name: The release environment has the deploy key
-        env:
-          HAS_DEPLOY_KEY: ${{ secrets.RELEASE_DEPLOY_KEY != '' }}
-        run: |
-          if [ "$HAS_DEPLOY_KEY" != true ]; then
-            echo "::error::The release environment has no RELEASE_DEPLOY_KEY secret. Apply steps 8 to 10 of MAINTAINERS.md § Repository settings, then start the release again."
-            exit 1
-          fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ matrix.node }}
+          package-manager-cache: false
+      - run: pnpm install --frozen-lockfile --filter '!ichnaea-docs'
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: release
-      - name: The tarballs are the ones that the build job checked
-        working-directory: release
-        run: sha256sum --check SHA256SUMS
-      - name: Attest build provenance
-        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
-        with:
-          subject-path: release/*.tgz
-      - name: Attest the SBOM
-        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
-        with:
-          subject-path: release/*.tgz
-          sbom-path: release/sbom.cdx.json
-      # Checked out last, so that the deploy key is on the runner only for the two steps that need it.
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          path: repository
-          ssh-key: ${{ secrets.RELEASE_DEPLOY_KEY }}
-          # The tag push needs the key. This job uploads no artifact, and the post-job step removes it.
-          persist-credentials: true # zizmor: ignore[artipacked]
-      - name: Tag the released commit
-        working-directory: repository
+          path: release
+      - name: A consumer installs the tarball, type-checks it and runs the README's example
         env:
-          TAG: ${{ inputs.tag }}
+          TARBALL: ${{ needs.pack.outputs.tarball }}
+        run: node scripts/build-consumer.ts --tarball "release/assets/$TARBALL"
+
+  stage:
+    name: stage on npm
+    needs: [check, pack, consumer]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Only v* tags may deploy here. npm's trusted publisher names this workflow and environment.
+    environment: npm
+    permissions:
+      id-token: write # the OIDC token that npm exchanges, and that signs the provenance
+    steps:
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release
+          path: release
+      - name: The tarball is the one that the pack job checked
+        env:
+          INTEGRITY: ${{ needs.pack.outputs.integrity }}
+          TARBALL: ${{ needs.pack.outputs.tarball }}
         run: |
-          git tag "$TAG" "$GITHUB_SHA"
-          git push origin "refs/tags/$TAG"
-      - name: Publish the pre-release
+          actual="sha512-$(openssl dgst -sha512 -binary "release/assets/$TARBALL" | base64 -w0)"
+          if [ "$actual" != "$INTEGRITY" ]; then
+            echo "::error::$TARBALL has $actual, not $INTEGRITY, the SHA-512 of the pack job."
+            exit 1
+          fi
+          echo "::notice::$TARBALL has the integrity $INTEGRITY. Compare it before you approve."
+      # npm stage needs npm 11.15.0 or later. The job runs an exact npm, not the one that Node
+      # bundles: its tarball, checked against the integrity pinned here, unpacked and run first on PATH.
+      - name: Use npm at the exact version that stages
         env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          TAG: ${{ inputs.tag }}
-        run: gh release create "$TAG" release/* --prerelease --verify-tag --title "$TAG" --notes-file release-notes.md
+          NPM_VERSION: "11.19.1"
+          NPM_INTEGRITY: sha512-ztsxKxt/kkIaAs+2i0GU6I+DRmUdrNasxTZKJe9TCdSjKxlhah/4r/hl5ygMD6XAg1qZ9c2TNomR4qgOydp10g==
+        run: |
+          curl --fail --silent --show-error --location --retry 3 --output "$RUNNER_TEMP/npm.tgz" \
+            "https://registry.npmjs.org/npm/-/npm-$NPM_VERSION.tgz"
+          actual="sha512-$(openssl dgst -sha512 -binary "$RUNNER_TEMP/npm.tgz" | base64 -w0)"
+          if [ "$actual" != "$NPM_INTEGRITY" ]; then
+            echo "::error::npm $NPM_VERSION has $actual, not the pinned $NPM_INTEGRITY."
+            exit 1
+          fi
+          mkdir "$RUNNER_TEMP/npm" "$RUNNER_TEMP/npm-bin"
+          tar -xzf "$RUNNER_TEMP/npm.tgz" -C "$RUNNER_TEMP/npm"
+          # The package's own bin/npm looks for the npm beside Node, so a wrapper runs this one.
+          printf '#!/bin/sh\nexec node "%s" "$@"\n' "$RUNNER_TEMP/npm/package/bin/npm-cli.js" \
+            > "$RUNNER_TEMP/npm-bin/npm"
+          chmod +x "$RUNNER_TEMP/npm-bin/npm"
+          echo "$RUNNER_TEMP/npm-bin" >> "$GITHUB_PATH"
+      - name: npm is the pinned version
+        env:
+          NPM_VERSION: "11.19.1"
+        run: |
+          if [ "$(npm --version)" != "$NPM_VERSION" ]; then
+            echo "::error::npm is $(npm --version), not $NPM_VERSION."
+            exit 1
+          fi
+      - name: Stage the tarball on npm, with provenance, for a package owner to approve
+        env:
+          TARBALL: ${{ needs.pack.outputs.tarball }}
+          DIST_TAG: ${{ needs.check.outputs.dist-tag }}
+        run: |
+          npm stage publish "./release/assets/$TARBALL" --provenance --access public \
+            --tag "$DIST_TAG" --ignore-scripts

@@ -1,4 +1,4 @@
-# Decision rule: `@hephaestus-build/ichnaea`
+# Decision rule: `@tumaet/ichnaea`
 
 The decision rule of Ichnaea, as the `decide` plugin and the `decide()` function.
 `compare(plan, records, { decidedAt })` decides a plan's run from its records. Like `decide`, it is
@@ -57,4 +57,4 @@ and none can be computed from it".
 
 `decidePrimaries` is the per-measure rule on counts alone. `test/decide/req51.sim.test.ts` uses it to
 show that the rate of false REGRESSION verdicts stays at or below α. Run it with
-`pnpm --filter @hephaestus-build/ichnaea run test:sim:decide`.
+`pnpm --filter @tumaet/ichnaea run test:sim:decide`.

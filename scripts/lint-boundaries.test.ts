@@ -110,11 +110,11 @@ describe("the boundaries between the areas of the package", () => {
   });
 
   it.each([
-    ["src/core/a.ts", "@hephaestus-build/ichnaea/contracts"],
-    ["src/decide/a.ts", "@hephaestus-build/ichnaea/stats"],
-    ["src/report/a.ts", "@hephaestus-build/ichnaea"],
-    ["scripts/stats/a.ts", "@hephaestus-build/ichnaea/stats"],
-    ["test/stats/support/a.ts", "@hephaestus-build/ichnaea/stats"],
+    ["src/core/a.ts", "@tumaet/ichnaea/contracts"],
+    ["src/decide/a.ts", "@tumaet/ichnaea/stats"],
+    ["src/report/a.ts", "@tumaet/ichnaea"],
+    ["scripts/stats/a.ts", "@tumaet/ichnaea/stats"],
+    ["test/stats/support/a.ts", "@tumaet/ichnaea/stats"],
   ])("refuses an import in %s of the package itself, %s", (path, specifier) => {
     const errors = lint(path, specifier);
     expect(errors).toHaveLength(1);
