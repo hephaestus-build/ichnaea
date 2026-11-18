@@ -92,7 +92,7 @@ export function provenanceProblems(
   if (statement === undefined)
     return [`npm audit signatures shows no provenance for ${PACKAGE_NAME}@${version}`];
   const subject = at(statement, "subject");
-  const purl = `pkg:npm/${PACKAGE_NAME.replace("@", "%40")}@${version}`;
+  const purl = `pkg:npm/${PACKAGE_NAME.replaceAll("@", "%40")}@${version}`;
   if (
     !Array.isArray(subject) ||
     !subject.some((s) => at(s, "name") === purl && at(s, "digest", "sha512") === expected.sha512)
