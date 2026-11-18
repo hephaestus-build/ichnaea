@@ -146,6 +146,22 @@ describe("the simulated detectable drift", () => {
   });
 });
 
+describe("the trials per case", () => {
+  it("gives full separation its power of 1 within the limit", () => {
+    // Every stored trial passes and every fresh one fails: p = 2/C(2r, r), which rejects.
+    expect(sentinelPowerExact(1, 50, 1, 0)).toBe(1);
+    expect(sentinelPowerSimulated(1, 50, 1, 0, 10, 1)).toBe(1);
+  });
+
+  it("refuses more than 500 in the simulated power, where C(2r, r) overflows from r = 511", () => {
+    expect(() => sentinelPowerSimulated(1, 501, 1, 0, 1, 1)).toThrow(RangeError);
+  });
+
+  it("refuses more than 500 in the exact power", () => {
+    expect(() => sentinelPowerExact(1, 501, 1, 0)).toThrow(RangeError);
+  });
+});
+
 describe("the inputs of the detectable drift", () => {
   it("refuses an empty sentinel, a rate outside [0, 1] and a target outside (0, 1)", () => {
     expect(() => sentinelDetectableDrift({ cases: 0, trials: 2, rate: 0.5 })).toThrow(RangeError);

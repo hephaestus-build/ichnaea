@@ -34,6 +34,20 @@ export function sentinelTest(strata: readonly Stratum[], level = 0.05): Sentinel
   return { p, drifted: rejects(p, level), method: "exact-stratified-conditional-two-sided" };
 }
 
+/**
+ * The most trials per case that the power takes. `choose` multiplies before it divides, and from
+ * C(1022, 511) on its products overflow: a case's null distribution then comes out all 0, and the
+ * power is 0 where it is 1. A sentinel takes a few trials per case, so more than 500 is refused
+ * rather than computed in logarithms, which would trade the +, × and ÷ of the exact sum for exp and
+ * log.
+ */
+const MAX_TRIALS = 500;
+
+function assertTrials(trials: number): void {
+  if (!(Number.isInteger(trials) && trials >= 1 && trials <= MAX_TRIALS))
+    throw new RangeError(`the sentinel takes 1 to ${MAX_TRIALS} trials per case, got ${trials}`);
+}
+
 /** C(n, k), exact for the small n of one case's trials. */
 function choose(n: number, k: number): number {
   if (k < 0 || k > n) return 0;
@@ -91,6 +105,7 @@ export function sentinelPowerExact(
   fresh: number,
   level = 0.05,
 ): number {
+  assertTrials(trials);
   const top = 2 * trials;
   const xs = binomial(trials, stored);
   const ys = binomial(trials, fresh);
@@ -180,6 +195,7 @@ export function sentinelPowerSimulated(
   seed: number,
   level = 0.05,
 ): number {
+  assertTrials(trials);
   const rng = createRng(seed);
   const top = 2 * trials;
   const nulls = Array.from({ length: top + 1 }, (_, t) => nullCase(trials, t));
@@ -271,7 +287,8 @@ export function sentinelMethod(cases: number, trials: number): "exact" | "simula
  * bound. The
  * drift is rounded up to the next 0.05. It is computed at plan time from the stored base, never
  * from the fresh trials. The power is exact while C(cases + 2·trials, 2·trials) ≤ 10⁵, and
- * otherwise simulated with 10,000 draws from `seed`, the same draws at every drift.
+ * otherwise simulated with 10,000 draws from `seed`, the same draws at every drift. It refuses more
+ * than 500 trials per case.
  */
 export function sentinelDetectableDrift(input: {
   readonly cases: number;

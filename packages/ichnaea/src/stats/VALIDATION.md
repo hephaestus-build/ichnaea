@@ -923,8 +923,8 @@ p-value within a relative 1e-9 of the level rejects, in the test and in its powe
 guard catches 4 times in 5 when the drift moves every case together. It is computed at plan time
 from the stored base, never from the fresh trials:
 
-- **Reference.** Every case is at the stored rate p of the sentinel cases, before and after the
-  drift. In a simulation of spread and bimodal rates per case, different rates gave equal
+- **Reference.** Every case starts at the stored rate p of the sentinel cases, and every case moves
+  to the same drifted rate, p + X upward or p − X downward. In a simulation of spread and bimodal rates per case, different rates gave equal
   or higher power, so this is the pessimistic reference, but it is not a bound.
 - **Rounding.** X is the smallest multiple of 0.05 at which the power reaches 0.8. When only the
   largest possible drift (to 1.0 upward, to 0 downward) reaches it, X is that drift.
@@ -960,10 +960,10 @@ cases × 2 trials through `sentinelTest` and matches the exact power, which ties
 power together. The simulated power agrees with the exact power within 4 standard errors, and the
 simulated X with the exact power on either side of it (`test/stats/sentinel.sim.test.ts`).
 
-**Mutants.** `scripts/stats/mutants.ts` changes these methods in 10 ways (those named `sentinel:`):
+**Mutants.** `scripts/stats/mutants.ts` changes these methods in 11 ways (those named `sentinel:`):
 the two-sided test and the two-sided power; the reference rate; the rounding up; the 10⁵ terms, the
-10,000 draws and the shared draws of the simulation; the upward direction; Y at the extreme; and
-the target of 4 in 5.
+10,000 draws and the shared draws of the simulation; the upward direction; Y at the extreme; the
+target of 4 in 5; and the limit of 500 trials per case, past which C(2r, r) overflows.
 
 ## Not validated
 

@@ -1061,6 +1061,12 @@ export const MUTANTS: readonly Mutant[] = [
     to: "const at = power(rate + (sign * largest) / 2);",
   },
   {
+    id: "sentinel: trials per case past the overflow",
+    file: "src/stats/sentinel.ts",
+    from: "const MAX_TRIALS = 500;",
+    to: "const MAX_TRIALS = 600;",
+  },
+  {
     id: "sentinel: target 3 in 4",
     file: "src/stats/sentinel.ts",
     from: "const target = input.target ?? 0.8;",
