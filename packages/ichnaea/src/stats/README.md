@@ -114,7 +114,7 @@ operational estimate with missing trials as failures. Each interval says what it
 on: `conservative` or `not-validated`. It decides nothing.
 
 ```ts
-import { estimate } from "@hephaestus-build/ichnaea/stats";
+import { estimate } from "@tumaet/ichnaea/stats";
 
 const result = estimate({
   valueType: "binary",

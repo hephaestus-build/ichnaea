@@ -271,7 +271,7 @@ function build(
     .filter((f) => f.endsWith(".js"))
     .map((f) => [`src/${f.replace(/\.js$/, ".ts")}`, "// the source\n"]);
   const root = scratch({
-    "package.json": JSON.stringify({ name: "@hephaestus-build/ichnaea", version }),
+    "package.json": JSON.stringify({ name: "@tumaet/ichnaea", version }),
     ...Object.fromEntries(
       Object.entries({ ...files, ...leftovers }).map(([f, t]) => [`dist/${f}`, t]),
     ),
