@@ -1,10 +1,11 @@
-import { stat } from "node:fs/promises";
+import { readFile, stat } from "node:fs/promises";
 import { basename, dirname, extname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 
 import { toJsonSchema } from "../contracts/json-schema.ts";
-import { notComputedReason, TriggerKind } from "../contracts/records/plan.ts";
+import { Case, CaseSet } from "../contracts/records/case.ts";
+import { notComputedReason, Plan, TriggerKind } from "../contracts/records/plan.ts";
 import { RECORD_CONTRACTS } from "../contracts/registry.ts";
 
 import { CORE_COMMANDS, createHost, type Host } from "./host.ts";
@@ -12,6 +13,7 @@ import { importRun } from "./import.ts";
 import { testMeasure } from "./measures.ts";
 import { TRIGGER_VARIES } from "./planner.ts";
 import type { Config } from "./plugin.ts";
+import { runCommandWorker } from "./runner.ts";
 import { CORE_VERSION } from "./version.ts";
 
 /** Loads a module by URL. The CLI uses `import()`; a test injects another. */
@@ -55,6 +57,10 @@ Commands from the core:
                       [--vary <factor key>] (repeat: what the change varies beyond its trigger)
                       [--concurrency <n> --endpoint <name>] (the schedule the trials ran on)
                       [--aa <run>] (repeat: a decided A/A run to cite, at one trial per case)
+  run                 Execute a locked plan through a local command worker
+                      --run <id> --plan <file> --case-set <file> --cases <file.jsonl>
+                      --worker <executable> [--worker-arg <arg>] (repeat)
+                      --deadline <ISO seconds> --monthly-cap <calls> [--attempts 2] [--store .ichnaea]
   doctor              Check the configuration: plugins, measures, testers, warnings
   help                Show this help
   --version, -v       Print the version
@@ -152,6 +158,7 @@ async function dispatch(
   }
   if (command === "doctor") return doctor(host, out);
   if (command === "import") return importCommand(host, rest, out);
+  if (command === "run") return runWorkerCommand(host, rest, out);
   const definition = host.commands.get(command);
   if (!definition) {
     out(
@@ -314,4 +321,75 @@ async function importCommand(
   if (result.plan.power.length === 0 && result.plan.primary.length > 0)
     out("  power: not computed: no plugin in the configuration states one (decidePlugin() does)");
   return 0;
+}
+
+async function runWorkerCommand(
+  host: Host,
+  args: readonly string[],
+  out: (line: string) => void,
+): Promise<number> {
+  const { values } = parseArgs({
+    args: [...args],
+    options: {
+      config: { type: "string" },
+      run: { type: "string" },
+      plan: { type: "string" },
+      "case-set": { type: "string" },
+      cases: { type: "string" },
+      worker: { type: "string" },
+      "worker-arg": { type: "string", multiple: true },
+      deadline: { type: "string" },
+      "monthly-cap": { type: "string" },
+      attempts: { type: "string", default: "2" },
+      store: { type: "string", default: ".ichnaea" },
+    },
+  });
+  const { run, plan, cases, worker, deadline, store } = values;
+  if (
+    !run ||
+    !plan ||
+    !values["case-set"] ||
+    !cases ||
+    !worker ||
+    !deadline ||
+    !/^[0-9]+$/.test(values["monthly-cap"] ?? "") ||
+    !/^[0-9]+$/.test(values.attempts)
+  )
+    throw new Error(
+      "run needs --run, --plan, --case-set, --cases, --worker, --deadline and --monthly-cap",
+    );
+  const [planText, manifestText, caseText] = await Promise.all([
+    readFile(plan, "utf8"),
+    readFile(values["case-set"], "utf8"),
+    readFile(cases, "utf8"),
+  ]);
+  const controller = new AbortController();
+  const stop = (): void => controller.abort();
+  process.once("SIGINT", stop);
+  process.once("SIGTERM", stop);
+  try {
+    const result = await runCommandWorker({
+      host,
+      store,
+      run,
+      plan: Plan.parse(JSON.parse(planText)),
+      caseSet: CaseSet.parse(JSON.parse(manifestText)),
+      cases: caseText
+        .split("\n")
+        .filter((line) => line.trim())
+        .map((line) => Case.parse(JSON.parse(line))),
+      command: [worker, ...(values["worker-arg"] ?? [])],
+      deadline,
+      monthlyCap: Number(values["monthly-cap"]),
+      maxAttempts: Number(values.attempts),
+      signal: controller.signal,
+      ichnaea: CORE_VERSION,
+    });
+    if (result.workerError) out(`run: ${result.workerError}`);
+    out(`run: stored ${result.trials} trial(s) and ${result.values} measure value(s)`);
+    return result.interrupted || result.workerError ? 2 : 0;
+  } finally {
+    process.removeListener("SIGINT", stop);
+    process.removeListener("SIGTERM", stop);
+  }
 }

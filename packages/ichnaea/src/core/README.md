@@ -47,3 +47,39 @@ Decisions and reports come from the `decide` and `report` plugins.
 
 The core imports the contracts and the statistics functions that summarize trials on import. The
 package has no runtime dependency, and zod as a peer.
+
+## Run a command worker
+
+Use `createPlan` to resolve a suite and write its plan before execution. Give the plan a schedule
+with the ledger endpoint and concurrency. Mark the arms to run and configure the same measure
+cards and local gate checks when planning and scoring. Then run:
+
+```sh
+ichnaea run --run attempt-1 --plan plan.json --case-set case-set.json --cases cases.jsonl \
+  --worker node --worker-arg ./worker.mjs --deadline PT30S --monthly-cap 1000
+```
+
+The runner reserves the plan's worst-case calls for the endpoint before starting the executable.
+It passes arguments directly to the executable and uses JSON Lines on stdin and stdout. The
+worker begins with `ichnaea.workerReady/1`. Request dispatch follows the plan and uses at most
+the smaller of the ready capacity and the scheduled concurrency. Results must follow request
+order and carry the exact trial and attempt identity. Events may arrive for any in-flight trial.
+
+`--deadline` limits one attempt in ISO seconds, excluding throttle waits that the worker reports
+in heartbeats. The wall limit is three times the deadline. Only the first pending result can time
+out. When an earlier result delays a later one past its deadline, the later result gets a brief
+reply window and a missed window counts as an infrastructure failure.
+
+When a trial reaches its deadline or on SIGINT/SIGTERM, the runner sends `ichnaea.cancel/1`.
+A worker that does not answer within one second is stopped. An infrastructure failure or
+`not_run` can retry with the next attempt while calls remain in the trial's allowance.
+System and protocol failures do not retry. `--attempts` defaults to two.
+
+The worker gets only the fields it needs from the case, without references. The runner sends
+each arm's canonical configuration file. The worker reports its digest, model, generation
+parameters, and declared route, code and data identities for comparison. The current protocol
+has one observed model per arm. Commands retain configuration-read and module observations
+in the raw results for later analysis. The store saves worker results, including earlier attempts,
+alongside the normalized records. Work directories and artifacts remain under the store's
+`worker/` directory. If normalization fails, `.received.jsonl` holds the accepted results. The synthetic command worker in `test/core/fixtures` provides fixtures for
+order, failures, deadlines, and configuration mismatch.

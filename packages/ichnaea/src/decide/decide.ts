@@ -727,6 +727,7 @@ function attemptChecks(input: DecideInput): string[] {
 function recordChecks(input: DecideInput): string[] {
   const { plan, run } = input;
   const invalid: string[] = [];
+  if (run.workerError) invalid.push(`worker transport failed: ${run.workerError}`);
   const planDigest = digest(plan);
   if (run.plan !== planDigest)
     invalid.push(`the run belongs to plan ${run.plan}, not to this plan (${planDigest})`);

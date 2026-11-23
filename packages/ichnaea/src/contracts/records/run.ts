@@ -116,6 +116,8 @@ export const Run = z.strictObject({
   mustNever: z.array(MustNeverResult).min(1).optional(),
   /** The earlier one-arm run selected for the quantity comparison when this run was stored. */
   previousRun: none(RunId).optional(),
+  /** A worker transport failed, so the run cannot give a verdict. */
+  workerError: none(Text).optional(),
   startedAt: none(Timestamp),
   completedAt: none(Timestamp).optional(),
 });

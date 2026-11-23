@@ -2,6 +2,7 @@ import type { GateResult as GateResultRecord } from "../contracts/records/decisi
 import type { MeasureValue as MeasureValueRecord } from "../contracts/records/measure.ts";
 import type { Plan as PlanRecord } from "../contracts/records/plan.ts";
 import type { Run as RunRecord } from "../contracts/records/run.ts";
+import type { TrialResult } from "../contracts/records/worker.ts";
 import type { Trial as TrialRecord } from "../contracts/records/trial.ts";
 
 /** The primary records of one run, written together. */
@@ -16,6 +17,8 @@ export interface RunRecords {
   readonly values: readonly MeasureValueRecord[];
   /** The hard gates' results, one for each gate. */
   readonly gates: readonly GateResultRecord[];
+  /** The raw worker results, including earlier attempts, in receipt order. */
+  readonly workerResults?: readonly TrialResult[];
 }
 
 /** Duplicate keys in a list of records, each named once. */

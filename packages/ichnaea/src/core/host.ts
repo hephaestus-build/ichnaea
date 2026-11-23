@@ -60,7 +60,7 @@ function ordered(plugins: readonly Plugin[]): Plugin[] {
 }
 
 /** Commands the core defines; a plugin cannot replace them. */
-export const CORE_COMMANDS: readonly string[] = ["help", "schema", "doctor", "import"];
+export const CORE_COMMANDS: readonly string[] = ["help", "schema", "doctor", "import", "run"];
 
 function register<T>(map: Map<string, T>, id: string, value: T, owner: Plugin, kind: string): void {
   if (!id.startsWith(`${owner.id}/`))

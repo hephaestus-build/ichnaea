@@ -12,6 +12,7 @@ import { MeasureValue } from "../contracts/records/measure.ts";
 import { Plan, type Plan as PlanRecord } from "../contracts/records/plan.ts";
 import { Run, type Run as RunRecord } from "../contracts/records/run.ts";
 import { Trial } from "../contracts/records/trial.ts";
+import { TrialResult } from "../contracts/records/worker.ts";
 import * as z from "zod";
 
 import { recordProblems, type RunRecords } from "./records.ts";
@@ -132,12 +133,20 @@ export class FileStore {
       ["trials.jsonl", lines(records.trials, Trial)],
       ["values.jsonl", lines(records.values, MeasureValue)],
       ["gates.jsonl", lines(records.gates, GateResult)],
+      ...(records.workerResults
+        ? [["worker-results.jsonl", lines(records.workerResults, TrialResult)] as const]
+        : []),
     ];
     const final = this.dir(records.run.id);
     const temporary = join(this.root, "runs", `.incomplete-${randomUUID()}`);
     await mkdir(temporary, { recursive: true });
     try {
-      for (const [name, text] of files) await writeFile(join(temporary, name), text);
+      for (const [name, text] of files)
+        await writeFile(
+          join(temporary, name),
+          text,
+          name === "worker-results.jsonl" ? { mode: 0o600 } : {},
+        );
       await rename(temporary, final);
     } catch (error) {
       await rm(temporary, { recursive: true, force: true });
@@ -187,12 +196,16 @@ export class FileStore {
     if (plan === undefined || runText === undefined)
       throw new StoreError(`run '${run}' has no plan or run record in ${dir}`);
     const decision = await readOptional(join(dir, "decision.json"));
+    const workerResults = await readOptional(join(dir, "worker-results.jsonl"));
     const stored = {
       plan: parseOne(plan, Plan, `${run}/plan.json`),
       run: parseOne(runText, Run, `${run}/run.json`),
       trials: parseLines(await text("trials.jsonl"), Trial, `${run}/trials.jsonl`),
       values: parseLines(await text("values.jsonl"), MeasureValue, `${run}/values.jsonl`),
       gates: parseLines(await text("gates.jsonl"), GateResult, `${run}/gates.jsonl`),
+      ...(workerResults === undefined
+        ? {}
+        : { workerResults: parseLines(workerResults, TrialResult, `${run}/worker-results.jsonl`) }),
       ...(decision === undefined
         ? {}
         : { decision: parseOne(decision, Decision, `${run}/decision.json`) }),

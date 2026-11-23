@@ -215,9 +215,9 @@ export type ObservedCode = z.infer<typeof ObservedCode>;
 
 /**
  * The configuration the worker actually ran with. Before scoring, Ichnaea compares it with the
- * arm's planned configuration and refuses the trial on any difference. It also checks that each
- * arm's processes read the configuration keys that differ between the arms, and that the
- * environment factors match across the arms unless the plan declares one changed.
+ * arm's planned configuration and refuses a trial with a mismatched file digest, model,
+ * parameters, or declared route, code or data identity. The raw observations also hold which
+ * configuration keys the process read and which modules it loaded.
  */
 export const ObservedConfiguration = z.strictObject({
   /** The code that ran: a git commit, an image digest, or both. */
@@ -419,9 +419,9 @@ export const TrialTrace = z.strictObject({
 export type TrialTrace = z.infer<typeof TrialTrace>;
 
 /**
- * What a worker answers for one trial request: one JSON line on its standard output. A process
- * with a capacity above 1 answers out of order, so Ichnaea matches the result to its request by
- * `trial`, never by position. For a request line it cannot read, the worker writes an
+ * What a worker answers for one trial request: one JSON line on its standard output. The command
+ * runner matches the result to its request by `trial` and checks the request order. For a request
+ * line it cannot read, the worker writes an
  * `ichnaea.workerError/1` line instead, and Ichnaea stops the run there, so that line needs no
  * trial identity. It carries the raw output, never a score or a verdict, because the base suite's
  * scorers read the output later (REQ-22). Ichnaea measures `startedAt` and `endedAt` itself: a

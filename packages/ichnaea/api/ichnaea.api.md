@@ -617,6 +617,9 @@ export interface ReportTable {
 }
 
 // @public
+export function runCommandWorker(input: RunWorkerInput): Promise<RunWorkerResult>;
+
+// @public
 export interface RunIndexEntry {
     readonly decidedAt: string;
     readonly plan: string;
@@ -632,6 +635,8 @@ export interface RunRecords {
     readonly run: Run;
     readonly trials: readonly Trial[];
     readonly values: readonly MeasureValue[];
+    // Warning: (ae-forgotten-export) The symbol "TrialResult" needs to be exported by the entry point index.d.ts
+    readonly workerResults?: readonly TrialResult[];
 }
 
 // @public
@@ -639,6 +644,30 @@ export type RunView = Pick<DecisionView, "title" | "lineage"> & {
     readonly details: string;
     readonly tables: readonly ReportTable[];
 };
+
+// @public
+export interface RunWorkerInput {
+    readonly cases: readonly Case[];
+    readonly caseSet: CaseSet;
+    readonly command: readonly [string, ...string[]];
+    readonly deadline: string;
+    readonly host: Host;
+    readonly ichnaea: string;
+    readonly maxAttempts?: number;
+    readonly monthlyCap: number;
+    readonly plan: Plan;
+    readonly run: string;
+    readonly signal?: AbortSignal;
+    readonly store: string;
+}
+
+// @public
+export interface RunWorkerResult {
+    readonly interrupted: boolean;
+    readonly trials: number;
+    readonly values: number;
+    readonly workerError?: string;
+}
 
 // @public
 export function satisfies(version: string, range: string): boolean;

@@ -39,7 +39,7 @@ const command: CommandDefinition = {
     }
     const store = new FileStore(storePath);
     const stored = await store.read(runId);
-    const oneArm = stored.plan.arms.length === 1;
+    const oneArm = stored.plan.arms.length === 1 && !stored.run.workerError;
     if (!stored.decision && !oneArm) {
       host.out(`report: run '${runId}' has no decision; run 'ichnaea decide' first`);
       return 2;

@@ -40,7 +40,7 @@ Ichnaea is one package, `@tumaet/ichnaea`. Its subpaths:
 | `@tumaet/ichnaea/stats`                        | Intervals, paired and stratified tests, power. The regression test is validated; non-inferiority is not, until the margin floor is set | available |
 | `@tumaet/ichnaea/calibration`                  | Judge calibration against two human raters. A calibrated judge's measures are secondary: shown, never deciding                         | available |
 | `@tumaet/ichnaea/schemas/<record>.schema.json` | The normative JSON Schema 2020-12 file of each record                                                                                  | available |
-| Runner and conformance kits                    |                                                                                                                                        | planned   |
+| Command runner and conformance fixtures        | Execute locked plans through local command workers                                                                                     | alpha     |
 
 The package ships JavaScript and declarations, built from its TypeScript sources, and the sources
 too. It needs Node 24.3 or later. zod 4 (4.6 or later) is a peer dependency. The package has no

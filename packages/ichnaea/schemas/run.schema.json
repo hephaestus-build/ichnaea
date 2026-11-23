@@ -1318,6 +1318,18 @@
         "retention": "record"
       }
     },
+    "workerError": {
+      "type": "string",
+      "minLength": 1,
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
+      }
+    },
     "startedAt": {
       "type": "string",
       "format": "date-time",

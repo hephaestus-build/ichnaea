@@ -3992,6 +3992,7 @@ export const Run: z.ZodObject<{
         }, z.core.$strict>;
     }, z.core.$strict>>>;
     previousRun: z.ZodOptional<z.core.$ZodBranded<z.ZodString, "RunId", "out">>;
+    workerError: z.ZodOptional<z.ZodString>;
     startedAt: z.ZodISODateTime;
     completedAt: z.ZodOptional<z.ZodISODateTime>;
 }, z.core.$strict>;

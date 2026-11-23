@@ -11,6 +11,8 @@ import { Suite } from "../contracts/records/suite.ts";
 import type { Trial } from "../contracts/records/trial.ts";
 import { proportionProblem } from "../contracts/values.ts";
 
+import type { RunRecords } from "./records.ts";
+import type { ImportResult } from "./plugin.ts";
 import type { Host } from "./host.ts";
 import { mustNeverResults } from "./never-measure.ts";
 import { scoreTrials } from "./measures.ts";
@@ -116,7 +118,12 @@ function checkConfiguration(trial: Trial, identity: string | undefined): Trial {
  * missing. An output the system returned empty is present, and is scored.
  */
 function checkCaptured(trial: Trial): Trial {
-  if (trial.outcome !== "completed" || trial.output !== undefined || trial.pointer !== undefined)
+  if (
+    trial.outcome !== "completed" ||
+    trial.output !== undefined ||
+    trial.pointer !== undefined ||
+    trial.evidence?.length
+  )
     return trial;
   return {
     ...trial,
@@ -224,6 +231,40 @@ export async function importRun(
     },
   });
 
+  return recordRun({
+    host,
+    store,
+    plan,
+    cases,
+    result,
+    id: input.run,
+    startedAt: input.now,
+    completedAt: input.now,
+    ichnaea: input.ichnaea,
+    instrument: { kind: "plugin", id: importer.id, version: importer.version },
+  });
+}
+
+interface RecordRunInput {
+  readonly host: Host;
+  readonly store: FileStore;
+  readonly plan: Plan;
+  readonly cases: readonly Case[];
+  readonly result: ImportResult;
+  readonly id: string;
+  readonly startedAt: string;
+  readonly completedAt: string;
+  readonly ichnaea: string;
+  readonly instrument?: Run["lineage"][number];
+  readonly workerResults?: RunRecords["workerResults"];
+  readonly workerError?: string;
+}
+
+/** Validates and atomically records evidence from either a worker or an importer. */
+export async function recordRun(
+  input: RecordRunInput,
+): Promise<{ plan: Plan; trials: number; values: number }> {
+  const { host, store, plan, cases, result } = input;
   // Trials: each one a planned trial, with the planned case, arm and replicate.
   const planned = new Map(plan.trials.map((t) => [t.id as string, t]));
   const identities = new Map(plan.arms.map((a) => [a.name as string, a.identity as string]));
@@ -312,7 +353,7 @@ export async function importRun(
   const recorded = new Map(trials.map((t) => [t.id as string, t.outcome]));
   const lineage: Run["lineage"] = [
     ...host.plugins.map((p) => ({ kind: "plugin" as const, id: p.id, version: p.version })),
-    { kind: "plugin", id: importer.id, version: importer.version },
+    ...(input.instrument ? [input.instrument] : []),
     ...plan.measures,
     ...plan.hardGates.map((id) => ({
       kind: "gate" as const,
@@ -325,11 +366,11 @@ export async function importRun(
   const mustNever = mustNeverResults(plan, trials, values);
   const previousRun =
     plan.arms.length === 1 && plan.quantities?.length
-      ? await store.previousOneArm(plan, input.now)
+      ? await store.previousOneArm(plan, input.startedAt)
       : undefined;
   const run = Run.parse({
     schema: "ichnaea.run/1",
-    id: input.run,
+    id: input.id,
     plan: await digest(plan),
     exploratory: false,
     environment: {
@@ -356,11 +397,19 @@ export async function importRun(
     ...(trialReduction === undefined ? {} : { trialReduction }),
     ...(mustNever === undefined ? {} : { mustNever }),
     ...(previousRun === undefined ? {} : { previousRun }),
-    startedAt: input.now,
-    completedAt: input.now,
+    ...(input.workerError ? { workerError: input.workerError } : {}),
+    startedAt: input.startedAt,
+    completedAt: input.completedAt,
   });
 
-  await store.createRun({ plan, run, trials, values, gates });
+  await store.createRun({
+    plan,
+    run,
+    trials,
+    values,
+    gates,
+    ...(input.workerResults ? { workerResults: input.workerResults } : {}),
+  });
   for (const t of trials) await host.trialRecorded(t);
   await host.runCompleted(run);
   return { plan, trials: trials.length, values: values.length };
