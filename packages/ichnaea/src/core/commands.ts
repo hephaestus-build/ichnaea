@@ -64,17 +64,20 @@ export const decideCommand: CommandDefinition = {
     }
     const store = new FileStore(storePath);
     const stored = await store.read(runId);
-    const decision = await decide({
-      plan: stored.plan,
-      run: stored.run,
-      trials: stored.trials,
-      values: stored.values,
-      gates: stored.gates,
-      aa: await store.aaEvidence(stored.plan),
-      decidedAt: (values["now"] as string | undefined) ?? new Date().toISOString(),
-      ichnaea: CORE_VERSION,
-    });
-    await store.writeDecision(decision, stored.plan.suite);
+    let decision = stored.decision;
+    if (decision === undefined) {
+      decision = await decide({
+        plan: stored.plan,
+        run: stored.run,
+        trials: stored.trials,
+        values: stored.values,
+        gates: stored.gates,
+        aa: await store.aaEvidence(stored.plan),
+        decidedAt: (values["now"] as string | undefined) ?? new Date().toISOString(),
+        ichnaea: CORE_VERSION,
+      });
+      await store.writeDecision(decision, stored.plan.suite);
+    }
     const verdictFile =
       (values["verdict-file"] as string | undefined) ??
       join(runDirectory(storePath, "runs", runId), "verdict.json");
