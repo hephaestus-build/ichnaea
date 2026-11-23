@@ -6,6 +6,7 @@ export * from "./measures.ts";
 export * from "./planner.ts";
 export * from "./plugin.ts";
 export * from "./records.ts";
+export * from "./ratings.ts";
 export * from "./semver.ts";
 export * from "./store.ts";
 export * from "./version.ts";

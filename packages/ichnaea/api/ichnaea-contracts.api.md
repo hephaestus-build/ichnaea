@@ -1743,6 +1743,32 @@ export const IdentityFactor: z.ZodObject<{
 }, z.core.$strict>;
 
 // @public
+export const ImportedHumanValue: z.ZodObject<{
+    schema: z.ZodLiteral<"ichnaea.measureValue/1">;
+    trial: z.core.$ZodBranded<z.ZodString, "TrialId", "out">;
+    turn: z.ZodOptional<z.ZodInt>;
+    measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+    version: z.ZodString;
+    applicable: z.ZodBoolean;
+    detail: z.ZodOptional<z.ZodString>;
+    why: z.ZodOptional<z.ZodString>;
+    dataClass: z.ZodEnum<{
+        none: "none";
+        personal: "personal";
+        pseudonymous: "pseudonymous";
+        special: "special";
+    }>;
+    source: z.ZodLiteral<"human">;
+    value: z.ZodObject<{
+        type: z.ZodLiteral<"level">;
+        level: z.ZodString;
+    }, z.core.$strict>;
+}, z.core.$strict>;
+
+// @public
+export type ImportedHumanValue = z.infer<typeof ImportedHumanValue>;
+
+// @public
 export function instrumentImplementation(pin: unknown): Digest;
 
 // @public
@@ -3478,6 +3504,76 @@ export const PURPOSES: readonly ["PU-1", "PU-2", "PU-3", "PU-4", "PU-5", "PU-6"]
 
 // @public
 export function quasi<T extends z.ZodType>(schema: T, egress?: readonly Purpose[]): T;
+
+// @public
+export const RatingJudge: z.ZodObject<{
+    id: z.core.$ZodBranded<z.ZodString, "JudgeId", "out">;
+    digest: z.ZodString;
+    measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+    version: z.ZodString;
+}, z.core.$strict>;
+
+// @public
+export const RatingsImport: z.ZodObject<{
+    schema: z.ZodLiteral<"ichnaea.ratingsImport/1">;
+    run: z.core.$ZodBranded<z.ZodString, "RunId", "out">;
+    study: z.ZodString;
+    source: z.ZodLiteral<"label-studio">;
+    registration: z.ZodString;
+    dataClass: z.ZodEnum<{
+        none: "none";
+        personal: "personal";
+        pseudonymous: "pseudonymous";
+        special: "special";
+    }>;
+    scale: z.ZodArray<z.ZodNumber>;
+    judge: z.ZodObject<{
+        id: z.core.$ZodBranded<z.ZodString, "JudgeId", "out">;
+        digest: z.ZodString;
+        measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+        version: z.ZodString;
+    }, z.core.$strict>;
+    values: z.ZodArray<z.ZodObject<{
+        schema: z.ZodLiteral<"ichnaea.measureValue/1">;
+        trial: z.core.$ZodBranded<z.ZodString, "TrialId", "out">;
+        turn: z.ZodOptional<z.ZodInt>;
+        measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+        version: z.ZodString;
+        applicable: z.ZodBoolean;
+        detail: z.ZodOptional<z.ZodString>;
+        why: z.ZodOptional<z.ZodString>;
+        dataClass: z.ZodEnum<{
+            none: "none";
+            personal: "personal";
+            pseudonymous: "pseudonymous";
+            special: "special";
+        }>;
+        source: z.ZodLiteral<"human">;
+        value: z.ZodObject<{
+            type: z.ZodLiteral<"level">;
+            level: z.ZodString;
+        }, z.core.$strict>;
+    }, z.core.$strict>>;
+    calibration: z.ZodObject<{
+        scale: z.ZodLiteral<"levels">;
+        levels: z.ZodInt;
+        units: z.ZodArray<z.ZodObject<{
+            item: z.ZodString;
+            stratum: z.ZodString;
+            configuration: z.ZodEnum<{
+                base: "base";
+                candidate: "candidate";
+                "known-worse": "known-worse";
+            }>;
+            weight: z.ZodLiteral<1>;
+            raters: z.ZodType<[number, number], unknown, z.core.$ZodTypeInternals<[number, number], unknown>>;
+            judge: z.ZodInt;
+        }, z.core.$strict>>;
+    }, z.core.$strict>;
+}, z.core.$strict>;
+
+// @public
+export type RatingsImport = z.infer<typeof RatingsImport>;
 
 // @public
 export function readerSchema(contract: RecordContract): z.ZodType;

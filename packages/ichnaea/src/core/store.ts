@@ -1,5 +1,14 @@
 import { randomUUID } from "node:crypto";
-import { appendFile, mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import {
+  appendFile,
+  link,
+  mkdir,
+  readdir,
+  readFile,
+  rename,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { join } from "node:path";
 
 import { canonicalize } from "../contracts/canonical.ts";
@@ -10,6 +19,7 @@ import {
 } from "../contracts/records/decision.ts";
 import { MeasureValue } from "../contracts/records/measure.ts";
 import { Plan, type Plan as PlanRecord } from "../contracts/records/plan.ts";
+import { RatingsImport } from "../contracts/records/ratings.ts";
 import { Run, type Run as RunRecord } from "../contracts/records/run.ts";
 import { Trial } from "../contracts/records/trial.ts";
 import * as z from "zod";
@@ -100,7 +110,8 @@ const lines = <T>(records: readonly T[], schema: z.ZodType<T>): string =>
  * Every record is validated against its writer schema on write and on read.
  *
  * Layout: `runs/<run>/{plan,run,decision}.json`, `runs/<run>/{trials,values,gates}.jsonl` and an
- * `index.jsonl` with one line per decided run. A run ID becomes a directory name by percent-encoding,
+ * `index.jsonl` with one line per decided run. A rating import is stored at
+ * `runs/<run>/ratings/<study>.json`. A run ID becomes a directory name by percent-encoding,
  * so every contract-valid ID is storable and none can leave `runs/`.
  */
 export class FileStore {
@@ -148,6 +159,47 @@ export class FileStore {
         );
       throw error;
     }
+  }
+
+  /** Writes a study's ratings once, without changing the stored run or its decision. */
+  async writeRatings(record: RatingsImport): Promise<void> {
+    const text = lines([record], RatingsImport);
+    const dir = join(this.dir(record.run), "ratings");
+    try {
+      await mkdir(dir, { mode: 0o700 });
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+    }
+    const path = join(dir, `${encodeURIComponent(record.study)}.json`);
+    const temporary = join(dir, `.incomplete-${randomUUID()}`);
+    try {
+      await writeFile(temporary, text, { flag: "wx", mode: 0o600 });
+      await link(temporary, path);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "EEXIST")
+        throw new AppendOnlyError(
+          `run '${record.run}' already has ratings from study '${record.study}'`,
+        );
+      throw error;
+    } finally {
+      await rm(temporary, { force: true });
+    }
+  }
+
+  /** Reads a single study's ratings and calibration input from a run. */
+  async readRatings(run: string, study: string): Promise<RatingsImport> {
+    const path = join(this.dir(run), "ratings", `${encodeURIComponent(study)}.json`);
+    const record = parseOne(await readFile(path, "utf8"), RatingsImport, path);
+    const { calibration, scale } = record;
+    if (
+      scale.length !== calibration.levels ||
+      calibration.units.some(
+        (u) =>
+          u.judge > calibration.levels || u.raters.some((rating) => rating > calibration.levels),
+      )
+    )
+      throw new StoreError(`${path}: calibration values do not match the registered scale`);
+    return record;
   }
 
   /** Stores the decision once and adds the run to the index. */

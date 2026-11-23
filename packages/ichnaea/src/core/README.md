@@ -47,3 +47,32 @@ Decisions and reports come from the `decide` and `report` plugins.
 
 The core imports the contracts and no other area. The package has no runtime dependency, and zod
 as a peer.
+
+## Import human ratings
+
+Run `ichnaea import-ratings --run <id> --file <export.json> --key <key.json>
+--registration <study.json>`. The command reads files and writes to the run's local store. It
+does not load plugins or change the stored trial records, measure values, or decision. Use
+`FileStore.readRatings(run, study)` to read the imported ratings and pass its `calibration`
+property to `analyzeCalibration`.
+
+Export Label Studio's full JSON with two raters and a [Number control](https://labelstud.io/tags/number.html).
+Give each task an opaque `data.item_id` in the [task data](https://labelstud.io/guide/task_format).
+The importer reads only the registered control's annotation. It discards task text,
+unrelated annotations and rater account IDs.
+
+Register the study before rating. Its JSON fields are `study`, `control` (the Number control's
+name), `dataClass`, `scale` (ordered ratings, for example `[0, 1, 2, 3]`), and `raters` (two
+entries, each with a Label Studio numeric `user`, a separate `measure` ID and its `version`), and
+`judge` (an `id` and `digest` identifying the judge plus the judge `measure` and `version`).
+The run must already store that measure's judge ratings as level values.
+The first entry maps to the first rater in the calibration input. Each raw rating maps to its
+one-based position in the registered scale.
+
+Keep the key file local and apart from the review tool. It is a JSON object keyed by opaque
+item ID. Each value gives the stored `trial`, the calibration `stratum`, and the
+`configuration` (`base`, `candidate` or `known-worse`). Ratings from trials of the same
+stored case belong to one calibration item.
+Both raters must have one score per item. The input contains both base and candidate answers;
+ordinal calibration weights every answer equally. The rating and calibration fields inherit
+the study's data class in the record's egress schema.

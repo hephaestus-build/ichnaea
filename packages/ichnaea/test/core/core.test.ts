@@ -525,7 +525,9 @@ describe("CLI (REQ-26, REQ-114)", () => {
     }
     const out: string[] = [];
     expect(await main(["nothing", "--config", config], (t) => out.push(t))).toBe(2);
-    expect(out[0]).toBe("unknown command 'nothing'. Commands: help, schema, doctor, import");
+    expect(out[0]).toBe(
+      "unknown command 'nothing'. Commands: help, schema, doctor, import, import-ratings",
+    );
     expect(await main([...base], () => undefined)).toBe(2);
   });
 

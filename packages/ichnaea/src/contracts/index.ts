@@ -21,6 +21,7 @@ export * from "./records/measure-identity.ts";
 export * from "./records/monitor.ts";
 export * from "./records/plan.ts";
 export * from "./records/project.ts";
+export * from "./records/ratings.ts";
 export * from "./records/run.ts";
 export * from "./records/scorer.ts";
 export * from "./records/setup.ts";

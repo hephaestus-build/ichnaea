@@ -12,6 +12,7 @@ import { importRun } from "./import.ts";
 import { testMeasure } from "./measures.ts";
 import { TRIGGER_VARIES } from "./planner.ts";
 import type { Config } from "./plugin.ts";
+import { importLabelStudio } from "./ratings.ts";
 import { CORE_VERSION } from "./version.ts";
 
 /** Loads a module by URL. The CLI uses `import()`; a test injects another. */
@@ -55,6 +56,8 @@ Commands from the core:
                       [--vary <factor key>] (repeat: what the change varies beyond its trigger)
                       [--concurrency <n> --endpoint <name>] (the schedule the trials ran on)
                       [--aa <run>] (repeat: a decided A/A run to cite, at one trial per case)
+  import-ratings      Import two raters' Label Studio annotations into a stored run
+                      --run <id> --file <path> --key <path> --registration <path> [--store .ichnaea]
   doctor              Check the configuration: plugins, measures, testers, warnings
   help                Show this help
   --version, -v       Print the version
@@ -120,6 +123,31 @@ async function dispatch(
       return 2;
     }
     out(JSON.stringify(toJsonSchema(contract), null, 2));
+    return 0;
+  }
+  if (command === "import-ratings") {
+    const { values } = parseArgs({
+      args: [...rest],
+      options: {
+        run: { type: "string" },
+        file: { type: "string" },
+        key: { type: "string" },
+        registration: { type: "string" },
+        store: { type: "string", default: ".ichnaea" },
+      },
+    });
+    if (!values.run || !values.file || !values.key || !values.registration)
+      throw new Error("import-ratings needs --run, --file, --key and --registration");
+    const record = await importLabelStudio({
+      ...values,
+      run: values.run,
+      file: values.file,
+      key: values.key,
+      registration: values.registration,
+    });
+    out(
+      `import-ratings: stored ${record.values.length} ratings for ${record.calibration.units.length} answer(s)`,
+    );
     return 0;
   }
   const configPath =

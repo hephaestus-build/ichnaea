@@ -10,6 +10,7 @@ import { Finding, Monitor } from "./records/monitor.ts";
 import { Plan } from "./records/plan.ts";
 import { SuiteLock } from "./records/lock.ts";
 import { ProjectConfig } from "./records/project.ts";
+import { RatingsImport } from "./records/ratings.ts";
 import { Run } from "./records/run.ts";
 import { ScoreRequest, ScoreResult } from "./records/scorer.ts";
 import { Suite } from "./records/suite.ts";
@@ -228,6 +229,13 @@ export const RECORD_CONTRACTS: readonly RecordContract[] = [
     schema: Label,
     stability: "development",
     description: "One annotation on one trial for one measure.",
+  },
+  {
+    name: "ratingsImport",
+    id: "ichnaea.ratingsImport/1",
+    schema: RatingsImport,
+    stability: "development",
+    description: "Human-rated measures and ordinal calibration inputs from an offline import.",
   },
   {
     name: "calibration",

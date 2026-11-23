@@ -194,9 +194,12 @@ export class FileStore {
     createRun(records: RunRecords): Promise<void>;
     index(): Promise<RunIndexEntry[]>;
     read(run: string): Promise<StoredRun>;
+    readRatings(run: string, study: string): Promise<RatingsImport>;
     readonly root: string;
     runs(): Promise<string[]>;
     writeDecision(decision: Decision, suite: string): Promise<void>;
+    // Warning: (ae-forgotten-export) The symbol "RatingsImport" needs to be exported by the entry point index.d.ts
+    writeRatings(record: RatingsImport): Promise<void>;
 }
 
 // @public
@@ -291,6 +294,18 @@ export class ImportError extends Error {
 export interface ImportInput {
     readonly files: readonly string[];
     readonly options: Readonly<Record<string, unknown>>;
+}
+
+// @public
+export function importLabelStudio(input: ImportRatingsInput): Promise<RatingsImport>;
+
+// @public
+export interface ImportRatingsInput {
+    readonly file: string;
+    readonly key: string;
+    readonly registration: string;
+    readonly run: string;
+    readonly store: string;
 }
 
 // @public
