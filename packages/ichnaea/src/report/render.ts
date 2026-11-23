@@ -13,8 +13,56 @@ const md = (text: string | number): string =>
     .replaceAll(/[\\`*_[\]{}()#+!|~]/g, (c) => `\\${c}`);
 const cell = md;
 
+/** A descriptive table that both report formats render. */
+export interface ReportTable {
+  /** The table heading. */
+  readonly title: string;
+  /** How to read the values, if needed. */
+  readonly note?: string;
+  /** The column headers. */
+  readonly columns: readonly string[];
+  /** Cells in the same order as the headers. */
+  readonly rows: ReadonlyArray<readonly (string | number)[]>;
+}
+
+function markdownTable(table: ReportTable): string[] {
+  const row = (cells: readonly (string | number)[]): string => `| ${cells.map(md).join(" | ")} |`;
+  return [
+    `**${md(table.title)}**`,
+    "",
+    ...(table.note ? [md(table.note), ""] : []),
+    row(table.columns),
+    row(table.columns.map(() => "---")),
+    ...table.rows.map(row),
+    "",
+  ];
+}
+
+/** The title, lineage and descriptive tables for a one-arm report. */
+export type RunView = Pick<DecisionView, "title" | "lineage"> & {
+  readonly details: string;
+  readonly tables: readonly ReportTable[];
+};
+
+/** Renders a one-arm run before there is a decision. */
+export function renderRunMarkdown(view: RunView): string {
+  return [
+    `## ${md(view.title)}`,
+    "",
+    md(view.details),
+    "",
+    ...view.tables.flatMap(markdownTable),
+    "<details><summary>Lineage</summary>",
+    "",
+    ...view.lineage.map(([k, v]) => `- ${md(k)}: ${md(v)}`),
+    "",
+    "</details>",
+    "",
+  ].join("\n");
+}
+
 /** Renders the CI summary in Markdown (a GitHub job summary or a merge-request note). */
-export function renderMarkdown(view: DecisionView): string {
+export function renderMarkdown(view: DecisionView, tables: readonly ReportTable[] = []): string {
   const lines: string[] = [];
   lines.push(
     `## ${md(view.title)}`,
@@ -92,6 +140,7 @@ export function renderMarkdown(view: DecisionView): string {
       "",
       `**What differs between the arms**: ${view.differingFactors.map(md).join(", ")}`,
     );
+  if (tables.length > 0) lines.push("", ...tables.flatMap(markdownTable));
   lines.push("", "**Limitations**", "", ...view.limitations.map((l) => `- ${md(l)}`));
   lines.push(
     "",
@@ -111,6 +160,30 @@ const escape = (text: string | number): string =>
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
+
+function htmlTable(table: ReportTable): string {
+  const headers = table.columns.map((label) => `<th scope="col">${escape(label)}</th>`).join("");
+  const rows = table.rows.map(
+    (row) => `<tr>${row.map((value) => `<td>${escape(value)}</td>`).join("")}</tr>`,
+  );
+  return `<h2>${escape(table.title)}</h2>
+${table.note ? `<p>${escape(table.note)}</p>` : ""}
+<table><thead><tr>${headers}</tr></thead><tbody>${rows.join("\n")}</tbody></table>`;
+}
+
+function htmlLineage(lineage: DecisionView["lineage"]): string {
+  return `<footer><h2>Lineage</h2><dl>${lineage.map(([k, v]) => `<dt>${escape(k)}</dt><dd><code>${escape(v)}</code></dd>`).join("")}</dl></footer>`;
+}
+
+/** Renders a one-arm run as static HTML. */
+export function renderRunHtml(view: RunView): string {
+  return htmlPage(
+    view.title,
+    `<p>${escape(view.details)}</p>
+${view.tables.map(htmlTable).join("\n")}
+${htmlLineage(view.lineage)}`,
+  );
+}
 
 const VERDICT_CLASS: Readonly<Record<string, string>> = {
   PASS: "pass",
@@ -161,7 +234,7 @@ const num = (col: string, value: string | number, rowspan?: number, validated = 
  * and the verdict colours come from the Okabe–Ito palette, which is safe for the common forms of
  * colour blindness, in light and dark.
  */
-export function renderHtml(view: DecisionView): string {
+export function renderHtml(view: DecisionView, tables: readonly ReportTable[] = []): string {
   const badge = (verdict: string): string =>
     `<span class="badge ${VERDICT_CLASS[verdict] ?? "estimate"}">${escape(verdict)}</span>`;
   const rows = view.measures
@@ -192,27 +265,9 @@ export function renderHtml(view: DecisionView): string {
         `<tr><td>${escape(s.measure)}</td><td>${escape(s.imputation)}</td>${num("difference", s.difference)}${num("bound", s.bound, undefined, s.validated)}<td>${badge(s.verdict)}</td><td>${escape(s.changes)}</td></tr>`,
     )
     .join("\n");
-  return `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${escape(view.title)}</title>
-<style>
-:root { color-scheme: light dark; --fg: #1b1f24; --bg: #ffffff; --muted: #57606a; --line: #d0d7de; --pass: #0072b2; --regression: #d55e00; --inconclusive: #e69f00; --invalid: #cc79a7; --estimate: #56b4e9; }
-@media (prefers-color-scheme: dark) { :root { --fg: #e6edf3; --bg: #0d1117; --muted: #9da7b3; --line: #30363d; } }
-body { font: 15px/1.5 system-ui, sans-serif; color: var(--fg); background: var(--bg); max-width: 72rem; margin: 2rem auto; padding: 0 1rem; }
-table { border-collapse: collapse; width: 100%; margin: 1rem 0; } th, td { border-bottom: 1px solid var(--line); padding: .35rem .5rem; text-align: left; vertical-align: top; }
-td.num { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
-.badge { font-weight: 700; border: 2px solid; border-left-width: .5rem; border-radius: .3rem; padding: 0 .4rem; }
-.pass { border-color: var(--pass); } .regression { border-color: var(--regression); } .inconclusive { border-color: var(--inconclusive); } .invalid { border-color: var(--invalid); } .estimate { border-color: var(--estimate); }
-.muted, small { color: var(--muted); } code { overflow-wrap: anywhere; }
-figure { margin: .5rem 0 1rem; } svg text { fill: var(--muted); font-size: 10px; } .axis { stroke: var(--line); } .zero { stroke: var(--fg); } .margin { stroke: var(--regression); stroke-dasharray: 4 3; } .interval { stroke: var(--pass); stroke-width: 6; } .estimate { fill: var(--fg); }
-</style>
-</head>
-<body>
-<h1>${escape(view.title)}</h1>
-<p class="verdict">${badge(view.verdict)} <strong>${escape(view.claim)}</strong>: ${escape(view.reason)}</p>
+  return htmlPage(
+    view.title,
+    `<p class="verdict">${badge(view.verdict)} <strong>${escape(view.claim)}</strong>: ${escape(view.reason)}</p>
 <p class="muted">${escape(view.method)}</p>
 <table>
 <caption>Primary and secondary measures</caption>
@@ -233,7 +288,32 @@ ${view.sensitivity.length > 0 ? `<table><caption>Sensitivity analysis</caption><
 ${view.differingFactors.length > 0 ? `<h2>What differs between the arms</h2>${list(view.differingFactors)}` : ""}
 <h2>Limitations</h2>
 ${list(view.limitations)}
-<footer><h2>Lineage</h2><dl>${view.lineage.map(([k, v]) => `<dt>${escape(k)}</dt><dd><code>${escape(v)}</code></dd>`).join("")}</dl></footer>
+${tables.length ? `${tables.map(htmlTable).join("\n")}\n` : ""}${htmlLineage(view.lineage)}`,
+  );
+}
+
+function htmlPage(title: string, body: string): string {
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${escape(title)}</title>
+<style>
+:root { color-scheme: light dark; --fg: #1b1f24; --bg: #ffffff; --muted: #57606a; --line: #d0d7de; --pass: #0072b2; --regression: #d55e00; --inconclusive: #e69f00; --invalid: #cc79a7; --estimate: #56b4e9; }
+@media (prefers-color-scheme: dark) { :root { --fg: #e6edf3; --bg: #0d1117; --muted: #9da7b3; --line: #30363d; } }
+body { font: 15px/1.5 system-ui, sans-serif; color: var(--fg); background: var(--bg); max-width: 72rem; margin: 2rem auto; padding: 0 1rem; }
+table { border-collapse: collapse; width: 100%; margin: 1rem 0; } th, td { border-bottom: 1px solid var(--line); padding: .35rem .5rem; text-align: left; vertical-align: top; }
+td.num { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.badge { font-weight: 700; border: 2px solid; border-left-width: .5rem; border-radius: .3rem; padding: 0 .4rem; }
+.pass { border-color: var(--pass); } .regression { border-color: var(--regression); } .inconclusive { border-color: var(--inconclusive); } .invalid { border-color: var(--invalid); } .estimate { border-color: var(--estimate); }
+.muted, small { color: var(--muted); } code { overflow-wrap: anywhere; }
+figure { margin: .5rem 0 1rem; } svg text { fill: var(--muted); font-size: 10px; } .axis { stroke: var(--line); } .zero { stroke: var(--fg); } .margin { stroke: var(--regression); stroke-dasharray: 4 3; } .interval { stroke: var(--pass); stroke-width: 6; } .estimate { fill: var(--fg); }
+</style>
+</head>
+<body>
+<h1>${escape(title)}</h1>
+${body}
 </body>
 </html>
 `;

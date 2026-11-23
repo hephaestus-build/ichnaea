@@ -202,6 +202,8 @@ export async function createPlan(input: PlanInput): Promise<Plan> {
       throw new PlanError(
         `primary measure '${primary.measure}' has a ${measure.card.tier} card; only a card of tier primary can decide`,
       );
+    if (measure.card.valueType === "quantity")
+      throw new PlanError(`quantity measure '${primary.measure}' can only be secondary`);
     if (measure.card.valueType !== "binary") {
       binary = false;
       reasons.push(
@@ -256,6 +258,31 @@ export async function createPlan(input: PlanInput): Promise<Plan> {
       ...overrides.filter((o) => c.slices?.[o.slice] === o.value).map((o) => o.replicates),
     );
   const counts = selectedCases.map(trialsOf);
+  const reduction = suite.trialReduction;
+  if (reduction) {
+    const { measure, cases, k } = reduction;
+    const definition = input.measures.get(measure);
+    const isSelected =
+      suite.primary.some((p) => p.measure === measure) || suite.secondary?.includes(measure);
+    if (!isSelected || definition?.card.valueType !== "binary")
+      throw new PlanError(`trial reduction needs a selected binary measure, got '${measure}'`);
+    const plannedCounts = new Map(selectedCases.map((c) => [c.id, trialsOf(c)]));
+    if (new Set(cases).size !== cases.length)
+      throw new PlanError("trial reduction lists a case more than once");
+    for (const id of cases) {
+      const count = plannedCounts.get(id);
+      if (count === undefined)
+        throw new PlanError(`trial reduction case '${id}' is not selected in the suite`);
+      if (count < k)
+        throw new PlanError(
+          `trial reduction case '${id}' plans ${count} trials, fewer than k = ${k}`,
+        );
+    }
+  }
+  const quantities = (suite.secondary ?? []).flatMap((measure) => {
+    const card = input.measures.get(measure)?.card;
+    return card?.valueType === "quantity" ? [{ measure, unit: card.unit }] : [];
+  });
   // One trial per case and arm is validated for binary regression only (VALIDATION.md).
   const oneTrial = counts.every((n) => n === 1);
   if (suite.estimand === "fixed-cases" && Math.min(...counts) < 2 && !(oneTrial && binary))
@@ -352,6 +379,8 @@ export async function createPlan(input: PlanInput): Promise<Plan> {
     // Ichnaea's budget counts only the calls of the arms it runs.
     arms: arms.map((a) => (running.has(a.name) ? { ...a, runs: true as const } : a)),
     measures,
+    ...(reduction === undefined ? {} : { trialReduction: reduction }),
+    ...(quantities.length === 0 ? {} : { quantities }),
     primary: suite.primary,
     secondary: suite.secondary ?? [],
     hardGates: suite.hardGates ?? [],

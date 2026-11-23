@@ -1,12 +1,20 @@
 // REQ-15, REQ-17, REQ-19, REQ-22, REQ-31, REQ-52: import mode checks every record before it stores
 // anything, and stores the run atomically.
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import type { GateResult, MeasureValue, Trial } from "../../src/contracts/index.ts";
+import {
+  CaseId,
+  MeasureId,
+  type GateResult,
+  type MeasureValue,
+  type Suite,
+  type Trial,
+} from "../../src/contracts/index.ts";
 import { describe, expect, it } from "vitest";
 
+import { reportPlugin } from "../../src/report/index.ts";
 import { decide } from "../../src/decide/index.ts";
 import { card, scenario } from "../decide/support/scenario.ts";
 import {
@@ -35,11 +43,14 @@ async function setup(
     measures?: MeasureDefinition<`app/${string}`>[];
     gates?: GateDefinition<`app/${string}`>[];
     hardGates?: `app/${string}`[];
+    replicates?: number;
+    oneArm?: boolean;
+    suite?: (s: Suite) => Suite;
   } = {},
 ) {
   const s = await scenario({
     cases: 6,
-    replicates: 2,
+    replicates: extra.replicates ?? 2,
     base: () => 1,
     candidate: () => 1,
     hardGates: extra.hardGates ?? [],
@@ -47,7 +58,7 @@ async function setup(
   const dir = await mkdtemp(join(tmpdir(), "ichnaea-import-"));
   const file = (name: string, value: unknown): Promise<void> =>
     writeFile(join(dir, name), typeof value === "string" ? value : JSON.stringify(value));
-  await file("suite.json", s.suite);
+  await file("suite.json", extra.suite?.(s.suite) ?? s.suite);
   await file("case-set.json", s.caseSet);
   await file("cases.jsonl", s.cases.map((c) => JSON.stringify(c)).join("\n"));
   for (const a of s.plan.arms) await file(`${a.name}.json`, a.configuration);
@@ -65,7 +76,11 @@ async function setup(
         id: "app/runner",
         version: "2.0.0",
         description: "d",
-        run: async () => result(s.trials, s.values),
+        run: async () =>
+          result(
+            s.trials.filter((t) => !extra.oneArm || t.arm === s.plan.arms[0]?.name),
+            s.values.filter((v) => !extra.oneArm || v.trial.includes(`/${s.plan.arms[0]?.name}/`)),
+          ),
       },
     ],
     hooks: {
@@ -74,17 +89,18 @@ async function setup(
     },
   };
   const host = createHost({ plugins: [plugin] }, versions);
+  const arms = extra.oneArm ? s.plan.arms.slice(0, 1) : s.plan.arms;
   const store = join(dir, "store");
-  const go = () =>
+  const go = (run = "run-1", now = "2026-11-15T10:00:00Z") =>
     importRun({
       host,
       store,
-      run: "run-1",
+      run,
       importer: "app/runner",
       suite: join(dir, "suite.json"),
       caseSet: join(dir, "case-set.json"),
       cases: join(dir, "cases.jsonl"),
-      arms: s.plan.arms.map((a) => ({
+      arms: arms.map((a) => ({
         name: a.name,
         role: a.role,
         configuration: join(dir, `${a.name}.json`),
@@ -92,10 +108,10 @@ async function setup(
       files: [],
       trigger: "code",
       seed: 7,
-      now: "2026-11-15T10:00:00Z",
+      now,
       ichnaea: "0.0.0",
     });
-  return { s, go, store, seen };
+  return { s, go, store, seen, writeSuite: (suite: Suite) => file("suite.json", suite) };
 }
 
 describe("import mode", () => {
@@ -332,5 +348,202 @@ describe("import mode", () => {
     const { go } = await setup((trials, values) => ({ trials, values }));
     await go();
     await expect(go()).rejects.toThrow("run 'run-1' already exists");
+  });
+});
+
+async function summary(store: string, run = "run-1") {
+  const host = createHost({ plugins: [reportPlugin()], allowStability: ["alpha"] }, versions);
+  const out: string[] = [];
+  const command = host.commands.get("report");
+  if (!command) throw new Error("no report command");
+  const dir = join(store, "summary");
+  expect(
+    await command.run(
+      { positionals: [], values: { store, run, out: dir } },
+      {
+        ...host,
+        out: (line) => {
+          out.push(line);
+        },
+        hooks: host,
+      },
+    ),
+    out.join("\n"),
+  ).toBe(0);
+  return {
+    markdown: await readFile(join(dir, "summary.md"), "utf8"),
+    html: await readFile(join(dir, "report.html"), "utf8"),
+  };
+}
+
+describe("one-arm import and report", () => {
+  const count = MeasureId.parse("app/count");
+  const correct = MeasureId.parse("app/correct");
+  const registered = (s: Suite): Suite => ({
+    ...s,
+    trialReduction: {
+      measure: correct,
+      k: 3,
+      cases: ["case-000", "case-001", "case-002"].map((id) => CaseId.parse(id)),
+    },
+  });
+
+  it("stores the all-pass and any-pass indicators, and shows a missing case in both formats", async () => {
+    const { go, store } = await setup(
+      (trials, values) => {
+        const missing = "case-002/base/r2";
+        return {
+          trials: trials.filter((t) => t.id !== missing),
+          values: values
+            .filter((v) => v.trial !== missing)
+            .map((v) =>
+              v.trial === "case-001/base/r0" ? { ...v, value: { type: "binary", pass: false } } : v,
+            ),
+        };
+      },
+      { oneArm: true, replicates: 3, suite: registered },
+    );
+
+    await go();
+    const stored = await new FileStore(store).read("run-1");
+    expect(stored.run.trialReduction).toEqual({
+      cases: [
+        {
+          case: "case-000",
+          validTrials: 3,
+          plannedTrials: 3,
+          status: "observed",
+          passAll: 1,
+          passAny: 1,
+        },
+        {
+          case: "case-001",
+          validTrials: 3,
+          plannedTrials: 3,
+          status: "observed",
+          passAll: 0,
+          passAny: 1,
+        },
+        { case: "case-002", validTrials: 2, plannedTrials: 3, status: "missing" },
+      ],
+      overall: { status: "missing" },
+    });
+
+    const { markdown, html } = await summary(store);
+    const section = markdown
+      .slice(markdown.indexOf("| Case"), markdown.indexOf("<details>"))
+      .trim();
+    expect(section).toMatchInlineSnapshot(`
+      "| Case | Valid trials | pass^k | pass@k | Result |
+      | --- | --- | --- | --- | --- |
+      | case-000 | 3 of 3 | 100.0% | 100.0% | observed |
+      | case-001 | 3 of 3 | 0.0% | 100.0% | observed |
+      | case-002 | 2 of 3 | Missing | Missing | missing |
+      | Overall | 2 of 3 cases | Missing | Missing | missing |"
+    `);
+    expect(html).toContain(`<th scope="col">pass^k</th><th scope="col">pass@k</th>`);
+    expect(html).toContain("<td>case-002</td><td>2 of 3</td><td>Missing</td><td>Missing</td>");
+  });
+
+  it("labels estimates with more than k valid trials, including the overall reduction", async () => {
+    const { go, store } = await setup(
+      (trials, values) => ({
+        trials,
+        values: values.map((v) =>
+          v.trial === "case-000/base/r0" ? { ...v, value: { type: "binary", pass: false } } : v,
+        ),
+      }),
+      { oneArm: true, replicates: 4, suite: registered },
+    );
+    await go();
+    const { markdown } = await summary(store);
+    expect(markdown).toContain("| case-000 | 4 of 4 | 25.0% | 100.0% | estimate-only |");
+    expect(markdown).toContain("| Overall | 3 of 3 cases | 75.0% | 100.0% | estimate-only |");
+  });
+
+  it("counts completed binary evidence and system failures, leaving missing or inapplicable evidence out", async () => {
+    const { go, store } = await setup(
+      (trials, values) => ({
+        trials: trials.map((t): Trial => {
+          if (t.case === "case-000" && t.replicate === 0)
+            return { ...t, outcome: "system_failure" };
+          if (t.case === "case-000" && t.replicate === 1) return { ...t, outcome: "abstained" };
+          if (t.case === "case-001" && t.replicate === 0)
+            return { ...t, outcome: "infrastructure_failure" };
+          return t;
+        }),
+        values: values
+          .filter((v) => v.trial !== "case-000/base/r0")
+          .map((v) => (v.trial === "case-002/base/r0" ? { ...v, applicable: false } : v)),
+      }),
+      { oneArm: true, replicates: 3, suite: registered },
+    );
+    await go();
+    const { markdown } = await summary(store);
+    expect(markdown).toContain("| case-000 | 3 of 3 | 0.0% | 100.0% | observed |");
+    expect(markdown).toContain("| case-001 | 2 of 3 | Missing | Missing | missing |");
+    expect(markdown).toContain("| case-002 | 2 of 3 | Missing | Missing | missing |");
+  });
+
+  it("omits pass^k when a suite registers no reduction", async () => {
+    const { go, store } = await setup((trials, values) => ({ trials, values }), { oneArm: true });
+    await go();
+    expect((await new FileStore(store).read("run-1")).run.trialReduction).toBeUndefined();
+    expect((await summary(store)).markdown).not.toContain("pass^k");
+  });
+
+  it("refuses a reduction on a case outside the selected population", async () => {
+    const { go, store } = await setup((trials, values) => ({ trials, values }), {
+      oneArm: true,
+      replicates: 3,
+      suite: (s) => ({
+        ...s,
+        trialReduction: { measure: correct, k: 3, cases: [CaseId.parse("unknown")] },
+      }),
+    });
+    await expect(go()).rejects.toThrow("trial reduction case 'unknown' is not selected");
+    expect(await new FileStore(store).runs()).toEqual([]);
+  });
+
+  it("shows per-case quantities beside the previous run on the same suite digest", async () => {
+    let quantity = 4;
+    const definition = card("app/count", "quantity");
+    const { go, store, s, writeSuite } = await setup(
+      (trials, values) => ({
+        trials,
+        values: [
+          ...values,
+          ...values.map((v): MeasureValue => ({
+            ...v,
+            measure: count,
+            value: { type: "quantity", value: quantity },
+          })),
+        ],
+      }),
+      {
+        oneArm: true,
+        suite: (suite) => ({ ...suite, secondary: [count] }),
+        measures: [
+          card("app/correct") as MeasureDefinition<"app/correct">,
+          {
+            ...definition,
+            card: { ...definition.card, id: "app/count", unit: "items", tier: "secondary" },
+          },
+        ],
+      },
+    );
+    await go();
+    await writeSuite({ ...s.suite, secondary: [count], version: "other" });
+    quantity = 5;
+    await go("other", "2026-11-15T11:00:00Z");
+    await writeSuite({ ...s.suite, secondary: [count] });
+    quantity = 7;
+    await go("latest", "2026-11-15T12:00:00Z");
+    const { markdown } = await summary(store, "latest");
+    expect(markdown).toContain(String.raw`Previous run \(run-1\)`);
+    expect(markdown).toContain("| case-000 | 7 items, 7 items | 4 items, 4 items |");
+    quantity = 6;
+    await go("backfill", "2026-11-15T11:30:00Z");
+    expect((await summary(store, "latest")).markdown).toBe(markdown);
   });
 });

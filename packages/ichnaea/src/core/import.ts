@@ -16,6 +16,7 @@ import { scoreTrials } from "./measures.ts";
 import { createPlan } from "./planner.ts";
 import { recordProblems } from "./records.ts";
 import { FileStore, StoreError } from "./store.ts";
+import { runReduction } from "./trial-reduction.ts";
 
 /** What `ichnaea import` needs. */
 export interface ImportRunInput {
@@ -319,6 +320,11 @@ export async function importRun(
     })),
     { kind: "package", id: "@tumaet/ichnaea", version: input.ichnaea },
   ];
+  const trialReduction = runReduction(plan, trials, values);
+  const previousRun =
+    plan.arms.length === 1 && plan.quantities?.length
+      ? await store.previousOneArm(plan, input.now)
+      : undefined;
   const run = Run.parse({
     schema: "ichnaea.run/1",
     id: input.run,
@@ -345,6 +351,8 @@ export async function importRun(
         ? { trial: t.id, state: "recorded", outcome }
         : { trial: t.id, state: "planned", outcome: "not_run" };
     }),
+    ...(trialReduction === undefined ? {} : { trialReduction }),
+    ...(previousRun === undefined ? {} : { previousRun }),
     startedAt: input.now,
     completedAt: input.now,
   });

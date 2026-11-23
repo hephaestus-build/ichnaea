@@ -78,7 +78,8 @@
         "proportion",
         "score",
         "level",
-        "preference"
+        "preference",
+        "quantity"
       ],
       "description": "The kind of value that the measure gives.",
       "x-ichnaea-data": {

@@ -159,7 +159,7 @@ export const DigestRef = z.strictObject({
 
 /**
  * The result of one measurement or annotation, tagged by kind: a pass or fail, a score, a level
- * of an anchored scale, a preference between two outputs, an explicit `unknown` (a rater or judge
+ * of an anchored scale, a quantity in the measure card's unit, a preference between two outputs, an explicit `unknown` (a rater or judge
  * that cannot tell), or a proportion of items inside one
  * trial (for example the expected findings an output raised: 3 of 4). A schema cannot compare two
  * fields, so a proportion whose successes exceed its trials validates here. `proportionProblem`
@@ -168,6 +168,7 @@ export const DigestRef = z.strictObject({
 export const MeasuredValue = z.discriminatedUnion("type", [
   z.strictObject({ type: none(z.literal("binary")), pass: none(z.boolean()) }),
   z.strictObject({ type: none(z.literal("score")), value: none(Real) }),
+  z.strictObject({ type: none(z.literal("quantity")), value: none(z.number()) }),
   z.strictObject({
     type: none(z.literal("proportion")),
     successes: none(z.int().min(0)),

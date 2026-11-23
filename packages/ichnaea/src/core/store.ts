@@ -225,6 +225,40 @@ export class FileStore {
     return found;
   }
 
+  /**
+   * The ID of the latest completed one-arm run with the same suite and case set digests.
+   * A plan that cannot be read supplies no evidence of a matching suite.
+   */
+  async previousOneArm(plan: PlanRecord, startedAt: string): Promise<RunRecord["id"] | undefined> {
+    const started = Date.parse(startedAt);
+    let previous: RunRecord | undefined;
+    for (const id of await this.runs()) {
+      const directory = this.dir(id);
+      const source = await readOptional(join(directory, "plan.json"));
+      if (source === undefined) continue;
+      let record: PlanRecord;
+      try {
+        record = parseOne(source, Plan, `${id}/plan.json`);
+      } catch (error) {
+        if (!(error instanceof StoreError)) throw error;
+        continue;
+      }
+      if (
+        record.arms.length !== 1 ||
+        record.suiteDigest !== plan.suiteDigest ||
+        record.caseSetDigest !== plan.caseSetDigest
+      )
+        continue;
+      const text = await readOptional(join(directory, "run.json"));
+      if (text === undefined) continue;
+      const run = parseOne(text, Run, `${id}/run.json`);
+      const end = Date.parse(run.completedAt ?? "");
+      if (end > started || !Number.isFinite(end)) continue;
+      if (!previous || end >= Date.parse(previous.completedAt ?? "")) previous = run;
+    }
+    return previous?.id;
+  }
+
   /** The run index, oldest first. */
   async index(): Promise<RunIndexEntry[]> {
     return parseLines(

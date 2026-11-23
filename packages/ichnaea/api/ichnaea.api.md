@@ -193,6 +193,7 @@ export class FileStore {
     }[]>;
     createRun(records: RunRecords): Promise<void>;
     index(): Promise<RunIndexEntry[]>;
+    previousOneArm(plan: Plan, startedAt: string): Promise<Run["id"] | undefined>;
     read(run: string): Promise<StoredRun>;
     readonly root: string;
     runs(): Promise<string[]>;
@@ -578,10 +579,16 @@ export interface RecomputeResult {
 export function recordProblems(records: Omit<RunRecords, "plan" | "run">): string[];
 
 // @public
-export function renderHtml(view: DecisionView): string;
+export function renderHtml(view: DecisionView, tables?: readonly ReportTable[]): string;
 
 // @public
-export function renderMarkdown(view: DecisionView): string;
+export function renderMarkdown(view: DecisionView, tables?: readonly ReportTable[]): string;
+
+// @public
+export function renderRunHtml(view: RunView): string;
+
+// @public
+export function renderRunMarkdown(view: RunView): string;
 
 // @public
 export function report(decision: Decision, options: ReportOptions): string;
@@ -602,6 +609,14 @@ export interface ReportOptions {
 export function reportPlugin(): Plugin<"report">;
 
 // @public
+export interface ReportTable {
+    readonly columns: readonly string[];
+    readonly note?: string;
+    readonly rows: ReadonlyArray<readonly (string | number)[]>;
+    readonly title: string;
+}
+
+// @public
 export interface RunIndexEntry {
     readonly decidedAt: string;
     readonly plan: string;
@@ -618,6 +633,12 @@ export interface RunRecords {
     readonly trials: readonly Trial[];
     readonly values: readonly MeasureValue[];
 }
+
+// @public
+export type RunView = Pick<DecisionView, "title" | "lineage"> & {
+    readonly details: string;
+    readonly tables: readonly ReportTable[];
+};
 
 // @public
 export function satisfies(version: string, range: string): boolean;

@@ -87,7 +87,8 @@
         "proportion",
         "score",
         "level",
-        "preference"
+        "preference",
+        "quantity"
       ]
     },
     "levels": {

@@ -16,3 +16,22 @@ refuses (`ReportError`).
   claim are not allowed, and a lineage footer is required.
 - The HTML report has no JavaScript and no external resource. Every verdict is written out, so its
   meaning never rests on colour. The colours come from the Okabe–Ito palette.
+
+## One-arm runs
+
+Run `ichnaea report --run <id>` after import. A one-arm run can be reported as soon as it is
+stored. To report both pass^k and pass@k, add `trialReduction` to the suite before collecting
+trials. Set `measure` to the ID of a binary measure in the suite, `k` to the number of trials
+of interest, and `cases` to the IDs in the registered population. A passing value on that
+measure defines success. The plan pins this declaration before the importer reads any trial
+records.
+
+With exactly k valid values, the report gives the observed all-pass and any-pass indicators.
+With more values, it gives both estimates and labels them estimate-only. With fewer, it gives
+missing. The overall row gives each registered case equal weight and needs a value from every
+case. Reports show these reductions for one-arm runs, and the reductions do not decide a verdict.
+
+Secondary measures with value type `quantity` display each case's values in trial order, with
+the unit on the measure card. When import finds a previous one-arm run with the same suite and
+case set digests, it records that run for comparison. A quantity is comparable if its measure
+card has the same digest in both runs.

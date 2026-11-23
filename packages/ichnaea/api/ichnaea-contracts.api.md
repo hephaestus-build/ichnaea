@@ -1883,6 +1883,9 @@ export const Label: z.ZodObject<{
             }>;
         }, z.core.$strict>]>;
     }, z.core.$strict>, z.ZodObject<{
+        type: z.ZodLiteral<"quantity">;
+        value: z.ZodNumber;
+    }, z.core.$strict>, z.ZodObject<{
         type: z.ZodLiteral<"proportion">;
         successes: z.ZodInt;
         trials: z.ZodInt;
@@ -1942,6 +1945,9 @@ export const LabelValue: z.ZodDiscriminatedUnion<[z.ZodObject<{
             nan: "nan";
         }>;
     }, z.core.$strict>]>;
+}, z.core.$strict>, z.ZodObject<{
+    type: z.ZodLiteral<"quantity">;
+    value: z.ZodNumber;
 }, z.core.$strict>, z.ZodObject<{
     type: z.ZodLiteral<"proportion">;
     successes: z.ZodInt;
@@ -2104,6 +2110,7 @@ export const MeasureCard: z.ZodObject<{
         level: "level";
         preference: "preference";
         proportion: "proportion";
+        quantity: "quantity";
         score: "score";
     }>;
     levels: z.ZodOptional<z.ZodArray<z.ZodString>>;
@@ -2392,6 +2399,9 @@ export const MeasuredValue: z.ZodDiscriminatedUnion<[z.ZodObject<{
         }>;
     }, z.core.$strict>]>;
 }, z.core.$strict>, z.ZodObject<{
+    type: z.ZodLiteral<"quantity">;
+    value: z.ZodNumber;
+}, z.core.$strict>, z.ZodObject<{
     type: z.ZodLiteral<"proportion">;
     successes: z.ZodInt;
     trials: z.ZodInt;
@@ -2673,6 +2683,9 @@ export const MeasureValue: z.ZodObject<{
                 nan: "nan";
             }>;
         }, z.core.$strict>]>;
+    }, z.core.$strict>, z.ZodObject<{
+        type: z.ZodLiteral<"quantity">;
+        value: z.ZodNumber;
     }, z.core.$strict>, z.ZodObject<{
         type: z.ZodLiteral<"proportion">;
         successes: z.ZodInt;
@@ -3056,6 +3069,15 @@ export const Plan: z.ZodObject<{
         version: z.ZodString;
         digest: z.ZodOptional<z.ZodString>;
     }, z.core.$strict>>;
+    trialReduction: z.ZodOptional<z.ZodObject<{
+        measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+        k: z.ZodInt;
+        cases: z.ZodArray<z.core.$ZodBranded<z.ZodString, "CaseId", "out">>;
+    }, z.core.$strict>>;
+    quantities: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+        unit: z.ZodString;
+    }, z.core.$strict>>>;
     primary: z.ZodArray<z.ZodObject<{
         measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
         margin: z.ZodNumber;
@@ -3702,6 +3724,13 @@ export const RecordDataClass: z.ZodEnum<{
 export const REFUSED_MARGIN = "the plan carries no planning statement, and its margin is refused";
 
 // @public
+export const RegisteredTrialReduction: z.ZodObject<{
+    measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+    k: z.ZodInt;
+    cases: z.ZodArray<z.core.$ZodBranded<z.ZodString, "CaseId", "out">>;
+}, z.core.$strict>;
+
+// @public
 export const Replay: z.ZodObject<{
     stage: z.ZodString;
     path: z.ZodString;
@@ -3869,6 +3898,35 @@ export const Run: z.ZodObject<{
             system_failure: "system_failure";
         }>>;
     }, z.core.$strict>>;
+    trialReduction: z.ZodOptional<z.ZodObject<{
+        cases: z.ZodArray<z.ZodDiscriminatedUnion<[z.ZodObject<{
+            validTrials: z.ZodInt;
+            plannedTrials: z.ZodInt;
+            case: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
+            status: z.ZodLiteral<"missing">;
+        }, z.core.$strict>, z.ZodObject<{
+            validTrials: z.ZodInt;
+            plannedTrials: z.ZodInt;
+            case: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
+            status: z.ZodEnum<{
+                "estimate-only": "estimate-only";
+                observed: "observed";
+            }>;
+            passAll: z.ZodNumber;
+            passAny: z.ZodNumber;
+        }, z.core.$strict>], "status">>;
+        overall: z.ZodDiscriminatedUnion<[z.ZodObject<{
+            status: z.ZodLiteral<"missing">;
+        }, z.core.$strict>, z.ZodObject<{
+            status: z.ZodEnum<{
+                "estimate-only": "estimate-only";
+                observed: "observed";
+            }>;
+            passAll: z.ZodNumber;
+            passAny: z.ZodNumber;
+        }, z.core.$strict>], "status">;
+    }, z.core.$strict>>;
+    previousRun: z.ZodOptional<z.core.$ZodBranded<z.ZodString, "RunId", "out">>;
     startedAt: z.ZodISODateTime;
     completedAt: z.ZodOptional<z.ZodISODateTime>;
 }, z.core.$strict>;
@@ -3915,6 +3973,39 @@ export const RunProfile: z.ZodObject<{
     }, z.core.$strict>>;
     shards: z.ZodOptional<z.ZodInt>;
 }, z.core.$strict>;
+
+// @public
+export const RunReduction: z.ZodObject<{
+    cases: z.ZodArray<z.ZodDiscriminatedUnion<[z.ZodObject<{
+        validTrials: z.ZodInt;
+        plannedTrials: z.ZodInt;
+        case: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
+        status: z.ZodLiteral<"missing">;
+    }, z.core.$strict>, z.ZodObject<{
+        validTrials: z.ZodInt;
+        plannedTrials: z.ZodInt;
+        case: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
+        status: z.ZodEnum<{
+            "estimate-only": "estimate-only";
+            observed: "observed";
+        }>;
+        passAll: z.ZodNumber;
+        passAny: z.ZodNumber;
+    }, z.core.$strict>], "status">>;
+    overall: z.ZodDiscriminatedUnion<[z.ZodObject<{
+        status: z.ZodLiteral<"missing">;
+    }, z.core.$strict>, z.ZodObject<{
+        status: z.ZodEnum<{
+            "estimate-only": "estimate-only";
+            observed: "observed";
+        }>;
+        passAll: z.ZodNumber;
+        passAny: z.ZodNumber;
+    }, z.core.$strict>], "status">;
+}, z.core.$strict>;
+
+// @public
+export type RunReduction = z.infer<typeof RunReduction>;
 
 // @public
 export const Runtime: z.ZodObject<{
@@ -4401,6 +4492,11 @@ export const Suite: z.ZodObject<{
         reason: z.ZodString;
     }, z.core.$strict>>>;
     alpha: z.ZodOptional<z.ZodNumber>;
+    trialReduction: z.ZodOptional<z.ZodObject<{
+        measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+        k: z.ZodInt;
+        cases: z.ZodArray<z.core.$ZodBranded<z.ZodString, "CaseId", "out">>;
+    }, z.core.$strict>>;
     primary: z.ZodArray<z.ZodObject<{
         measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
         margin: z.ZodNumber;

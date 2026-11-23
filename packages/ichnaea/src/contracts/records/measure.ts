@@ -25,7 +25,7 @@ export const MeasureCard = z.strictObject({
   operationalDefinition: none(Text.describe("How a value is computed from an answer.")),
   valueType: none(
     z
-      .enum(["binary", "proportion", "score", "level", "preference"])
+      .enum(["binary", "proportion", "score", "level", "preference", "quantity"])
       .describe("The kind of value that the measure gives."),
   ),
   levels: none(z.array(Text).min(2).describe("The ordered levels of a level measure.")).optional(),

@@ -185,6 +185,38 @@
           "properties": {
             "type": {
               "type": "string",
+              "const": "quantity",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "value": {
+              "type": "number",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            }
+          },
+          "required": [
+            "type",
+            "value"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
               "const": "proportion",
               "x-ichnaea-data": {
                 "class": "none",
@@ -323,7 +355,7 @@
           "properties": {
             "type": {
               "type": "string",
-              "pattern": "^(?!(?:binary|score|proportion|level|preference|unknown)$)"
+              "pattern": "^(?!(?:binary|score|quantity|proportion|level|preference|unknown)$)"
             }
           },
           "required": [

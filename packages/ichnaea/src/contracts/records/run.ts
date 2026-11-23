@@ -1,7 +1,16 @@
 import * as z from "zod";
 
 import { CLOSED_KEY, none } from "../data-class.ts";
-import { PlanDigest, RunId, SemVer, Text, Timestamp, TrialId } from "../primitives.ts";
+import {
+  CaseId,
+  PlanDigest,
+  Probability,
+  RunId,
+  SemVer,
+  Text,
+  Timestamp,
+  TrialId,
+} from "../primitives.ts";
 import { Arm, LineageItem } from "./plan.ts";
 import { Outcome } from "./trial.ts";
 
@@ -21,6 +30,38 @@ export const LedgerEntry = z.strictObject({
   state: none(z.enum(["planned", "running", "recorded"])),
   outcome: none(Outcome, { [CLOSED_KEY]: true }).optional(),
 });
+
+const reductionCounts = {
+  validTrials: none(z.int().min(0)),
+  plannedTrials: none(z.int().min(1)),
+};
+
+/** What the registered reduction found for one planned case. */
+const CaseReduction = z.discriminatedUnion("status", [
+  z.strictObject({ case: none(CaseId), ...reductionCounts, status: none(z.literal("missing")) }),
+  z.strictObject({
+    case: none(CaseId),
+    ...reductionCounts,
+    status: none(z.enum(["observed", "estimate-only"])),
+    passAll: none(Probability),
+    passAny: none(Probability),
+  }),
+]);
+
+/** The case results and their equal-weight summary for a one-arm run. */
+export const RunReduction = z.strictObject({
+  cases: z.array(CaseReduction).min(1),
+  overall: z.discriminatedUnion("status", [
+    z.strictObject({ status: none(z.literal("missing")) }),
+    z.strictObject({
+      status: none(z.enum(["observed", "estimate-only"])),
+      passAll: none(Probability),
+      passAny: none(Probability),
+    }),
+  ]),
+});
+/** Stored values for pass^k and pass@k. */
+export type RunReduction = z.infer<typeof RunReduction>;
 
 /**
  * A run: the ledger of a plan's trials, the configurations it ran (with their identities, so a
@@ -48,6 +89,9 @@ export const Run = z.strictObject({
   arms: z.array(Arm).min(1),
   lineage: z.array(LineageItem),
   ledger: z.array(LedgerEntry),
+  trialReduction: RunReduction.optional(),
+  /** The earlier one-arm run selected for the quantity comparison when this run was stored. */
+  previousRun: none(RunId).optional(),
   startedAt: none(Timestamp),
   completedAt: none(Timestamp).optional(),
 });

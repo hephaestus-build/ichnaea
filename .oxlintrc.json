@@ -127,12 +127,13 @@
               {
                 "group": [
                   "../stats/**",
+                  "!../stats/reduce.ts",
                   "../decide/**",
                   "../report/**",
                   "../index.ts",
                   "**/index.ts"
                 ],
-                "message": "src/core imports only src/contracts from the other areas. A module imports the file that defines what it uses, never an index.ts barrel."
+                "message": "src/core imports src/contracts and the trial reduction it applies on import. A module imports the file that defines what it uses, never an index.ts barrel."
               },
               {
                 "group": ["@*/ichnaea", "@*/ichnaea/**"],

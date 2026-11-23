@@ -3,6 +3,7 @@ import * as z from "zod";
 import { none } from "../data-class.ts";
 import {
   CalendarDate,
+  CaseId,
   CaseSetId,
   Digest,
   GateId,
@@ -73,6 +74,13 @@ export const CaseSetRef = z.strictObject({
   digest: none(Digest).optional(),
 });
 
+/** Register a binary measure's passing value as success on these cases, for both reductions. */
+export const RegisteredTrialReduction = z.strictObject({
+  measure: none(MeasureId),
+  k: none(z.int().min(1)),
+  cases: none(z.array(CaseId).min(1)),
+});
+
 /** A suite: what an application declares it evaluates (REQ-16, REQ-115). It names no system. */
 export const Suite = z.strictObject({
   schema: none(z.literal("ichnaea.suite/1")),
@@ -92,6 +100,7 @@ export const Suite = z.strictObject({
   replicates: none(z.int().min(1)),
   replicatesFor: z.array(ReplicatesFor).optional(),
   alpha: none(z.number().gt(0).lt(0.5)).optional(),
+  trialReduction: RegisteredTrialReduction.optional(),
   primary: z.array(PrimaryMeasure),
   secondary: none(z.array(MeasureId)).optional(),
   hardGates: none(z.array(GateId)).optional(),
