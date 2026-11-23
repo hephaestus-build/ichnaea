@@ -949,11 +949,9 @@ function onlyTheFloor(c: Comparison | undefined, effective: number): boolean {
  * NON-INFERIOR when both results of the comparison are validated and the one-sided lower bound
  * exceeds −(δ − s), each at the unadjusted level (intersection-union, so a PASS needs no
  * adjustment); otherwise REGRESSION when the regression result is validated and the regression test
- * rejects Δ ≥ 0 after Holm across the comparisons whose regression result is validated; otherwise
- * INCONCLUSIVE. Holm covers only the tests that can produce REGRESSION, and a comparison whose
- * regression result is not validated cannot (decision 0008), so it stays out of the family. Whether
- * a result is validated depends on the cases, trials and margin, not on the outcomes, so the family
- * still holds the error rate at α. The measures are decided in order with one generator from
+ * rejects Δ ≥ 0 after Holm across the primary measures declared in the plan; otherwise
+ * INCONCLUSIVE. An unavailable or unvalidated regression test contributes p = 1 to that fixed
+ * family. The measures are decided in order with one generator from
  * `seed`, so the same counts give the same verdicts.
  */
 export function decidePrimaries(input: PrimariesInput): Map<string, PrimaryVerdict> {
@@ -1035,13 +1033,16 @@ export function decidePrimariesWith(
       });
     }
   }
-  const family = [...verdicts.entries()].filter(
-    ([, v]) => v.comparison?.regression.validated === true,
+  const family = [...verdicts.entries()];
+  const pAdjusted = holm(
+    family.map(([, { comparison }]) =>
+      comparison?.regression.validated ? comparison.regressionP : 1,
+    ),
   );
-  const pAdjusted = holm(family.map(([, v]) => (v.comparison as Comparison).regressionP));
   family.forEach(([id, v], i) => {
+    const { comparison } = v;
+    if (!comparison?.regression.validated) return;
     const pa = pAdjusted[i] as number;
-    const comparison = v.comparison as Comparison;
     if (pa > input.alpha) {
       verdicts.set(id, { ...v, regressionPAdjusted: pa });
       return;

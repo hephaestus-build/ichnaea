@@ -18,7 +18,7 @@ A run verdict is reached in this order (decision 0011):
      validated, and the one-sided bound clears the margin less its safety margin. Each measure is
      tested at the unadjusted level.
    - REGRESSION when the regression result is validated and the regression test rejects after Holm
-     across the comparisons whose regression result is validated.
+     across the primary measures declared in the plan. Unavailable or unvalidated tests count as p = 1.
    - INCONCLUSIVE otherwise, with the reason.
 
    The run is PASS only when every primary measure is non-inferior.

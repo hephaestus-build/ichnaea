@@ -16,8 +16,8 @@ pass on an interval whose coverage is not shown.
 - The decision record carries both results, with the names and shape of decision 0009, on every
   comparison and every sensitivity result. There is no unnamed `validated` flag. A result that is
   not validated names at least one limitation, and a validated result names none.
-- REGRESSION needs `regression.validated`. The Holm family is the comparisons whose regression
-  result is validated.
+- REGRESSION needs `regression.validated`. REQ-51 fixes the Holm family at the primary measures
+  declared in the plan. An unavailable or unvalidated regression test counts as p = 1.
 - NON-INFERIOR, and so PASS, needs both results validated.
 - A measure that does not regress and whose non-inferiority result is not validated is
   INCONCLUSIVE, and the reason names why. When the unset floor is the only cause for every primary
@@ -31,8 +31,8 @@ pass on an interval whose coverage is not shown.
 - `packages/decide/test/floor.test.ts` decides a grid of cases, trials, rates, changes and margins
   while the floor is not set: no measure is NON-INFERIOR, and both REGRESSION and INCONCLUSIVE
   occur.
-- The false REGRESSION rate stays at or below α with Holm over the regression-validated family:
-  0.022 at 2 trials and 0.029 at 3 (`test:sim`).
+- The simulation in `test/decide/req51.sim.test.ts` checks the false REGRESSION rate with four
+  correlated primary measures at 2 and 3 trials.
 
 ## Consequences
 

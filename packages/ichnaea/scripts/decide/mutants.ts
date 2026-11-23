@@ -466,10 +466,10 @@ export const MUTANTS: readonly Mutant[] = [
     to: "      if (!comparison.nonInferiority.validated) {",
   },
   {
-    id: "validity: Holm family over non-inferiority validity",
+    id: "validity: Holm uses non-inferiority validity to select p-values",
     file: D,
-    from: "    ([, v]) => v.comparison?.regression.validated === true,",
-    to: "    ([, v]) => v.comparison?.nonInferiority.validated === true,",
+    from: "comparison?.regression.validated ? comparison.regressionP : 1,",
+    to: "comparison?.nonInferiority.validated ? comparison.regressionP : 1,",
   },
   {
     id: "validity: the record copies the regression result into nonInferiority",
@@ -572,10 +572,10 @@ export const MUTANTS: readonly Mutant[] = [
     to: "const pAdjusted = ((x: number[]) => x)(",
   },
   {
-    id: "Holm over unvalidated comparisons too",
+    id: "Holm drops unavailable and unvalidated comparisons",
     file: D,
-    from: "    ([, v]) => v.comparison?.regression.validated === true,",
-    to: "    ([, v]) => v.comparison !== undefined,",
+    from: "const family = [...verdicts.entries()];",
+    to: "const family = [...verdicts.entries()].filter(([, v]) => v.comparison?.regression.validated);",
   },
   {
     id: "Holm boundary",

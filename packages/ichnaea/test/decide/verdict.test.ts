@@ -245,11 +245,8 @@ describe("the INCONCLUSIVE reason names its cause", () => {
     );
   });
 
-  it("names missing trials only for the measure that misses them", async () => {
-    // app/a misses no trial; its candidate fails one trial in 5 cases, a REGRESSION on its own.
-    // app/b, app/c and app/d have no candidate value in case-000, so their comparisons are outside
-    // the validated domain and outside the Holm family. Imputing their missing trials brings them
-    // into the family, and app/a no longer regresses.
+  it("keeps the plan's Holm family when three comparisons lose coverage (REQ-51)", async () => {
+    // app/a fails one trial in 5 cases, enough for a REGRESSION if it were the only primary.
     const s = await scenario({
       cases: 60,
       replicates: 3,
@@ -259,25 +256,78 @@ describe("the INCONCLUSIVE reason names its cause", () => {
       measures: ["app/a", "app/b", "app/c", "app/d"],
     });
     const trials = new Map(s.trials.map((t) => [t.id as string, t]));
-    const values = s.values.flatMap((v) => {
+    const complete = s.values.map((v) => {
       const t = trials.get(v.trial);
-      if (t?.arm !== "candidate") return [v];
-      if (v.measure !== "app/a") return t.case === "case-000" ? [] : [v];
+      if (t?.arm !== "candidate" || v.measure !== "app/a") return v;
       const index = Number(t.case?.slice(5));
       return index >= 1 && index <= 5 && t.replicate === 0
+        ? { ...v, value: { type: "binary" as const, pass: false } }
+        : v;
+    });
+    const values = complete.filter((v) => {
+      const t = trials.get(v.trial);
+      return v.measure === "app/a" || t?.arm !== "candidate" || t.case !== "case-000";
+    });
+    const baseline = await run({ ...s, values: complete });
+    const d = await run({ ...s, values });
+    expect(baseline.verdict).toBe("INCONCLUSIVE");
+    expect(d.verdict).toBe("INCONCLUSIVE");
+    expect(d.measures[0]?.comparisons[0]?.regression.validated).toBe(true);
+    expect(d.measures[0]?.comparisons[0]?.regressionP).toBeCloseTo(0.03125);
+    expect(d.measures[0]?.comparisons[0]?.regressionPAdjusted).toBeCloseTo(0.125);
+    expect(d.measures[0]?.comparisons[0]).toEqual(baseline.measures[0]?.comparisons[0]);
+    expect(d.measures.map((m) => m.verdict)).toEqual(Array(4).fill("INCONCLUSIVE"));
+    for (const measure of d.measures.slice(1)) {
+      expect(measure.comparisons[0]?.regression.validated).toBe(false);
+    }
+    expect(d.missingness.sensitivity).toBe("unchanged");
+  });
+
+  it("names missing trials in other primaries when their imputation changes a verdict", async () => {
+    const s = await scenario({
+      cases: 60,
+      replicates: 3,
+      base: () => 1,
+      candidate: () => 1,
+      margin: 0.05,
+      measures: ["app/a", "app/b"],
+    });
+    const trials = new Map(s.trials.map((t) => [t.id as string, t]));
+    const values = s.values.flatMap((v) => {
+      const t = trials.get(v.trial);
+      if (t === undefined) throw new Error("expected a trial for each value");
+      // The missing candidate value in a case where both arms failed can favor app/b on imputation.
+      if (v.measure === "app/b" && t.case === "case-000") {
+        if (t.arm === "candidate" && t.replicate === 0) return [];
+        return [{ ...v, value: { type: "binary" as const, pass: false } }];
+      }
+      // app/b rejects at α/2 and app/a at α. After imputation, app/a's p is the smallest.
+      const index = Number(t.case?.slice(5));
+      return t.arm === "candidate" &&
+        t.replicate === 0 &&
+        index >= 1 &&
+        index <= (v.measure === "app/a" ? 5 : 6)
         ? [{ ...v, value: { type: "binary" as const, pass: false } }]
         : [v];
     });
-    const d = await run({ ...s, values });
+    const d = run({ ...s, values });
+    const a = d.measures[0];
     expect(d.verdict).toBe("INCONCLUSIVE");
-    expect(d.measures.map((m) => m.verdict)).toEqual(Array(4).fill("INCONCLUSIVE"));
-    expect(d.reason).toBe(
-      "Not every primary measure was shown non-inferior. Measure app/a: imputing the missing trials of other primary measures against the verdict changes it. Measures app/b, app/c and app/d: their comparisons are outside the validated domain. This is not a pass.",
+    expect(a?.coverage).toBe(1);
+    expect(a?.comparisons[0]?.regressionPAdjusted).toBeLessThan(s.plan.alpha);
+    expect(a?.sensitivity).toContainEqual(
+      expect.objectContaining({
+        imputation: "against-regression",
+        changesVerdict: true,
+        verdict: "INCONCLUSIVE",
+      }),
     );
-    expect(d.measures[0]?.notes).toContain(
+    expect(d.reason).toContain(
+      "Measure app/a: imputing the missing trials of other primary measures against the verdict changes it",
+    );
+    expect(a?.notes).toContain(
       "imputing the missing trials of other primary measures against this verdict changes it, so it is INCONCLUSIVE (see the sensitivity analysis)",
     );
-    expect(d.reason).not.toMatch(/its missing trials/);
   });
 });
 

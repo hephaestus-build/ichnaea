@@ -53,7 +53,7 @@ describe("intersection-union and Holm (REQ-51)", () => {
   it("while the margin floor is not set, the same four are INCONCLUSIVE, and Holm still covers them", () => {
     const verdicts = decideAll(four(0.08));
     const raw = [...verdicts.values()].map((v) => v.comparison?.regressionP as number);
-    // The family is the comparisons whose regression result is validated: all four.
+    // All four primaries have a validated regression result.
     expect([...verdicts.values()].map((v) => v.regressionPAdjusted)).toEqual(holm(raw));
     for (const v of verdicts.values()) {
       expect(v.comparison?.regression.validated).toBe(true);
@@ -69,18 +69,24 @@ describe("intersection-union and Holm (REQ-51)", () => {
     }
   });
 
-  it("Holm covers only validated comparisons, which alone can produce REGRESSION", () => {
-    // One validated comparison regresses with raw p in (α/4, α); three tiny ones are unvalidated.
+  it("counts unavailable and unvalidated comparisons as p = 1 in Holm", () => {
+    // One comparison has raw p in (α/4, α); two are unvalidated and one has no data.
     const verdicts = decideAll([
       measure("app/a", counts(60, 3, 5), 0.05),
-      ...["app/b", "app/c", "app/d"].map((id) => measure(id, counts(4, 3, 0), 0.05)),
+      ...["app/b", "app/c"].map((id) => measure(id, counts(4, 3, 0), 0.05)),
+      measure("app/d", [], 0.05),
     ]);
     const a = verdicts.get("app/a");
     expect(a?.comparison?.regressionP).toBeGreaterThan(0.05 / 4);
-    expect(a?.regressionPAdjusted).toBe(a?.comparison?.regressionP);
-    expect(a?.verdict).toBe("REGRESSION");
-    for (const id of ["app/b", "app/c", "app/d"])
+    expect(a?.comparison?.regressionP).toBeLessThan(0.05);
+    expect(a?.regressionPAdjusted).toBeCloseTo(0.125);
+    expect(a?.verdict).toBe("INCONCLUSIVE");
+    for (const id of ["app/b", "app/c"])
       expect(verdicts.get(id)).toMatchObject({ verdict: "INCONCLUSIVE", cause: "unvalidated" });
+    expect(verdicts.get("app/d")).toMatchObject({
+      verdict: "INCONCLUSIVE",
+      cause: "no-comparison",
+    });
   });
 
   it("an adjusted p-value equal to α rejects", () => {
