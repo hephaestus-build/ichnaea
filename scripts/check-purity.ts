@@ -9,8 +9,20 @@
 // private records only, such as a pull request title and body that CI passes in environment
 // variables.
 import { readFileSync } from "node:fs";
+import { extname, relative, sep } from "node:path";
 import { parseArgs } from "node:util";
 
+import ts from "typescript-compiler";
+
+import {
+  inspectSource,
+  inspectTree,
+  lineOf,
+  moduleReference,
+  moduleResolver,
+  projectSources,
+  typescriptFile,
+} from "./lint-typescript.ts";
 import { trackedFiles } from "./tracked-files.ts";
 
 /**
@@ -78,6 +90,128 @@ export function findViolations(files: ReadonlyArray<{ path: string; text: string
   return findings;
 }
 
+const eventAction = /^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$/;
+const equality = new Set([
+  ts.SyntaxKind.EqualsEqualsToken,
+  ts.SyntaxKind.EqualsEqualsEqualsToken,
+  ts.SyntaxKind.ExclamationEqualsToken,
+  ts.SyntaxKind.ExclamationEqualsEqualsToken,
+]);
+
+function comparison(node: ts.Node) {
+  if (!ts.isBinaryExpression(node) || !equality.has(node.operatorToken.kind)) return undefined;
+  const { left, right } = node;
+  if (ts.isStringLiteralLike(right)) return { input: left, literal: right };
+  if (ts.isStringLiteralLike(left)) return { input: right, literal: left };
+  return undefined;
+}
+
+/** The literal entries of an array or Set at a membership check. */
+function members(expression: ts.Expression, checker: ts.TypeChecker): readonly ts.Expression[] {
+  let value = expression;
+  if (ts.isIdentifier(value)) {
+    const declaration = checker.getSymbolAtLocation(value)?.valueDeclaration;
+    if (declaration && ts.isVariableDeclaration(declaration) && declaration.initializer)
+      value = declaration.initializer;
+  }
+  if (
+    ts.isNewExpression(value) &&
+    ts.isIdentifier(value.expression) &&
+    value.expression.text === "Set"
+  )
+    value = value.arguments?.[0] ?? value;
+  if (ts.isAsExpression(value) || ts.isSatisfiesExpression(value)) value = value.expression;
+  return ts.isArrayLiteralExpression(value) ? value.elements : [];
+}
+
+function isOpen(type: ts.Type): boolean {
+  const open = ts.TypeFlags.String | ts.TypeFlags.Any | ts.TypeFlags.Unknown;
+  return (type.flags & open) !== 0 || (type.isUnion() && type.types.some(isOpen));
+}
+
+/** Flags literal event selectors applied to an open string, before a plugin normalizes it. */
+function rawEventFilter(
+  node: ts.Node,
+  checker: ts.TypeChecker,
+  extensions: ReadonlySet<string>,
+): boolean {
+  const openString = (input: ts.Expression): boolean => isOpen(checker.getTypeAtLocation(input));
+  const wire = (literal: ts.Expression): boolean =>
+    ts.isStringLiteralLike(literal) &&
+    eventAction.test(literal.text) &&
+    !extensions.has(extname(literal.text));
+  const direct = comparison(node);
+  if (direct && wire(direct.literal) && openString(direct.input)) return true;
+  if (ts.isCaseClause(node) && wire(node.expression) && ts.isSwitchStatement(node.parent.parent))
+    return openString(node.parent.parent.expression);
+  if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)) {
+    const { name, expression } = node.expression;
+    const [input] = node.arguments;
+    if (input && (name.text === "includes" || name.text === "has"))
+      return members(expression, checker).some(wire) && openString(input);
+  }
+  if (
+    ts.isBinaryExpression(node) &&
+    node.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken
+  ) {
+    const first = comparison(node.left)?.input;
+    const second = comparison(node.right)?.input;
+    if (
+      !first ||
+      !second ||
+      !ts.isPropertyAccessExpression(first) ||
+      !ts.isPropertyAccessExpression(second)
+    )
+      return false;
+    const fields = new Set([first.name.text, second.name.text]);
+    return (
+      fields.has("name") &&
+      fields.has("action") &&
+      first.expression.getText() === second.expression.getText() &&
+      openString(first) &&
+      openString(second)
+    );
+  }
+  return false;
+}
+
+const frameworkCode = (path: string): boolean =>
+  path.startsWith("packages/") && !path.includes("/test/");
+
+function behaviorProblems(
+  files: ReadonlyArray<{ path: string; text: string }>,
+  extensions: ReadonlySet<string>,
+): string[] {
+  const resolve = moduleResolver();
+  const project = projectSources(
+    files
+      .map(({ path }) => path)
+      .filter((path) => frameworkCode(path) && typescriptFile.test(path)),
+  );
+  const problems: string[] = [];
+  for (const { path, text } of files) {
+    if (!typescriptFile.test(path)) continue;
+    const checked = frameworkCode(path) ? project(path) : undefined;
+    const inspect = (node: ts.Node): void => {
+      const reference = moduleReference(node);
+      if (reference) {
+        const target = resolve(path, reference)?.resolvedFileName;
+        if (target && relative(process.cwd(), target).split(sep)[0] === "examples")
+          problems.push(
+            `${path}:${lineOf(node)}: framework module depends on an example application`,
+          );
+      }
+      if (checked && rawEventFilter(node, checked.checker, extensions))
+        problems.push(
+          `${path}:${lineOf(node)}: classify raw provider events in the application adapter`,
+        );
+    };
+    if (checked) inspectTree(checked.source, inspect);
+    else inspectSource(path, text, inspect);
+  }
+  return problems;
+}
+
 /**
  * Returns one finding per tracked file under `.changeset/`. Ichnaea keeps no Changesets: the
  * conventional commit titles on signed `main` are the change log (decision 0019, point 9).
@@ -113,10 +247,11 @@ function checkRepository(): void {
     ({ path }) =>
       /^(packages|scripts)\//.test(path) &&
       !/scripts\/check-purity(\.test)?\.ts$/.test(path) &&
-      /\.(ts|tsx|js|mjs|json|md)$/.test(path),
+      (typescriptFile.test(path) || /\.(json|md)$/.test(path)),
   );
   const findings = [
     ...findViolations(sources),
+    ...behaviorProblems(sources, new Set(tracked.map((path) => extname(path)))),
     ...findPrivateReferences(texts),
     ...findChangesets(tracked),
   ];

@@ -35,7 +35,14 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm run format:check
-      - run: pnpm run lint
+      - name: Lint and check the previous contract fixtures
+        env:
+          ICHNAEA_CONTRACT_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+        run: |
+          if [ -n "$ICHNAEA_CONTRACT_BASE" ]; then
+            git fetch --no-tags --depth=1 origin "$ICHNAEA_CONTRACT_BASE"
+          fi
+          pnpm run lint
       - run: pnpm run typecheck
       - run: pnpm run check:generated
       - name: The contracts' API report is current
