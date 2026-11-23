@@ -3,6 +3,7 @@ import * as z from "zod";
 import { CLOSED_KEY, none } from "../data-class.ts";
 import {
   CaseId,
+  MeasureId,
   PlanDigest,
   Probability,
   RunId,
@@ -63,6 +64,28 @@ export const RunReduction = z.strictObject({
 /** Stored values for pass^k and pass@k. */
 export type RunReduction = z.infer<typeof RunReduction>;
 
+/** The case counts and bound from one registered detector. */
+const MustNeverResult = z.strictObject({
+  measure: none(MeasureId),
+  hits: none(z.int().min(0)),
+  clean: none(z.int().min(0)),
+  missing: none(z.int().min(0)),
+  cases: z
+    .array(
+      z.strictObject({
+        case: none(CaseId),
+        trials: none(z.int().min(1)),
+      }),
+    )
+    .min(1),
+  claim: z.strictObject({
+    status: none(z.enum(["shown", "not-shown", "no-claim", "flagged-only"])),
+    bound: none(Probability.nullable()),
+    level: none(Probability),
+    method: none(z.literal("clopper-pearson-adjusted")),
+  }),
+});
+
 /**
  * A run: the ledger of a plan's trials, the configurations it ran (with their identities, so a
  * run without a model identity or a generation parameter does not validate), and the lineage of
@@ -90,6 +113,7 @@ export const Run = z.strictObject({
   lineage: z.array(LineageItem),
   ledger: z.array(LedgerEntry),
   trialReduction: RunReduction.optional(),
+  mustNever: z.array(MustNeverResult).min(1).optional(),
   /** The earlier one-arm run selected for the quantity comparison when this run was stored. */
   previousRun: none(RunId).optional(),
   startedAt: none(Timestamp),

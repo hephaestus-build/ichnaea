@@ -138,6 +138,7 @@ describe("the boundaries between the areas of the package", () => {
     ["src/core/a.ts", "../contracts/primitives.ts"],
     ["src/core/a.ts", "../contracts/records/plan.ts"],
     ["src/core/trial-reduction.ts", "../stats/reduce.ts"],
+    ["src/core/never-measure.ts", "../stats/never.ts"],
     ["src/core/a.ts", "node:fs/promises"],
     ["src/decide/a.ts", "../stats/compare.ts"],
     ["src/decide/a.ts", "../core/store.ts"],

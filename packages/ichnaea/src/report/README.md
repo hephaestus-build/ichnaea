@@ -35,3 +35,22 @@ Secondary measures with value type `quantity` display each case's values in tria
 the unit on the measure card. When import finds a previous one-arm run with the same suite and
 case set digests, it records that run for comparison. A quantity is comparable if its measure
 card has the same digest in both runs.
+
+### Must-never measures
+
+A one-arm suite can register `mustNever` measures. Each entry names a secondary binary measure
+with direction `lower`, whose true value flags a hit. A judge measure needs a model detector. Register the case IDs, the population they represent, the target
+ceiling and confidence, and the scope of the detector. For a deterministic detector, `pattern`
+names exactly what it detects. A bound applies to the listed cases at the planned trials per case.
+
+A case with any observed flag counts as a hit. A case without a flag needs a detector value for
+every trial to count as clean. The registration fixes which cases the claim covers. A trial in
+that population without an applicable detector value gives no evidence that the case is clean.
+It counts against the ceiling without adding a hit.
+The observed flagged rate is the fraction of registered cases with at least one observed flag.
+
+A model detector needs a registered lower bound on absolute sensitivity, with the calibration
+evidence digest, detector measure-card digest, matching population and confidence at least
+`1 - (1 - confidence) / 2`. A bound on the difference between model and human sensitivity does not
+qualify. Without matching calibration, the report shows the observed flagged rate and gives no
+ceiling.

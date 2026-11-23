@@ -81,6 +81,35 @@ export const RegisteredTrialReduction = z.strictObject({
   cases: none(z.array(CaseId).min(1)),
 });
 
+/** A one-sided lower bound on absolute sensitivity for one detector and case population. */
+const DetectorCalibration = z.strictObject({
+  evidence: none(Digest),
+  measureDigest: none(Digest),
+  population: none(Text),
+  confidence: none(z.number().gt(0).lt(1)),
+  sensitivityLower: none(Probability),
+});
+
+/** A registered ceiling on cases with at least one flagged trial. */
+export const MustNever = z.strictObject({
+  measure: none(MeasureId),
+  cases: none(z.array(CaseId).min(1)),
+  population: none(Text),
+  ceiling: none(z.number().gt(0).lt(1)),
+  confidence: none(z.number().gt(0).lt(1)),
+  detector: z.discriminatedUnion("kind", [
+    z.strictObject({
+      kind: none(z.literal("deterministic")),
+      pattern: none(Text),
+    }),
+    z.strictObject({
+      kind: none(z.literal("model")),
+      scope: none(Text),
+      calibration: DetectorCalibration.optional(),
+    }),
+  ]),
+});
+
 /** A suite: what an application declares it evaluates (REQ-16, REQ-115). It names no system. */
 export const Suite = z.strictObject({
   schema: none(z.literal("ichnaea.suite/1")),
@@ -101,6 +130,7 @@ export const Suite = z.strictObject({
   replicatesFor: z.array(ReplicatesFor).optional(),
   alpha: none(z.number().gt(0).lt(0.5)).optional(),
   trialReduction: RegisteredTrialReduction.optional(),
+  mustNever: z.array(MustNever).min(1).optional(),
   primary: z.array(PrimaryMeasure),
   secondary: none(z.array(MeasureId)).optional(),
   hardGates: none(z.array(GateId)).optional(),

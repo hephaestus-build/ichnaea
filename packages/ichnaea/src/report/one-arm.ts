@@ -2,6 +2,8 @@ import type { Plan } from "../contracts/records/plan.ts";
 import type { RunReduction } from "../contracts/records/run.ts";
 import type { StoredRun } from "../core/store.ts";
 
+import { mustNeverTables } from "./never.ts";
+
 import type { ReportTable, RunView } from "./render.ts";
 import { percent } from "./view.ts";
 
@@ -73,7 +75,7 @@ export function oneArmView(
 ): RunView {
   const id = (value: string): string => (neutral ? "id" : value);
   const { plan, run } = stored;
-  const tables = reductionTable(stored, id);
+  const tables = [...reductionTable(stored, id), ...mustNeverTables(stored, id)];
 
   for (const measure of plan.quantities ?? []) {
     const before = previous?.plan.measures.find((m) => m.id === measure.measure);

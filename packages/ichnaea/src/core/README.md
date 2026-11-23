@@ -45,5 +45,5 @@ The core of Ichnaea: the plugin host, the planner, import mode, the record store
 
 Decisions and reports come from the `decide` and `report` plugins.
 
-The core imports the contracts and the statistics function that reduces trials on import. The
+The core imports the contracts and the statistics functions that summarize trials on import. The
 package has no runtime dependency, and zod as a peer.

@@ -2821,6 +2821,29 @@ export const MonitorId: z.core.$ZodBranded<z.ZodString, "MonitorId", "out">;
 export type MonitorId = z.infer<typeof MonitorId>;
 
 // @public
+export const MustNever: z.ZodObject<{
+    measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+    cases: z.ZodArray<z.core.$ZodBranded<z.ZodString, "CaseId", "out">>;
+    population: z.ZodString;
+    ceiling: z.ZodNumber;
+    confidence: z.ZodNumber;
+    detector: z.ZodDiscriminatedUnion<[z.ZodObject<{
+        kind: z.ZodLiteral<"deterministic">;
+        pattern: z.ZodString;
+    }, z.core.$strict>, z.ZodObject<{
+        kind: z.ZodLiteral<"model">;
+        scope: z.ZodString;
+        calibration: z.ZodOptional<z.ZodObject<{
+            evidence: z.ZodString;
+            measureDigest: z.ZodString;
+            population: z.ZodString;
+            confidence: z.ZodNumber;
+            sensitivityLower: z.ZodNumber;
+        }, z.core.$strict>>;
+    }, z.core.$strict>], "kind">;
+}, z.core.$strict>;
+
+// @public
 export function none<T extends z.ZodType>(schema: T, extra?: Record<string, unknown>): T;
 
 // @public
@@ -3074,6 +3097,27 @@ export const Plan: z.ZodObject<{
         k: z.ZodInt;
         cases: z.ZodArray<z.core.$ZodBranded<z.ZodString, "CaseId", "out">>;
     }, z.core.$strict>>;
+    mustNever: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+        cases: z.ZodArray<z.core.$ZodBranded<z.ZodString, "CaseId", "out">>;
+        population: z.ZodString;
+        ceiling: z.ZodNumber;
+        confidence: z.ZodNumber;
+        detector: z.ZodDiscriminatedUnion<[z.ZodObject<{
+            kind: z.ZodLiteral<"deterministic">;
+            pattern: z.ZodString;
+        }, z.core.$strict>, z.ZodObject<{
+            kind: z.ZodLiteral<"model">;
+            scope: z.ZodString;
+            calibration: z.ZodOptional<z.ZodObject<{
+                evidence: z.ZodString;
+                measureDigest: z.ZodString;
+                population: z.ZodString;
+                confidence: z.ZodNumber;
+                sensitivityLower: z.ZodNumber;
+            }, z.core.$strict>>;
+        }, z.core.$strict>], "kind">;
+    }, z.core.$strict>>>;
     quantities: z.ZodOptional<z.ZodArray<z.ZodObject<{
         measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
         unit: z.ZodString;
@@ -3926,6 +3970,27 @@ export const Run: z.ZodObject<{
             passAny: z.ZodNumber;
         }, z.core.$strict>], "status">;
     }, z.core.$strict>>;
+    mustNever: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+        hits: z.ZodInt;
+        clean: z.ZodInt;
+        missing: z.ZodInt;
+        cases: z.ZodArray<z.ZodObject<{
+            case: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
+            trials: z.ZodInt;
+        }, z.core.$strict>>;
+        claim: z.ZodObject<{
+            status: z.ZodEnum<{
+                "flagged-only": "flagged-only";
+                "no-claim": "no-claim";
+                "not-shown": "not-shown";
+                shown: "shown";
+            }>;
+            bound: z.ZodNullable<z.ZodNumber>;
+            level: z.ZodNumber;
+            method: z.ZodLiteral<"clopper-pearson-adjusted">;
+        }, z.core.$strict>;
+    }, z.core.$strict>>>;
     previousRun: z.ZodOptional<z.core.$ZodBranded<z.ZodString, "RunId", "out">>;
     startedAt: z.ZodISODateTime;
     completedAt: z.ZodOptional<z.ZodISODateTime>;
@@ -4497,6 +4562,27 @@ export const Suite: z.ZodObject<{
         k: z.ZodInt;
         cases: z.ZodArray<z.core.$ZodBranded<z.ZodString, "CaseId", "out">>;
     }, z.core.$strict>>;
+    mustNever: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+        cases: z.ZodArray<z.core.$ZodBranded<z.ZodString, "CaseId", "out">>;
+        population: z.ZodString;
+        ceiling: z.ZodNumber;
+        confidence: z.ZodNumber;
+        detector: z.ZodDiscriminatedUnion<[z.ZodObject<{
+            kind: z.ZodLiteral<"deterministic">;
+            pattern: z.ZodString;
+        }, z.core.$strict>, z.ZodObject<{
+            kind: z.ZodLiteral<"model">;
+            scope: z.ZodString;
+            calibration: z.ZodOptional<z.ZodObject<{
+                evidence: z.ZodString;
+                measureDigest: z.ZodString;
+                population: z.ZodString;
+                confidence: z.ZodNumber;
+                sensitivityLower: z.ZodNumber;
+            }, z.core.$strict>>;
+        }, z.core.$strict>], "kind">;
+    }, z.core.$strict>>>;
     primary: z.ZodArray<z.ZodObject<{
         measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
         margin: z.ZodNumber;

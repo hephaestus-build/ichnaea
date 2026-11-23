@@ -12,6 +12,7 @@ import type { Trial } from "../contracts/records/trial.ts";
 import { proportionProblem } from "../contracts/values.ts";
 
 import type { Host } from "./host.ts";
+import { mustNeverResults } from "./never-measure.ts";
 import { scoreTrials } from "./measures.ts";
 import { createPlan } from "./planner.ts";
 import { recordProblems } from "./records.ts";
@@ -321,6 +322,7 @@ export async function importRun(
     { kind: "package", id: "@tumaet/ichnaea", version: input.ichnaea },
   ];
   const trialReduction = runReduction(plan, trials, values);
+  const mustNever = mustNeverResults(plan, trials, values);
   const previousRun =
     plan.arms.length === 1 && plan.quantities?.length
       ? await store.previousOneArm(plan, input.now)
@@ -352,6 +354,7 @@ export async function importRun(
         : { trial: t.id, state: "planned", outcome: "not_run" };
     }),
     ...(trialReduction === undefined ? {} : { trialReduction }),
+    ...(mustNever === undefined ? {} : { mustNever }),
     ...(previousRun === undefined ? {} : { previousRun }),
     startedAt: input.now,
     completedAt: input.now,

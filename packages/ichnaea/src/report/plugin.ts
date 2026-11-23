@@ -2,6 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { canonicalize, digest } from "../contracts/canonical.ts";
+import { mustNeverResults } from "../core/never-measure.ts";
 import type { CommandDefinition, Plugin } from "../core/plugin.ts";
 import { FileStore } from "../core/store.ts";
 import { runReduction } from "../core/trial-reduction.ts";
@@ -60,7 +61,9 @@ const command: CommandDefinition = {
       oneArm &&
       (stored.run.plan !== (await digest(stored.plan)) ||
         canonicalize(stored.run.trialReduction ?? null) !==
-          canonicalize(runReduction(stored.plan, stored.trials, stored.values) ?? null))
+          canonicalize(runReduction(stored.plan, stored.trials, stored.values) ?? null) ||
+        canonicalize(stored.run.mustNever ?? null) !==
+          canonicalize(mustNeverResults(stored.plan, stored.trials, stored.values) ?? null))
     ) {
       host.out("report: the one-arm run does not match its stored plan and trial records");
       return 1;

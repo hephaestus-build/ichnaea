@@ -6,6 +6,8 @@ import { join } from "node:path";
 
 import {
   CaseId,
+  Digest,
+  digest,
   MeasureId,
   type GateResult,
   type MeasureValue,
@@ -14,6 +16,7 @@ import {
 } from "../../src/contracts/index.ts";
 import { describe, expect, it } from "vitest";
 
+import { neverClaim } from "../../src/stats/never.ts";
 import { reportPlugin } from "../../src/report/index.ts";
 import { decide } from "../../src/decide/index.ts";
 import { card, scenario } from "../decide/support/scenario.ts";
@@ -43,13 +46,14 @@ async function setup(
     measures?: MeasureDefinition<`app/${string}`>[];
     gates?: GateDefinition<`app/${string}`>[];
     hardGates?: `app/${string}`[];
+    cases?: number;
     replicates?: number;
     oneArm?: boolean;
     suite?: (s: Suite) => Suite;
   } = {},
 ) {
   const s = await scenario({
-    cases: 6,
+    cases: extra.cases ?? 6,
     replicates: extra.replicates ?? 2,
     base: () => 1,
     candidate: () => 1,
@@ -545,5 +549,193 @@ describe("one-arm import and report", () => {
     quantity = 6;
     await go("backfill", "2026-11-15T11:30:00Z");
     expect((await summary(store, "latest")).markdown).toBe(markdown);
+  });
+});
+
+describe("registered must-never measures", () => {
+  const hazard = MeasureId.parse("app/hazard");
+  const registration = {
+    measure: hazard,
+    population: "Synthetic held-out cases",
+    confidence: 0.95,
+    ceiling: 0.05,
+  };
+
+  async function mustNeverRun(
+    detector: NonNullable<Suite["mustNever"]>[number]["detector"],
+    score: (value: MeasureValue) => boolean | undefined,
+    count: number,
+    replicates: number,
+    overrides: Partial<Pick<MeasureDefinition["card"], "direction" | "computedBy">> = {},
+  ): ReturnType<typeof setup> {
+    const cases = Array.from({ length: count }, (_, i) =>
+      CaseId.parse(`case-${String(i).padStart(3, "0")}`),
+    );
+    const definition = card(hazard);
+    return setup(
+      (trials, values) => ({
+        trials,
+        values: [
+          ...values,
+          ...values.flatMap((v): MeasureValue[] => {
+            const hit = score(v);
+            return hit === undefined
+              ? []
+              : [{ ...v, measure: hazard, value: { type: "binary", pass: hit } }];
+          }),
+        ],
+      }),
+      {
+        cases: count,
+        replicates,
+        oneArm: true,
+        suite: (s) => ({
+          ...s,
+          secondary: [hazard],
+          mustNever: [{ ...registration, cases, detector }],
+        }),
+        measures: [
+          card("app/correct") as MeasureDefinition<"app/correct">,
+          {
+            ...definition,
+            card: {
+              ...definition.card,
+              id: "app/hazard",
+              tier: "secondary",
+              direction: "lower",
+              ...overrides,
+            },
+          },
+        ],
+      },
+    );
+  }
+
+  it("rejects success measures and judge measures declared as deterministic", async () => {
+    const detector = { kind: "deterministic", pattern: "A unique marker" } as const;
+    const success = await mustNeverRun(detector, () => false, 2, 1, { direction: "higher" });
+    await expect(success.go()).rejects.toThrow("lower values better");
+    const judge = await mustNeverRun(detector, () => false, 2, 1, { computedBy: "judge" });
+    await expect(judge.go()).rejects.toThrow("needs a model detector");
+  });
+
+  it("shows the bound and its scope for 60 cases with zero hits", async () => {
+    const detector = {
+      kind: "deterministic",
+      pattern: "A unique marker in decoded output",
+    } as const;
+    const { go, store } = await mustNeverRun(detector, () => false, 60, 1);
+    await go();
+
+    const claim = neverClaim({
+      cases: 60,
+      violations: 0,
+      ceiling: 0.05,
+      confidence: 0.95,
+      detector,
+    });
+    expect((await new FileStore(store).read("run-1")).run.mustNever?.[0]).toMatchObject({
+      clean: 60,
+      hits: 0,
+      missing: 0,
+      claim,
+    });
+    const { markdown, html } = await summary(store);
+    expect(markdown).toContain("Synthetic held-out cases");
+    expect(markdown).toContain(detector.pattern);
+    expect(markdown).toContain("| 60 | 60 | 0 | 0 | 0.0% |");
+    expect(html).toContain("<td>case-059</td><td>1</td>");
+    expect(html).toContain("Ceiling 5.0% shown");
+  });
+
+  it("counts one hit for a violating case and treats missing evidence as unclean", async () => {
+    const detector = { kind: "deterministic", pattern: "A unique marker" } as const;
+    const { go, store } = await mustNeverRun(
+      detector,
+      (v) => {
+        if (v.trial === "case-000/base/r1") return true;
+        if (v.trial === "case-001/base/r1") return undefined;
+        return false;
+      },
+      5,
+      3,
+    );
+    await go();
+
+    const claim = neverClaim({
+      cases: 5,
+      violations: 2,
+      ceiling: 0.05,
+      confidence: 0.95,
+      detector,
+    });
+    expect((await new FileStore(store).read("run-1")).run.mustNever?.[0]).toMatchObject({
+      clean: 3,
+      hits: 1,
+      missing: 1,
+      claim,
+    });
+    expect((await summary(store)).markdown).toContain("| 5 | 3 | 1 | 1 | 20.0% |");
+  });
+
+  it("reports flags and no ceiling when the model lacks an absolute sensitivity bound", async () => {
+    const { go, store } = await mustNeverRun(
+      { kind: "model", scope: "A marker rubric" },
+      (v) => v.trial === "case-001/base/r0",
+      5,
+      1,
+    );
+    await go();
+
+    const claim = (await new FileStore(store).read("run-1")).run.mustNever?.[0]?.claim;
+    expect(claim).toMatchObject({ status: "flagged-only", bound: null });
+    const { markdown } = await summary(store);
+    expect(markdown).toContain("| 5 | 4 | 1 | 0 | 20.0% |");
+    expect(markdown).toContain("No ceiling. No matching absolute sensitivity bound");
+  });
+
+  it("uses an absolute sensitivity bound only when the detector and split confidence match", async () => {
+    const measureDigest = await digest({
+      ...card(hazard).card,
+      tier: "secondary",
+      direction: "lower",
+    });
+    const calibration = {
+      evidence: Digest.parse(`sha256:${"b".repeat(64)}`),
+      measureDigest: Digest.parse(measureDigest),
+      population: registration.population,
+      confidence: 0.975,
+      sensitivityLower: 0.9,
+    };
+    const detector = { kind: "model", scope: "A marker rubric", calibration } as const;
+    const calibrated = await mustNeverRun(detector, () => false, 60, 1);
+    await calibrated.go();
+    const claim = neverClaim({
+      cases: 60,
+      violations: 0,
+      ceiling: 0.05,
+      confidence: 0.95,
+      detector: { kind: "model", sensitivityLower: 0.9 },
+    });
+    expect((await new FileStore(calibrated.store).read("run-1")).run.mustNever?.[0]?.claim).toEqual(
+      claim,
+    );
+
+    const lowerConfidence = await mustNeverRun(
+      {
+        ...detector,
+        calibration: { ...calibration, confidence: 0.95 },
+      },
+      () => false,
+      60,
+      1,
+    );
+    await lowerConfidence.go();
+    expect(
+      (await new FileStore(lowerConfidence.store).read("run-1")).run.mustNever?.[0]?.claim,
+    ).toMatchObject({
+      status: "flagged-only",
+      bound: null,
+    });
   });
 });

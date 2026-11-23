@@ -279,6 +279,33 @@ export async function createPlan(input: PlanInput): Promise<Plan> {
         );
     }
   }
+  const mustNever = suite.mustNever;
+  if (mustNever) {
+    const selectedIds = new Set(selectedCases.map((c) => c.id));
+    const seen = new Set<string>();
+    for (const registration of mustNever) {
+      const { measure, cases } = registration;
+      if (seen.has(measure))
+        throw new PlanError(`must-never measure '${measure}' is registered twice`);
+      seen.add(measure);
+      const card = input.measures.get(measure)?.card;
+      if (
+        !suite.secondary?.includes(measure) ||
+        card?.valueType !== "binary" ||
+        card.direction !== "lower"
+      )
+        throw new PlanError(
+          `must-never measure '${measure}' needs a secondary binary measure with lower values better`,
+        );
+      if (registration.detector.kind === "deterministic" && card.computedBy === "judge")
+        throw new PlanError(`must-never judge measure '${measure}' needs a model detector`);
+      if (new Set(cases).size !== cases.length)
+        throw new PlanError(`must-never measure '${measure}' lists a case more than once`);
+      for (const id of cases)
+        if (!selectedIds.has(id))
+          throw new PlanError(`must-never case '${id}' is not selected in the suite`);
+    }
+  }
   const quantities = (suite.secondary ?? []).flatMap((measure) => {
     const card = input.measures.get(measure)?.card;
     return card?.valueType === "quantity" ? [{ measure, unit: card.unit }] : [];
@@ -380,6 +407,7 @@ export async function createPlan(input: PlanInput): Promise<Plan> {
     arms: arms.map((a) => (running.has(a.name) ? { ...a, runs: true as const } : a)),
     measures,
     ...(reduction === undefined ? {} : { trialReduction: reduction }),
+    ...(mustNever === undefined ? {} : { mustNever }),
     ...(quantities.length === 0 ? {} : { quantities }),
     primary: suite.primary,
     secondary: suite.secondary ?? [],

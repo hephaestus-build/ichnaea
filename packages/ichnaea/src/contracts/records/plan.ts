@@ -18,7 +18,13 @@ import {
   TrialId,
 } from "../primitives.ts";
 import { Configuration } from "./configuration.ts";
-import { CiPolicy, Estimand, PrimaryMeasure, RegisteredTrialReduction } from "./suite.ts";
+import {
+  CiPolicy,
+  Estimand,
+  MustNever,
+  PrimaryMeasure,
+  RegisteredTrialReduction,
+} from "./suite.ts";
 
 /** A versioned part that can change a verdict, with its hash (REQ-17). */
 export const LineageItem = z.strictObject({
@@ -182,6 +188,7 @@ export const Plan = z.strictObject({
   arms: z.array(Arm).min(1),
   measures: z.array(LineageItem),
   trialReduction: RegisteredTrialReduction.optional(),
+  mustNever: z.array(MustNever).min(1).optional(),
   quantities: z.array(z.strictObject({ measure: none(MeasureId), unit: none(Text) })).optional(),
   primary: z.array(PrimaryMeasure),
   secondary: none(z.array(MeasureId)),
