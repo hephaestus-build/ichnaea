@@ -444,6 +444,18 @@ const exact: MeasureDefinition = {
   },
 };
 
+const sharedPassingExample = {
+  name: "shared",
+  case: aCase,
+  trial: trialWith("completed"),
+  expected: { type: "binary", pass: true },
+} as const;
+const alwaysPass: MeasureDefinition = {
+  ...exact,
+  score: () => ({ type: "binary", pass: true }),
+  examples: { good: [sharedPassingExample], bad: [sharedPassingExample] },
+};
+
 describe("measures (REQ-20, REQ-30, REQ-33)", () => {
   it("scores every outcome class as the design states", () => {
     const cases = new Map([["c1", aCase]]);
@@ -470,6 +482,14 @@ describe("measures (REQ-20, REQ-30, REQ-33)", () => {
     expect((await testMeasure(broken)).failures[0]).toMatch(/bad example 'wrong'/);
     expect((await testMeasure({ ...exact, examples: { good: [], bad: [] } })).status).toBe(
       "failed",
+    );
+  });
+
+  it("rejects an always-passing scorer even when both buckets expect a pass", async () => {
+    const result = await testMeasure(alwaysPass);
+    expect(result.status).toBe("failed");
+    expect(result.failures).toContain(
+      "app/exact: needs a passing known-good example and a failing known-bad example",
     );
   });
 });
@@ -705,6 +725,13 @@ describe("planner (REQ-16, REQ-19, REQ-27, REQ-33, REQ-49, decision 0008)", asyn
     ).resolves.toMatchObject({
       mode: "decision",
     });
+  });
+
+  it("refuses to plan with an always-passing primary scorer and identical examples", async () => {
+    const measure = { ...alwaysPass, card: { ...alwaysPass.card, id: "app/correct" } };
+    await expect(planWith({ measures: new Map([["app/correct", measure]]) })).rejects.toThrow(
+      "no passing known-good and known-bad test",
+    );
   });
 
   it("refuses unknown measures and gates, and margins it cannot use", async () => {

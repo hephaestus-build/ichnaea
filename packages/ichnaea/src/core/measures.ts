@@ -69,7 +69,8 @@ function failureValue(measure: MeasureDefinition, c: Case): MeasureValue["value"
 /** The result of running a measure's known-good and known-bad examples. */
 export interface TesterResult {
   /**
-   * `passed` when every example gives its expected value and the measure has both kinds of example.
+   * `passed` when every example gives its expected value and the good and bad examples demonstrate
+   * a contrast.
    */
   readonly status: "passed" | "failed";
   /**
@@ -81,13 +82,14 @@ export interface TesterResult {
 }
 
 /**
- * Runs a measure against its examples (REQ-33, REQ-121). It fails when a known-good example does
- * not give its expected value, when a known-bad example passes as good, or when the measure has no
- * good and no bad example.
+ * Runs a measure against its examples (REQ-33, REQ-121). A binary measure must pass a known-good
+ * example and fail a known-bad example. Other measures must give different values for at least
+ * one good and one bad example. Missing and not-applicable results cannot show that contrast.
  */
 export async function testMeasure(measure: MeasureDefinition): Promise<TesterResult> {
   const failures: string[] = [];
   const examples = measure.examples;
+  const matched = { good: new Set<string>(), bad: new Set<string>() };
   if (!examples || examples.good.length === 0 || examples.bad.length === 0) {
     failures.push(`${measure.card.id}: needs at least one known-good and one known-bad example`);
   }
@@ -102,12 +104,30 @@ export async function testMeasure(measure: MeasureDefinition): Promise<TesterRes
         : measure.score
           ? (measure.score(example.trial, example.case) ?? "missing")
           : "missing";
-      if (canonicalize(actual) !== canonicalize(example.expected)) {
+      const actualJson = canonicalize(actual);
+      const expectedJson = canonicalize(example.expected);
+      if (actualJson !== expectedJson) {
         failures.push(
-          `${measure.card.id}: ${kind} example '${example.name}' gave ${canonicalize(actual)}, expected ${canonicalize(example.expected)}`,
+          `${measure.card.id}: ${kind} example '${example.name}' gave ${actualJson}, expected ${expectedJson}`,
         );
+        continue;
       }
+      if (typeof actual === "string" || actual.type !== measure.card.valueType) continue;
+      if (actual.type === "binary" && actual.pass !== (kind === "good")) continue;
+      matched[kind].add(actualJson);
     }
+  }
+  if (
+    failures.length === 0 &&
+    (matched.good.size === 0 ||
+      matched.bad.size === 0 ||
+      new Set([...matched.good, ...matched.bad]).size < 2)
+  ) {
+    failures.push(
+      measure.card.valueType === "binary"
+        ? `${measure.card.id}: needs a passing known-good example and a failing known-bad example`
+        : `${measure.card.id}: needs different scores for known-good and known-bad examples`,
+    );
   }
   const hash = await digest({ card: measure.card, examples: examples ?? null });
   return { status: failures.length === 0 ? "passed" : "failed", failures, digest: hash };
