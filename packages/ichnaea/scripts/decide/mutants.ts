@@ -692,7 +692,7 @@ export const MUTANTS: readonly Mutant[] = [
   },
   {
     id: "power: import is silent about a plan without a statement",
-    file: "src/core/cli.ts",
+    file: "src/cli.ts",
     from: "  if (result.plan.power.length === 0 && result.plan.primary.length > 0)",
     to: "  if (false)",
     projects: CORE,

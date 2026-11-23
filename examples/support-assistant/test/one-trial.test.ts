@@ -85,6 +85,7 @@ describe("one trial per case and arm, from the CLI", async () => {
     i < 6 ? { ...r, answer: "Please check our help centre." } : r,
   );
   const out: string[] = [];
+  const errors: string[] = [];
   const log = (t: string): void => void out.push(t);
   const schedule = ["--concurrency", "1", "--endpoint", "example-provider"];
 
@@ -123,6 +124,8 @@ describe("one trial per case and arm, from the CLI", async () => {
         ...extra,
       ],
       log,
+      undefined,
+      (line) => void errors.push(line),
     );
   }
   const decideRun = (run: string): Promise<number> =>
@@ -189,13 +192,13 @@ describe("one trial per case and arm, from the CLI", async () => {
     expect(await importRun("run-2", 7, "configurations/base.json", files, ["--aa", "aa-9"])).toBe(
       2,
     );
-    expect(out.join("\n")).toContain("--aa run 'aa-9' has no decision in the store");
-    out.length = 0;
+    expect(errors.join("\n")).toContain("--aa run 'aa-9' has no decision in the store");
+    errors.length = 0;
     expect(
       await importRun("run-2", 7, "configurations/base.json", files, ["--concurrency", "2"]),
     ).toBe(2);
-    expect(out.join("\n")).toContain("import: --concurrency and --endpoint go together");
-    out.length = 0;
+    expect(errors.join("\n")).toContain("import: --concurrency and --endpoint go together");
+    errors.length = 0;
     expect(
       await importRun("run-2", 7, "configurations/base.json", files, [
         "--concurrency",
@@ -204,6 +207,7 @@ describe("one trial per case and arm, from the CLI", async () => {
         "e",
       ]),
     ).toBe(2);
-    expect(out.join("\n")).toContain("import: --concurrency must be a whole number from 1");
+    expect(errors.join("\n")).toContain("import: --concurrency must be a whole number from 1");
+    expect(out).toEqual([]);
   });
 });

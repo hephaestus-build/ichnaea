@@ -23,13 +23,13 @@ const command: CommandDefinition = {
     const storePath = (values["store"] as string | undefined) ?? ".ichnaea";
     const runId = values["run"] as string | undefined;
     if (!runId) {
-      host.out("report: --run is required");
+      host.err("report: --run is required");
       return 2;
     }
     const store = new FileStore(storePath);
     const stored = await store.read(runId);
     if (!stored.decision) {
-      host.out(`report: run '${runId}' has no decision; run 'ichnaea decide' first`);
+      host.err(`report: run '${runId}' has no decision; run 'ichnaea decide' first`);
       return 2;
     }
     const check = await recompute({
@@ -38,7 +38,7 @@ const command: CommandDefinition = {
       aa: await store.aaEvidence(stored.plan),
     });
     if (!check.matches) {
-      host.out(
+      host.err(
         `report: the stored decision does not recompute from the stored records (${check.differences.join(", ")})`,
       );
       return 1;
@@ -55,7 +55,7 @@ const command: CommandDefinition = {
       ...(/Lineage/.test(markdown) && /Lineage/.test(html) ? [] : ["no lineage footer"]),
     ];
     if (problems.length > 0) {
-      host.out(`report: ${problems.join("; ")}`);
+      host.err(`report: ${problems.join("; ")}`);
       return 1;
     }
     const out = (values["out"] as string | undefined) ?? join(storePath, "runs", runId, "report");

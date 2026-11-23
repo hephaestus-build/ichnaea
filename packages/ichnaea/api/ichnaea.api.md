@@ -49,6 +49,7 @@ export interface CommandDefinition {
 
 // @public
 export interface CommandHost {
+    readonly err: (text: string) => void;
     readonly gates: ReadonlyMap<string, GateDefinition>;
     readonly hooks: HookRunner;
     readonly importers: ReadonlyMap<string, Importer>;
@@ -350,7 +351,7 @@ export function lintReport(text: string): string[];
 export function loadConfig(path: string, load?: ModuleLoader): Promise<Config>;
 
 // @public
-export function main(argv: readonly string[], out?: (text: string) => void, load?: ModuleLoader): Promise<number>;
+export function main(argv: readonly string[], out?: (text: string) => void, load?: ModuleLoader, err?: (text: string) => void): Promise<number>;
 
 // @public
 export interface MeasureDefinition<Id extends string = string> {

@@ -3,16 +3,16 @@ import { basename, dirname, extname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 
-import { toJsonSchema } from "../contracts/json-schema.ts";
-import { notComputedReason, TriggerKind } from "../contracts/records/plan.ts";
-import { RECORD_CONTRACTS } from "../contracts/registry.ts";
+import { toJsonSchema } from "./contracts/json-schema.ts";
+import { notComputedReason, TriggerKind } from "./contracts/records/plan.ts";
+import { RECORD_CONTRACTS } from "./contracts/registry.ts";
 
-import { CORE_COMMANDS, createHost, type Host } from "./host.ts";
-import { importRun } from "./import.ts";
-import { testMeasure } from "./measures.ts";
-import { TRIGGER_VARIES } from "./planner.ts";
-import type { Config } from "./plugin.ts";
-import { CORE_VERSION } from "./version.ts";
+import { CORE_COMMANDS, createHost, type Host } from "./core/host.ts";
+import { importRun } from "./core/import.ts";
+import { testMeasure } from "./core/measures.ts";
+import { TRIGGER_VARIES } from "./core/planner.ts";
+import type { CommandDefinition, Config } from "./core/plugin.ts";
+import { CORE_VERSION } from "./core/version.ts";
 
 /** Loads a module by URL. The CLI uses `import()`; a test injects another. */
 export type ModuleLoader = (url: string) => Promise<unknown>;
@@ -44,17 +44,23 @@ export async function loadConfig(path: string, load: ModuleLoader = importModule
   return module.default;
 }
 
+const IMPORT_OPTIONS = `--importer <id> --suite <file> --case-set <file> --cases <file.jsonl>
+--arm <name>:<role>:<configuration.json> (repeat) --file <path> (repeat)
+--run <id> [--store .ichnaea] [--trigger code] [--seed 1] [--now <ISO time>]
+[--vary <factor key>] (repeat: what the change varies beyond its trigger)
+[--concurrency <n> --endpoint <name>] (the schedule the trials ran on)
+[--aa <run>] (repeat: a decided A/A run to cite, at one trial per case)`;
+
+const CONFIG_OPTION = {
+  type: "string",
+  description: "Configuration file (default ichnaea.config.ts)",
+} as const;
 const HELP_COMMANDS = `Usage: ichnaea <command> [options]
 
 Commands from the core:
   schema <record>     Print the normative JSON Schema of a record (case, trial, decision, ...)
   import              Import another runner's results into the store (no model calls)
-                      --importer <id> --suite <file> --case-set <file> --cases <file.jsonl>
-                      --arm <name>:<role>:<configuration.json> (repeat) --file <path> (repeat)
-                      --run <id> [--store .ichnaea] [--trigger code] [--seed 1] [--now <ISO time>]
-                      [--vary <factor key>] (repeat: what the change varies beyond its trigger)
-                      [--concurrency <n> --endpoint <name>] (the schedule the trials ran on)
-                      [--aa <run>] (repeat: a decided A/A run to cite, at one trial per case)
+                      ${IMPORT_OPTIONS.replaceAll("\n", "\n                      ")}
   doctor              Check the configuration: plugins, measures, testers, warnings
   help                Show this help
   --version, -v       Print the version
@@ -79,6 +85,35 @@ function triggerHelp(): string {
 
 const HELP = `${HELP_COMMANDS}\n\n${triggerHelp()}\n\nExit codes: 0 success, 1 a CI policy blocks, 2 an error (usage, configuration or records).`;
 
+const CORE_HELP: ReadonlyMap<string, string> = new Map([
+  ["schema", "Usage: ichnaea schema <record>\n\nPrint the normative JSON Schema of a record."],
+  [
+    "doctor",
+    `Usage: ichnaea doctor [--config <file>]\n\nCheck plugins, measures and testers.\n${CONFIG_OPTION.description}.`,
+  ],
+  [
+    "import",
+    `Usage: ichnaea import [--config <file>] [options]\n\nImport another runner's results into the store.\n\n${IMPORT_OPTIONS}\n\n${triggerHelp()}`,
+  ],
+]);
+
+/** Gives help for the packaged plugins even before a user configures them. */
+async function packagedCommand(name: string): Promise<CommandDefinition | undefined> {
+  if (name === "decide") return (await import("./decide/plugin.ts")).decidePlugin().commands?.[0];
+  if (name === "report") return (await import("./report/plugin.ts")).reportPlugin().commands?.[0];
+  return undefined;
+}
+
+function commandHelp(command: CommandDefinition): string {
+  const options: CommandDefinition["options"] = { config: CONFIG_OPTION, ...command.options };
+  const lines = Object.entries(options).map(([name, option]) => {
+    const value = option.type === "string" ? " <value>" : "";
+    const repeat = option.multiple ? " (repeatable)" : "";
+    return `  --${name}${value}${repeat}  ${option.description}`;
+  });
+  return `Usage: ichnaea ${command.name} [options]\n\n${command.description}\n\nOptions:\n${lines.join("\n")}`;
+}
+
 /**
  * Runs the CLI. Returns the exit code: 0 on success, 1 when a command's policy blocks, 2 on any
  * error, so an error never reads as a policy result.
@@ -87,11 +122,12 @@ export async function main(
   argv: readonly string[],
   out: (text: string) => void = (t) => process.stdout.write(`${t}\n`),
   load: ModuleLoader = importModule,
+  err: (text: string) => void = (t) => process.stderr.write(`${t}\n`),
 ): Promise<number> {
   try {
-    return await dispatch(argv, out, load);
+    return await dispatch(argv, out, load, err);
   } catch (error) {
-    out(`error: ${error instanceof Error ? error.message : String(error)}`);
+    err(`error: ${error instanceof Error ? error.message : String(error)}`);
     return 2;
   }
 }
@@ -100,21 +136,33 @@ async function dispatch(
   argv: readonly string[],
   out: (text: string) => void,
   load: ModuleLoader,
+  err: (text: string) => void,
 ): Promise<number> {
   const [command, ...rest] = argv;
-  if (!command || command === "help" || command === "--help") {
+  if (!command) {
+    err(HELP);
+    return 2;
+  }
+  if (command === "help" || command === "--help") {
     out(HELP);
-    return command ? 0 : 2;
+    return 0;
   }
   if (command === "--version" || command === "-v") {
     out(CORE_VERSION);
+    return 0;
+  }
+  const endOfOptions = rest.indexOf("--");
+  const wantsHelp = (endOfOptions < 0 ? rest : rest.slice(0, endOfOptions)).includes("--help");
+  const coreHelp = wantsHelp ? CORE_HELP.get(command) : undefined;
+  if (coreHelp !== undefined) {
+    out(coreHelp);
     return 0;
   }
   if (command === "schema") {
     const name = rest[0];
     const contract = RECORD_CONTRACTS.find((c) => c.name === name);
     if (!contract) {
-      out(
+      err(
         `unknown record '${name ?? ""}'; one of: ${RECORD_CONTRACTS.map((c) => c.name).join(", ")}`,
       );
       return 2;
@@ -122,8 +170,9 @@ async function dispatch(
     out(JSON.stringify(toJsonSchema(contract), null, 2));
     return 0;
   }
+  const packaged = wantsHelp ? await packagedCommand(command) : undefined;
   const configPath =
-    (parseArgs({ args: [...rest], options: { config: { type: "string" } }, strict: false }).values[
+    (parseArgs({ args: rest, options: { config: CONFIG_OPTION }, strict: false }).values[
       "config"
     ] as string | undefined) ?? "ichnaea.config.ts";
   // A missing file is a usage error with its own message, before any command is looked up.
@@ -134,7 +183,11 @@ async function dispatch(
       () => false,
     ))
   ) {
-    out(`no ${basename(configFile)} in ${dirname(configFile)}; see the README's quick start`);
+    if (packaged) {
+      out(commandHelp(packaged));
+      return 0;
+    }
+    err(`no ${basename(configFile)} in ${dirname(configFile)}; see the README's quick start`);
     return 2;
   }
   let host: Host;
@@ -143,24 +196,32 @@ async function dispatch(
       await loadConfig(configPath, load),
       // The contracts ship in the same package as the core, at its version.
       { core: CORE_VERSION, contracts: CORE_VERSION },
-      (m) => out(`warning: ${m}`),
+      (m) => err(`warning: ${m}`),
     );
-    await host.configResolved();
+    if (!wantsHelp) await host.configResolved();
   } catch (error) {
-    out(`configuration error: ${(error as Error).message}`);
+    if (packaged) {
+      out(commandHelp(packaged));
+      return 0;
+    }
+    err(`configuration error: ${(error as Error).message}`);
     return 2;
   }
   if (command === "doctor") return doctor(host, out);
-  if (command === "import") return importCommand(host, rest, out);
-  const definition = host.commands.get(command);
+  if (command === "import") return importCommand(host, rest, out, err);
+  const definition = host.commands.get(command) ?? packaged;
   if (!definition) {
-    out(
+    err(
       `unknown command '${command}'. Commands: ${[...CORE_COMMANDS, ...host.commands.keys()].join(", ")}`,
     );
     return 2;
   }
+  if (wantsHelp) {
+    out(commandHelp(definition));
+    return 0;
+  }
   const options = {
-    config: { type: "string" as const },
+    config: CONFIG_OPTION,
     ...Object.fromEntries(
       Object.entries(definition.options).map(([k, o]) => [
         k,
@@ -172,12 +233,19 @@ async function dispatch(
   try {
     parsed = parseArgs({ args: [...rest], options, allowPositionals: true, strict: true });
   } catch (error) {
-    out(`${command}: ${(error as Error).message}`);
+    err(`${command}: ${(error as Error).message}`);
     return 2;
   }
   return definition.run(
     { values: parsed.values, positionals: parsed.positionals },
-    { measures: host.measures, importers: host.importers, gates: host.gates, hooks: host, out },
+    {
+      measures: host.measures,
+      importers: host.importers,
+      gates: host.gates,
+      hooks: host,
+      out,
+      err,
+    },
   );
 }
 
@@ -186,7 +254,6 @@ async function doctor(host: Host, out: (text: string) => void): Promise<number> 
   out(
     `plugins: ${host.plugins.map((p) => `${p.id}@${p.version} (${p.stability})`).join(", ") || "none"}`,
   );
-  for (const warning of host.warnings) out(`warning: ${warning}`);
   for (const measure of host.measures.values()) {
     if (measure.card.computedBy === "application") {
       const status = measure.card.validation?.tester?.status;
@@ -209,12 +276,13 @@ async function importCommand(
   host: Host,
   args: readonly string[],
   out: (text: string) => void,
+  err: (text: string) => void,
 ): Promise<number> {
   const { values } = parseArgs({
     args: [...args],
     strict: true,
     options: {
-      config: { type: "string" },
+      config: CONFIG_OPTION,
       importer: { type: "string" },
       suite: { type: "string" },
       "case-set": { type: "string" },
@@ -235,36 +303,36 @@ async function importCommand(
   const required = ["importer", "suite", "case-set", "cases", "run"] as const;
   const missing = required.filter((k) => values[k] === undefined);
   if (missing.length > 0 || !values.arm?.length) {
-    out(
+    err(
       `import: missing ${[...missing.map((m) => `--${m}`), ...(values.arm?.length ? [] : ["--arm"])].join(", ")}`,
     );
     return 2;
   }
   const trigger = TriggerKind.safeParse(values.trigger ?? "code");
   if (!trigger.success) {
-    out(`import: --trigger must be one of ${TriggerKind.options.join(", ")}`);
+    err(`import: --trigger must be one of ${TriggerKind.options.join(", ")}`);
     return 2;
   }
   const seed = values.seed ?? "1";
   if (!/^(0|[1-9][0-9]{0,8})$/.test(seed)) {
-    out("import: --seed must be a non-negative integer below 10^9");
+    err("import: --seed must be a non-negative integer below 10^9");
     return 2;
   }
   if ((values.concurrency === undefined) !== (values.endpoint === undefined)) {
-    out(
+    err(
       "import: --concurrency and --endpoint go together: they state the schedule the trials ran on",
     );
     return 2;
   }
   if (values.concurrency !== undefined && !/^[1-9][0-9]{0,5}$/.test(values.concurrency)) {
-    out("import: --concurrency must be a whole number from 1");
+    err("import: --concurrency must be a whole number from 1");
     return 2;
   }
   const arms = [];
   for (const spec of values.arm) {
     const [name, role, ...path] = spec.split(":");
     if (!name || !role || path.length === 0 || !["base", "candidate", "reference"].includes(role)) {
-      out(`import: --arm '${spec}' is not <name>:<role>:<file>`);
+      err(`import: --arm '${spec}' is not <name>:<role>:<file>`);
       return 2;
     }
     arms.push({

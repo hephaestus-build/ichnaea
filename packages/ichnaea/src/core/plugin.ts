@@ -212,8 +212,10 @@ export interface CommandHost {
   readonly gates: ReadonlyMap<string, GateDefinition>;
   /** Runs the plugins' hooks. */
   readonly hooks: HookRunner;
-  /** Writes one line of the command's output. */
+  /** Writes one line of the command's result to stdout. */
   readonly out: (text: string) => void;
+  /** Writes one line of diagnostics to stderr. */
+  readonly err: (text: string) => void;
 }
 
 /** Runs hooks across plugins. */

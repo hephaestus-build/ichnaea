@@ -34,7 +34,6 @@ import {
   definePlugin,
   FileStore,
   HostError,
-  main,
   MonthlyCapError,
   type MeasureDefinition,
   type Plugin,
@@ -47,6 +46,7 @@ import {
   testMeasure,
   TRIGGER_VARIES,
 } from "../../src/core/index.ts";
+import { main } from "../../src/cli.ts";
 
 const fixture = async (name: string): Promise<unknown> =>
   JSON.parse(
@@ -488,8 +488,22 @@ describe("CLI (REQ-26, REQ-114)", () => {
     const out: string[] = [];
     expect(await main(["schema", "trial"], (t) => out.push(t))).toBe(0);
     expect(JSON.parse(out[0] as string).title).toBe("ichnaea.trial/1");
-    expect(await main(["schema", "nothing"], () => undefined)).toBe(2);
-    expect(await main([], () => undefined)).toBe(2);
+    expect(
+      await main(
+        ["schema", "nothing"],
+        () => undefined,
+        undefined,
+        () => undefined,
+      ),
+    ).toBe(2);
+    expect(
+      await main(
+        [],
+        () => undefined,
+        undefined,
+        () => undefined,
+      ),
+    ).toBe(2);
   });
 
   it("exits 2 on every error, so an error never reads as a policy block", async () => {
@@ -519,14 +533,36 @@ describe("CLI (REQ-26, REQ-114)", () => {
       ["--bogus"],
       ["--arm", "broken"],
     ]) {
-      const out: string[] = [];
-      expect(await main([...base, ...extra], (t) => out.push(t))).toBe(2);
-      expect(out.join(" ")).not.toMatch(/ZodError/);
+      const errors: string[] = [];
+      expect(
+        await main(
+          [...base, ...extra],
+          () => undefined,
+          undefined,
+          (t) => errors.push(t),
+        ),
+      ).toBe(2);
+      expect(errors).toHaveLength(1);
+      expect(errors.join(" ")).not.toMatch(/ZodError/);
     }
-    const out: string[] = [];
-    expect(await main(["nothing", "--config", config], (t) => out.push(t))).toBe(2);
-    expect(out[0]).toBe("unknown command 'nothing'. Commands: help, schema, doctor, import");
-    expect(await main([...base], () => undefined)).toBe(2);
+    const errors: string[] = [];
+    expect(
+      await main(
+        ["nothing", "--config", config],
+        () => undefined,
+        undefined,
+        (t) => errors.push(t),
+      ),
+    ).toBe(2);
+    expect(errors[0]).toBe("unknown command 'nothing'. Commands: help, schema, doctor, import");
+    expect(
+      await main(
+        base,
+        () => undefined,
+        undefined,
+        () => undefined,
+      ),
+    ).toBe(2);
   });
 
   it("names the Node version a .ts configuration needs when Node cannot load it, and exits 2", async () => {
@@ -534,18 +570,23 @@ describe("CLI (REQ-26, REQ-114)", () => {
     const ts = join(dir, "ichnaea.config.ts");
     const txt = join(dir, "ichnaea.config.txt");
     for (const file of [ts, txt]) await writeFile(file, "export default { plugins: [] };\n");
-    const out: string[] = [];
-    expect(await main(["doctor", "--config", ts], (t) => out.push(t), unknownExtension)).toBe(2);
-    expect(out).toHaveLength(1);
-    expect(out[0]).toMatch(/^configuration error: .*ichnaea\.config\.ts is TypeScript/);
-    expect(out[0]).toContain("Ichnaea needs Node 24.3 or later");
+    const errors: string[] = [];
+    const error = (t: string): void => void errors.push(t);
+    expect(await main(["doctor", "--config", ts], () => undefined, unknownExtension, error)).toBe(
+      2,
+    );
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toMatch(/^configuration error: .*ichnaea\.config\.ts is TypeScript/);
+    expect(errors[0]).toContain("Ichnaea needs Node 24.3 or later");
     // Another failure of the loader, or the same code on a file that is not TypeScript, is not rewritten.
-    out.length = 0;
-    expect(await main(["doctor", "--config", ts], (t) => out.push(t), failing)).toBe(2);
-    expect(out).toEqual(["configuration error: boom"]);
-    out.length = 0;
-    expect(await main(["doctor", "--config", txt], (t) => out.push(t), unknownExtension)).toBe(2);
-    expect(out).toEqual(['configuration error: Unknown file extension ".ts"']);
+    errors.length = 0;
+    expect(await main(["doctor", "--config", ts], () => undefined, failing, error)).toBe(2);
+    expect(errors).toEqual(["configuration error: boom"]);
+    errors.length = 0;
+    expect(await main(["doctor", "--config", txt], () => undefined, unknownExtension, error)).toBe(
+      2,
+    );
+    expect(errors).toEqual(['configuration error: Unknown file extension ".ts"']);
   });
 
   it("lists every trigger and what its arms may differ in, from the rule decide applies", async () => {
@@ -588,13 +629,27 @@ describe("CLI (REQ-26, REQ-114)", () => {
     process.chdir(dir);
     try {
       for (const argv of [["doctor"], ["decide"], ["nothing"], ["import"]]) {
-        const out: string[] = [];
-        expect(await main(argv, (t) => out.push(t))).toBe(2);
-        expect(out).toEqual([`no ichnaea.config.ts in ${dir}; see the README's quick start`]);
+        const errors: string[] = [];
+        expect(
+          await main(
+            argv,
+            () => undefined,
+            undefined,
+            (t) => errors.push(t),
+          ),
+        ).toBe(2);
+        expect(errors).toEqual([`no ichnaea.config.ts in ${dir}; see the README's quick start`]);
       }
-      const out: string[] = [];
-      expect(await main(["doctor", "--config", "other.config.ts"], (t) => out.push(t))).toBe(2);
-      expect(out).toEqual([`no other.config.ts in ${dir}; see the README's quick start`]);
+      const errors: string[] = [];
+      expect(
+        await main(
+          ["doctor", "--config", "other.config.ts"],
+          () => undefined,
+          undefined,
+          (t) => errors.push(t),
+        ),
+      ).toBe(2);
+      expect(errors).toEqual([`no other.config.ts in ${dir}; see the README's quick start`]);
     } finally {
       process.chdir(cwd);
     }

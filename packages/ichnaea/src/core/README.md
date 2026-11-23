@@ -43,7 +43,10 @@ The core of Ichnaea: the plugin host, the planner, import mode, the record store
 - **Egress.** Every class of data except `none` stays in by default. Only the plugin that the
   configuration names as `governance` can let it out. Any plugin can refuse.
 
-Decisions and reports come from the `decide` and `report` plugins.
+Decisions and reports come from the `decide` and `report` plugins. Run
+`ichnaea <command> --help` to see its options. Configured plugins supply their command and option
+descriptions. Commands write results to stdout and diagnostics to stderr. A plugin uses
+`host.out` for results and `host.err` for diagnostics.
 
-The core imports the contracts and no other area. The package has no runtime dependency, and zod
-as a peer.
+The CLI reads help for the packaged plugins even before a user configures them. The rest of the
+core imports the contracts only. The package has no runtime dependency, and zod as a peer.

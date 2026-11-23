@@ -51,7 +51,7 @@ const command: CommandDefinition = {
     const storePath = (values["store"] as string | undefined) ?? ".ichnaea";
     const runId = values["run"] as string | undefined;
     if (!runId) {
-      host.out("decide: --run is required");
+      host.err("decide: --run is required");
       return 2;
     }
     const store = new FileStore(storePath);
