@@ -110,6 +110,11 @@ export interface DecisionView {
     readonly resolution: readonly string[];
     readonly sensitivity: readonly SensitivityRow[];
     readonly title: string;
+    readonly trialReduction?: {
+        readonly measure: string;
+        readonly k: number;
+        readonly rows: ReadonlyArray<readonly [string, string, string, string, string]>;
+    };
     readonly verdict: string;
 }
 
@@ -855,6 +860,11 @@ export const SuiteDefinition: z.ZodObject<{
     }, z.core.$strict>]>>>;
     secondary: z.ZodOptional<z.ZodArray<z.core.$ZodBranded<z.ZodString, "MeasureId", "out">>>;
     hardGates: z.ZodOptional<z.ZodArray<z.core.$ZodBranded<z.ZodString, "GateId", "out">>>;
+    trialReduction: z.ZodOptional<z.ZodObject<{
+        measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+        k: z.ZodInt;
+        cases: z.ZodArray<z.core.$ZodBranded<z.ZodString, "CaseId", "out">>;
+    }, z.core.$strict>>;
     maxCalls: z.ZodOptional<z.ZodInt>;
     policy: z.ZodOptional<z.ZodObject<{
         onRegression: z.ZodEnum<{

@@ -148,6 +148,12 @@ export interface DecisionView {
   readonly method: string;
   /** One row for each measure. */
   readonly measures: readonly MeasureRow[];
+  /** Registered case reductions. The entries are point estimates without intervals. */
+  readonly trialReduction?: {
+    readonly measure: string;
+    readonly k: number;
+    readonly rows: ReadonlyArray<readonly [string, string, string, string, string]>;
+  };
   /** Each hard gate with its result: `passed`, or `failed` with the number of failures. */
   readonly gates: ReadonlyArray<{
     readonly gate: string;
@@ -180,6 +186,28 @@ export interface DecisionView {
    * version.
    */
   readonly lineage: ReadonlyArray<readonly [string, string]>;
+}
+
+function reductionView(
+  reduction: NonNullable<Decision["trialReduction"]>,
+  id: (value: string) => string,
+): NonNullable<DecisionView["trialReduction"]> {
+  const cells = (row: typeof reduction.overall): readonly [string, string, string] =>
+    row.status === "missing"
+      ? ["Missing", "Missing", "missing"]
+      : [percent(row.passAll), percent(row.passAny), row.status];
+  const observed = reduction.cases.filter((row) => row.status !== "missing").length;
+  return {
+    measure: id(reduction.measure),
+    k: reduction.k,
+    rows: [
+      ...reduction.cases.map(
+        (row) =>
+          [id(row.case), `${row.validTrials} of ${row.plannedTrials}`, ...cells(row)] as const,
+      ),
+      ["Overall", `${observed} of ${reduction.cases.length} cases`, ...cells(reduction.overall)],
+    ],
+  };
 }
 
 /** The label of a bound that its comparison's non-inferiority result does not vouch for. */
@@ -392,6 +420,9 @@ export function decisionView(
         notes: m.notes.map(prose),
       };
     }),
+    ...(decision.trialReduction
+      ? { trialReduction: reductionView(decision.trialReduction, id) }
+      : {}),
     gates: decision.gates.map((g) => ({
       gate: id(g.gate),
       result: g.passed ? "passed" : `failed (${g.failures})`,

@@ -188,6 +188,7 @@
     "RETENTION_RULES",
     "Real",
     "RecordDataClass",
+    "RegisteredTrialReduction",
     "Replay",
     "ReplicatesFor",
     "Run",

@@ -69,3 +69,8 @@ Use `ichnaea plan --pilot <run>` with a noise run of the same base, cases, masks
 Without a pilot, the plan uses simulated base rates. The decision estimates resolution from the
 observed base-arm rates and labels that estimate. This model uses independent trials without
 block shocks.
+
+A one-arm suite can declare `trialReduction: { measure, k, cases }`. The lock pins its binary
+measure and the selected cases. Decide reports pass^k and pass@k over fresh trials, with equal
+case weights. If a case has fewer than k fresh binary observations, the case and the suite
+aggregate are missing. The estimates have no interval.

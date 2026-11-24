@@ -29,6 +29,16 @@ export const AnalysisPrimary = z.strictObject({
   coverageFloor: none(z.number().min(0).max(1)).optional(),
 });
 
+/** Use the same registered number of fresh binary trials for each selected case. */
+export const RegisteredTrialReduction = z.strictObject({
+  measure: none(MeasureId),
+  k: none(z.int().min(1)),
+  cases: none(z.array(CaseId).min(1)),
+});
+
+/** Authored reduction settings before their identifiers are validated. */
+export type TrialReductionRegistration = z.input<typeof RegisteredTrialReduction>;
+
 /** Analysis that can be registered before a candidate exists. */
 export const AnalysisPlan = z.strictObject({
   schema: none(z.literal("ichnaea.analysisPlan/1")),
@@ -55,6 +65,7 @@ export const AnalysisPlan = z.strictObject({
   holm: none(z.array(MeasureId)),
   applicability: Applicability,
   resolution: z.array(Resolution).optional(),
+  trialReduction: RegisteredTrialReduction.optional(),
   pilot: z.strictObject({ run: none(RunId), digest: none(Digest) }).optional(),
   base: z.strictObject({
     role: none(z.literal("base")),

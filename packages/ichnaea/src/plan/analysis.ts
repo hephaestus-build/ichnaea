@@ -1,6 +1,10 @@
 import { digest } from "../contracts/canonical.ts";
 import { caseDigest, caseSetDigest, configurationIdentity } from "../contracts/identity.ts";
-import { AnalysisLock, AnalysisPlan } from "../contracts/records/analysis-plan.ts";
+import {
+  AnalysisLock,
+  AnalysisPlan,
+  type TrialReductionRegistration,
+} from "../contracts/records/analysis-plan.ts";
 import type { Case, CaseSet } from "../contracts/records/case.ts";
 import type { Configuration } from "../contracts/records/configuration.ts";
 
@@ -64,6 +68,7 @@ export interface AnalysisInput {
   readonly hardGates: AnalysisPlan["hardGates"];
   readonly measures: AnalysisPlan["measures"];
   readonly applicability: AnalysisPlan["applicability"];
+  readonly trialReduction?: TrialReductionRegistration | undefined;
   readonly maxCalls?: number | undefined;
   readonly policy?: AnalysisPlan["policy"] | undefined;
   readonly ichnaea: string;
@@ -73,7 +78,7 @@ export function resolveAnalysis(input: AnalysisInput): AnalysisPlan {
   const holm = input.primary.map((entry) => entry.measure);
   if (new Set(holm).size !== holm.length)
     throw new PlanError("each primary comparison must have a unique measure ID");
-  const caseIds = new Set(input.caseSet.cases.map((entry) => entry.id));
+  const caseIds = new Set<string>(input.caseSet.cases.map((entry) => entry.id));
   for (const primary of input.primary) {
     const mask = input.applicability[primary.measure];
     if (!mask || mask.some((id) => !caseIds.has(id)) || new Set(mask).size !== mask.length)
@@ -87,6 +92,18 @@ export function resolveAnalysis(input: AnalysisInput): AnalysisPlan {
   const alpha = input.alpha ?? 0.05;
   const blocks = input.blocks ?? defaultBlocks(holm.length, alpha);
   const replicates = input.replicates ?? 1;
+  const reduction = input.trialReduction;
+  if (reduction) {
+    if (holm.length > 0)
+      throw new PlanError("a trial reduction requires one arm and no primary comparison");
+    if (new Set(reduction.cases).size !== reduction.cases.length)
+      throw new PlanError("a trial reduction lists a case more than once");
+    const unknown = reduction.cases.find((id) => !caseIds.has(id));
+    if (unknown !== undefined)
+      throw new PlanError(`trial reduction case '${unknown}' is not selected`);
+    if (reduction.k > blocks * replicates)
+      throw new PlanError("trial reduction k exceeds the planned trials per case");
+  }
   const estimand = input.estimand ?? "fixed-cases";
   const method =
     holm.length > 0 && estimand === "fixed-cases" ? "binary-randomized-blocks" : "estimate-only";
@@ -108,6 +125,7 @@ export function resolveAnalysis(input: AnalysisInput): AnalysisPlan {
     measures: input.measures,
     holm,
     applicability: input.applicability,
+    ...(reduction === undefined ? {} : { trialReduction: reduction }),
     base: { role: "base", identity: configurationIdentity(input.base) },
     maxCalls:
       input.maxCalls ?? blockCalls(input.caseSet.cases.length, holm.length, blocks, replicates),

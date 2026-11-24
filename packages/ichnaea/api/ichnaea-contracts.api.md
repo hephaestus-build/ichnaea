@@ -114,6 +114,11 @@ export const AnalysisPlan: z.ZodObject<{
             reason: z.ZodString;
         }, z.core.$strict>], "kind">;
     }, z.core.$strict>>>;
+    trialReduction: z.ZodOptional<z.ZodObject<{
+        measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+        k: z.ZodInt;
+        cases: z.ZodArray<z.core.$ZodBranded<z.ZodString, "CaseId", "out">>;
+    }, z.core.$strict>>;
     pilot: z.ZodOptional<z.ZodObject<{
         run: z.core.$ZodBranded<z.ZodString, "RunId", "out">;
         digest: z.ZodString;
@@ -1515,6 +1520,36 @@ export const Decision: z.ZodObject<{
             reason: z.ZodString;
         }, z.core.$strict>], "kind">;
     }, z.core.$strict>>>;
+    trialReduction: z.ZodOptional<z.ZodObject<{
+        measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+        k: z.ZodInt;
+        cases: z.ZodArray<z.ZodDiscriminatedUnion<[z.ZodObject<{
+            status: z.ZodLiteral<"missing">;
+            case: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
+            plannedTrials: z.ZodInt;
+            validTrials: z.ZodInt;
+        }, z.core.$strict>, z.ZodObject<{
+            status: z.ZodEnum<{
+                "estimate-only": "estimate-only";
+                observed: "observed";
+            }>;
+            passAll: z.ZodNumber;
+            passAny: z.ZodNumber;
+            case: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
+            plannedTrials: z.ZodInt;
+            validTrials: z.ZodInt;
+        }, z.core.$strict>], "status">>;
+        overall: z.ZodDiscriminatedUnion<[z.ZodObject<{
+            status: z.ZodLiteral<"missing">;
+        }, z.core.$strict>, z.ZodObject<{
+            status: z.ZodEnum<{
+                "estimate-only": "estimate-only";
+                observed: "observed";
+            }>;
+            passAll: z.ZodNumber;
+            passAny: z.ZodNumber;
+        }, z.core.$strict>], "status">;
+    }, z.core.$strict>>;
     missingness: z.ZodObject<{
         byArm: z.ZodArray<z.ZodObject<{
             arm: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
@@ -3202,6 +3237,11 @@ export const Plan: z.ZodObject<{
                 reason: z.ZodString;
             }, z.core.$strict>], "kind">;
         }, z.core.$strict>>>;
+        trialReduction: z.ZodOptional<z.ZodObject<{
+            measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+            k: z.ZodInt;
+            cases: z.ZodArray<z.core.$ZodBranded<z.ZodString, "CaseId", "out">>;
+        }, z.core.$strict>>;
         pilot: z.ZodOptional<z.ZodObject<{
             run: z.core.$ZodBranded<z.ZodString, "RunId", "out">;
             digest: z.ZodString;
@@ -4010,6 +4050,13 @@ export const RecordDataClass: z.ZodEnum<{
 
 // @public
 export const REFUSED_MARGIN = "the plan carries no planning statement, and its margin is refused";
+
+// @public
+export const RegisteredTrialReduction: z.ZodObject<{
+    measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+    k: z.ZodInt;
+    cases: z.ZodArray<z.core.$ZodBranded<z.ZodString, "CaseId", "out">>;
+}, z.core.$strict>;
 
 // @public
 export const Replay: z.ZodObject<{
@@ -5632,6 +5679,9 @@ export const TrialReduction: z.ZodXor<readonly [z.ZodObject<{
         k: z.ZodInt;
     }, z.core.$strict>;
 }, z.core.$strict>]>;
+
+// @public
+export type TrialReductionRegistration = z.input<typeof RegisteredTrialReduction>;
 
 // @public
 export const TrialRequest: z.ZodObject<{
