@@ -230,7 +230,7 @@ function scenarioFailures(
   return failures;
 }
 
-function checkNewcomer(project: string, bin: string): void {
+function checkNewcomer(project: string, bin: string, readme: string): void {
   const directory = join(project, "newcomer");
   mkdirSync(directory);
   for (const [file, contents] of Object.entries(readmeNewcomer(readme)))
@@ -303,7 +303,7 @@ function consume(spec: string, work: string, exampleRoot?: string): void {
     typeof bin.ichnaea !== "string"
   )
     throw new Error("the installed package has no ichnaea command");
-  checkNewcomer(project, join(pkg, bin.ichnaea));
+  checkNewcomer(project, join(pkg, bin.ichnaea), readme);
   if ("scripts" in manifest) throw new Error("the installed manifest has scripts");
   if (/\b(preinstall|install|postinstall|prepare)\$/.test(installed.stdout + installed.stderr))
     throw new Error("installing the package ran a lifecycle script");
