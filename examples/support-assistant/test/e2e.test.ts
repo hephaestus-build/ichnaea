@@ -1,10 +1,11 @@
 // The whole path from the CLI: import another runner's results, decide, report. The example
 // application is synthetic and uses only published Ichnaea parts (the substitution test).
-import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
 import { FLOOR_NOT_SET_REASON, main } from "@tumaet/ichnaea";
+import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
 const here = join(import.meta.dirname, "..");
@@ -15,6 +16,7 @@ async function flow(
   varies: readonly string[] = ["prompt.answer"],
   trigger: string | null = "new-model",
   suite = at("data/suite.json"),
+  { run = "run-1", verdictFile }: { run?: string; verdictFile?: string } = {},
 ): Promise<{ store: string; out: string[]; codes: number[] }> {
   const store = await mkdtemp(join(tmpdir(), "ichnaea-e2e-"));
   const out: string[] = [];
@@ -42,7 +44,7 @@ async function flow(
         "--file",
         at(candidateResults),
         "--run",
-        "run-1",
+        run,
         "--store",
         store,
         "--now",
@@ -57,15 +59,93 @@ async function flow(
       log,
     ),
     await main(
-      ["decide", ...config, "--store", store, "--run", "run-1", "--now", "2026-11-15T11:00:00Z"],
+      [
+        "decide",
+        ...config,
+        "--store",
+        store,
+        "--run",
+        run,
+        "--now",
+        "2026-11-15T11:00:00Z",
+        ...(verdictFile === undefined ? [] : ["--verdict-file", join(store, verdictFile)]),
+      ],
       log,
     ),
-    await main(["report", ...config, "--store", store, "--run", "run-1"], log),
+    await main(["report", ...config, "--store", store, "--run", run], log),
   ];
   return { store, out, codes };
 }
 
 describe("example application, end to end", () => {
+  it("keeps decisions, verdicts and reports together for the run ID alphabet", async () => {
+    await fc.assert(
+      fc.asyncProperty(fc.stringMatching(/^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,48}$/), async (run) => {
+        const { store, out, codes } = await flow(
+          "results/candidate-same.json",
+          undefined,
+          undefined,
+          undefined,
+          { run },
+        );
+        try {
+          expect(codes, out.join("\n")).toEqual([0, 0, 0]);
+          const directory = encodeURIComponent(run);
+          expect(await readdir(join(store, "runs"))).toEqual([directory]);
+          const path = join(store, "runs", directory);
+          expect(JSON.parse(await readFile(join(path, "verdict.json"), "utf8"))).toMatchObject({
+            run,
+            verdict: "INCONCLUSIVE",
+          });
+          expect(await readFile(join(path, "report", "summary.md"), "utf8")).toContain(
+            FLOOR_NOT_SET_REASON,
+          );
+        } finally {
+          await rm(store, { force: true, recursive: true });
+        }
+      }),
+      {
+        numRuns: 20,
+        examples: [
+          ["audit+1"],
+          ["ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._:/@+-"],
+        ],
+      },
+    );
+  }, 20_000);
+
+  it("retries a failed verdict write using the saved decision", async () => {
+    const { store, codes } = await flow(
+      "results/candidate-same.json",
+      undefined,
+      undefined,
+      undefined,
+      { verdictFile: "missing/verdict.json" },
+    );
+    try {
+      expect(codes).toEqual([0, 2, 0]);
+      const path = join(store, "runs", "run-1");
+      const decision = await readFile(join(path, "decision.json"), "utf8");
+      const index = await readFile(join(store, "index.jsonl"), "utf8");
+      const manifest = await readFile(join(path, "manifest.json"), "utf8");
+      const out: string[] = [];
+      const code = await main(
+        ["decide", "--config", at("ichnaea.config.ts"), "--store", store, "--run", "run-1"],
+        (line) => void out.push(line),
+      );
+      expect(code, out.join("\n")).toBe(0);
+      expect(await readFile(join(path, "decision.json"), "utf8")).toBe(decision);
+      expect(await readFile(join(store, "index.jsonl"), "utf8")).toBe(index);
+      expect(await readFile(join(path, "manifest.json"), "utf8")).toBe(manifest);
+      expect(JSON.parse(await readFile(join(path, "verdict.json"), "utf8"))).toMatchObject({
+        run: "run-1",
+        verdict: "INCONCLUSIVE",
+      });
+    } finally {
+      await rm(store, { force: true, recursive: true });
+    }
+  });
+
   it("an unchanged candidate is INCONCLUSIVE while the margin floor is not set, and says why", async () => {
     const { store, out, codes } = await flow("results/candidate-same.json");
     // The suite reports an INCONCLUSIVE verdict without blocking.

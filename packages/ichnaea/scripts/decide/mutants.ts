@@ -334,16 +334,16 @@ export const MUTANTS: readonly Mutant[] = [
   },
   {
     id: "import keeps a passing system failure",
-    file: "src/core/import.ts",
+    file: "src/core/record-run.ts",
     from: "    if (FAILED_OUTCOMES.has(outcome) && passing(v.value))",
     to: "    if (false)",
     projects: CORE,
   },
   {
     id: "import scores a lost capture",
-    file: "src/core/import.ts",
-    from: "    return checkCaptured(checkConfiguration(t, identities.get(p.arm)));",
-    to: "    return checkConfiguration(t, identities.get(p.arm));",
+    file: "src/core/record-run.ts",
+    from: "    return checkCaptured(analysisPlan ? Trial.parse({ ...observed, analysisPlan }) : observed);",
+    to: "    return analysisPlan ? Trial.parse({ ...observed, analysisPlan }) : observed;",
     projects: CORE,
   },
   // The sensitivity analysis (decision 0010).
@@ -399,8 +399,8 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "exploratory run decides",
     file: D,
-    from: 'const decision = plan.mode === "decision" && !run.exploratory;',
-    to: 'const decision = plan.mode === "decision";',
+    from: 'const decision = plan.analysis === undefined && plan.mode === "decision" && !run.exploratory;',
+    to: 'const decision = plan.analysis === undefined && plan.mode === "decision";',
   },
   {
     id: "scope always claims run-to-run noise",
