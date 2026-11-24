@@ -11,6 +11,8 @@ await serveWorker(async ({ arm, limits, case: trialCase, signal, workdir }) => {
   }
   if (process.argv[2] === "ignore-first-cancel" && basename(dirname(workdir)) === "0")
     await setTimeout(30_000);
+  if (process.argv[2] === "close-first-block" && basename(dirname(workdir)) === "0")
+    process.exit(0);
   if (process.argv[2] === "artifact") {
     await writeFile(join(workdir, "answer.txt"), "Paris");
     return { artifacts: [{ name: "answer", path: "answer.txt", mediaType: "text/plain" }] };

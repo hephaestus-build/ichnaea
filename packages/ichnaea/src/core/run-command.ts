@@ -68,12 +68,16 @@ async function replay(work: RunWork): Promise<{
   let failure: Execution["failure"];
   let open: { block: number; plannedBlock: number; draws: Closed["draws"] } | undefined;
   let attempts: z.infer<typeof AttemptOutcome>[] = [];
+  let timedOut = false;
   for (const entry of await work.entries()) {
     if (entry.kind === "block-start") {
       if (entry.plannedBlock === undefined || entry.draws === undefined)
         throw new Error("the work area predates case-pair draws");
       open = { block: entry.block, plannedBlock: entry.plannedBlock, draws: entry.draws };
       attempts = [];
+      timedOut = false;
+    } else if (entry.kind === "attempt-expired") {
+      timedOut = true;
     } else if (entry.kind === "outcome") {
       const attempt = AttemptOutcome.parse(entry.result);
       attempts.push(attempt);
@@ -84,6 +88,7 @@ async function replay(work: RunWork): Promise<{
     } else if (entry.kind === "block-complete" || entry.kind === "block-abandoned") {
       if (!open) throw new Error("the journal settled a block without an order");
       const complete = entry.kind === "block-complete";
+      if (!complete && timedOut) failure ??= "worker-unresponsive";
       blocks.push({
         ...open,
         status: complete ? "complete" : "abandoned",
@@ -229,6 +234,8 @@ export const runCommand: Command = {
     const base = plan.arms.find(({ role }) => role === "base")?.identity;
     const candidate = plan.arms.find(({ role }) => role === "candidate")?.identity;
     if (!analysis || !base) throw new Error("run needs a bound analysis plan");
+    if (snapshot.noise && snapshot.purpose === "confirmation")
+      throw new CliError("USAGE", "--noise cannot read confirmation cases");
     const anchored =
       anchor === undefined || planPath === undefined
         ? undefined
@@ -271,7 +278,7 @@ export const runCommand: Command = {
         await publishRecord(work.directory, "prepared.json", snapshot);
       }
       let failure = replayed.failure;
-      let disrupted: "worker-closed" | "worker-unresponsive" | undefined;
+      let disrupted = false;
       while (!failure) {
         stopped.signal.throwIfAborted();
         let block: ReturnType<BlockRunner["startBlock"]>;
@@ -279,7 +286,7 @@ export const runCommand: Command = {
           block = runner.startBlock();
         } catch (error) {
           if (!disrupted || !(error instanceof InsufficientCallBudget)) throw error;
-          failure = disrupted;
+          failure = "worker-closed";
           await work.fail(failure);
           break;
         }
@@ -316,11 +323,11 @@ export const runCommand: Command = {
         if (status === "complete") {
           runner.finishBlock();
           await work.completeBlock();
-          disrupted = undefined;
-        } else if (status === "worker-closed" || status === "worker-unresponsive") {
+          disrupted = false;
+        } else if (status === "worker-closed") {
           runner.abandonBlock("transport");
           await work.abandonBlock();
-          disrupted = status;
+          disrupted = true;
         } else {
           await work.abandonBlock(status);
           failure = status;

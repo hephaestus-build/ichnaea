@@ -36,6 +36,7 @@ type Entry =
   | { kind: "run-failed"; reason: z.infer<typeof RunFailure> }
   | { kind: "handshake"; block: number; ready: WorkerReady }
   | { kind: "intent"; block: number; trial: TrialIdentity }
+  | { kind: "attempt-expired"; block: number; trial: TrialIdentity }
   | { kind: "outcome"; block: number; trial: TrialIdentity; result: Json };
 type BlockBooking = { readonly endpoint: string; readonly cap: number; readonly calls: number };
 
@@ -74,6 +75,7 @@ const EntrySchema: z.ZodType<Entry> = z.discriminatedUnion("kind", [
   z.strictObject({ kind: z.literal("block-complete"), block }),
   z.strictObject({ kind: z.literal("handshake"), block, ready: WorkerReady }),
   z.strictObject({ kind: z.literal("intent"), block, trial: TrialIdentity }),
+  z.strictObject({ kind: z.literal("attempt-expired"), block, trial: TrialIdentity }),
   z.strictObject({ kind: z.literal("outcome"), block, trial: TrialIdentity, result: Json }),
 ]);
 
@@ -324,6 +326,14 @@ export class RunWork {
       if (this.#pending.has(key)) throw new Error("attempt already has an intent");
       await this.#append({ kind: "intent", block: this.#openBlock(), trial: parsed });
       this.#pending.add(key);
+    });
+  }
+
+  async expire(trial: TrialIdentity): Promise<void> {
+    await this.#change(async () => {
+      if (!this.#pending.has(canonicalize(trial)))
+        throw new Error("expiry has no outstanding intent");
+      await this.#append({ kind: "attempt-expired", block: this.#openBlock(), trial });
     });
   }
 

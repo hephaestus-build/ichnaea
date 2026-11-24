@@ -159,6 +159,11 @@ it("anchors exact plan bytes, records a decision and refuses a spent confirmatio
     git(directory, "remote", "add", "origin", join(directory, "remote"));
     git(directory, "push", "origin", "main");
     const flags = ["--plan", plan, "--anchor", "origin/main"];
+    expect(await cli("run", "--run", "no-pilot", "--noise", ...flags, "--", ...worker)).toBe(2);
+    expect(JSON.parse(docs[0] ?? "")).toMatchObject({
+      code: "USAGE",
+      message: "--noise cannot read confirmation cases",
+    });
     expect(await cli("run", "--run", "first", ...flags, "--", ...worker), errors.join("\n")).toBe(
       0,
     );
@@ -331,13 +336,13 @@ it("runs a base-only suite as an A/A pilot within its generated two-arm budget",
   }
 });
 
-it("replaces an unresponsive block when the locked budget covers a fresh block", async () => {
+it("replaces a closed worker when the locked budget covers a fresh block", async () => {
   const directory = await mkdtemp(join(tmpdir(), "ichnaea-deadline-"));
   try {
     const config = await suite(directory);
     const store = join(directory, "store");
     const body = await readFile(config, "utf8");
-    await writeFile(config, body.replace("maxCalls: 4,", "maxCalls: 6, deadlineMs: 200,"));
+    await writeFile(config, body.replace("maxCalls: 4,", "maxCalls: 6,"));
     const errors: string[] = [];
     expect(
       await main(
@@ -351,7 +356,7 @@ it("replaces an unresponsive block when the locked budget covers a fresh block",
           "replaced",
           "--",
           ...worker,
-          "ignore-first-cancel",
+          "close-first-block",
         ],
         () => {},
         undefined,
@@ -422,6 +427,46 @@ it("seals the bytes of an artifact-only trial as evidence", async () => {
         readFile(join(store, "runs", "artifact", artifact?.uri ?? ""), "utf8"),
       ).resolves.toBe("Paris");
     }
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+it("invalidates an unresponsive run without replacing a block that timed out", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "ichnaea-unresponsive-"));
+  try {
+    const config = await suite(directory);
+    const store = join(directory, "store");
+    const body = await readFile(config, "utf8");
+    await writeFile(config, body.replace("maxCalls: 4,", "maxCalls: 6, deadlineMs: 200,"));
+    const docs: string[] = [];
+    expect(
+      await main(
+        [
+          "run",
+          "--config",
+          config,
+          "--store",
+          store,
+          "--run",
+          "timed-out",
+          "--json",
+          "--",
+          ...worker,
+          "ignore-first-cancel",
+        ],
+        (line) => docs.push(line),
+        undefined,
+        () => {},
+      ),
+    ).toBe(1);
+    expect(JSON.parse(docs[0] ?? "")).toMatchObject({
+      verdict: "INVALID",
+      reason: expect.stringContaining("worker did not answer after cancellation"),
+    });
+    const saved = await new FileStore(store).read("timed-out");
+    expect(saved.run.execution?.blocks).toMatchObject([{ block: 0, status: "abandoned" }]);
+    expect(saved.trials).toHaveLength(0);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

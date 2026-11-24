@@ -57,6 +57,7 @@ export async function runWorkerBlock(input: {
     settingsFiles.set(arm.name, { path: join(directory, file), settings });
   }
 
+  let timedOut = false;
   const flights = new Map<string, Flight>();
   const replaced = new Map<string, NonNullable<Trial["attempts"]>>();
   async function settle(
@@ -157,13 +158,16 @@ export async function runWorkerBlock(input: {
         worker.send({ schema: "ichnaea.cancel/1", trial: request.trial });
       signal.throwIfAborted();
     }
-    if (frame.kind === "closed") return "worker-closed";
+    if (frame.kind === "closed")
+      return timedOut || performance.now() >= deadline ? "worker-unresponsive" : "worker-closed";
     if (frame.kind === "timeout") {
       if ([...flights.values()].some(({ cancel }) => cancel && cancel.deadline <= deadline))
         return "worker-unresponsive";
       for (const settlement of runner.expire(deadline)) {
+        timedOut = true;
         const flight = flights.get(settlement.attempt.trial.id);
         if (!flight) throw new Error("missing expired attempt");
+        await work.expire(flight.request.trial);
         worker.send({ schema: "ichnaea.cancel/1", trial: flight.request.trial });
         flight.cancel = { deadline: performance.now() + CANCEL_MS, settlement };
       }
