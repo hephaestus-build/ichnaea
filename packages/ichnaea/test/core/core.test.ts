@@ -16,6 +16,8 @@ import { join } from "node:path";
 import {
   type Case,
   candidateRunsFirst,
+  Decision as DecisionSchema,
+  RunId,
   type GateResult,
   Plan as PlanSchema,
   type Plan,
@@ -44,6 +46,8 @@ import {
 } from "../../src/core/index.ts";
 import { main } from "../../src/cli.ts";
 import { TRIGGER_VARIES } from "../../src/plan/rules.ts";
+
+import { RunWork } from "../../src/core/runner-work.ts";
 
 const fixture = async (name: string): Promise<unknown> =>
   JSON.parse(
@@ -142,6 +146,34 @@ describe("file store (REQ-28) and call ledger (REQ-86)", () => {
     const stored = await store.read("r1");
     expect(stored.trials).toHaveLength(1);
     await expect(store.read("r2")).rejects.toThrow("no plan or run record");
+  });
+
+  it("seals the work area and finds the decision after a crash before indexing", async () => {
+    const root = await mkdtemp(join(tmpdir(), "ichnaea-store-"));
+    const store = new FileStore(root);
+    const work = await RunWork.open(root, "r1");
+    try {
+      await work.seal(records("r1"));
+      await expect(readdir(work.directory)).rejects.toMatchObject({ code: "ENOENT" });
+      await expect(RunWork.open(root, "r1")).rejects.toThrow(/already sealed/);
+      const decision = {
+        ...DecisionSchema.parse(await fixture("decision")),
+        run: RunId.parse("r1"),
+      };
+      await writeFile(join(root, "runs", "r1", "decision.json"), JSON.stringify(decision));
+      expect(await store.index()).toEqual([
+        {
+          run: "r1",
+          suite: plan.suite,
+          plan: decision.plan,
+          verdict: decision.verdict,
+          decidedAt: decision.decidedAt,
+        },
+      ]);
+    } finally {
+      await work.close();
+      await rm(root, { recursive: true, force: true });
+    }
   });
 
   it("refuses duplicate trials, values and gate results, which would hide a regression", async () => {

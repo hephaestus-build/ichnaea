@@ -5,7 +5,9 @@ Thank you for helping. Ichnaea is a general framework: it must work for any GenA
 ## Ground rules
 
 1. **No application special cases in the framework.** A behaviour that only one application needs
-   belongs in that application's plugin or suite. `pnpm lint` fails on known application terms.
+   belongs in that application's plugin or suite. Classify raw integration events in the
+   application adapter. Framework event rules use typed framework records. `pnpm lint` checks
+   module dependencies and raw event filters as well as known application terms.
 2. **No personal data, production content, secrets or private data.** Examples and fixtures are
    synthetic. Never commit real users' text, real run records or credentials.
 3. **Every claim has a test that could fail.** A statistical method matches published reference
@@ -62,6 +64,13 @@ git rebase --exec 'git commit --amend --no-edit -S' origin/main
 
 `pnpm generate` rewrites the JSON Schema files and the shared fixtures from their sources. Commit
 the result. Never edit generated files by hand.
+
+The contract lint reads the previous fixtures against the current readers. In a pull request, it
+reads those fixtures from the base commit. When a major leaves the registry, its successor in
+`packages/ichnaea/majors.json` names a TypeScript module in the package. The module exports
+`migrate(record)`, which returns the record for that successor. The lint runs it on the old
+fixtures. The current writer checks the migrated writer fixtures. The current reader checks the
+migrated reader-only fixtures, including records with unknown fields.
 
 ## Requirements and decisions
 

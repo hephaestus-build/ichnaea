@@ -527,6 +527,11 @@ export interface SensitivityRow {
 }
 
 // @public
+export function serveWorker(handler: (trial: WorkerTrial) => WorkerReply | Promise<WorkerReply>, options?: {
+    readonly capacity?: number;
+}): Promise<void>;
+
+// @public
 export const STALE_LOCK_MS = 30000;
 
 // @public
@@ -895,10 +900,33 @@ export interface TesterResult {
 // @public
 export function testMeasure(measure: MeasureDefinition): Promise<TesterResult>;
 
+// Warning: (ae-forgotten-export) The symbol "TrialResult" needs to be exported by the entry point index.d.ts
+//
+// @public
+export type WorkerReply = Omit<TrialResult, "schema" | "trial" | "dataClass" | "observed" | "usage"> & {
+    readonly observed?: ObservedConfiguration;
+    readonly usage?: TrialResult["usage"];
+    readonly dataClass?: TrialResult["dataClass"];
+};
+
+// @public
+export interface WorkerTrial {
+    readonly arm: {
+        readonly settings: Readonly<Record<string, Json>>;
+    };
+    // Warning: (ae-forgotten-export) The symbol "TrialRequest" needs to be exported by the entry point index.d.ts
+    readonly case: TrialRequest["case"];
+    readonly limits: TrialRequest["limits"];
+    readonly signal: AbortSignal;
+    readonly workdir: string;
+}
+
 // Warnings were encountered during analysis:
 //
 // src/core/import.ts:55:52 - (ae-forgotten-export) The symbol "LockedImport" needs to be exported by the entry point index.d.ts
 // src/core/plugin.ts:57:5 - (ae-forgotten-export) The symbol "Case" needs to be exported by the entry point index.d.ts
+// src/core/serve-worker.ts:30:19 - (ae-forgotten-export) The symbol "Json" needs to be exported by the entry point index.d.ts
+// src/core/serve-worker.ts:44:3 - (ae-forgotten-export) The symbol "ObservedConfiguration" needs to be exported by the entry point index.d.ts
 
 // (No @packageDocumentation comment for this package)
 

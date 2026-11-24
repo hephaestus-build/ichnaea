@@ -26,6 +26,22 @@ The core of Ichnaea: the plugin host, the planner, import mode, the record store
   Every ledger line must hold a `run` and a non-negative whole number of `calls`. Other fields are
   ignored. A line that does not stops the booking with a `LedgerError` that names the file and
   the line.
+- **Worker transport and recovery.** A local trial worker announces its protocol and concurrency
+  capacity before it receives a request. It can report its runtime, harness and tool catalogue
+  digest in the handshake. The run journal keeps the handshake and each attempt's intent and
+  outcome. A run reserves each block's worst-case calls before dispatch. Resume abandons an
+  interrupted block, keeps its booked calls and starts a replacement with a new arm-order draw.
+  A runner can take over when the owner's PID is gone on the same host or when the owner has
+  missed its heartbeat for ten minutes. The journal records the reason. Sealing moves the work
+  area into the run store in one rename. The index can recover decisions from sealed runs.
+- **Registration and records.** To anchor a plan, the runner checks that its bytes match a
+  committed plan and that its commit is an ancestor of the ref reported by `git ls-remote`.
+  A shallow CI checkout registers after it fetches the plan's history and the anchor ref.
+  The receipt binds the plan commit, file digest and remote SHA to the arm identities and seed.
+  The journal stores the receipt before dispatch. The records checkout holds decision and case-read indexes with class-none fields.
+  CI commits and pushes these files. It serializes jobs that share confirmation cases across
+  checkouts. A confirmation needs a records checkout, and its reservations stay spent if the run
+  fails. Exact digests cannot detect a reauthored case or a read outside the records repository.
 - **Measure implementation.** `measureImplementation` gives the digest of the code that
   computes a suite's measure, the second part of its identity. For a TypeScript measure, it
   digests two things. `moduleImplementation` imports the module in a child process with the load

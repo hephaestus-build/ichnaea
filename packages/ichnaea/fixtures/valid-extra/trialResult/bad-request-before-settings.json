@@ -1,0 +1,23 @@
+{
+  "schema": "ichnaea.trialResult/1",
+  "dataClass": "none",
+  "trial": {
+    "id": "refund-window-de/b/r0",
+    "suite": "support-assistant",
+    "case": "refund-window-de",
+    "arm": "b",
+    "replicate": 0,
+    "attempt": 1
+  },
+  "usage": {
+    "calls": 0,
+    "responseIds": []
+  },
+  "observed": {
+    "kind": "unavailable"
+  },
+  "failure": {
+    "class": "protocol",
+    "kind": "bad-request"
+  }
+}

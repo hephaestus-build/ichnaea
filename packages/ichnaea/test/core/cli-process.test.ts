@@ -33,7 +33,7 @@ describe("the CLI's process streams", () => {
 });
 
 describe("command help", () => {
-  it.each(["help", "schema", "doctor", "import", "decide", "report"])(
+  it.each(["help", "schema", "doctor", "import", "plan", "decide", "report"])(
     "prints %s help and exits 0 without requiring a configuration",
     (command) => {
       const result = run(command, "--help");

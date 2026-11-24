@@ -10,6 +10,7 @@ import { renderReport, ReportError, verifiedReport } from "../report/report.ts";
 
 import { resolutionLine } from "../plan/resolution.ts";
 
+import { runDirectory } from "./store-path.ts";
 import { FileStore } from "./store.ts";
 import { CORE_VERSION } from "./version.ts";
 
@@ -73,7 +74,7 @@ export const decideCommand: CommandDefinition = {
     await store.writeDecision(decision, stored.plan.suite);
     const verdictFile =
       (values["verdict-file"] as string | undefined) ??
-      join(storePath, "runs", runId, "verdict.json");
+      join(runDirectory(storePath, "runs", runId), "verdict.json");
     await writeFile(
       verdictFile,
       `${canonicalize({ run: decision.run, mode: decision.mode, verdict: decision.verdict, reason: decision.reason })}\n`,
@@ -131,7 +132,9 @@ export const reportCommand: CommandDefinition = {
       err(`report: ${error.message}`);
       return 1;
     }
-    const out = (values["out"] as string | undefined) ?? join(storePath, "runs", runId, "report");
+    const out =
+      (values["out"] as string | undefined) ??
+      join(runDirectory(storePath, "runs", runId), "report");
     await mkdir(out, { recursive: true });
     const files = [join(out, "summary.md"), join(out, "report.html")];
     await writeFile(files[0] as string, markdown);
