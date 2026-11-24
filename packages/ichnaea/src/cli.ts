@@ -14,7 +14,7 @@ import {
   CONFIG_OPTION,
   jsonRequested,
 } from "./core/command-grammar.ts";
-import { decideCommand, reportCommand } from "./core/commands.ts";
+import { decideCommand, importRatingsCommand, reportCommand } from "./core/commands.ts";
 import { runCommand } from "./core/run-command.ts";
 import { testMeasure } from "./core/measures.ts";
 import { CORE_VERSION } from "./core/version.ts";
@@ -103,6 +103,7 @@ const COMMANDS: readonly Command[] = [
   importCommand,
   decideCommand,
   reportCommand,
+  importRatingsCommand,
   planCommand,
   workerCommand,
   runCommand,

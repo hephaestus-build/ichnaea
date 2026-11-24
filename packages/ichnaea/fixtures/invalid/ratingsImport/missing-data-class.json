@@ -1,0 +1,66 @@
+{
+  "schema": "ichnaea.ratingsImport/1",
+  "run": "run-1",
+  "study": "example-ratings",
+  "source": "label-studio",
+  "registration": "sha256:3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c",
+  "scale": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "judge": {
+    "id": "app/rubric",
+    "digest": "sha256:abababababababababababababababababababababababababababababababab",
+    "measure": "app/judged",
+    "version": "1.0.0"
+  },
+  "raters": [
+    {
+      "measure": "app/rater-a",
+      "version": "1.0.0"
+    },
+    {
+      "measure": "app/rater-b",
+      "version": "1.0.0"
+    }
+  ],
+  "values": [
+    {
+      "schema": "ichnaea.measureValue/1",
+      "trial": "t-1",
+      "measure": "app/rater-a",
+      "version": "1.0.0",
+      "dataClass": "pseudonymous",
+      "source": "human",
+      "applicable": true,
+      "value": {
+        "type": "level",
+        "level": "2"
+      }
+    },
+    {
+      "schema": "ichnaea.measureValue/1",
+      "trial": "t-1",
+      "measure": "app/rater-b",
+      "version": "1.0.0",
+      "dataClass": "pseudonymous",
+      "source": "human",
+      "applicable": true,
+      "value": {
+        "type": "level",
+        "level": "2"
+      }
+    }
+  ],
+  "units": [
+    {
+      "trial": "t-1",
+      "item": "item-1",
+      "stratum": "sample",
+      "configuration": "base",
+      "judge": "2"
+    }
+  ]
+}

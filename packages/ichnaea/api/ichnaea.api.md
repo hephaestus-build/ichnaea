@@ -11,6 +11,11 @@ export class AppendOnlyError extends Error {
     readonly name = "AppendOnlyError";
 }
 
+// Warning: (ae-forgotten-export) The symbol "CalibrationInput" needs to be exported by the entry point index.d.ts
+//
+// @public
+export function calibrationInput(record: RatingsImport): CalibrationInput;
+
 // @public
 export class CallLedger {
     constructor(root: string);
@@ -77,7 +82,12 @@ export interface DecisionRecords extends RunRecords {
 
 // @public
 export interface DecisionView {
-    readonly agreement?: RatingAgreement;
+    readonly agreement?: RatingAgreement & {
+        readonly source?: {
+            readonly sidecar: string;
+            readonly registration: string;
+        };
+    };
     readonly claim: string;
     readonly differingFactors: readonly string[];
     readonly flips: ReadonlyArray<{
@@ -152,9 +162,11 @@ export class FileStore {
     createRun(records: RunRecords): Promise<void>;
     index(): Promise<RunIndexEntry[]>;
     read(run: string): Promise<StoredRun>;
+    readRatings(run: string, study: string): Promise<RatingsImport>;
     readonly root: string;
     runs(): Promise<string[]>;
     writeDecision(decision: Decision, suite: string): Promise<void>;
+    writeRatings(record: RatingsImport): Promise<void>;
     // Warning: (ae-forgotten-export) The symbol "Recalculation" needs to be exported by the entry point index.d.ts
     writeRecalculation(run: string, record: Recalculation): Promise<void>;
 }
@@ -212,6 +224,18 @@ export interface ImportInput {
     readonly files: readonly string[];
     readonly options: Readonly<Record<string, unknown>>;
     readonly plan?: Plan;
+}
+
+// @public
+export function importLabelStudio(input: ImportRatingsInput): Promise<RatingsImport>;
+
+// @public
+export interface ImportRatingsInput {
+    readonly file: string;
+    readonly key: string;
+    readonly registration: string;
+    readonly run: string;
+    readonly store: string;
 }
 
 // @public
@@ -472,6 +496,65 @@ export interface RatingSet {
 }
 
 // @public
+export const RatingsImport: z.ZodObject<{
+    schema: z.ZodLiteral<"ichnaea.ratingsImport/1">;
+    run: z.core.$ZodBranded<z.ZodString, "RunId", "out">;
+    study: z.ZodString;
+    source: z.ZodLiteral<"label-studio">;
+    registration: z.ZodString;
+    dataClass: z.ZodEnum<{
+        personal: "personal";
+        pseudonymous: "pseudonymous";
+        special: "special";
+    }>;
+    scale: z.ZodArray<z.ZodNumber>;
+    judge: z.ZodObject<{
+        id: z.core.$ZodBranded<z.ZodString, "JudgeId", "out">;
+        digest: z.ZodString;
+        measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+        version: z.ZodString;
+    }, z.core.$strict>;
+    raters: z.ZodArray<z.ZodObject<{
+        measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+        version: z.ZodString;
+    }, z.core.$strict>>;
+    values: z.ZodArray<z.ZodObject<{
+        schema: z.ZodLiteral<"ichnaea.measureValue/1">;
+        trial: z.core.$ZodBranded<z.ZodString, "TrialId", "out">;
+        turn: z.ZodOptional<z.ZodInt>;
+        measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+        version: z.ZodString;
+        detail: z.ZodOptional<z.ZodString>;
+        why: z.ZodOptional<z.ZodString>;
+        source: z.ZodLiteral<"human">;
+        applicable: z.ZodLiteral<true>;
+        dataClass: z.ZodEnum<{
+            personal: "personal";
+            pseudonymous: "pseudonymous";
+            special: "special";
+        }>;
+        value: z.ZodObject<{
+            type: z.ZodLiteral<"level">;
+            level: z.ZodString;
+        }, z.core.$strict>;
+    }, z.core.$strict>>;
+    units: z.ZodArray<z.ZodObject<{
+        trial: z.core.$ZodBranded<z.ZodString, "TrialId", "out">;
+        item: z.ZodString;
+        stratum: z.ZodString;
+        configuration: z.ZodEnum<{
+            base: "base";
+            candidate: "candidate";
+            "known-worse": "known-worse";
+        }>;
+        judge: z.ZodString;
+    }, z.core.$strict>>;
+}, z.core.$strict>;
+
+// @public
+export type RatingsImport = z.infer<typeof RatingsImport>;
+
+// @public
 export function recompute(records: DecisionRecords): RecomputeResult;
 
 // @public
@@ -496,6 +579,7 @@ export interface ReportOptions {
     readonly format: "markdown" | "html" | "json";
     readonly lineage?: Run["lineage"];
     readonly ratings?: RatingSet;
+    readonly ratingsSource?: NonNullable<DecisionView["agreement"]>["source"];
     readonly suite?: string;
 }
 

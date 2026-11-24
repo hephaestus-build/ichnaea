@@ -144,3 +144,24 @@ Set `callsPerTrial` and `deadlineMs` in the suite to change the defaults of one
 call and 60 seconds per trial. The analysis plan holds both values. Set `maxCalls`
 high enough for every planned trial at its full allowance and for any replacement
 blocks the run must be able to afford.
+
+## Label Studio ratings
+
+Use `ichnaea import-ratings --run <id> --file <export.json> --key <key.json> --registration <study.json>`
+to import two registered raters’ completed numeric annotations for a stored run.
+
+- The registration gives the study name, the Label Studio rating control, the ordered scale,
+  the study’s protected data class, and each rater’s user ID, measure, and version. It also names the
+  judge, its digest, and the measure and version that produced the stored judge scores.
+- The local key maps each opaque export item ID to a trial ID, stratum, and configuration
+  (`base`, `candidate`, or `known-worse`). Keep this key and the export private.
+- A run importer returns the judge's `ichnaea.judge/1` record in `ImportResult.judges`. The
+  measure card names that judge and the imported values declare `source: "judge"`.
+  `ichnaea import` binds the judge digest to the measure and version in the run's lineage.
+- The ratings import checks that binding and reads the stored judge levels. Every task needs
+  one score from each registered rater.
+
+The import writes an append-only sidecar with one canonical human value per rater and trial.
+Human and judge levels keep the labels from the registered scale. `calibrationInput` converts
+them to ordinal ranks for `analyzeCalibration`. The sidecar omits task content and annotator
+identities. Run `ichnaea report --run <id> --ratings-study <name>` to see aggregate agreement.

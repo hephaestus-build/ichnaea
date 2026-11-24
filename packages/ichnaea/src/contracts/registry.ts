@@ -5,6 +5,7 @@ import { CliDoctor, CliErrorRecord, CliHelp, ReportView } from "./records/cli.ts
 import { Case, CaseSet } from "./records/case.ts";
 import { Configuration } from "./records/configuration.ts";
 import { Decision } from "./records/decision.ts";
+import { RatingsImport } from "./records/ratings.ts";
 import { Calibration, Judge, Label } from "./records/judge.ts";
 import { MeasureCard, MeasureValue } from "./records/measure.ts";
 import { Finding, Monitor } from "./records/monitor.ts";
@@ -254,6 +255,13 @@ export const RECORD_CONTRACTS: readonly RecordContract[] = [
     schema: Label,
     stability: "development",
     description: "One annotation on one trial for one measure.",
+  },
+  {
+    name: "ratingsImport",
+    id: "ichnaea.ratingsImport/1",
+    schema: RatingsImport,
+    stability: "development",
+    description: "Protected human ratings and their binding to a stored run.",
   },
   {
     name: "calibration",

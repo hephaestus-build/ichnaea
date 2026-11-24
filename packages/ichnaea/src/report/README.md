@@ -32,7 +32,13 @@ such as the answers from both arms for one case. Each item belongs to one stratu
 
 The section gives Krippendorff’s alpha, the number of available and paired ratings, and a
 descriptive 95% percentile interval. Each bootstrap draw resamples whole items within their
-strata and keeps all the ratings for each selected item. The interval uses the plan seed and
-leaves out draws with undefined alpha. An unavailable estimate or bound is null in JSON. The
+strata and keeps all the ratings for each selected item. The interval uses a seed derived
+from the plan seed and leaves out draws with undefined alpha. The report gives the reason if
+there are too few paired items, the strata give no variation, or the interval cannot be computed.
+An unavailable estimate or bound is null in JSON. The
 agreement numbers do not affect the decision. The report shows aggregate counts and does not
 include item identifiers, stratum names, or individual ratings.
+
+Use `--ratings-study <name>` in place of `--ratings` when `import-ratings` has stored a study for
+the run. The report derives the rater columns from the stored human values. It shows their
+aggregate agreement and the digests of the sidecar and study registration.

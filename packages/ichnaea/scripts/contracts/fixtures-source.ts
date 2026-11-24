@@ -695,6 +695,31 @@ export const VALID: Record<string, Record<string, unknown>> = {
     labelledAt: "2026-11-15T12:00:00Z",
     dataClass: "none",
   },
+  ratingsImport: {
+    schema: "ichnaea.ratingsImport/1",
+    run: "run-1",
+    study: "example-ratings",
+    source: "label-studio",
+    registration: d("3c"),
+    dataClass: "pseudonymous",
+    scale: [0, 1, 2, 3],
+    judge: { id: "app/rubric", digest: d("ab"), measure: "app/judged", version: "1.0.0" },
+    raters: [
+      { measure: "app/rater-a", version: "1.0.0" },
+      { measure: "app/rater-b", version: "1.0.0" },
+    ],
+    values: ["a", "b"].map((rater) => ({
+      schema: "ichnaea.measureValue/1",
+      trial: "t-1",
+      measure: `app/rater-${rater}`,
+      version: "1.0.0",
+      dataClass: "pseudonymous",
+      source: "human",
+      applicable: true,
+      value: { type: "level", level: "2" },
+    })),
+    units: [{ trial: "t-1", item: "item-1", stratum: "sample", configuration: "base", judge: "2" }],
+  },
   calibration: {
     schema: "ichnaea.calibration/1",
     judge: "support/grounded",
@@ -1116,6 +1141,10 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
   label: {
     "missing-rater": (r) => delete r["rater"],
     "untagged-value": (r) => (r["value"] = true),
+  },
+  ratingsImport: {
+    "missing-data-class": (r) => delete r["dataClass"],
+    "missing-units": (r) => (r["units"] = []),
   },
   calibration: {
     "missing-status": (r) => delete r["status"],
