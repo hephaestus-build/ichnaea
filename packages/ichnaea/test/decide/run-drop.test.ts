@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { decide, exitCode } from "../../src/decide/index.ts";
-import { decisionView, renderHtml, renderMarkdown } from "../../src/report/index.ts";
+import { report } from "../../src/report/index.ts";
 
 import { scenario, type Scenario } from "./support/scenario.ts";
 
@@ -34,10 +34,10 @@ describe("claims from a single run", () => {
     expect(exitCode(decision, { ...policy, onInconclusive: "report", onRunDrop: "block" })).toBe(1);
     expect(exitCode(decision, { ...policy, onInconclusive: "block", onRunDrop: "report" })).toBe(0);
 
-    const view = decisionView(decision, "synthetic");
-    for (const report of [renderMarkdown(view), renderHtml(view)]) {
-      expect(report).toContain("Ichnaea can show that a change failed a hard gate");
-      expect(report).not.toContain("run-to-run noise");
+    for (const format of ["markdown", "html"] as const) {
+      const rendered = report({ ...adverseCoin, decision }, { format, suite: "synthetic" });
+      expect(rendered).toContain("Ichnaea can show that a change failed a hard gate");
+      expect(rendered).not.toContain("run-to-run noise");
     }
   });
 
