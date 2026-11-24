@@ -7,11 +7,12 @@ import { toJsonSchema } from "./contracts/json-schema.ts";
 import { notComputedReason, TriggerKind } from "./contracts/records/plan.ts";
 import { RECORD_CONTRACTS } from "./contracts/registry.ts";
 
-import { CORE_COMMANDS, createHost, type Host } from "./core/host.ts";
+import { type CommandDefinition, decideCommand, reportCommand } from "./core/commands.ts";
+import { createHost, type Host } from "./core/host.ts";
 import { importRun } from "./core/import.ts";
 import { testMeasure } from "./core/measures.ts";
-import { TRIGGER_VARIES } from "./core/planner.ts";
-import type { CommandDefinition, Config } from "./core/plugin.ts";
+import { TRIGGER_VARIES } from "./plan/rules.ts";
+import type { Config } from "./core/plugin.ts";
 import { CORE_VERSION } from "./core/version.ts";
 
 /** Loads a module by URL. The CLI uses `import()`; a test injects another. */
@@ -61,11 +62,12 @@ Commands from the core:
   schema <record>     Print the normative JSON Schema of a record (case, trial, decision, ...)
   import              Import another runner's results into the store (no model calls)
                       ${IMPORT_OPTIONS.replaceAll("\n", "\n                      ")}
-  doctor              Check the configuration: plugins, measures, testers, warnings
+  decide              Decide a stored run and write its verdict
+  report              Recompute and report a stored decision
+  doctor              Check the configuration and its measure testers
   help                Show this help
   --version, -v       Print the version
 
-Plugins in the configuration add commands (for example decide and report).
 Options: --config <file> (default ichnaea.config.ts)`;
 
 /**
@@ -97,19 +99,14 @@ const CORE_HELP: ReadonlyMap<string, string> = new Map([
   ],
 ]);
 
-/** Gives help for the packaged plugins even before a user configures them. */
-async function packagedCommand(name: string): Promise<CommandDefinition | undefined> {
-  if (name === "decide") return (await import("./decide/plugin.ts")).decidePlugin().commands?.[0];
-  if (name === "report") return (await import("./report/plugin.ts")).reportPlugin().commands?.[0];
-  return undefined;
-}
+const RECORD_COMMANDS = new Map(
+  [decideCommand, reportCommand].map((command) => [command.name, command]),
+);
 
 function commandHelp(command: CommandDefinition): string {
-  const options: CommandDefinition["options"] = { config: CONFIG_OPTION, ...command.options };
-  const lines = Object.entries(options).map(([name, option]) => {
+  const lines = Object.entries(command.options).map(([name, option]) => {
     const value = option.type === "string" ? " <value>" : "";
-    const repeat = option.multiple ? " (repeatable)" : "";
-    return `  --${name}${value}${repeat}  ${option.description}`;
+    return `  --${name}${value}  ${option.description}`;
   });
   return `Usage: ichnaea ${command.name} [options]\n\n${command.description}\n\nOptions:\n${lines.join("\n")}`;
 }
@@ -170,7 +167,20 @@ async function dispatch(
     out(JSON.stringify(toJsonSchema(contract), null, 2));
     return 0;
   }
-  const packaged = wantsHelp ? await packagedCommand(command) : undefined;
+  const recordCommand = RECORD_COMMANDS.get(command);
+  if (recordCommand) {
+    if (wantsHelp) {
+      out(commandHelp(recordCommand));
+      return 0;
+    }
+    const options = { config: CONFIG_OPTION, ...recordCommand.options };
+    const { values } = parseArgs({ args: rest, options, strict: true });
+    return recordCommand.run(values, { out, err });
+  }
+  if (command !== "doctor" && command !== "import") {
+    err(`unknown command '${command}'. Use 'ichnaea help' to list the commands.`);
+    return 2;
+  }
   const configPath =
     (parseArgs({ args: rest, options: { config: CONFIG_OPTION }, strict: false }).values[
       "config"
@@ -183,77 +193,26 @@ async function dispatch(
       () => false,
     ))
   ) {
-    if (packaged) {
-      out(commandHelp(packaged));
-      return 0;
-    }
     err(`no ${basename(configFile)} in ${dirname(configFile)}; see the README's quick start`);
     return 2;
   }
   let host: Host;
   try {
-    host = createHost(
-      await loadConfig(configPath, load),
-      // The contracts ship in the same package as the core, at its version.
-      { core: CORE_VERSION, contracts: CORE_VERSION },
-      (m) => err(`warning: ${m}`),
-    );
-    if (!wantsHelp) await host.configResolved();
+    host = createHost(await loadConfig(configPath, load), {
+      core: CORE_VERSION,
+      contracts: CORE_VERSION,
+    });
   } catch (error) {
-    if (packaged) {
-      out(commandHelp(packaged));
-      return 0;
-    }
-    err(`configuration error: ${(error as Error).message}`);
+    err(`configuration error: ${error instanceof Error ? error.message : String(error)}`);
     return 2;
   }
   if (command === "doctor") return doctor(host, out);
-  if (command === "import") return importCommand(host, rest, out, err);
-  const definition = host.commands.get(command) ?? packaged;
-  if (!definition) {
-    err(
-      `unknown command '${command}'. Commands: ${[...CORE_COMMANDS, ...host.commands.keys()].join(", ")}`,
-    );
-    return 2;
-  }
-  if (wantsHelp) {
-    out(commandHelp(definition));
-    return 0;
-  }
-  const options = {
-    config: CONFIG_OPTION,
-    ...Object.fromEntries(
-      Object.entries(definition.options).map(([k, o]) => [
-        k,
-        { type: o.type, ...(o.multiple ? { multiple: true } : {}) },
-      ]),
-    ),
-  };
-  let parsed: ReturnType<typeof parseArgs>;
-  try {
-    parsed = parseArgs({ args: [...rest], options, allowPositionals: true, strict: true });
-  } catch (error) {
-    err(`${command}: ${(error as Error).message}`);
-    return 2;
-  }
-  return definition.run(
-    { values: parsed.values, positionals: parsed.positionals },
-    {
-      measures: host.measures,
-      importers: host.importers,
-      gates: host.gates,
-      hooks: host,
-      out,
-      err,
-    },
-  );
+  return importCommand(host, rest, out, err);
 }
 
 async function doctor(host: Host, out: (text: string) => void): Promise<number> {
   let problems = 0;
-  out(
-    `plugins: ${host.plugins.map((p) => `${p.id}@${p.version} (${p.stability})`).join(", ") || "none"}`,
-  );
+  out(`plugins: ${host.plugins.map((p) => `${p.id}@${p.version}`).join(", ") || "none"}`);
   for (const measure of host.measures.values()) {
     if (measure.card.computedBy === "application") {
       const status = measure.card.validation?.tester?.status;
@@ -365,8 +324,7 @@ async function importCommand(
     `import: run ${values.run as string}: ${result.trials} trials, ${result.values} values, plan ${result.plan.mode}`,
   );
   for (const reason of result.plan.modeReasons) out(`  estimate-only: ${reason}`);
-  // The planning power statement (REQ-54): what a run of this plan can detect at best. A plugin
-  // computes it (the decision plugin does); without one, the plan has none, and the line says so.
+  // The planning power statement is resolved before import records are read.
   const reach = (decidable: boolean): string =>
     !decidable
       ? "cannot decide"
@@ -379,7 +337,5 @@ async function importCommand(
         ? `  power: ${p.measure}: smallest detectable drop ${(p.mde * 100).toFixed(1)} points (${p.assumption}), margin ${(p.margin * 100).toFixed(1)} points, ${reach(p.decidable)}`
         : `  power: ${p.measure}: not computed (${notComputedReason(p)})`,
     );
-  if (result.plan.power.length === 0 && result.plan.primary.length > 0)
-    out("  power: not computed: no plugin in the configuration states one (decidePlugin() does)");
   return 0;
 }

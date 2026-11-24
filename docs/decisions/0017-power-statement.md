@@ -1,6 +1,7 @@
 # 0017 The power statement of a decision, with or without the decide plugin
 
-- Status: Accepted
+- Status: Superseded. Core computes the power statement after resolving a plan. The
+  `planCreated` hook was removed.
 - Date: 2026-11-15
 
 ## Context

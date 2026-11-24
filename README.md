@@ -35,7 +35,7 @@ Ichnaea is one package, `@tumaet/ichnaea`. Its subpaths:
 
 | Import                                         | Content                                                                                                                                | State     |
 | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| `@tumaet/ichnaea`                              | Plugin host, lifecycle, planner, import mode, file store, call ledger and CLI; the decision rule with its power statement; the reports | available |
+| `@tumaet/ichnaea`                              | Plugin host, planner, import mode, file store, call ledger and CLI; the decision rule with its power statement; the reports            | available |
 | `@tumaet/ichnaea/contracts`                    | zod schemas, RFC 8785 canonical hashing, configuration identity, data classes                                                          | available |
 | `@tumaet/ichnaea/stats`                        | Intervals, paired and stratified tests, power. The regression test is validated; non-inferiority is not, until the margin floor is set | available |
 | `@tumaet/ichnaea/calibration`                  | Judge calibration against two human raters. A calibrated judge's measures are secondary: shown, never deciding                         | available |

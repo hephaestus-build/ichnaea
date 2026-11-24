@@ -3,9 +3,9 @@
 The core of Ichnaea: the plugin host, the planner, import mode, the record store and the CLI.
 
 - **Plugins.** A configuration lists its plugins explicitly (`defineConfig`). Plugins add measures,
-  hard gates, importers, commands and lifecycle hooks. IDs are namespaced, and a conflict fails at
-  load time.
-- **Planner.** `createPlan` resolves a suite into a locked plan. It lists every trial before the
+  hard gates and importers. The host refuses unknown plugin fields and duplicate IDs.
+- **Planner.** `createPlan` runs inline measure examples and passes their results to the planner.
+  The planner resolves a suite into a locked plan. It lists every trial before the
   first call and computes the worst-case calls. It runs a plan estimate-only, and says why, when no
   validated method can decide it. Examples: a placeholder margin, a primary measure whose values
   are not binary, one trial in some cases and more in others. At one trial per case and arm, it
@@ -40,13 +40,9 @@ The core of Ichnaea: the plugin host, the planner, import mode, the record store
   pin. The study scripts record their loads with the same recorder.
   A later change makes the scorer runner record what the scoring process loads, and refuse a
   module that the lock does not hold.
-- **Egress.** Every class of data except `none` stays in by default. Only the plugin that the
-  configuration names as `governance` can let it out. Any plugin can refuse.
 
-Decisions and reports come from the `decide` and `report` plugins. Run
-`ichnaea <command> --help` to see its options. Configured plugins supply their command and option
-descriptions. Commands write results to stdout and diagnostics to stderr. A plugin uses
-`host.out` for results and `host.err` for diagnostics.
+`ichnaea decide` and `ichnaea report` read their data from the store. Run
+`ichnaea <command> --help` for options. Commands write results to stdout and diagnostics to stderr.
 
-The CLI reads help for the packaged plugins even before a user configures them. The rest of the
-core imports the contracts only. The package has no runtime dependency, and zod as a peer.
+The runtime export inventory is in [api/exports.json](../../api/exports.json).
+API Extractor checks the TypeScript declarations. Both run in `pnpm run check:api`.

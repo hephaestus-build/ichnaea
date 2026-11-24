@@ -56,7 +56,7 @@
     "build": "tsc -p tsconfig.build.json",
     "generate": "node scripts/contracts/generate-schemas.ts && node scripts/contracts/write-fixtures.ts",
     "api": "node scripts/api-report.ts --local",
-    "check:api": "node scripts/api-report.ts",
+    "check:api": "node scripts/check-export-inventory.ts && node scripts/api-report.ts",
     "test:sim:stats": "vitest run --config vitest.sim.config.ts --project stats-sim --silent=false",
     "test:sim:decide": "vitest run --config vitest.sim.config.ts --project decide-sim --silent=false"
   },

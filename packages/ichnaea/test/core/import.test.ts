@@ -51,11 +51,9 @@ async function setup(
   await file("case-set.json", s.caseSet);
   await file("cases.jsonl", s.cases.map((c) => JSON.stringify(c)).join("\n"));
   for (const a of s.plan.arms) await file(`${a.name}.json`, a.configuration);
-  const seen: string[] = [];
   const plugin: Plugin = {
     id: "app",
     version: "1.0.0",
-    stability: "stable",
     measures: extra.measures ?? [card("app/correct") as MeasureDefinition<`app/${string}`>],
     gates:
       extra.gates ??
@@ -68,10 +66,6 @@ async function setup(
         run: async () => result(s.trials, s.values),
       },
     ],
-    hooks: {
-      trialRecorded: () => void seen.push("trial"),
-      runCompleted: () => void seen.push("run"),
-    },
   };
   const host = createHost({ plugins: [plugin] }, versions);
   const store = join(dir, "store");
@@ -95,12 +89,12 @@ async function setup(
       now: "2026-11-15T10:00:00Z",
       ichnaea: "0.0.0",
     });
-  return { s, go, store, seen };
+  return { s, go, store };
 }
 
 describe("import mode", () => {
   it("stores plan, trials, values, gates and a run whose ledger lists every planned trial", async () => {
-    const { go, store, seen, s } = await setup((trials, values) => ({
+    const { go, store, s } = await setup((trials, values) => ({
       trials: trials.slice(1),
       values: values.filter((v) => v.trial !== trials[0]?.id),
     }));
@@ -129,8 +123,6 @@ describe("import mode", () => {
         arch: process.arch,
       },
     });
-    expect(seen.filter((x) => x === "trial")).toHaveLength(result.trials);
-    expect(seen.at(-1)).toBe("run");
   });
 
   it("refuses an unplanned trial, or one whose case, arm or replicate differs from its plan, and stores nothing", async () => {

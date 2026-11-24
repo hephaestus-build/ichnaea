@@ -5,16 +5,18 @@ import { Case, CaseSet } from "../contracts/records/case.ts";
 import { Configuration } from "../contracts/records/configuration.ts";
 import type { Decision, GateResult } from "../contracts/records/decision.ts";
 import type { MeasureValue } from "../contracts/records/measure.ts";
-import type { Plan } from "../contracts/records/plan.ts";
+import { Plan } from "../contracts/records/plan.ts";
 import { Run } from "../contracts/records/run.ts";
 import { Suite } from "../contracts/records/suite.ts";
 import type { Trial } from "../contracts/records/trial.ts";
 import { proportionProblem } from "../contracts/values.ts";
 
+import { planningPower } from "../plan/power.ts";
+
 import type { Host } from "./host.ts";
 import { scoreTrials } from "./measures.ts";
 import { createPlan } from "./planner.ts";
-import { recordProblems } from "./records.ts";
+import { recordProblems } from "../contracts/run-records.ts";
 import { FileStore, StoreError } from "./store.ts";
 
 /** What `ichnaea import` needs. */
@@ -195,24 +197,25 @@ export async function importRun(
   );
   const store = new FileStore(input.store);
   const aa = await citations(store, input.aa ?? []);
-  const plan = await host.planCreated(
-    await createPlan({
-      suite,
-      caseSet,
-      cases,
-      arms,
-      armsToRun: [],
-      measures: host.measures,
-      gates: host.gates,
-      trigger: input.trigger,
-      ...(input.varies === undefined ? {} : { varies: input.varies }),
-      ...(input.schedule === undefined ? {} : { schedule: input.schedule }),
-      ...(aa === undefined ? {} : { aa }),
-      seed: input.seed,
-      now: input.now,
-      ichnaea: input.ichnaea,
-    }),
-  );
+  const draft = await createPlan({
+    suite,
+    caseSet,
+    cases,
+    arms,
+    armsToRun: [],
+    measures: host.measures,
+    gates: host.gates,
+    trigger: input.trigger,
+    ...(input.varies === undefined ? {} : { varies: input.varies }),
+    ...(input.schedule === undefined ? {} : { schedule: input.schedule }),
+    ...(aa === undefined ? {} : { aa }),
+    seed: input.seed,
+    now: input.now,
+    ichnaea: input.ichnaea,
+  });
+  const { refuse, ...power } = planningPower(draft);
+  if (refuse !== undefined) throw new ImportError(refuse);
+  const plan = Plan.parse({ ...draft, ...power });
 
   const result = await importer.run({
     files: input.files,
@@ -350,7 +353,5 @@ export async function importRun(
   });
 
   await store.createRun({ plan, run, trials, values, gates });
-  for (const t of trials) await host.trialRecorded(t);
-  await host.runCompleted(run);
   return { plan, trials: trials.length, values: values.length };
 }

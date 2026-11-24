@@ -30,7 +30,6 @@ const measure = defineMeasure({
 const plugin = definePlugin({
   id: "app",
   version: "1.0.0",
-  stability: "stable",
   measures: [measure],
   gates: [{ id: "app/schema", version: "1.0.0", description: "d" }],
 });
@@ -47,7 +46,6 @@ describe("define helpers", () => {
     definePlugin({
       id: "app",
       version: "1.0.0",
-      stability: "stable",
       // @ts-expect-error a gate of plugin 'app' is named 'app/…'
       gates: [{ id: "other/schema", version: "1.0.0", description: "d" }],
     });
@@ -56,7 +54,7 @@ describe("define helpers", () => {
   });
 
   it("keep the plugin list of a configuration", () => {
-    const config = defineConfig({ plugins: [plugin], governance: "app" });
+    const config = defineConfig({ plugins: [plugin] });
     expectTypeOf(config.plugins).toEqualTypeOf<readonly [typeof plugin]>();
   });
 });

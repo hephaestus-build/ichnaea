@@ -1,0 +1,352 @@
+import { digest } from "../contracts/canonical.ts";
+import { caseDigest, caseSetDigest, configurationIdentity } from "../contracts/identity.ts";
+import { armNames, candidateRunsFirst } from "../contracts/pair-order.ts";
+import type { Case, CaseSet } from "../contracts/records/case.ts";
+import type { Configuration } from "../contracts/records/configuration.ts";
+import type { MeasureCard } from "../contracts/records/measure.ts";
+import { Plan } from "../contracts/records/plan.ts";
+import type { Suite } from "../contracts/records/suite.ts";
+
+import { TRIGGER_VARIES } from "./rules.ts";
+
+/** Thrown when a suite cannot be resolved into a valid plan. The message names the fix. */
+export class PlanError extends Error {
+  /** The error's name, for `instanceof`-free checks. */
+  override readonly name = "PlanError";
+}
+
+/** Everything a plan is resolved from. */
+export interface PreparedPlanInput {
+  /** The suite to resolve. */
+  readonly suite: Suite;
+  /** The case set that the suite runs on; its digest must match its entries. */
+  readonly caseSet: CaseSet;
+  /** The cases that the case set lists; each must match its entry's digest, pool and family. */
+  readonly cases: readonly Case[];
+  /**
+   * The arms to compare, each with its role and configuration. An arm without a name is named by
+   * its role: the base and the candidate get the opaque names `a` and `b` from `armNames`, so no
+   * trial ID tells a system its side. A reference arm needs a name. An import names its arms,
+   * because the other runner already did.
+   */
+  readonly arms: ReadonlyArray<{
+    readonly name?: string;
+    readonly role: "base" | "candidate" | "reference";
+    readonly configuration: Configuration;
+  }>;
+  /** Arms whose trials will be run (not imported); their calls count against the budget. */
+  readonly armsToRun?: readonly string[];
+  /** The measures that the configuration defines, by card ID. */
+  readonly measures: ReadonlyMap<
+    string,
+    Omit<MeasureCard, "schema" | "id"> & { readonly id: string }
+  >;
+  /** Tester status supplied by the host for inline measures. */
+  readonly tested: ReadonlySet<string>;
+  /** The gates that the configuration defines, by gate ID. */
+  readonly gates: ReadonlySet<string>;
+  /**
+   * The kind of change that the plan evaluates; it decides which configuration parts the arms may
+   * vary.
+   */
+  readonly trigger: Plan["trigger"];
+  /** Factor keys the change varies beyond what its trigger varies by kind (REQ-15). */
+  readonly varies?: readonly string[];
+  /** The seed recorded in the plan, for the `mt19937` generator. */
+  readonly seed: number;
+  /** The ISO 8601 timestamp recorded as the plan's `createdAt`. */
+  readonly now: string;
+  /** The Ichnaea version, a semantic version, recorded in the plan. */
+  readonly ichnaea: string;
+  /** Calls left this month on the endpoint, from the call ledger. */
+  readonly monthlyRemaining?: number;
+  /** The run settings that shape the schedule; a decision at one trial per case needs them. */
+  readonly schedule?: Plan["schedule"];
+  /** The A/A decisions the plan cites, by run and decision digest. */
+  readonly aa?: Plan["aa"];
+}
+
+/** Fewest cases a fixed-cases decision is validated for (VALIDATED_FIXED_CASES in stats). */
+export const MIN_DECISION_CASES = 5;
+
+/** The shape of a factor key in `varies`: the key a decision lists among the differing factors. */
+const FACTOR_KEY = /^(model|parameter|prompt|factor)\.\S+$/;
+
+/** Arm names become part of trial IDs, so they cannot contain the separator. */
+const ARM_NAME = /^[A-Za-z0-9][A-Za-z0-9._@+-]*$/;
+
+/**
+ * Resolves a suite into a locked plan (REQ-16, REQ-19, REQ-21, REQ-49): every planned trial is
+ * listed before the first call, with each case's trial count (the suite's, or more for the cases of
+ * a `replicatesFor` slice), the worst-case calls are computed, and the estimand's conditions
+ * are checked. At one trial per case and arm, the trials run case by case, each pair in the order
+ * `candidateRunsFirst` chose; otherwise in alternating batches by replicate (REQ-25), each case's
+ * pair in the order of its coin for that replicate. What cannot be resolved is refused with a
+ * PlanError that names the fix. What can
+ * be measured but not decided runs estimate-only, and `modeReasons` says why: no base and
+ * candidate, no primary measure, a primary measure with values no validated method decides yet
+ * (decision 0008), a placeholder margin (decision 0012), `sampled-cases` (no validated method yet),
+ * one trial in some cases and more in others, one trial per case and arm with a primary measure
+ * that is not binary, or fewer than 5 cases. A primary measure must have a primary card that
+ * is not a composite (REQ-34).
+ */
+export function resolvePlan(input: PreparedPlanInput): Plan {
+  const { suite } = input;
+  const pools = new Set(suite.pools ?? ["development", "validation", "promoted"]);
+  const byId = new Map(input.cases.map((c) => [c.id as string, c]));
+
+  const entries = input.caseSet.cases;
+  if (caseSetDigest(entries) !== input.caseSet.digest)
+    throw new PlanError(`case set '${input.caseSet.id}': its digest does not match its entries`);
+  if (suite.caseSet.digest && suite.caseSet.digest !== input.caseSet.digest) {
+    throw new PlanError(
+      `suite '${suite.id}' pins case set digest ${suite.caseSet.digest}, but the case set is ${input.caseSet.digest}`,
+    );
+  }
+  for (const entry of entries) {
+    const c = byId.get(entry.id);
+    if (!c) throw new PlanError(`case '${entry.id}' is listed in the case set but missing`);
+    if (caseDigest(c) !== entry.digest)
+      throw new PlanError(`case '${entry.id}' does not match its digest in the case set`);
+    if (entry.pool !== c.pool)
+      throw new PlanError(
+        `case '${entry.id}' is in pool '${c.pool}', but the case set lists it in '${entry.pool}'`,
+      );
+    if (entry.family !== c.family)
+      throw new PlanError(
+        `case '${entry.id}' has family '${c.family ?? "none"}', but the case set lists '${entry.family ?? "none"}'`,
+      );
+  }
+  const selected = entries.filter((e) => pools.has(e.pool));
+  if (selected.some((e) => e.pool === "sealed"))
+    throw new PlanError(
+      "a sealed pool runs only in a locked confirmatory plan, which this plan is not",
+    );
+  if (selected.length === 0) throw new PlanError(`suite '${suite.id}' selects no case`);
+  const selectedCases = selected.map((e) => byId.get(e.id) as Case);
+
+  if (suite.estimand === "sampled-cases") {
+    const curated = selectedCases.filter((c) => c.provenance.selection !== "random");
+    if (curated.length > 0) {
+      throw new PlanError(
+        `sampled-cases needs a randomly drawn pool, but ${curated.length} case(s) are ${curated[0]?.provenance.selection}; use fixed-cases`,
+      );
+    }
+  }
+
+  const seed = { algorithm: "mt19937", value: String(input.seed) };
+  const opaque = armNames(seed);
+  const named = input.arms.map((a) => {
+    if (a.name !== undefined) return { ...a, name: a.name };
+    if (a.role === "reference")
+      throw new PlanError("a reference arm has no opaque name; give it a name");
+    return { ...a, name: opaque[a.role] };
+  });
+  const names = named.map((a) => a.name);
+  for (const name of names)
+    if (!ARM_NAME.test(name))
+      throw new PlanError(`arm name '${name}' may hold only letters, digits and . _ @ + -`);
+  if (new Set(names).size !== names.length) throw new PlanError("arm names must be unique");
+  if (input.arms.filter((a) => a.role === "base").length > 1)
+    throw new PlanError("a plan has at most one base arm");
+  if (input.arms.filter((a) => a.role === "candidate").length > 1)
+    throw new PlanError(
+      "more than one candidate arm is not supported yet (REQ-57); compare one candidate per run",
+    );
+
+  const reasons: string[] = [];
+  let binary = true;
+  for (const primary of suite.primary) {
+    const safety = primary.safetyMargin ?? 0;
+    if (!(primary.margin < 1 && safety <= primary.margin))
+      throw new PlanError(
+        `primary measure '${primary.measure}': the margin must be below 1 and at least the safety margin (${primary.margin}, safety ${safety})`,
+      );
+    const measure = input.measures.get(primary.measure);
+    if (!measure)
+      throw new PlanError(`primary measure '${primary.measure}' is not provided by any plugin`);
+    const qualified =
+      measure.computedBy === "ichnaea"
+        ? input.tested.has(primary.measure)
+        : measure.validation?.tester?.status === "passed";
+    if (!qualified) {
+      throw new PlanError(
+        `primary measure '${primary.measure}' has no passing known-good and known-bad test; run 'ichnaea doctor' to see why`,
+      );
+    }
+    if (measure.composite === true)
+      throw new PlanError(
+        `primary measure '${primary.measure}' is a composite of other measures; report it as a secondary measure (REQ-34)`,
+      );
+    if (measure.tier !== "primary")
+      throw new PlanError(
+        `primary measure '${primary.measure}' has a ${measure.tier} card; only a card of tier primary can decide`,
+      );
+    if (measure.valueType !== "binary") {
+      binary = false;
+      reasons.push(
+        `primary measure '${primary.measure}' has ${measure.valueType} values, which no validated method decides yet (decision 0008)`,
+      );
+    }
+    if (primary.marginStatus === "placeholder")
+      reasons.push(
+        `margins not registered: primary measure '${primary.measure}' has a placeholder margin (decision 0012)`,
+      );
+  }
+  const varies = [...new Set(input.varies ?? [])].toSorted();
+  for (const key of varies)
+    if (!FACTOR_KEY.test(key))
+      throw new PlanError(
+        `'${key}' is not a factor key; use model.<role>, parameter.<name>, prompt.<name> or factor.<name>`,
+      );
+  if (varies.length > 0 && TRIGGER_VARIES[input.trigger] === null)
+    throw new PlanError(
+      `a ${input.trigger} trigger changes nothing in the system, so it cannot declare ${varies.join(", ")} as varied`,
+    );
+  for (const id of suite.secondary ?? [])
+    if (!input.measures.has(id))
+      throw new PlanError(`secondary measure '${id}' is not provided by any plugin`);
+  for (const id of suite.hardGates ?? [])
+    if (!input.gates.has(id))
+      throw new PlanError(`hard gate '${id}' is not provided by any plugin`);
+
+  const arms = named.map((a) => ({
+    name: a.name,
+    role: a.role,
+    identity: configurationIdentity(a.configuration),
+    configuration: a.configuration,
+  }));
+  if (!(arms.some((a) => a.role === "base") && arms.some((a) => a.role === "candidate")))
+    reasons.push("the plan has no base and candidate arm to compare");
+  if (suite.primary.length === 0) reasons.push("the suite declares no primary measure");
+  if (suite.estimand === "sampled-cases")
+    reasons.push("no sampled-cases method is validated yet (decision 0009)");
+  // Trials per case and arm: the suite's count, or the largest `replicatesFor` entry that matches.
+  const overrides = suite.replicatesFor ?? [];
+  for (const o of overrides)
+    if (!selectedCases.some((c) => c.slices?.[o.slice] === o.value))
+      throw new PlanError(
+        `replicatesFor ${o.slice}=${o.value} matches no selected case; check the slice name and value`,
+      );
+  const trialsOf = (c: Case): number =>
+    Math.max(
+      suite.replicates,
+      ...overrides.filter((o) => c.slices?.[o.slice] === o.value).map((o) => o.replicates),
+    );
+  const counts = selectedCases.map(trialsOf);
+  // One trial per case and arm is validated for binary regression only (VALIDATION.md).
+  const oneTrial = counts.every((n) => n === 1);
+  if (suite.estimand === "fixed-cases" && Math.min(...counts) < 2 && !(oneTrial && binary))
+    reasons.push("one trial per case and arm is outside the validated domain");
+  if (selected.length < MIN_DECISION_CASES)
+    reasons.push(
+      `${selected.length} case(s); a decision is validated from ${MIN_DECISION_CASES} cases`,
+    );
+
+  const trials: Plan["trials"] = [];
+  const planned = (
+    c: Case,
+    entry: (typeof selected)[number],
+    arm: (typeof arms)[number],
+    replicate: number,
+    batch: number,
+  ): Plan["trials"][number] => ({
+    id: `${c.id}/${arm.name}/r${replicate}` as Plan["trials"][number]["id"],
+    case: c.id,
+    ...(entry.family === undefined ? {} : { family: entry.family }),
+    arm: arm.name as Plan["trials"][number]["arm"],
+    replicate,
+    batch,
+  });
+  const base = arms.find((a) => a.role === "base");
+  const candidate = arms.find((a) => a.role === "candidate");
+  // A case's arms in its coin's order for the replicate. An arm that is neither base nor candidate
+  // runs after the pair.
+  const ordered = (c: Case, replicate: number): typeof arms => {
+    const pair =
+      base && candidate
+        ? candidateRunsFirst(seed, c.id, replicate)
+          ? [candidate, base]
+          : [base, candidate]
+        : [];
+    return [...pair, ...arms.filter((a) => !pair.includes(a))];
+  };
+  if (oneTrial) {
+    // One pair per case, in the coin's order, so the plan's order is the run order.
+    for (const [i, entry] of selected.entries()) {
+      const c = selectedCases[i] as Case;
+      for (const arm of ordered(c, 0)) trials.push(planned(c, entry, arm, 0, i));
+    }
+  } else {
+    for (let replicate = 0; replicate < Math.max(...counts); replicate++) {
+      for (const [i, entry] of selected.entries()) {
+        const c = selectedCases[i] as Case;
+        if (replicate >= (counts[i] as number)) continue;
+        // Alternating batches: replicate r runs every case under every arm before r + 1 (REQ-25).
+        // Within a replicate, each case's pair runs in the order of its own coin, so the order
+        // never says which arm is the base.
+        for (const [k, arm] of ordered(c, replicate).entries())
+          trials.push(planned(c, entry, arm, replicate, replicate * arms.length + k));
+      }
+    }
+  }
+  if (new Set(trials.map((t) => t.id)).size !== trials.length)
+    throw new PlanError("two planned trials share an ID; case IDs and arm names collide");
+  const running = new Set(input.armsToRun ?? arms.map((a) => a.name));
+  const runTrials = trials.filter((t) => running.has(t.arm)).length;
+  // A plan that runs arms always carries its bound, so a missing one never switches the bounds
+  // off. An import plan runs no arm and spends no call, so it needs none.
+  // The suite record requires the bound, but a caller may hand over a suite it never parsed.
+  const callsPerTrial: number | undefined = suite.budget.callsPerTrial;
+  const bounded =
+    typeof callsPerTrial === "number" && Number.isInteger(callsPerTrial) && callsPerTrial >= 1;
+  if (runTrials > 0 && !bounded)
+    throw new PlanError(
+      `suite '${suite.id}' has no budget.callsPerTrial, the bound of calls per trial that a plan running arms needs`,
+    );
+  const worstCaseCalls = runTrials * (callsPerTrial ?? 0);
+
+  const measures = [...suite.primary.map((m) => m.measure), ...(suite.secondary ?? [])].map(
+    (id) => {
+      const card = input.measures.get(id);
+      if (!card) throw new PlanError(`measure '${id}' is not provided by any plugin`);
+      return { kind: "measure" as const, id, version: card.version, digest: digest(card) };
+    },
+  );
+
+  return Plan.parse({
+    schema: "ichnaea.plan/1",
+    suite: suite.id,
+    suiteVersion: suite.version,
+    suiteDigest: digest(suite),
+    caseSet: input.caseSet.id,
+    caseSetDigest: input.caseSet.digest,
+    trigger: input.trigger,
+    varies,
+    mode: reasons.length === 0 ? "decision" : "estimate-only",
+    modeReasons: reasons,
+    estimand: suite.estimand,
+    alpha: suite.alpha ?? 0.05,
+    replicates: suite.replicates,
+    // Ichnaea's budget counts only the calls of the arms it runs.
+    arms: arms.map((a) => (running.has(a.name) ? { ...a, runs: true as const } : a)),
+    measures,
+    primary: suite.primary,
+    secondary: suite.secondary ?? [],
+    hardGates: suite.hardGates ?? [],
+    policy: suite.policy,
+    power: [],
+    budget: {
+      worstCaseCalls,
+      maxCalls: suite.budget.maxCalls,
+      ...(callsPerTrial === undefined ? {} : { callsPerTrial }),
+      ...(input.monthlyRemaining === undefined ? {} : { monthlyRemaining: input.monthlyRemaining }),
+    },
+    trials,
+    ...(input.schedule === undefined ? {} : { schedule: input.schedule }),
+    ...(input.aa === undefined ? {} : { aa: input.aa }),
+    seed,
+    createdAt: input.now,
+    ichnaea: input.ichnaea,
+  });
+}
