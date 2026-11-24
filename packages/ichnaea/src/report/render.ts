@@ -91,6 +91,19 @@ export function renderMarkdown(view: DecisionView): string {
       "|---|---|---|---|---|",
       ...view.trialReduction.rows.map((row) => `| ${row.map(cell).join(" | ")} |`),
     );
+  for (const entry of view.mustNever ?? [])
+    lines.push(
+      "",
+      `**Must-never counts for ${md(entry.measure)}**`,
+      "",
+      md(entry.note),
+      "",
+      "| Planned cases | Clean | Hits or flags | Missing |",
+      "|---|---|---|---|",
+      `| ${entry.counts.join(" | ")} |`,
+      "",
+      ...entry.details.map((detail) => `- ${md(detail)}`),
+    );
   const notes = view.measures.flatMap((m) => m.notes.map((n) => `- ${md(m.measure)}: ${md(n)}`));
   if (notes.length > 0) lines.push("", ...notes);
   if (view.gates.length > 0)
@@ -292,6 +305,12 @@ ${view.trialReduction.rows.map((row) => `<tr>${row.map((value) => `<td>${escape(
 }
 ${view.measures.some((m) => m.difference?.axis) ? `<h2>Differences</h2>${view.measures.flatMap((m) => (m.difference?.axis ? [axisFigure(m.measure, m.difference.axis)] : [])).join("\n")}` : ""}
 ${view.measures.some((m) => m.notes.length > 0) ? `<h2>Notes</h2>${list(view.measures.flatMap((m) => m.notes.map((n) => `${m.measure}: ${n}`)))}` : ""}
+${(view.mustNever ?? [])
+  .map(
+    (entry) =>
+      `<h2>Must-never counts for ${escape(entry.measure)}</h2><p>${escape(entry.note)}</p><table><thead><tr><th scope="col">Planned cases</th><th scope="col">Clean</th><th scope="col">Hits or flags</th><th scope="col">Missing</th></tr></thead><tbody><tr>${entry.counts.map((count) => `<td>${count}</td>`).join("")}</tr></tbody></table>${list(entry.details)}`,
+  )
+  .join("\n")}
 ${view.gates.length > 0 ? `<h2>Hard gates</h2>${list(view.gates.map((g) => `${g.gate}: ${g.result}`))}` : ""}
 <h2>Flips</h2>
 ${view.flips.length === 0 ? "<p>No case changed its majority outcome.</p>" : `<table><thead><tr><th scope="col">Measure</th><th scope="col">Case</th><th scope="col">Direction</th><th scope="col">Base</th><th scope="col">Candidate</th></tr></thead><tbody>\n${flipRows}\n</tbody></table>`}

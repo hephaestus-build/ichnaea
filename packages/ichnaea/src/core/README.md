@@ -63,6 +63,14 @@ The core of Ichnaea: the plugin host, the planner, import mode, the record store
 The runtime export inventory is in [api/exports.json](../../api/exports.json).
 API Extractor checks the TypeScript declarations. Both run in `pnpm run check:api`.
 
+## Evidence admission
+
+Import and runner capture use `recordRun`. It binds each trial to the locked analysis digest,
+checks the value's card and source, and records the judge's version and digest for judge values.
+It drops values outside the applicability mask and keeps their counts. A value marked
+not applicable inside the mask counts as missing. For runner evidence, a missing block,
+context or timestamp gives `EXECUTION_UNRECORDED` and estimate-only output.
+
 ## Locked analysis plans
 
 Use `defineSuite` to declare a case source, primary measures, and the base and candidate arms.
@@ -90,3 +98,19 @@ A one-arm suite can declare `trialReduction: { measure, k, cases }`. The lock pi
 measure and the selected cases. Decide reports pass^k and pass@k over fresh trials, with equal
 case weights. If a case has fewer than k fresh binary observations, the case and the suite
 aggregate are missing. The estimates have no interval.
+
+A one-arm suite can declare `mustNever` counts from a binary detector whose lower values are
+better. Declare the case IDs and the detector's scope. For a deterministic detector, name the
+pattern variants and give each a planted positive-control case. Reports count a hit once per
+case, and count a partly observed case without a hit as missing. The report shows observed
+contexts and block windows so readers can assess shared execution conditions.
+
+### Fixture qualification
+
+A locked primary scorer is fixture-qualified with good, bad, do-nothing, and incomplete-capture
+examples. The tester pins the scorer source, applicability source, examples and declared
+`instrument.files` relative to the configuration file. If a scorer or one of those files
+changes, the prior test digest is stale. Declare files that supply values captured by the
+scorer's closure. A do-nothing fixture must produce a failing score from captured output.
+The incomplete-capture fixture starts as completed with its capture absent. Imported measures
+can supply a producer-attested `validation.tester.instrumentPin`.

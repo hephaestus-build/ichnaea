@@ -12,6 +12,8 @@ export interface PlanInput extends Omit<PreparedPlanInput, "measures" | "gates" 
   readonly measures: ReadonlyMap<string, MeasureDefinition>;
   /** The gates that the configuration defines, by gate ID. */
   readonly gates: ReadonlyMap<string, GateDefinition>;
+  /** Directory of declared scorer files. Defaults to the working directory. */
+  readonly directory?: string;
 }
 
 /** Qualifies inline measures and resolves the plan from their cards and tester results. */
@@ -21,7 +23,8 @@ export async function createPlan(input: PlanInput): Promise<Plan> {
     const definition = input.measures.get(measure);
     if (
       definition?.card.computedBy === "ichnaea" &&
-      (await testMeasure(definition)).status === "passed"
+      (await testMeasure(definition, { directory: input.directory ?? process.cwd() })).status ===
+        "passed"
     )
       tested.add(measure);
   }

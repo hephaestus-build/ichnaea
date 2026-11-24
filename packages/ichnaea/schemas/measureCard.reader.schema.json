@@ -334,6 +334,19 @@
                 "retention": "record"
               }
             },
+            "instrumentPin": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "description": "The instrument digest attested by the producer.",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
             "ranAt": {
               "type": "string",
               "format": "date-time",

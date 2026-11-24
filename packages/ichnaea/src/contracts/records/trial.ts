@@ -96,6 +96,12 @@ export const Trial = z.strictObject({
   configuration: none(ConfigurationIdentity),
   arm: none(ArmName).optional(),
   replicate: none(z.int().min(0)),
+  /** Digest of the locked analysis plan that selected this trial. */
+  analysisPlan: none(Digest).optional(),
+  /** The physical block whose worker captured this trial. */
+  block: none(z.int().min(0)).optional(),
+  /** The execution context reported by the worker. */
+  context: none(Text).optional(),
   outcome: none(Outcome, { [CLOSED_KEY]: true }),
   dataClass: none(RecordDataClass),
   input: content(Json).optional(),
