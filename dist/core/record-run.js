@@ -161,7 +161,7 @@ export async function recordRun(input) {
     }));
     if (judges.size !== (result.judges ?? []).length)
         throw new ImportError("duplicate judge identity");
-    const usedJudges = new Set();
+    const judgeMeasures = new Map();
     const supplied = [];
     for (const v of offered.values) {
         const measure = host.measures.get(v.measure);
@@ -184,9 +184,17 @@ export async function recordRun(input) {
             throw new ImportError(`source '${v.source}' does not match the card for '${v.measure}'`);
         if (v.source === "judge") {
             const id = measure.card.judge;
-            if (id === undefined || !judges.has(id))
+            const judge = id === undefined ? undefined : judges.get(id);
+            if (!judge)
                 throw new ImportError(`judge lineage is missing for '${v.measure}'`);
-            usedJudges.add(id);
+            if (measure.card.valueType === "level" && judge.outputKind !== "level")
+                throw new ImportError(`ordinal measure '${v.measure}' needs a judge that returns levels`);
+            if (trial.outcome !== "invalid_configuration") {
+                const bindings = judgeMeasures.get(judge.id) ??
+                    new Map();
+                bindings.set(v.measure, v.version);
+                judgeMeasures.set(judge.id, bindings);
+            }
         }
         if (v.version !== measure.card.version)
             throw new ImportError(`value for '${v.measure}' on '${v.trial}' has version ${v.version}, but the card is ${measure.card.version}`);
@@ -239,14 +247,22 @@ export async function recordRun(input) {
     const lineage = [
         ...host.plugins.map((p) => ({ kind: "plugin", id: p.id, version: p.version })),
         ...(input.producer ? [input.producer] : []),
-        ...[...judges.values()]
-            .filter(({ id }) => usedJudges.has(id))
-            .map((judge) => ({
-            kind: "judge",
-            id: judge.id,
-            version: judge.version,
-            digest: digest(judge),
-        })),
+        ...[...judges.values()].flatMap((judge) => {
+            const bindings = judgeMeasures.get(judge.id);
+            return bindings
+                ? [
+                    {
+                        kind: "judge",
+                        id: judge.id,
+                        version: judge.version,
+                        digest: digest(judge),
+                        judgedMeasures: [...bindings]
+                            .toSorted(([a], [b]) => a.localeCompare(b, "en"))
+                            .map(([id, version]) => ({ id, version })),
+                    },
+                ]
+                : [];
+        }),
         ...plan.measures,
         ...plan.hardGates.map((id) => ({
             kind: "gate",

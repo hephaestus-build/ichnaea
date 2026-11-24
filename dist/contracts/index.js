@@ -21,6 +21,7 @@ export * from "./records/measure-identity.js";
 export * from "./records/monitor.js";
 export * from "./records/plan.js";
 export * from "./records/project.js";
+export * from "./records/ratings.js";
 export * from "./records/run.js";
 export * from "./records/scorer.js";
 export * from "./records/setup.js";

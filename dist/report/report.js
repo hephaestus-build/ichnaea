@@ -72,7 +72,14 @@ export function verifiedReport(records, options = {}, engine = records.decision.
     const build = (neutral) => {
         const view = {
             ...buildView(projected, suite, lineage, { neutral }),
-            ...(agreement ? { agreement } : {}),
+            ...(agreement
+                ? {
+                    agreement: {
+                        ...agreement,
+                        ...(options.ratingsSource ? { source: options.ratingsSource } : {}),
+                    },
+                }
+                : {}),
         };
         return replay
             ? {

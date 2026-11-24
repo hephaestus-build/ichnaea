@@ -6,7 +6,7 @@ import { hostAndStore, importModule } from "./core/cli-config.js";
 import { importCommand } from "./core/cli-import.js";
 import { planCommand } from "./core/cli-plan.js";
 import { argumentsFor, CliError, COMMON_OPTIONS, CONFIG_OPTION, jsonRequested, } from "./core/command-grammar.js";
-import { decideCommand, reportCommand } from "./core/commands.js";
+import { decideCommand, importRatingsCommand, reportCommand } from "./core/commands.js";
 import { runCommand } from "./core/run-command.js";
 import { testMeasure } from "./core/measures.js";
 import { CORE_VERSION } from "./core/version.js";
@@ -88,6 +88,7 @@ const COMMANDS = [
     importCommand,
     decideCommand,
     reportCommand,
+    importRatingsCommand,
     planCommand,
     workerCommand,
     runCommand,

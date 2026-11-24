@@ -3,6 +3,7 @@ import { CliDoctor, CliErrorRecord, CliHelp, ReportView } from "./records/cli.js
 import { Case, CaseSet } from "./records/case.js";
 import { Configuration } from "./records/configuration.js";
 import { Decision } from "./records/decision.js";
+import { RatingsImport } from "./records/ratings.js";
 import { Calibration, Judge, Label } from "./records/judge.js";
 import { MeasureCard, MeasureValue } from "./records/measure.js";
 import { Finding, Monitor } from "./records/monitor.js";
@@ -212,6 +213,13 @@ export const RECORD_CONTRACTS = [
         schema: Label,
         stability: "development",
         description: "One annotation on one trial for one measure.",
+    },
+    {
+        name: "ratingsImport",
+        id: "ichnaea.ratingsImport/1",
+        schema: RatingsImport,
+        stability: "development",
+        description: "Protected human ratings and their binding to a stored run.",
     },
     {
         name: "calibration",

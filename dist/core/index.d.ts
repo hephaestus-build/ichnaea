@@ -12,4 +12,6 @@ export * from "./version.ts";
 export { defineSuite, type SuiteDefinition } from "../contracts/records/suite-definition.ts";
 export { planSuite, type PlanSuiteInput, type PlannedSuite } from "./analysis-plan.ts";
 export { defaultBlocks } from "../plan/analysis.ts";
+export { calibrationInput } from "./ratings-calibration.ts";
+export { importLabelStudio, type ImportRatingsInput } from "./ratings.ts";
 //# sourceMappingURL=index.d.ts.map

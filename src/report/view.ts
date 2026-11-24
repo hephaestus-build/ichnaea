@@ -138,7 +138,13 @@ export interface SensitivityRow {
 /** The view model of a decision. Every output renders from it, so they show the same numbers. */
 export interface DecisionView {
   /** Descriptive agreement across imported ratings. */
-  readonly agreement?: RatingAgreement;
+  readonly agreement?: RatingAgreement & {
+    /** Digests that identify a local import without copying its protected study data. */
+    readonly source?: {
+      readonly sidecar: string;
+      readonly registration: string;
+    };
+  };
   /** The report's title, which names the suite. */
   readonly title: string;
   /** The run's verdict, or `ESTIMATE-ONLY` when the decision gives none. */

@@ -1,4 +1,5 @@
 import { type Decision as DecisionRecord } from "../contracts/records/decision.ts";
+import { RatingsImport } from "../contracts/records/ratings.ts";
 import { type Plan as PlanRecord } from "../contracts/records/plan.ts";
 import { type Run as RunRecord } from "../contracts/records/run.ts";
 import { type RunRecords } from "../contracts/run-records.ts";
@@ -52,6 +53,11 @@ export declare class FileStore {
      * temporary directory that is renamed into place, so a failure leaves no partial run behind.
      */
     createRun(records: RunRecords): Promise<void>;
+    /** Publishes a protected rating sidecar without modifying the run’s primary records. */
+    writeRatings(record: RatingsImport): Promise<void>;
+    /** Reads the ratings of one study and checks their run and scale binding. */
+    readRatings(run: string, study: string): Promise<RatingsImport>;
+    private readRatingsRun;
     /** Stores the decision once and adds the run to the index. */
     writeDecision(decision: DecisionRecord, suite: string): Promise<void>;
     /** Appends a later engine calculation without changing the original files. */

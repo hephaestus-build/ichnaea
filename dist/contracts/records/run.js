@@ -64,7 +64,9 @@ export const Run = z.strictObject({
         runtime: Runtime.optional(),
     }),
     arms: z.array(Arm).min(1),
-    lineage: z.array(LineageItem),
+    lineage: z.array(LineageItem.extend({
+        judgedMeasures: none(z.array(z.strictObject({ id: none(MeasureId), version: none(SemVer) })).min(1)).optional(),
+    })),
     ledger: z.array(LedgerEntry),
     startedAt: none(Timestamp),
     completedAt: none(Timestamp).optional(),

@@ -164,6 +164,10 @@ export declare const ReportView: z.ZodObject<{
     }, z.core.$strict>>;
     agreement: z.ZodOptional<z.ZodObject<{
         statistic: z.ZodLiteral<"krippendorff-alpha">;
+        source: z.ZodOptional<z.ZodObject<{
+            sidecar: z.ZodString;
+            registration: z.ZodString;
+        }, z.core.$strict>>;
         metric: z.ZodEnum<{
             interval: "interval";
             nominal: "nominal";

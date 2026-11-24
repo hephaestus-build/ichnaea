@@ -224,6 +224,10 @@ export declare const Run: z.ZodObject<{
         id: z.ZodString;
         version: z.ZodString;
         digest: z.ZodOptional<z.ZodString>;
+        judgedMeasures: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            id: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+            version: z.ZodString;
+        }, z.core.$strict>>>;
     }, z.core.$strict>>;
     ledger: z.ZodArray<z.ZodObject<{
         trial: z.core.$ZodBranded<z.ZodString, "TrialId", "out">;

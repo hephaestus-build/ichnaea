@@ -19,6 +19,8 @@ export interface ReportOptions {
     readonly lineage?: Run["lineage"];
     /** Canonical ratings for a descriptive agreement section. */
     readonly ratings?: RatingSet;
+    /** The digests of the local sidecar and registration used to derive the ratings. */
+    readonly ratingsSource?: NonNullable<DecisionView["agreement"]>["source"];
 }
 /** A run and its sealed digests, if they were recorded by the deciding engine. */
 export interface ReportRecords extends DecisionRecords {

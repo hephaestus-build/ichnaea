@@ -3,6 +3,7 @@ import { appendFile, link, mkdir, readdir, readFile, rename, rm, writeFile, } fr
 import { join } from "node:path";
 import { canonicalize } from "../contracts/canonical.js";
 import { Decision, GateResult, } from "../contracts/records/decision.js";
+import { RatingsImport } from "../contracts/records/ratings.js";
 import { MeasureValue } from "../contracts/records/measure.js";
 import { Plan } from "../contracts/records/plan.js";
 import { Run } from "../contracts/records/run.js";
@@ -11,6 +12,7 @@ import * as z from "zod";
 import { recordProblems } from "../contracts/run-records.js";
 import { RunManifest } from "../contracts/run-manifest.js";
 import { runManifest } from "../report/manifest.js";
+import { calibrationInput, verifyRatingJudge } from "./ratings-calibration.js";
 import { runDirectory, StoreError } from "./store-path.js";
 export { StoreError } from "./store-path.js";
 /** Thrown when a write would change a record that already exists. */
@@ -146,6 +148,57 @@ export class FileStore {
             await rm(temporary, { recursive: true, force: true });
             throw error;
         }
+    }
+    /** Publishes a protected rating sidecar without modifying the run’s primary records. */
+    async writeRatings(record) {
+        const parsed = RatingsImport.parse(record);
+        calibrationInput(parsed);
+        verifyRatingJudge(await this.readRatingsRun(parsed.run), parsed.judge);
+        const dir = join(this.dir(parsed.run), "ratings");
+        try {
+            await mkdir(dir, { mode: 0o700 });
+        }
+        catch (error) {
+            if (error.code !== "EEXIST")
+                throw error;
+        }
+        const path = join(dir, `${encodeURIComponent(parsed.study)}.json`);
+        const temporary = join(dir, `.incomplete-${randomUUID()}`);
+        try {
+            await writeFile(temporary, lines([parsed], RatingsImport), {
+                flag: "wx",
+                mode: 0o600,
+                flush: true,
+            });
+            await link(temporary, path);
+        }
+        catch (error) {
+            if (error.code === "EEXIST")
+                throw new AppendOnlyError("the run already has ratings for this study");
+            throw error;
+        }
+        finally {
+            await rm(temporary, { force: true });
+        }
+    }
+    /** Reads the ratings of one study and checks their run and scale binding. */
+    async readRatings(run, study) {
+        const path = join(this.dir(run), "ratings", `${encodeURIComponent(study)}.json`);
+        const text = await readOptional(path);
+        if (text === undefined)
+            throw new StoreError("the run has no ratings for this study");
+        const record = parseOne(text, RatingsImport, "ratings sidecar");
+        if (record.run !== run || record.study !== study)
+            throw new StoreError("the ratings sidecar belongs to another run or study");
+        calibrationInput(record);
+        verifyRatingJudge(await this.readRatingsRun(run), record.judge);
+        return record;
+    }
+    async readRatingsRun(run) {
+        const text = await readOptional(join(this.dir(run), "run.json"));
+        if (text === undefined)
+            throw new StoreError("cannot bind ratings to a missing run");
+        return parseOne(text, Run, "run record");
     }
     /** Stores the decision once and adds the run to the index. */
     async writeDecision(decision, suite) {

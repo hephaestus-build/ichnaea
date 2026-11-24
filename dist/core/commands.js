@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import * as z from "zod";
-import { canonicalize } from "../contracts/canonical.js";
+import { canonicalize, digest } from "../contracts/canonical.js";
 import { projectForEgress } from "../contracts/egress.js";
 import { ReportView } from "../contracts/records/cli.js";
 import { Decision } from "../contracts/records/decision.js";
@@ -11,6 +11,8 @@ import { resolutionLine } from "../plan/resolution.js";
 import { renderReport, ReportError, verifiedReport } from "../report/report.js";
 import { storeFor } from "./cli-config.js";
 import { CliError, CONFIG_OPTION, required, STORE_OPTION, text, } from "./command-grammar.js";
+import { calibrationInput } from "./ratings-calibration.js";
+import { importLabelStudio } from "./ratings.js";
 import { runDirectory } from "./store-path.js";
 import { FileStore } from "./store.js";
 import { CORE_VERSION } from "./version.js";
@@ -114,6 +116,37 @@ async function readRatings(path) {
     }
     return parsed.data;
 }
+export const importRatingsCommand = {
+    name: "import-ratings",
+    description: "Import two human raters’ Label Studio annotations into a stored run",
+    options: {
+        config: CONFIG_OPTION,
+        store: STORE_OPTION,
+        run: RUN_OPTION,
+        file: { type: "string", description: "The Label Studio JSON export", required: true },
+        key: { type: "string", description: "The local key mapping tasks to trials", required: true },
+        registration: {
+            type: "string",
+            description: "The study registration and judge identity",
+            required: true,
+        },
+    },
+    async run(args, load) {
+        const record = await importLabelStudio({
+            run: required(args, "run"),
+            file: required(args, "file"),
+            key: required(args, "key"),
+            registration: required(args, "registration"),
+            store: await storeFor(args, load),
+        });
+        const counts = { ratings: record.values.length, units: record.units.length };
+        return {
+            code: 0,
+            text: [`import-ratings: stored ${counts.ratings} ratings for ${counts.units} units`],
+            json: counts,
+        };
+    },
+};
 export const reportCommand = {
     name: "report",
     description: "Recompute and report a stored decision",
@@ -125,6 +158,7 @@ export const reportCommand = {
             type: "string",
             description: "Read a canonical JSON ratings set for the agreement section",
         },
+        "ratings-study": { type: "string", description: "Use a study imported into this run" },
         out: { type: "string", description: "Output directory (default <store>/runs/<run>/report)" },
         format: {
             type: "string",
@@ -136,20 +170,33 @@ export const reportCommand = {
         const store = new FileStore(await storeFor(args, load));
         const run = required(args, "run");
         const ratingsPath = text(args, "ratings");
-        return writeRunReport(store, run, text(args, "format"), text(args, "out"), args.values["json"] === true, ratingsPath);
+        const study = text(args, "ratings-study");
+        if (ratingsPath !== undefined && study !== undefined)
+            throw new CliError("USAGE", "report: choose either --ratings or --ratings-study");
+        return writeRunReport(store, run, text(args, "format"), text(args, "out"), args.values["json"] === true, ratingsPath, study);
     },
 };
-export async function writeRunReport(store, run, format, output, jsonOnly = false, ratingsPath) {
+export async function writeRunReport(store, run, format, output, jsonOnly = false, ratingsPath, study) {
     const stored = await readRun(store, run);
     if (!stored.decision) {
         const file = join(runDirectory(store.root, "runs", run), "decision.json");
         const message = `report: no decision at ${file}; run 'ichnaea decide' first`;
         throw new CliError("RECORDS", message, { publicMessage: message });
     }
-    const ratings = ratingsPath === undefined ? undefined : await readRatings(ratingsPath);
+    let ratings = ratingsPath === undefined ? undefined : await readRatings(ratingsPath);
+    let ratingsSource;
+    if (study !== undefined) {
+        const record = await store.readRatings(run, study);
+        ratings = { metric: "ordinal", units: calibrationInput(record).units };
+        ratingsSource = { sidecar: digest(record), registration: record.registration };
+    }
     let verified;
     try {
-        verified = verifiedReport({ ...stored, decision: stored.decision, aa: await store.aaEvidence(stored.plan) }, { suite: stored.plan.suite, ...(ratings ? { ratings } : {}) }, CORE_VERSION);
+        verified = verifiedReport({ ...stored, decision: stored.decision, aa: await store.aaEvidence(stored.plan) }, {
+            suite: stored.plan.suite,
+            ...(ratings ? { ratings } : {}),
+            ...(ratingsSource ? { ratingsSource } : {}),
+        }, CORE_VERSION);
     }
     catch (cause) {
         if (!(cause instanceof ReportError))

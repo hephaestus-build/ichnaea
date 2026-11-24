@@ -1,5 +1,6 @@
 import * as z from "zod";
 import { CLOSED_KEY, none } from "../data-class.js";
+import { Digest } from "../primitives.js";
 import { MeasureOutcome, Validity } from "./decision.js";
 const text = () => none(z.string());
 const count = () => none(z.int().nonnegative());
@@ -143,6 +144,7 @@ export const ReportView = z.strictObject({
     agreement: z
         .strictObject({
         statistic: none(z.literal("krippendorff-alpha")),
+        source: z.strictObject({ sidecar: none(Digest), registration: none(Digest) }).optional(),
         metric: none(z.enum(["nominal", "ordinal", "interval"])),
         estimate: none(z.number().nullable()),
         counts: z.strictObject({

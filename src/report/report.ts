@@ -27,6 +27,8 @@ export interface ReportOptions {
   readonly lineage?: Run["lineage"];
   /** Canonical ratings for a descriptive agreement section. */
   readonly ratings?: RatingSet;
+  /** The digests of the local sidecar and registration used to derive the ratings. */
+  readonly ratingsSource?: NonNullable<DecisionView["agreement"]>["source"];
 }
 
 /** A run and its sealed digests, if they were recorded by the deciding engine. */
@@ -100,7 +102,14 @@ export function verifiedReport(
   const build = (neutral: boolean): DecisionView => {
     const view = {
       ...buildView(projected, suite, lineage, { neutral }),
-      ...(agreement ? { agreement } : {}),
+      ...(agreement
+        ? {
+            agreement: {
+              ...agreement,
+              ...(options.ratingsSource ? { source: options.ratingsSource } : {}),
+            },
+          }
+        : {}),
     };
     return replay
       ? {
