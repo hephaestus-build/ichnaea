@@ -1,5 +1,14 @@
 import { randomUUID } from "node:crypto";
-import { appendFile, mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import {
+  appendFile,
+  link,
+  mkdir,
+  readdir,
+  readFile,
+  rename,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { join } from "node:path";
 
 import { canonicalize } from "../contracts/canonical.ts";
@@ -15,6 +24,8 @@ import { Trial } from "../contracts/records/trial.ts";
 import * as z from "zod";
 
 import { recordProblems, type RunRecords } from "../contracts/run-records.ts";
+import { RunManifest } from "../contracts/run-manifest.ts";
+import { runManifest, type Recalculation } from "../report/manifest.ts";
 
 /** Thrown when a write would change a record that already exists. */
 export class AppendOnlyError extends Error {
@@ -54,6 +65,8 @@ const IndexLine: z.ZodType<RunIndexEntry> = z.strictObject({
 export interface StoredRun extends RunRecords {
   /** The run's decision; absent until the run is decided. */
   readonly decision?: DecisionRecord;
+  /** Replay digests, present on runs decided with a manifest-aware engine. */
+  readonly manifest?: RunManifest;
 }
 
 function parseLines<T>(text: string, schema: z.ZodType<T>, file: string): T[] {
@@ -92,6 +105,22 @@ async function readOptional(path: string): Promise<string | undefined> {
 
 const lines = <T>(records: readonly T[], schema: z.ZodType<T>): string =>
   records.map((r) => `${canonicalize(schema.parse(r))}\n`).join("");
+
+/** Publish a complete file once. Retrying an identical write is safe. */
+async function publishCanonical(path: string, value: unknown): Promise<void> {
+  const temporary = `${path}.${randomUUID()}.tmp`;
+  const data = `${canonicalize(value)}\n`;
+  try {
+    await writeFile(temporary, data, { flag: "wx" });
+    await link(temporary, path);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+    if ((await readOptional(path)) !== data)
+      throw new AppendOnlyError(`record already exists: ${path}`);
+  } finally {
+    await rm(temporary, { force: true });
+  }
+}
 
 /**
  * The default store: plain files in an open format (REQ-28). Every record is one RFC 8785
@@ -153,6 +182,9 @@ export class FileStore {
   /** Stores the decision once and adds the run to the index. */
   async writeDecision(decision: DecisionRecord, suite: string): Promise<void> {
     const parsed = Decision.parse(decision);
+    const stored = await this.read(parsed.run);
+    if (stored.decision) throw new AppendOnlyError(`run '${parsed.run}' already has a decision`);
+    const manifest = runManifest(stored, parsed, await this.aaEvidence(stored.plan));
     try {
       await writeFile(join(this.dir(parsed.run), "decision.json"), `${canonicalize(parsed)}\n`, {
         flag: "wx",
@@ -162,6 +194,7 @@ export class FileStore {
         throw new AppendOnlyError(`run '${parsed.run}' already has a decision`);
       throw error;
     }
+    await publishCanonical(join(this.dir(parsed.run), "manifest.json"), manifest);
     const entry = IndexLine.parse({
       run: parsed.run,
       suite,
@@ -170,6 +203,16 @@ export class FileStore {
       decidedAt: parsed.decidedAt,
     });
     await appendFile(join(this.root, "index.jsonl"), `${canonicalize(entry)}\n`);
+  }
+
+  /** Appends a later engine calculation without changing the original files. */
+  async writeRecalculation(run: string, record: Recalculation): Promise<void> {
+    const id = record.identity;
+    if (record.decision.run !== run || !/^sha256:[0-9a-f]{64}$/.test(id))
+      throw new StoreError(`run '${run}': invalid recalculation identity`);
+    const directory = join(this.dir(run), "recalculations");
+    await mkdir(directory, { recursive: true });
+    await publishCanonical(join(directory, `${id.slice("sha256:".length)}.json`), record);
   }
 
   /** Reads everything stored for a run. Missing primary records are an error, never an empty run. */
@@ -187,12 +230,16 @@ export class FileStore {
     if (plan === undefined || runText === undefined)
       throw new StoreError(`run '${run}' has no plan or run record in ${dir}`);
     const decision = await readOptional(join(dir, "decision.json"));
+    const manifest = await readOptional(join(dir, "manifest.json"));
     const stored = {
       plan: parseOne(plan, Plan, `${run}/plan.json`),
       run: parseOne(runText, Run, `${run}/run.json`),
       trials: parseLines(await text("trials.jsonl"), Trial, `${run}/trials.jsonl`),
       values: parseLines(await text("values.jsonl"), MeasureValue, `${run}/values.jsonl`),
       gates: parseLines(await text("gates.jsonl"), GateResult, `${run}/gates.jsonl`),
+      ...(manifest === undefined
+        ? {}
+        : { manifest: parseOne(manifest, RunManifest, `${run}/manifest.json`) }),
       ...(decision === undefined
         ? {}
         : { decision: parseOne(decision, Decision, `${run}/decision.json`) }),

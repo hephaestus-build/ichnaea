@@ -1,14 +1,19 @@
 # Reports: `@tumaet/ichnaea`
 
-The `report` plugin renders a stored decision as a CI summary in Markdown (`summary.md`) and a
-static HTML report (`report.html`). `report(decision, { format })` renders one as Markdown, HTML
-or the JSON view model. It is synchronous, writes no file, and refuses a report that the lint
-refuses (`ReportError`).
+The `report` command renders a Markdown CI summary (`summary.md`) and a static HTML report
+(`report.html`). The library function `report(records, { format })` also returns the JSON view.
+The library's `decisionView(records)` exposes the same verified view as an object.
+Both library functions are synchronous and read no files.
 
-- Both come from one view model of the decision record. They compute nothing new, and they show
-  the same numbers.
-- Before it renders, the plugin recomputes the decision from the stored records. It refuses to
-  render when the two differ.
+- Every format uses the verified view. The engine recomputes the decision from the stored
+  evidence. Changed evidence or decision digests fail verification.
+- The run manifest records the primary input and decision digests and the deciding version.
+  When a newer engine reads a sealed run, it writes a recalculation with its own identity.
+- JSON includes the verdict, the measure estimates and counts, hard-gate outcomes and lineage.
+  The class-none projection omits gate detail. The flags and rows contain the results alone.
+- Rates give the observed cases equal weight. Each result states its method, level, sidedness,
+  validity and denominators. Block variance and case dispersion are descriptive.
+
 - A lower bound is labelled "not validated" unless the comparison's non-inferiority result is
   validated (decision 0015). The regression result never vouches for an interval.
 - `lintReport` checks each output. A rate or a difference must stand next to its interval, and an

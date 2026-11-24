@@ -1,16 +1,17 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { projectForEgress } from "../contracts/egress.ts";
+import { Decision } from "../contracts/records/decision.ts";
 import { canonicalize } from "../contracts/canonical.ts";
 import { exitCode } from "../decide/ci-policy.ts";
 import { decide } from "../decide/decide.ts";
-import { recompute } from "../report/recompute.ts";
-import { lintReport, renderHtml, renderMarkdown } from "../report/render.ts";
-import { decisionView } from "../report/view.ts";
+import { renderReport, ReportError, verifiedReport } from "../report/report.ts";
 
 import { resolutionLine } from "../plan/resolution.ts";
 
 import { FileStore } from "./store.ts";
+import { CORE_VERSION } from "./version.ts";
 
 /** A built-in command with options described by its help text. */
 export interface CommandDefinition {
@@ -20,7 +21,7 @@ export interface CommandDefinition {
     Record<
       string,
       {
-        readonly type: "string";
+        readonly type: "string" | "boolean";
         readonly description: string;
       }
     >
@@ -38,6 +39,7 @@ export const decideCommand: CommandDefinition = {
   options: {
     store: { type: "string", description: "The record store (default .ichnaea)" },
     run: { type: "string", description: "The run ID" },
+    json: { type: "boolean", description: "Print the class-none record as JSON" },
     "verdict-file": {
       type: "string",
       description:
@@ -66,7 +68,7 @@ export const decideCommand: CommandDefinition = {
       gates: stored.gates,
       aa: await store.aaEvidence(stored.plan),
       decidedAt: (values["now"] as string | undefined) ?? new Date().toISOString(),
-      ichnaea: stored.plan.ichnaea,
+      ichnaea: CORE_VERSION,
     });
     await store.writeDecision(decision, stored.plan.suite);
     const verdictFile =
@@ -76,8 +78,13 @@ export const decideCommand: CommandDefinition = {
       verdictFile,
       `${canonicalize({ run: decision.run, mode: decision.mode, verdict: decision.verdict, reason: decision.reason })}\n`,
     );
-    out(`${decision.verdict ?? "ESTIMATE-ONLY"}: ${decision.reason}`);
-    for (const entry of decision.resolution ?? []) out(resolutionLine(entry));
+    if (values["json"] === true) {
+      const projected = projectForEgress(Decision, decision, { purpose: "PU-1", maxClass: "none" });
+      out(canonicalize(projected.value));
+    } else {
+      out(`${decision.verdict ?? "ESTIMATE-ONLY"}: ${decision.reason}`);
+      for (const entry of decision.resolution ?? []) out(resolutionLine(entry));
+    }
     return exitCode(decision, stored.plan.policy);
   },
 };
@@ -88,6 +95,7 @@ export const reportCommand: CommandDefinition = {
   options: {
     store: { type: "string", description: "The record store (default .ichnaea)" },
     run: { type: "string", description: "The run ID" },
+    json: { type: "boolean", description: "Print the class-none record as JSON" },
     out: { type: "string", description: "Output directory (default <store>/runs/<run>/report)" },
   },
   async run(values, { out: print, err }) {
@@ -103,30 +111,24 @@ export const reportCommand: CommandDefinition = {
       err(`report: run '${runId}' has no decision; run 'ichnaea decide' first`);
       return 2;
     }
-    const check = await recompute({
-      ...stored,
-      decision: stored.decision,
-      aa: await store.aaEvidence(stored.plan),
-    });
-    if (!check.matches) {
-      err(
-        `report: the stored decision does not recompute from the stored records (${check.differences.join(", ")})`,
+    let markdown: string;
+    let html: string;
+    try {
+      const result = verifiedReport(
+        { ...stored, decision: stored.decision, aa: await store.aaEvidence(stored.plan) },
+        { suite: stored.plan.suite },
+        CORE_VERSION,
       );
-      return 1;
-    }
-    const view = decisionView(stored.decision, stored.plan.suite, stored.run.lineage);
-    const markdown = renderMarkdown(view);
-    const html = renderHtml(view);
-    const neutral = decisionView(stored.decision, stored.plan.suite, stored.run.lineage, {
-      neutral: true,
-    });
-    const problems = [
-      ...lintReport(renderMarkdown(neutral)),
-      ...lintReport(renderHtml(neutral)),
-      ...(/Lineage/.test(markdown) && /Lineage/.test(html) ? [] : ["no lineage footer"]),
-    ];
-    if (problems.length > 0) {
-      err(`report: ${problems.join("; ")}`);
+      if (result.recalculation) await store.writeRecalculation(runId, result.recalculation);
+      if (values["json"] === true) {
+        print(canonicalize(result.view));
+        return 0;
+      }
+      markdown = renderReport(result, "markdown");
+      html = renderReport(result, "html");
+    } catch (error) {
+      if (!(error instanceof ReportError)) throw error;
+      err(`report: ${error.message}`);
       return 1;
     }
     const out = (values["out"] as string | undefined) ?? join(storePath, "runs", runId, "report");

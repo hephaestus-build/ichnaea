@@ -26,10 +26,12 @@ import {
 import { holm } from "../stats/multiplicity.ts";
 import { fixedCasesMde, sampledCasesFloor } from "../stats/power.ts";
 import { createRng } from "../stats/rng.ts";
-import { wilson } from "../stats/wilson.ts";
+import { estimate } from "../stats/estimate.ts";
 import type * as z from "zod";
 
 import { describeCounts, plannedTrialsPerCase, planningPower } from "../plan/power.ts";
+
+import { noiseSummary } from "./noise.ts";
 
 /** Everything a decision is computed from. Reports never compute anything new. */
 export interface DecideInput {
@@ -119,10 +121,18 @@ interface Availability {
   trials: number;
 }
 
+interface ArmCase {
+  planned: number;
+  trials: number;
+  successes: number;
+}
+
 /** One measure's binary counts per case for the compared arms, and availability per arm. */
 interface Tally {
   readonly cases: Map<string, CaseCounts>;
   readonly arms: Map<string, Availability>;
+  readonly byArmCase: ReadonlyMap<string, ReadonlyMap<string, ArmCase>>;
+  readonly byBlock: ReadonlyMap<number, ReadonlyMap<string, ReadonlyMap<string, ArmCase>>>;
   readonly applicabilityContradictions: number;
   readonly valuesOutsideMask: number;
   /** A value whose type the decision rule cannot use, if any. */
@@ -406,6 +416,8 @@ function tally(
 ): Tally {
   const cases = new Map<string, CaseCounts>();
   const availability = new Map<string, Availability>();
+  const byArmCase = new Map<string, Map<string, ArmCase>>();
+  const byBlock = new Map<number, Map<string, Map<string, ArmCase>>>();
   const masks: Readonly<Record<string, readonly string[]>> | undefined =
     plan.analysis?.applicability;
   const locked = masks?.[measure];
@@ -424,6 +436,11 @@ function tally(
       continue;
     }
     av.planned++;
+    const armCases = byArmCase.get(planned.arm) ?? new Map<string, ArmCase>();
+    byArmCase.set(planned.arm, armCases);
+    const armCase = armCases.get(planned.case) ?? { planned: 0, trials: 0, successes: 0 };
+    armCases.set(planned.case, armCase);
+    armCase.planned++;
     const contradictsPlan = mask !== undefined && value?.applicable === false;
     if (contradictsPlan) applicabilityContradictions++;
     const outcome = trials.get(planned.id)?.outcome ?? "not_run";
@@ -460,6 +477,18 @@ function tally(
     }
     av.successes += pass ? 1 : 0;
     av.trials += 1;
+    armCase.trials++;
+    if (pass) armCase.successes++;
+    if (planned.block !== undefined && imputation === undefined) {
+      const block = byBlock.get(planned.block) ?? new Map<string, Map<string, ArmCase>>();
+      byBlock.set(planned.block, block);
+      const blockArm = block.get(planned.arm) ?? new Map<string, ArmCase>();
+      block.set(planned.arm, blockArm);
+      const cell = blockArm.get(planned.case) ?? { planned: 0, trials: 0, successes: 0 };
+      blockArm.set(planned.case, cell);
+      cell.trials++;
+      if (pass) cell.successes++;
+    }
     if (side === undefined) continue;
     const entry = cases.get(planned.case) ?? {
       id: planned.case,
@@ -475,6 +504,8 @@ function tally(
   return {
     cases,
     arms: availability,
+    byArmCase,
+    byBlock,
     applicabilityContradictions,
     valuesOutsideMask,
     valueType,
@@ -1462,17 +1493,39 @@ export function decideWith(input: DecideInput, compare: Compare): Decision {
     const p = plan.primary.find((x) => x.measure === id);
     const armsOut = plan.arms.map((a) => {
       const av = t.arms.get(a.name) ?? emptyAvailability();
-      const rate = wilson({ successes: av.successes, trials: av.trials }, 0.95, "two");
+      const cases = [...(t.byArmCase.get(a.name) ?? [])].map(([caseId, counts]) => ({
+        id: caseId,
+        planned: counts.planned,
+        values: Array.from({ length: counts.trials }, (_, index) =>
+          Number(index < counts.successes),
+        ),
+      }));
+      const summary = cases.length === 0 ? undefined : estimate({ valueType: "binary", cases });
+      const interval = summary?.interval;
+      const intervalValidity: ValidityResult =
+        interval?.coverage === "conservative"
+          ? { validated: true, limitations: [] }
+          : {
+              validated: false,
+              limitations: [
+                interval
+                  ? "coverage has not been validated"
+                  : "no interval from the available trials",
+              ],
+            };
+      const mean = summary?.estimate;
       return {
         arm: a.name,
         rate: {
-          estimate: Number.isFinite(rate.estimate) ? rate.estimate : NAN,
-          lower: rate.lower,
-          upper: rate.upper,
+          estimate: mean === undefined || !Number.isFinite(mean) ? NAN : mean,
+          lower: interval?.lower ?? NAN,
+          upper: interval?.upper ?? NAN,
           level: 0.95,
           sided: "two" as const,
-          method: "wilson",
+          method: interval?.method ?? "equal case weights",
         },
+        intervalValidity,
+        caseAvailability: { planned: cases.length, observed: summary?.cases ?? 0 },
         availability: {
           planned: av.planned,
           available: av.available,
@@ -1481,7 +1534,30 @@ export function decideWith(input: DecideInput, compare: Compare): Decision {
         },
       };
     });
+    const analysis = plan.analysis;
+    const masks: Readonly<Record<string, readonly string[]>> | undefined = analysis?.applicability;
+    const mask = masks?.[id] ?? [
+      ...new Set([...t.byArmCase.values()].flatMap((cases) => [...cases.keys()])),
+    ];
+    const blockNotes = analysis
+      ? {
+          blocks: {
+            planned: analysis.blocks,
+            observed: t.byBlock.size,
+            effective: null,
+            reason: "recorded execution contexts are required",
+          },
+          noise: noiseSummary(
+            plan.arms.map((arm) => arm.name),
+            t.byArmCase,
+            t.byBlock,
+            mask,
+            pair,
+          ),
+        }
+      : {};
     const outcome = {
+      ...blockNotes,
       measure: id,
       version: plan.measures.find((m) => m.id === id)?.version ?? "0.0.0",
       tier,

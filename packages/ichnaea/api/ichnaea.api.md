@@ -76,6 +76,16 @@ export interface DecideInput {
 export function decidePrimaries(input: PrimariesInput): Map<string, PrimaryVerdict>;
 
 // @public
+export interface DecisionRecords extends RunRecords {
+    readonly aa?: readonly {
+        decision: Decision;
+        plan: Plan;
+        run: Run;
+    }[];
+    readonly decision: Decision;
+}
+
+// @public
 export interface DecisionView {
     readonly claim: string;
     readonly differingFactors: readonly string[];
@@ -104,12 +114,7 @@ export interface DecisionView {
 }
 
 // @public
-export function decisionView(decision: Decision, suite: string, lineage?: Run["lineage"], options?: DecisionViewOptions): DecisionView;
-
-// @public
-export interface DecisionViewOptions {
-    readonly neutral?: boolean;
-}
+export function decisionView(records: ReportRecords): DecisionView;
 
 // @public
 export function defaultBlocks(primaryComparisons: number, alpha: number): number;
@@ -148,6 +153,8 @@ export class FileStore {
     readonly root: string;
     runs(): Promise<string[]>;
     writeDecision(decision: Decision, suite: string): Promise<void>;
+    // Warning: (ae-forgotten-export) The symbol "Recalculation" needs to be exported by the entry point index.d.ts
+    writeRecalculation(run: string, record: Recalculation): Promise<void>;
 }
 
 // @public
@@ -243,9 +250,6 @@ export class LedgerError extends Error {
 }
 
 // @public
-export function lintReport(text: string): string[];
-
-// @public
 export function loadConfig(path: string, load?: ModuleLoader): Promise<Config>;
 
 // @public
@@ -288,12 +292,30 @@ export interface MeasureRow {
         readonly interval: string;
         readonly n: string;
         readonly missing: number;
+        readonly denominators: {
+            readonly observedCases: number | null;
+            readonly plannedCases: number | null;
+            readonly observedTrials: number;
+            readonly plannedTrials: number;
+            readonly caseCountsReason?: string;
+        };
+        readonly estimand: "equal-weight observed cases";
+        readonly method: string;
+        readonly level: number;
+        readonly sidedness: string;
+        readonly validity: {
+            readonly validated: boolean;
+            readonly limitations: readonly string[];
+        };
     }>;
+    readonly blocks?: Decision["measures"][number]["blocks"];
     readonly difference?: {
         readonly estimate: string;
         readonly bound: string;
         readonly margin: string;
         readonly method: string;
+        readonly sidedness: string;
+        readonly level: number;
         readonly negativeFlips: number;
         readonly positiveFlips: number;
         readonly validated: boolean;
@@ -304,7 +326,14 @@ export interface MeasureRow {
             readonly validated: boolean;
         };
     };
+    readonly estimand: string;
     readonly measure: string;
+    // Warning: (ae-forgotten-export) The symbol "DecisionNoise" needs to be exported by the entry point index.d.ts
+    readonly noise?: Omit<DecisionNoise, "arms"> & {
+        readonly arms: ReadonlyArray<Omit<DecisionNoise["arms"][number], "arm"> & {
+            readonly arm: string;
+        }>;
+    };
     readonly notes: readonly string[];
     readonly tier: string;
     readonly verdict: string;
@@ -322,24 +351,10 @@ export class MonthlyCapError extends Error {
 }
 
 // @public
-export const NO_BOUND = "no bound";
-
-// @public
-export function noBoundReason(difference: Decision["measures"][number]["comparisons"][number]["difference"]): string;
-
-// @public
 export const NOT_CAPTURED = "not-captured";
 
 // @public
-export const NOT_VALIDATED = "(not validated)";
-
-// @public
 export function packageVersion(from: string): string;
-
-// Warning: (ae-forgotten-export) The symbol "Real" needs to be exported by the entry point index.d.ts
-//
-// @public
-export function percent(value: Real | number): string;
 
 // @public
 export class PlanError extends Error {
@@ -396,9 +411,6 @@ export interface Plugin<Id extends string = string> {
 }
 
 // @public
-export function points(value: Real | number): string;
-
-// @public
 export interface PowerRow {
     readonly assumption: string;
     readonly cases: number;
@@ -442,19 +454,7 @@ export interface PrimaryVerdict {
 }
 
 // @public
-export function recompute(records: {
-    readonly plan: Plan;
-    readonly run: Run;
-    readonly trials: readonly Trial[];
-    readonly values: readonly MeasureValue[];
-    readonly gates: readonly GateResult[];
-    readonly decision: Decision;
-    readonly aa?: readonly {
-        decision: Decision;
-        plan: Plan;
-        run: Run;
-    }[];
-}): RecomputeResult;
+export function recompute(records: DecisionRecords): RecomputeResult;
 
 // @public
 export interface RecomputeResult {
@@ -466,13 +466,7 @@ export interface RecomputeResult {
 export function recordProblems(records: Omit<RunRecords, "plan" | "run">): string[];
 
 // @public
-export function renderHtml(view: DecisionView): string;
-
-// @public
-export function renderMarkdown(view: DecisionView): string;
-
-// @public
-export function report(decision: Decision, options: ReportOptions): string;
+export function report(records: ReportRecords, options: ReportOptions): string;
 
 // @public
 export class ReportError extends Error {
@@ -484,6 +478,12 @@ export interface ReportOptions {
     readonly format: "markdown" | "html" | "json";
     readonly lineage?: Run["lineage"];
     readonly suite?: string;
+}
+
+// @public
+export interface ReportRecords extends DecisionRecords {
+    // Warning: (ae-forgotten-export) The symbol "RunManifest" needs to be exported by the entry point index.d.ts
+    readonly manifest?: RunManifest;
 }
 
 // @public
@@ -527,6 +527,7 @@ export const STALE_LOCK_MS = 30000;
 // @public
 export interface StoredRun extends RunRecords {
     readonly decision?: Decision;
+    readonly manifest?: RunManifest;
 }
 
 // @public

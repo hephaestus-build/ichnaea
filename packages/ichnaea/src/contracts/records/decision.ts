@@ -60,13 +60,6 @@ export const Flip = z.strictObject({
   candidate: none(z.number().min(0).max(1)),
 });
 
-/** One arm's estimate for a measure. */
-export const ArmEstimate = z.strictObject({
-  arm: none(ArmName),
-  rate: Estimate,
-  availability: Availability,
-});
-
 /**
  * Whether one result of a comparison lies inside the validated domain of its method, and why not
  * (decision 0015). A result that is not validated names at least one reason.
@@ -75,6 +68,20 @@ export const Validity = z.discriminatedUnion("validated", [
   z.strictObject({ validated: none(z.literal(true)), limitations: none(z.array(Text).max(0)) }),
   z.strictObject({ validated: none(z.literal(false)), limitations: none(z.array(Text).min(1)) }),
 ]);
+
+/** One arm's estimate for a measure. */
+export const ArmEstimate = z.strictObject({
+  arm: none(ArmName),
+  rate: Estimate,
+  availability: Availability,
+  caseAvailability: z
+    .strictObject({
+      planned: none(z.int().min(0)),
+      observed: none(z.int().min(0)),
+    })
+    .optional(),
+  intervalValidity: Validity.optional(),
+});
 
 /** The comparison of one candidate with the base for one measure. None in estimate-only mode. */
 export const Comparison = z.strictObject({
@@ -119,6 +126,27 @@ export const SensitivityResult = z.strictObject({
   changesVerdict: none(z.boolean()),
 });
 
+const Count = none(z.int().min(0));
+const Variance = none(z.number().min(0).nullable());
+const BlockDenominators = z.strictObject({
+  planned: Count,
+  observed: Count,
+  effective: none(Count.nullable()),
+  reason: none(Text).optional(),
+});
+const Noise = z.strictObject({
+  arms: z.array(
+    z.strictObject({
+      arm: none(ArmName),
+      withinCaseVariance: Variance,
+      replicatedCells: Count,
+      caseDispersion: Variance,
+    }),
+  ),
+  betweenBlockVariance: Variance,
+  contrastBlocks: Count,
+});
+
 /** The result for one primary or secondary measure. */
 export const MeasureOutcome = z.strictObject({
   measure: none(MeasureId),
@@ -129,6 +157,8 @@ export const MeasureOutcome = z.strictObject({
   comparisons: z.array(Comparison),
   verdict: none(MeasureVerdict),
   coverage: none(z.number().min(0).max(1)),
+  blocks: BlockDenominators.optional(),
+  noise: Noise.optional(),
   /** Both imputations of a primary measure when the analysis ran; empty otherwise. */
   sensitivity: z.array(SensitivityResult),
   notes: none(z.array(Text)),
@@ -139,7 +169,7 @@ export const GateResult = z.strictObject({
   gate: none(GateId),
   passed: none(z.boolean()),
   failures: none(z.int().min(0)),
-  detail: content(z.string()).optional(),
+  detail: content(z.string(), "special").optional(),
 });
 
 /** A hard-gate result. */

@@ -205,6 +205,11 @@ describe("valid data survives an egress it may pass", () => {
         if ("dataClass" in record) record["dataClass"] = "none";
         // Fields that are pseudonymous or personal by contract never pass at maxClass none.
         for (const key of ["pointer", "joinKeys"]) delete record[key];
+        if (name === "decision" && Array.isArray(record["gates"])) {
+          for (const gate of record["gates"]) {
+            if (gate && typeof gate === "object" && "detail" in gate) delete gate.detail;
+          }
+        }
         if (name === "case" && record["provenance"])
           delete (record["provenance"] as Record<string, unknown>)["author"];
         if (!contract.schema.safeParse(record).success) return;
