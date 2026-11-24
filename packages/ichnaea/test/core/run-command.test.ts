@@ -580,6 +580,7 @@ it("re-scores captured output as an exploratory run with source lineage", async 
       registration: "exploratory",
     });
     expect(rescored.trials).toHaveLength(source.trials.length);
+    expect(source.trials[0]?.armOrderSeed).toEqual(source.plan.seed);
     expect(source.values.map(({ value }) => value)).toEqual(
       Array.from({ length: 4 }, () => ({ type: "binary", pass: true })),
     );
@@ -589,7 +590,10 @@ it("re-scores captured output as an exploratory run with source lineage", async 
     expect(
       rescored.trials.every(
         (trial) =>
-          trial.run === "rescored" && trial.block === undefined && trial.first === undefined,
+          trial.run === "rescored" &&
+          trial.block === undefined &&
+          trial.first === undefined &&
+          trial.armOrderSeed === undefined,
       ),
     ).toBe(true);
     expect(rescored.trials.map((trial) => trial.output)).toEqual(

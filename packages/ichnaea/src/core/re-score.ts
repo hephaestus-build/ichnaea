@@ -42,6 +42,7 @@ export function reScoreTrials(source: StoredRun, plan: Plan, run: string): reado
         analysisPlan: undefined,
         block: undefined,
         first: undefined,
+        armOrderSeed: undefined,
         evidence: trial.evidence?.map(({ name, digest }) => ({ name, digest })),
       }),
     ];
