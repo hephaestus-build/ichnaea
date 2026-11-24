@@ -1,6 +1,6 @@
 import * as z from "zod";
 import { CLOSED_KEY, content, none, quasi } from "../data-class.js";
-import { ArmName, CaseId, ConfigurationIdentity, Digest, DigestRef, Json, RecordDataClass, RunId, Text, Timestamp, TrialId, Unit, } from "../primitives.js";
+import { ArmName, CaseId, ConfigurationIdentity, Digest, DigestRef, Json, RecordDataClass, RunId, Seed, Text, Timestamp, TrialId, Unit, } from "../primitives.js";
 /**
  * Outcome classes of a trial (REQ-20). A capture failure is never a verdict:
  * `infrastructure_failure` and `not_run` count as missing, never as a quality failure.
@@ -75,6 +75,11 @@ export const Trial = z.strictObject({
     analysisPlan: none(Digest).optional(),
     /** The physical block whose worker captured this trial. */
     block: none(z.int().min(0)).optional(),
+    /** The first arm drawn for this case pair. */
+    first: none(z.enum(["base", "candidate"])).optional(),
+    /** The runner's recorded arm-order seed for replay. */
+    armOrderSeed: Seed.optional(),
+    responseIds: none(z.array(Text)).optional(),
     /** The execution context reported by the worker. */
     context: none(Text).optional(),
     outcome: none(Outcome, { [CLOSED_KEY]: true }),

@@ -197,6 +197,14 @@ export declare const Comparison: z.ZodObject<{
         validated: z.ZodLiteral<false>;
         limitations: z.ZodArray<z.ZodString>;
     }, z.core.$strict>], "validated">;
+    randomized: z.ZodOptional<z.ZodObject<{
+        withinP: z.ZodNumber;
+        withinPAdjusted: z.ZodNumber;
+        blockLower: z.ZodNumber;
+        withinLower: z.ZodNumber;
+        pairs: z.ZodInt;
+        imputedTrials: z.ZodInt;
+    }, z.core.$strict>>;
     flips: z.ZodArray<z.ZodObject<{
         case: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
         direction: z.ZodEnum<{
@@ -416,6 +424,14 @@ export declare const MeasureOutcome: z.ZodObject<{
             validated: z.ZodLiteral<false>;
             limitations: z.ZodArray<z.ZodString>;
         }, z.core.$strict>], "validated">;
+        randomized: z.ZodOptional<z.ZodObject<{
+            withinP: z.ZodNumber;
+            withinPAdjusted: z.ZodNumber;
+            blockLower: z.ZodNumber;
+            withinLower: z.ZodNumber;
+            pairs: z.ZodInt;
+            imputedTrials: z.ZodInt;
+        }, z.core.$strict>>;
         flips: z.ZodArray<z.ZodObject<{
             case: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
             direction: z.ZodEnum<{
@@ -540,6 +556,7 @@ export declare const Missingness: z.ZodObject<{
     }, z.core.$strict>>;
     differs: z.ZodBoolean;
     sensitivity: z.ZodEnum<{
+        "adverse-completion": "adverse-completion";
         "changes-verdict": "changes-verdict";
         "not-needed": "not-needed";
         unchanged: "unchanged";
@@ -559,8 +576,64 @@ export declare const Decision: z.ZodObject<{
         REGRESSION: "REGRESSION";
     }>>;
     reason: z.ZodString;
-    reasonCode: z.ZodOptional<z.ZodLiteral<"DROP_IN_THESE_RUNS_ONLY">>;
-    cause: z.ZodOptional<z.ZodLiteral<"gate">>;
+    reasonCode: z.ZodOptional<z.ZodEnum<{
+        AGE_EXPIRED: "AGE_EXPIRED";
+        ANSWER_LENGTH_OUTSIDE: "ANSWER_LENGTH_OUTSIDE";
+        ARMS_NOT_INTERLEAVED: "ARMS_NOT_INTERLEAVED";
+        ARM_BIAS_NOT_SHOWN_SMALL: "ARM_BIAS_NOT_SHOWN_SMALL";
+        ATTENTION_FAILED: "ATTENTION_FAILED";
+        DROP_IN_THESE_RUNS_ONLY: "DROP_IN_THESE_RUNS_ONLY";
+        ESTIMATE_ONLY_CACHED_ARM: "ESTIMATE_ONLY_CACHED_ARM";
+        ESTIMATE_ONLY_EXPLORATORY: "ESTIMATE_ONLY_EXPLORATORY";
+        ESTIMATE_ONLY_FEW_CASES: "ESTIMATE_ONLY_FEW_CASES";
+        ESTIMATE_ONLY_NO_COMPARISON: "ESTIMATE_ONLY_NO_COMPARISON";
+        ESTIMATE_ONLY_NO_METHOD: "ESTIMATE_ONLY_NO_METHOD";
+        ESTIMATE_ONLY_NO_PRIMARY: "ESTIMATE_ONLY_NO_PRIMARY";
+        ESTIMATE_ONLY_PLACEHOLDER_MARGIN: "ESTIMATE_ONLY_PLACEHOLDER_MARGIN";
+        ESTIMATE_ONLY_SAMPLED_CASES: "ESTIMATE_ONLY_SAMPLED_CASES";
+        ESTIMATE_ONLY_SINGLE_TRIAL: "ESTIMATE_ONLY_SINGLE_TRIAL";
+        EXECUTION_UNRECORDED: "EXECUTION_UNRECORDED";
+        HARD_CHECK_FAILED: "HARD_CHECK_FAILED";
+        INPUTS_CHANGED: "INPUTS_CHANGED";
+        INTERVAL_UNAVAILABLE_DESCRIPTIVE: "INTERVAL_UNAVAILABLE_DESCRIPTIVE";
+        INTERVAL_UNAVAILABLE_METHOD: "INTERVAL_UNAVAILABLE_METHOD";
+        INTERVAL_UNAVAILABLE_NO_METHOD: "INTERVAL_UNAVAILABLE_NO_METHOD";
+        INTERVAL_UNAVAILABLE_NO_VALUE: "INTERVAL_UNAVAILABLE_NO_VALUE";
+        INVALID_BUDGET: "INVALID_BUDGET";
+        INVALID_COVERAGE: "INVALID_COVERAGE";
+        INVALID_HARD_CHECK_MISSING: "INVALID_HARD_CHECK_MISSING";
+        INVALID_NO_BASE_RESULTS: "INVALID_NO_BASE_RESULTS";
+        INVALID_RECORDS_CONTRADICT: "INVALID_RECORDS_CONTRADICT";
+        INVALID_RECORDS_MISMATCH: "INVALID_RECORDS_MISMATCH";
+        INVALID_SUITE_SETUP: "INVALID_SUITE_SETUP";
+        INVALID_UNDECLARED_CHANGE: "INVALID_UNDECLARED_CHANGE";
+        JUDGE_ARM_BIAS_WITHIN_BOUND: "JUDGE_ARM_BIAS_WITHIN_BOUND";
+        JUDGE_BELOW_RATERS: "JUDGE_BELOW_RATERS";
+        JUDGE_CALIBRATION_EXPIRED: "JUDGE_CALIBRATION_EXPIRED";
+        JUDGE_CHANGED: "JUDGE_CHANGED";
+        JUDGE_DIAGNOSTIC: "JUDGE_DIAGNOSTIC";
+        JUDGE_MODEL_NOT_COVERED: "JUDGE_MODEL_NOT_COVERED";
+        JUDGE_NOT_COVERED: "JUDGE_NOT_COVERED";
+        MARGIN_NOT_CLEARED: "MARGIN_NOT_CLEARED";
+        MARGIN_UNREACHABLE: "MARGIN_UNREACHABLE";
+        MISSING_TRIALS_CHANGE_VERDICT: "MISSING_TRIALS_CHANGE_VERDICT";
+        NON_INFERIORITY_UNVALIDATED: "NON_INFERIORITY_UNVALIDATED";
+        NO_DECREASE_DETECTED: "NO_DECREASE_DETECTED";
+        PASS: "PASS";
+        POPULATION_NOT_COVERED: "POPULATION_NOT_COVERED";
+        PROBE_FAILED: "PROBE_FAILED";
+        RATERS_BELOW_FLOOR: "RATERS_BELOW_FLOOR";
+        REGRESSION_DETECTED: "REGRESSION_DETECTED";
+        REGRESSION_TEST_UNVALIDATED: "REGRESSION_TEST_UNVALIDATED";
+        RUBRIC_CHANGED: "RUBRIC_CHANGED";
+        SYSTEM_MODEL_NOT_COVERED: "SYSTEM_MODEL_NOT_COVERED";
+        TOO_FEW_BLOCKS: "TOO_FEW_BLOCKS";
+    }>>;
+    withinRunDrop: z.ZodOptional<z.ZodBoolean>;
+    cause: z.ZodOptional<z.ZodEnum<{
+        gate: "gate";
+        statistical: "statistical";
+    }>>;
     scope: z.ZodString;
     plan: z.core.$ZodBranded<z.ZodString, "PlanDigest", "out">;
     run: z.core.$ZodBranded<z.ZodString, "RunId", "out">;
@@ -708,6 +781,14 @@ export declare const Decision: z.ZodObject<{
                 validated: z.ZodLiteral<false>;
                 limitations: z.ZodArray<z.ZodString>;
             }, z.core.$strict>], "validated">;
+            randomized: z.ZodOptional<z.ZodObject<{
+                withinP: z.ZodNumber;
+                withinPAdjusted: z.ZodNumber;
+                blockLower: z.ZodNumber;
+                withinLower: z.ZodNumber;
+                pairs: z.ZodInt;
+                imputedTrials: z.ZodInt;
+            }, z.core.$strict>>;
             flips: z.ZodArray<z.ZodObject<{
                 case: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
                 direction: z.ZodEnum<{
@@ -983,6 +1064,7 @@ export declare const Decision: z.ZodObject<{
         }, z.core.$strict>>;
         differs: z.ZodBoolean;
         sensitivity: z.ZodEnum<{
+            "adverse-completion": "adverse-completion";
             "changes-verdict": "changes-verdict";
             "not-needed": "not-needed";
             unchanged: "unchanged";

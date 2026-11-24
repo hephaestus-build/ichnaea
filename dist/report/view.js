@@ -89,6 +89,17 @@ const IMPUTATION = {
 };
 /** A decision quotes each identifier it names in its prose: `'<id>'`, in the identifier grammar. */
 const QUOTED_ID = /'[A-Za-z0-9][A-Za-z0-9._:/@+-]*'/g;
+function missingnessText(decision, armLabel) {
+    const { byArm, sensitivity } = decision.missingness;
+    const counts = byArm.map((row) => `${armLabel(row.arm)}: ${row.missing} of ${row.planned} trials missing`);
+    if (sensitivity === "adverse-completion") {
+        return `${counts.join("; ")}. The randomized tests fill missing scores against each claim. Pass requires every planned score.`;
+    }
+    if (sensitivity === "not-needed")
+        return `${counts.join("; ")}.`;
+    const legacy = sensitivity === "unchanged" ? "No verdict changed." : "A verdict changed.";
+    return `${counts.join("; ")}. An earlier decision rule tested each claim with a separate completion of the missing scores. ${legacy}`;
+}
 /**
  * Builds the view model from a decision record alone. It computes nothing new: every number comes
  * from the record (REQ-82, REQ-128).
@@ -254,16 +265,9 @@ export function decisionView(decision, suite, lineage = [], options = {}) {
             changes: s.changesVerdict ? "yes" : "no",
         })))
             .map(({ estimate, ...rest }) => ({ ...rest, difference: estimate })),
-        missingness: `${decision.missingness.byArm.map((a) => `${armLabel(a.arm)}: ${a.missing} of ${a.planned} trials missing`).join("; ")}. ${decision.missingness.sensitivity === "not-needed"
-            ? "No primary measure misses a trial in either arm, so no sensitivity analysis ran."
-            : `A primary measure misses trials, so each verdict was decided again with the missing trials imputed against it: for non-inferiority, missing candidate trials fail and missing base trials pass; for regression, the reverse. ${decision.missingness.sensitivity === "unchanged"
-                ? "No verdict changes."
-                : "A verdict changes, and that measure is INCONCLUSIVE."}`}`,
+        missingness: missingnessText(decision, armLabel),
         differingFactors: decision.differingFactors.map(id),
-        limitations: [
-            "Ichnaea can show that a change failed a hard gate, or dropped within these runs. It cannot yet show a regression across runs, or that a change is safe.",
-            ...decision.limitations.map(prose),
-        ],
+        limitations: decision.limitations.map(prose),
         lineage: lineageRows.map(([label, value]) => [id(label), id(value)]),
     };
 }

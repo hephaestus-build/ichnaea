@@ -1,3 +1,4 @@
+import { pairFirst } from "../contracts/block-order.js";
 import { checkCaptured } from "./capture.js";
 import { canonicalize, digest } from "../contracts/canonical.js";
 import { GateResult } from "../contracts/records/decision.js";
@@ -86,6 +87,17 @@ export async function recordRun(input) {
         ? input.execution.blocks.map((block) => ExecutedBlock.parse(block))
         : undefined;
     const byBlock = new Map(blocks?.map((block) => [block.block, block]));
+    const draws = new Map(blocks?.map((block) => [
+        block.block,
+        new Map(block.draws?.map((draw) => [canonicalize([draw.case, draw.replicate]), draw])),
+    ]));
+    for (const block of blocks ?? []) {
+        if (!block.draws)
+            continue;
+        if (draws.get(block.block)?.size !== block.draws.length ||
+            block.draws.some((draw) => draw.first !== pairFirst(plan.seed, block.block, draw)))
+            throw new ImportError(`block ${block.block} has a duplicate draw or an order that differs from the plan seed`);
+    }
     if (blocks && byBlock.size !== blocks.length)
         throw new ImportError("duplicate execution block");
     const completed = blocks?.filter((block) => block.status === "complete") ?? [];
@@ -119,8 +131,22 @@ export async function recordRun(input) {
             if (block?.status !== "complete" || block.plannedBlock !== slot.block)
                 throw new ImportError(`trial '${trial.id}' belongs to an abandoned or unplanned block`);
         }
+        if (blocks && trial.block !== undefined && trial.first !== undefined) {
+            const draw = draws.get(trial.block)?.get(canonicalize([slot.case, slot.replicate]));
+            if (!draw ||
+                trial.first !== draw.first ||
+                (trial.armOrderSeed !== undefined &&
+                    canonicalize(trial.armOrderSeed) !== canonicalize(plan.seed)))
+                throw new ImportError(`trial '${trial.id}' contradicts its recorded pair assignment`);
+        }
         const observed = checkConfiguration(trial, arms.get(slot.arm), analysisPlan !== undefined);
-        return checkCaptured(analysisPlan ? Trial.parse({ ...observed, analysisPlan }) : observed);
+        return checkCaptured(analysisPlan
+            ? Trial.parse({
+                ...observed,
+                analysisPlan,
+                ...(blocks && trial.first !== undefined ? { armOrderSeed: plan.seed } : {}),
+            })
+            : observed);
     });
     const byTrial = new Map(trials.map((t) => [t.id, t]));
     // Values: imported ones for measures the application computes, scored ones for Ichnaea's.
@@ -234,14 +260,18 @@ export async function recordRun(input) {
         id: input.id,
         plan: digest(plan),
         exploratory: input.execution.source === "re-score" ||
-            (analysisPlan !== undefined && input.execution.source === "import"),
+            (analysisPlan !== undefined && input.execution.source === "import") ||
+            (blocks !== undefined &&
+                plan.arms.length === 2 &&
+                (completed.some((block) => !block.draws) ||
+                    trials.some((trial) => trial.first === undefined))),
         ...(analysisPlan === undefined
             ? {}
             : {
                 execution: {
                     source: input.execution.source,
                     analysisPlan,
-                    ...(blocks === undefined ? {} : { blocks }),
+                    ...(blocks === undefined ? {} : { seed: plan.seed, blocks }),
                 },
                 ...(Object.keys(valuesOutsideMask).length > 0 ? { valuesOutsideMask } : {}),
             }),

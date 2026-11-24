@@ -89,6 +89,15 @@ export declare const Trial: z.ZodObject<{
     replicate: z.ZodInt;
     analysisPlan: z.ZodOptional<z.ZodString>;
     block: z.ZodOptional<z.ZodInt>;
+    first: z.ZodOptional<z.ZodEnum<{
+        base: "base";
+        candidate: "candidate";
+    }>>;
+    armOrderSeed: z.ZodOptional<z.ZodObject<{
+        algorithm: z.ZodString;
+        value: z.ZodString;
+    }, z.core.$strict>>;
+    responseIds: z.ZodOptional<z.ZodArray<z.ZodString>>;
     context: z.ZodOptional<z.ZodString>;
     outcome: z.ZodEnum<{
         abstained: "abstained";

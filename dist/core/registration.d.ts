@@ -1,4 +1,5 @@
 import * as z from "zod";
+import { type PairDraw } from "../contracts/block-order.ts";
 import { Seed } from "../contracts/primitives.ts";
 export interface RegistrationReceipt {
     readonly run: string;
@@ -12,6 +13,10 @@ export interface RegistrationReceipt {
     readonly remote: string;
     readonly ref: string;
     readonly remoteSha: string;
+    readonly draws?: readonly {
+        readonly block: number;
+        readonly pairs: readonly PairDraw[];
+    }[] | undefined;
 }
 /** The receipt written before dispatch, bound to the arms and seed at run start. */
 export declare const RegistrationReceiptSchema: z.ZodType<RegistrationReceipt>;

@@ -1,6 +1,7 @@
+import { admitBlocks } from "./blocks.js";
+import { compareBlocks, MAX_TEST_BLOCKS } from "./block-comparison.js";
 import { canonicalize, digest } from "../contracts/canonical.js";
 import { verifyArms } from "../contracts/identity.js";
-import { candidateRunsFirst } from "../contracts/pair-order.js";
 import { FactorPart } from "../contracts/records/configuration.js";
 import { Decision } from "../contracts/records/decision.js";
 import { REFUSED_MARGIN } from "../contracts/records/plan.js";
@@ -11,7 +12,7 @@ import { mustNeverCounts } from "./must-never.js";
 import { runResolution } from "../plan/resolution.js";
 import { TRIGGER_VARIES } from "../plan/rules.js";
 import { recordProblems } from "../contracts/run-records.js";
-import { compareCounts, EstimandError, MARGIN_FLOOR_NOT_SET, } from "../stats/compare.js";
+import { compareCounts, EstimandError, } from "../stats/compare.js";
 import { holm } from "../stats/multiplicity.js";
 import { fixedCasesMde, sampledCasesFloor } from "../stats/power.js";
 import { createRng } from "../stats/rng.js";
@@ -27,15 +28,6 @@ const MISSING = new Set([
     "protocol_failure",
 ]);
 const DEFAULT_COVERAGE_FLOOR = 0.9;
-/**
- * The reason of an INCONCLUSIVE run when the unset validated margin floor alone keeps every primary
- * measure from NON-INFERIOR: each lower bound clears its effective margin, also with the measure's
- * missing trials imputed against non-inferiority (decision 0015). A stable unchanged candidate gets
- * it, so it must not read as a broken setup.
- */
-export const FLOOR_NOT_SET_REASON = "No drop was detected in these runs. A statistical pass needs randomized blocks and a validated margin floor.";
-/** One measure's cause when the floor alone keeps it from NON-INFERIOR, and others have causes too. */
-const FLOOR_CAUSE = "no PASS yet, because the validated margin floor is not set";
 /** The statistics package's name for a value type. A type it has no name for has no method. */
 const STATS_VALUE_TYPE = {
     binary: "binary",
@@ -46,10 +38,6 @@ const STATS_VALUE_TYPE = {
 const NAN = { nonFinite: "nan" };
 const NEG_INF = { nonFinite: "-inf" };
 const POS_INF = { nonFinite: "inf" };
-/** Works against non-inferiority: missing candidate trials fail, missing base trials pass. */
-const AGAINST_NON_INFERIORITY = { base: true, candidate: false };
-/** Works against regression: missing candidate trials pass, missing base trials fail. */
-const AGAINST_REGRESSION = { base: false, candidate: true };
 /**
  * The plan's planning statement (REQ-54, decision 0017). A plan made with the decide plugin carries
  * it. A plan that carries none gets it from `planningPower`, the plugin's own function, because the
@@ -83,176 +71,6 @@ function planningOf(plan) {
     });
 }
 const NO_CASES = new Set();
-/** The regression limitation of a run at one trial per case whose records lack a time. */
-const NO_TIMES = "the records do not show when the arms ran";
-/** The decision's limitation at one trial per case: the pair checks read the recorded times. */
-const CLOCK_LIMITATION = "Decide trusts the trial timestamps as recorded. An importer that merges several hosts states its clock source.";
-/** Orders strings by UTF-16 code units. */
-const byCodeUnits = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
-/**
- * Whether a plan runs exactly one trial per case in its base and its candidate arm, under
- * fixed-cases: the domain whose regression result needs the checks of `oneTrialRecords`.
- */
-function oneTrialPlan(plan) {
-    const base = plan.arms.find((a) => a.role === "base")?.name;
-    const candidate = plan.arms.find((a) => a.role === "candidate")?.name;
-    if (plan.estimand !== "fixed-cases" || base === undefined || candidate === undefined)
-        return false;
-    const cells = new Map();
-    const cases = new Set();
-    for (const t of plan.trials) {
-        cases.add(t.case);
-        if (t.arm !== base && t.arm !== candidate)
-            continue;
-        const key = `${t.case}\u0000${t.arm}`;
-        cells.set(key, (cells.get(key) ?? 0) + 1);
-    }
-    return (cases.size > 0 && cells.size === 2 * cases.size && [...cells.values()].every((n) => n === 1));
-}
-/**
- * The largest number of trials whose half-open [startedAt, endedAt) intervals overlap. An end sorts
- * before a start at the same time, so a trial that starts as another ends does not overlap it: a
- * sequential runner reads as concurrency 1. Closed intervals would raise c and loosen the rank rule.
- */
-function concurrencyOf(intervals) {
-    const events = [...intervals]
-        .flatMap((i) => [
-        { at: i.start, step: 1 },
-        { at: i.end, step: -1 },
-    ])
-        .toSorted((a, b) => a.at - b.at || a.step - b.step);
-    let open = 0;
-    let most = 0;
-    for (const e of events) {
-        open += e.step;
-        most = Math.max(most, open);
-    }
-    return most;
-}
-/**
- * The checks of a run at one trial per case and arm (VALIDATION.md, "Conditions for a validated
- * result at one trial per case"). Every trial that ran must record when it started and ended. Then
- * a case's pair holds only when its arms ran in the order `candidateRunsFirst` chose (a tie is not
- * the other order) and their ranks by start time, ties broken by trial ID, differ by at most
- * 2c − 1, where c is the most trials the records show running at once. A case whose pair does not
- * hold is unpaired: it counts as missing, so one lost pair never invalidates a run, and the
- * coverage floor decides how many may be lost. The plan must state its schedule and cite at least
- * two clean A/A decisions (`aaLimitations`), unless it is itself an A/A plan.
- */
-function oneTrialRecords(input, pair) {
-    const { plan } = input;
-    const limitations = [];
-    const unpaired = new Set();
-    let concurrency;
-    // A trial that never ran has no time to show.
-    const ran = input.trials.filter((t) => t.outcome !== "not_run");
-    const times = new Map();
-    for (const t of ran) {
-        const start = t.startedAt === undefined ? Number.NaN : Date.parse(t.startedAt);
-        const end = t.endedAt === undefined ? Number.NaN : Date.parse(t.endedAt);
-        if (start <= end)
-            times.set(t.id, { start, end });
-    }
-    if (times.size < ran.length)
-        limitations.push(NO_TIMES);
-    else {
-        const c = concurrencyOf(times.values());
-        concurrency = c;
-        const startOf = (id) => times.get(id)?.start ?? Number.NaN;
-        const ranked = ran
-            .map((t) => t.id)
-            .toSorted((a, b) => startOf(a) - startOf(b) || byCodeUnits(a, b));
-        const rank = new Map(ranked.map((id, i) => [id, i]));
-        const trialOf = new Map(plan.trials.map((t) => [`${t.case}\u0000${t.arm}`, t.id]));
-        for (const id of new Set(plan.trials.map((t) => t.case))) {
-            const base = trialOf.get(`${id}\u0000${pair.base}`) ?? "";
-            const candidate = trialOf.get(`${id}\u0000${pair.candidate}`) ?? "";
-            const rb = rank.get(base);
-            const rc = rank.get(candidate);
-            // A pair without both trials on record is missing a trial already.
-            if (rb === undefined || rc === undefined)
-                continue;
-            const [first, second] = candidateRunsFirst(plan.seed, id, 0)
-                ? [candidate, base]
-                : [base, candidate];
-            if (startOf(second) < startOf(first) || Math.abs(rb - rc) > 2 * c - 1)
-                unpaired.add(id);
-        }
-    }
-    if (plan.schedule === undefined)
-        limitations.push("the plan states no schedule (concurrency and endpoint), which one trial per case needs");
-    const identity = (name) => plan.arms.find((a) => a.name === name)?.identity;
-    // An A/A plan is the evidence itself, so it waives its own A/A precondition and nothing else.
-    if (identity(pair.base) !== identity(pair.candidate))
-        limitations.push(...aaLimitations(plan, input.aa ?? []));
-    return {
-        unpaired,
-        checks: { checksPassed: limitations.length === 0, limitations },
-        ...(concurrency === undefined ? {} : { concurrency }),
-    };
-}
-/** The models of a plan's base arm, sorted by role, as the identity projection compares them. */
-function baseModels(plan) {
-    const models = plan.arms.find((a) => a.role === "base")?.configuration.models ?? [];
-    return canonicalize(models.toSorted((a, b) => byCodeUnits(a.role, b.role)));
-}
-/**
- * The A/A precondition of a plan at one trial per case (VALIDATION.md). The plan cites at least two
- * distinct A/A decisions, and each one is given with its plan and run and passes every check: its
- * digests match (the cited decision digest, its plan and its run); both arms are one
- * configuration; it runs one trial per case and arm; it ran this plan's suite; it is a decision,
- * not INVALID, whose every primary regression result is validated; no primary measure gave
- * REGRESSION; and it ran this plan's base model and schedule. Each failure is one limitation that
- * names the check and the run.
- */
-function aaLimitations(plan, given) {
-    const cited = new Map((plan.aa?.decisions ?? []).map((c) => [c.run, c.digest]));
-    const out = [];
-    if (cited.size < 2)
-        out.push(`one trial per case needs at least two A/A decisions, and the plan cites ${cited.size}`);
-    for (const [run, cite] of cited) {
-        const fail = (problem) => void out.push(`A/A run '${run}': ${problem}`);
-        const e = given.find((g) => g.decision.run === run);
-        if (!e) {
-            fail("no decision record was given");
-            continue;
-        }
-        // Records that do not match their digests prove nothing, so no other check reads them.
-        const before = out.length;
-        if (digest(e.decision) !== cite)
-            fail("its decision record does not match the cited digest");
-        if (e.decision.plan !== digest(e.plan))
-            fail("its decision does not belong to the given plan");
-        if (e.decision.runDigest !== digest(e.run))
-            fail("its decision does not belong to the given run");
-        if (out.length > before)
-            continue;
-        const arms = e.plan.arms.filter((a) => a.role === "base" || a.role === "candidate");
-        if (arms.length !== 2 || new Set(arms.map((a) => a.identity)).size !== 1)
-            fail("its arms are not one configuration, so it is not an A/A comparison");
-        if (!oneTrialPlan(e.plan))
-            fail("it does not run one trial per case and arm");
-        if (e.plan.suiteDigest !== plan.suiteDigest)
-            fail("it ran another suite");
-        const primaries = e.decision.measures.filter((m) => m.tier === "primary");
-        const validated = e.decision.mode === "decision" &&
-            e.decision.verdict !== "INVALID" &&
-            primaries.length > 0 &&
-            primaries.every((m) => m.comparisons.length > 0 && m.comparisons.every((c) => c.regression.validated));
-        if (!validated)
-            fail("its regression results are not validated");
-        if (primaries.some((m) => m.verdict === "REGRESSION") ||
-            e.decision.reasonCode === "DROP_IN_THESE_RUNS_ONLY")
-            fail("a primary measure dropped in the A/A run");
-        if (baseModels(e.plan) !== baseModels(plan))
-            fail("its model differs from this plan's base arm");
-        if (plan.schedule === undefined ||
-            canonicalize(e.plan.schedule ?? null) !== canonicalize(plan.schedule))
-            fail("its schedule differs from this plan's");
-    }
-    return out;
-}
-/** Map the plan’s unsigned 64-bit seed into the generator’s supported range. */
 export function seedOf(plan) {
     return Number((BigInt(plan.seed.value) % 4294967295n) + 1n);
 }
@@ -272,14 +90,14 @@ function passing(value) {
 /**
  * Collects one measure's counts. A system failure or a budget overrun is a failed trial. A missing
  * trial (an infrastructure failure, including a capture failure, a trial not run, an invalid
- * configuration, or a trial without a value) is left out, unless an imputation gives it an outcome
- * for the sensitivity analysis.
+ * configuration, or a trial without a value) is left out of the observed counts.
  */
-function tally(plan, trials, values, measure, arms, imputation, unpaired = NO_CASES) {
+function tally(plan, trials, values, measure, arms, excluded = NO_CASES) {
     const cases = new Map();
     const availability = new Map();
     const byArmCase = new Map();
     const byBlock = new Map();
+    const scores = new Map();
     const masks = plan.analysis?.applicability;
     const locked = masks?.[measure];
     const mask = locked === undefined ? undefined : new Set(locked);
@@ -320,30 +138,25 @@ function tally(plan, trials, values, measure, arms, imputation, unpaired = NO_CA
             continue;
         }
         let pass;
-        if (FAILED.has(outcome) && !contradictsPlan) {
+        if (FAILED.has(outcome) && !contradictsPlan && !excluded.has(planned.id)) {
             pass = false;
             av.available++;
         }
-        else if (MISSING.has(outcome) ||
-            v === undefined ||
-            // A case that lost its pair at one trial per case counts as missing, as a lost trial does.
-            (side !== undefined && unpaired.has(planned.case))) {
+        else if (MISSING.has(outcome) || excluded.has(planned.id) || v === undefined) {
             av.missing++;
-            const imputed = side === undefined ? undefined : imputation?.[side];
-            if (imputed === undefined)
-                continue;
-            pass = imputed;
+            continue;
         }
         else {
             pass = v.type === "binary" && v.pass;
             av.available++;
         }
+        scores.set(planned.id, Number(pass));
         av.successes += pass ? 1 : 0;
         av.trials += 1;
         armCase.trials++;
         if (pass)
             armCase.successes++;
-        if (planned.block !== undefined && imputation === undefined) {
+        if (planned.block !== undefined) {
             const block = byBlock.get(planned.block) ?? new Map();
             byBlock.set(planned.block, block);
             const blockArm = block.get(planned.arm) ?? new Map();
@@ -372,6 +185,7 @@ function tally(plan, trials, values, measure, arms, imputation, unpaired = NO_CA
         arms: availability,
         byArmCase,
         byBlock,
+        scores,
         applicabilityContradictions,
         valuesOutsideMask,
         valueType,
@@ -602,7 +416,17 @@ function recordChecks(input) {
     if (run.plan !== planDigest)
         invalid.push(`the run belongs to plan ${run.plan}, not to this plan (${planDigest})`);
     if (plan.analysis) {
-        const analysisPlan = digest(plan.analysis);
+        const analysis = plan.analysis;
+        const analysisPlan = digest(analysis);
+        const registered = canonicalize(analysis.primary.map((entry) => entry.measure));
+        if (analysis.alpha !== plan.alpha ||
+            analysis.estimand !== plan.estimand ||
+            analysis.caseSetDigest !== plan.caseSetDigest ||
+            analysis.suiteDigest !== plan.suiteDigest ||
+            analysis.base.identity !== plan.arms.find((arm) => arm.role === "base")?.identity ||
+            registered !== canonicalize(analysis.holm) ||
+            registered !== canonicalize(plan.primary.map((entry) => entry.measure)))
+            invalid.push("the bound plan disagrees with the locked analysis");
         if (run.execution && run.execution.analysisPlan !== analysisPlan)
             invalid.push("the run execution refers to another analysis plan");
         const wrong = input.trials.find((trial) => trial.analysisPlan !== undefined && trial.analysisPlan !== analysisPlan);
@@ -676,139 +500,6 @@ function recordChecks(input) {
     }
     return invalid;
 }
-/** The limitations of a comparison's non-inferiority result that its regression result lacks. */
-function nonInferiorityOnly(comparison) {
-    const domain = new Set(comparison.regression.limitations);
-    return comparison.nonInferiority.limitations.filter((l) => !domain.has(l));
-}
-/**
- * Whether the unset margin floor alone keeps a comparison from NON-INFERIOR: its regression result
- * is validated, its lower bound clears the effective margin, and the floor is the only limitation
- * of its non-inferiority result.
- */
-function onlyTheFloor(c, effective) {
-    if (!c?.regression.validated || !(c.difference.lower > -effective))
-        return false;
-    const limitations = nonInferiorityOnly(c);
-    return limitations.length === 1 && limitations[0] === MARGIN_FLOOR_NOT_SET;
-}
-/**
- * Per-measure verdicts for the primary measures (DESIGN § 6.3, REQ-51, decision 0015):
- * NON-INFERIOR when both results of the comparison are validated and the one-sided lower bound
- * exceeds −(δ − s), each at the unadjusted level (intersection-union, so a PASS needs no
- * adjustment); INCONCLUSIVE otherwise. A validated test that rejects Δ ≥ 0 after Holm signals a
- * drop within these runs. An unavailable or unvalidated test contributes p = 1 to that fixed
- * family. The measures are decided in order with one generator from
- * `seed`, so the same counts give the same verdicts.
- */
-export function decidePrimaries(input) {
-    return decidePrimariesWith(input, compareCounts);
-}
-/** `decidePrimaries` with the comparison given, so a test can decide from results of its own. */
-export function decidePrimariesWith(input, compare) {
-    const verdicts = new Map();
-    const rng = createRng(input.seed);
-    for (const p of input.measures) {
-        const effective = p.margin - (p.safetyMargin ?? 0);
-        if (!(effective >= 0 && p.margin < 1)) {
-            // The run is INVALID for this already (recordChecks); no comparison can use the margin.
-            verdicts.set(p.measure, {
-                verdict: "INCONCLUSIVE",
-                cause: "no-comparison",
-                notes: ["the margin cannot be used"],
-            });
-            continue;
-        }
-        try {
-            const valueType = STATS_VALUE_TYPE[p.valueType];
-            if (valueType === undefined)
-                throw new EstimandError(`a ${p.valueType} measure has no paired method`);
-            const comparison = compare({
-                estimand: input.estimand,
-                valueType,
-                cases: p.cases,
-                alpha: input.alpha,
-                margin: effective,
-                rng,
-                ...(input.oneTrial === undefined ? {} : { oneTrial: input.oneTrial }),
-            });
-            const notValidated = nonInferiorityOnly(comparison).map((l) => `the non-inferiority result is not validated: ${l}`);
-            if (!comparison.regression.validated) {
-                verdicts.set(p.measure, {
-                    verdict: "INCONCLUSIVE",
-                    comparison,
-                    cause: "unvalidated",
-                    notes: [
-                        ...comparison.regression.limitations.map((l) => `outside the validated domain: ${l}`),
-                        ...notValidated,
-                    ],
-                });
-                continue;
-            }
-            const nonInferior = comparison.difference.lower > -effective;
-            if (!nonInferior) {
-                verdicts.set(p.measure, {
-                    verdict: "INCONCLUSIVE",
-                    comparison,
-                    cause: "cannot-tell",
-                    notes: notValidated,
-                });
-                continue;
-            }
-            if (!comparison.nonInferiority.validated) {
-                verdicts.set(p.measure, {
-                    verdict: "INCONCLUSIVE",
-                    comparison,
-                    cause: "non-inferiority-unvalidated",
-                    notes: notValidated,
-                });
-                continue;
-            }
-            verdicts.set(p.measure, { verdict: "NON-INFERIOR", comparison, notes: [] });
-        }
-        catch (error) {
-            if (!(error instanceof EstimandError))
-                throw error;
-            verdicts.set(p.measure, {
-                verdict: "INCONCLUSIVE",
-                cause: "no-comparison",
-                notes: [error.message],
-            });
-        }
-    }
-    const family = [...verdicts.entries()];
-    const pAdjusted = holm(family.map(([, { comparison }]) => comparison?.regression.validated ? comparison.regressionP : 1));
-    family.forEach(([id, v], i) => {
-        const { comparison } = v;
-        if (!comparison?.regression.validated)
-            return;
-        const pa = pAdjusted[i];
-        verdicts.set(id, {
-            ...v,
-            regressionPAdjusted: pa,
-            ...(pa <= input.alpha ? { reasonCode: "DROP_IN_THESE_RUNS_ONLY" } : {}),
-        });
-    });
-    return verdicts;
-}
-function primaryVerdicts(plan, tallies, compare, oneTrial) {
-    return decidePrimariesWith({
-        estimand: plan.estimand,
-        alpha: plan.alpha,
-        seed: seedOf(plan),
-        ...(oneTrial === undefined ? {} : { oneTrial }),
-        measures: plan.primary.map((p) => {
-            const t = tallies.get(p.measure);
-            return {
-                measure: p.measure,
-                margin: p.margin,
-                ...(p.safetyMargin === undefined ? {} : { safetyMargin: p.safetyMargin }),
-                valueType: t.valueType,
-                cases: [...t.cases.values()],
-            };
-        }),
-    }, compare);
-}
 function estimateOf(difference) {
     return {
         estimate: difference.estimate,
@@ -823,22 +514,17 @@ function estimateOf(difference) {
 const recorded = (v) => v.validated
     ? { validated: true, limitations: [] }
     : { validated: false, limitations: [...v.limitations] };
-/** Both results of a comparison, as the decision records them. */
-function validityOf(c) {
-    return { regression: recorded(c.regression), nonInferiority: recorded(c.nonInferiority) };
-}
 /** Both results of a comparison that could not be made, for the reason given. */
 function noValidity(reason) {
     const result = { validated: false, limitations: [reason] };
     return { regression: result, nonInferiority: result };
 }
 /** A difference of rates without an interval, for a measure that has no comparison. */
-function rateDifference(t, base, candidate, level) {
-    const b = t.arms.get(base);
-    const c = t.arms.get(candidate);
-    const diff = b && c && b.trials > 0 && c.trials > 0
-        ? c.successes / c.trials - b.successes / b.trials
-        : Number.NaN;
+function rateDifference(t, level) {
+    const byCase = [...t.cases.values()].flatMap((cell) => cell.base.trials && cell.candidate.trials
+        ? [cell.candidate.successes / cell.candidate.trials - cell.base.successes / cell.base.trials]
+        : []);
+    const diff = byCase.reduce((sum, value) => sum + value, 0) / byCase.length;
     return {
         estimate: Number.isFinite(diff) ? diff : NAN,
         lower: NEG_INF,
@@ -854,7 +540,7 @@ function rateDifference(t, base, candidate, level) {
  * status and limitations, and no test: it is descriptive. When the data supports no interval, the
  * difference has none and the notes say why.
  */
-function descriptiveComparison(plan, t, pair, margin, safetyMargin, compare, oneTrial) {
+function descriptiveComparison(plan, t, pair, margin, safetyMargin, compare) {
     const common = {
         base: pair.base,
         candidate: pair.candidate,
@@ -877,10 +563,14 @@ function descriptiveComparison(plan, t, pair, margin, safetyMargin, compare, one
             alpha: plan.alpha,
             margin: Math.max(margin - safetyMargin, 0),
             rng: createRng(seedOf(plan)),
-            ...(oneTrial === undefined ? {} : { oneTrial }),
         });
         return {
-            comparison: { ...common, difference: estimateOf(c.difference), ...validityOf(c) },
+            comparison: {
+                ...common,
+                difference: estimateOf(c.difference),
+                regression: { validated: false, limitations: ["the comparison is descriptive"] },
+                nonInferiority: recorded(c.nonInferiority),
+            },
             // regression.validated never vouches for the interval: only nonInferiority does.
             notes: c.nonInferiority.limitations.map((l) => `the interval is not validated: ${l}`),
         };
@@ -891,34 +581,13 @@ function descriptiveComparison(plan, t, pair, margin, safetyMargin, compare, one
         return {
             comparison: {
                 ...common,
-                difference: rateDifference(t, pair.base, pair.candidate, 1 - plan.alpha),
+                difference: rateDifference(t, 1 - plan.alpha),
                 ...noValidity(error.message),
             },
             notes: [`no interval: ${error.message}`],
         };
     }
 }
-function sensitivityResult(imputation, v, changesVerdict, level) {
-    return {
-        imputation,
-        difference: v.comparison
-            ? estimateOf(v.comparison.difference)
-            : {
-                estimate: NAN,
-                lower: NEG_INF,
-                upper: POS_INF,
-                level,
-                sided: "lower",
-                method: "none (no comparison)",
-            },
-        nonInferiorityP: v.comparison?.nonInferiorityP ?? NAN,
-        regressionPAdjusted: v.regressionPAdjusted ?? NAN,
-        ...(v.comparison ? validityOf(v.comparison) : noValidity(v.notes[0] ?? "no comparison")),
-        verdict: v.verdict,
-        changesVerdict,
-    };
-}
-/** The cases compared, or the narrower scope of an invalid run or a failed gate. */
 function scopeOf(verdict, gateFailed, plan, tallies) {
     const compared = new Set();
     for (const p of plan.primary)
@@ -938,82 +607,12 @@ function scopeOf(verdict, gateFailed, plan, tallies) {
                 : `estimates on ${cases} randomly drawn cases, without a verdict`,
             cases,
         };
-    return { scope: `on these ${cases} cases`, cases };
-}
-/**
- * Why a comparison is not non-inferior, for a measure the floor alone does not explain: no
- * comparison, outside the validated domain, a lower bound that does not clear the effective margin
- * (with the floor named as well, because it also stands in the way), or a non-inferiority result
- * that is not validated for more than the floor.
- */
-function shortfall(v, effective, many) {
-    const its = many ? "their" : "its";
-    const c = v?.comparison;
-    if (!c)
-        return `${many ? "they have" : "it has"} no comparison (${v?.notes[0] ?? "no data"})`;
-    if (!c.regression.validated)
-        return `${many ? "their comparisons are" : "its comparison is"} outside the validated domain`;
-    const limitations = nonInferiorityOnly(c);
-    const unvalidated = limitations.length === 0
-        ? ""
-        : limitations.length === 1 && limitations[0] === MARGIN_FLOOR_NOT_SET
-            ? "the validated margin floor is not set"
-            : `${its} non-inferiority result is not validated, because ${limitations.join("; ")}`;
-    if (!(c.difference.lower > -effective))
-        return `the cases cannot tell yet${unvalidated ? `, and ${unvalidated}` : ""}`;
-    return unvalidated || `${many ? "they are" : "it is"} not shown non-inferior`;
-}
-/**
- * The cause of one INCONCLUSIVE primary measure (decision 0015): the sensitivity analysis changed
- * its verdict; the unset floor alone stands in the way (its lower bound clears the effective margin,
- * also with its missing trials imputed against non-inferiority); or what `shortfall` names. Missing
- * trials are called the measure's own only when it misses some.
- */
-function inconclusiveCause(v, effective, s) {
-    if (s.changed) {
-        const whose = (many) => s.missesOwnTrials
-            ? `${many ? "their" : "its"} missing trials`
-            : "the missing trials of other primary measures";
-        return {
-            onlyTheFloor: false,
-            text: (many) => `imputing ${whose(many)} against the verdict changes ${many ? "them" : "it"}`,
-        };
-    }
-    if (onlyTheFloor(v?.comparison, effective)) {
-        const imputed = s.missesOwnTrials ? s.againstNonInferiority : undefined;
-        if (imputed === undefined || onlyTheFloor(imputed.comparison, effective))
-            return { onlyTheFloor: true, text: () => FLOOR_CAUSE };
-        return {
-            onlyTheFloor: false,
-            text: (many) => `with ${many ? "their" : "its"} missing trials imputed against non-inferiority, ${shortfall(imputed, effective, many)}`,
-        };
-    }
-    return { onlyTheFloor: false, text: (many) => shortfall(v, effective, many) };
-}
-function measureList(measures) {
-    if (measures.length === 1)
-        return `Measure ${measures[0]}`;
-    return `Measures ${measures.slice(0, -1).join(", ")} and ${measures.at(-1)}`;
-}
-/** The INCONCLUSIVE reason that names each measure's cause, with measures of one cause together. */
-function inconclusiveReason(open) {
-    const groups = new Map();
-    for (const o of open) {
-        const key = o.cause.text(false);
-        const group = groups.get(key);
-        if (group)
-            group.measures.push(o.measure);
-        else
-            groups.set(key, { measures: [o.measure], cause: o.cause });
-    }
-    const parts = [...groups.values()].map(({ measures, cause }) => ({
-        who: measureList(measures),
-        why: cause.text(measures.length > 1),
-    }));
-    const [only] = parts;
-    if (parts.length === 1 && only)
-        return `${only.who} could not be shown non-inferior: ${only.why}. This is not a pass.`;
-    return `Not every primary measure was shown non-inferior. ${parts.map((p) => `${p.who}: ${p.why}.`).join(" ")} This is not a pass.`;
+    if (!fixed)
+        return { scope: `on the population these ${cases} randomly drawn cases represent`, cases };
+    return {
+        scope: `on these ${cases} cases`,
+        cases,
+    };
 }
 /**
  * Applies the decision rule to stored records (DESIGN § 6.3, § 6.4, decision 0011).
@@ -1022,18 +621,17 @@ function inconclusiveReason(open) {
  * the plan, an identity or template does not match, duplicate, unplanned or self-contradicting
  * records, a gate without a result, the budget, arms that differ beyond what the trigger varies and
  * the plan declares, the base has no value, a primary measure's coverage is below its floor); else
- * REGRESSION when a hard gate failed, in either mode, because a gate does not depend on power; else
- * no verdict when the plan is estimate-only or the run is exploratory; else INCONCLUSIVE with a
- * reason that says if a drop was detected within these runs. Whenever a primary measure misses a trial in either arm, each measure's verdict is
- * tested against the imputation that works against it, and a verdict that changes is INCONCLUSIVE
- * (decision 0010).
+ * REGRESSION when a hard gate failed. Statistical decisions require recorded randomized
+ * assignments. A Holm-adjusted block rejection gives REGRESSION, while PASS requires both bounds
+ * for every primary measure. A within-run rejection alone gives INCONCLUSIVE. Missing scores
+ * receive the completion adverse to the claim under test.
  */
 export function decide(input) {
     return decideWith(input, compareCounts);
 }
 /**
  * `decide` with the comparison given, so a test can decide from results of its own. Not exported
- * by the package: every decision Ichnaea makes uses `compareCounts`.
+ * by the package. The callback affects descriptive intervals only.
  */
 export function decideWith(input, compare) {
     const { plan, run } = input;
@@ -1051,15 +649,6 @@ export function decideWith(input, compare) {
         invalid.push("a decision needs a primary measure");
     if (pair)
         invalid.push(...triggerCheck(plan, pair, input.trials));
-    // At one trial per case and arm, the checks of the records decide which pairs hold and whether
-    // a regression result can be validated (VALIDATION.md, "One trial per case").
-    const one = pair && oneTrialPlan(plan) ? oneTrialRecords(input, pair) : undefined;
-    const unpaired = one?.unpaired ?? NO_CASES;
-    const pairNote = one?.concurrency !== undefined && unpaired.size > 0
-        ? [
-            `${unpaired.size} case(s) lost their pair: their trials ran against the planned order or more than ${2 * one.concurrency - 1} start rank(s) apart (concurrency ${one.concurrency} in the records), so they count as missing`,
-        ]
-        : [];
     // An exploratory run (REQ-16) reports like an estimate-only plan: no confirmatory verdict.
     const statedModeReasons = run.exploratory && plan.analysis === undefined
         ? [
@@ -1067,31 +656,29 @@ export function decideWith(input, compare) {
             ...plan.modeReasons,
         ]
         : plan.modeReasons;
-    const missingExecution = plan.analysis !== undefined &&
-        run.execution?.source === "runner" &&
-        (run.execution.blocks === undefined ||
-            input.trials.some((trial) => trial.startedAt === undefined ||
-                trial.endedAt === undefined ||
-                trial.analysisPlan === undefined ||
-                Date.parse(trial.endedAt) < Date.parse(trial.startedAt) ||
-                trial.context === undefined ||
-                trial.block === undefined));
-    const modeReasons = missingExecution
-        ? [
-            "EXECUTION_UNRECORDED: an execution block, context or timestamp is missing",
-            ...statedModeReasons,
-        ]
-        : run.execution?.source === "runner" && plan.analysis
-            ? ["the locked plan requires randomized block inference", ...statedModeReasons]
+    const blockAdmission = pair && plan.analysis ? admitBlocks(plan, run, input.trials) : undefined;
+    const admitted = blockAdmission?.status === "admitted" ? blockAdmission : undefined;
+    const refused = blockAdmission?.status === "refused" ? blockAdmission : undefined;
+    const modeReasons = refused
+        ? [`${refused.reason}: ${refused.detail}`, ...statedModeReasons]
+        : !plan.analysis && pair
+            ? ["the run has no locked randomized assignments", ...statedModeReasons]
             : statedModeReasons;
-    // The locked plan's statistical method is implemented by randomized block inference.
-    const decision = plan.analysis === undefined && plan.mode === "decision" && !run.exploratory;
+    const decision = admitted !== undefined;
+    const analysis = plan.analysis;
+    const familySize = analysis?.holm.length ?? 0;
+    const familySupported = plan.alpha === 0.05 && familySize >= 1 && familySize <= 4;
+    const blockEligible = admitted !== undefined &&
+        admitted.observed === admitted.planned &&
+        admitted.effective <= MAX_TEST_BLOCKS &&
+        familySupported &&
+        2 ** -admitted.effective <= plan.alpha / familySize;
     const ids = [
         ...plan.primary.map((p) => p.measure),
         ...plan.secondary.map((s) => s),
     ];
     const tallies = new Map(ids.map((id) => {
-        const counted = tally(plan, trials, values, id, pair, undefined, unpaired);
+        const counted = tally(plan, trials, values, id, pair, admitted?.excluded);
         const dropped = run.valuesOutsideMask;
         return [
             id,
@@ -1109,50 +696,40 @@ export function decideWith(input, compare) {
         if (decision && t.unsupported)
             invalid.push(t.unsupported);
         const coverage = coverageOf(t);
-        const floor = p.coverageFloor ?? DEFAULT_COVERAGE_FLOOR;
-        if (decision && coverage < floor)
+        const registered = analysis?.primary.find((primary) => primary.measure === p.measure);
+        const floor = (analysis ? registered?.coverageFloor : p.coverageFloor) ?? DEFAULT_COVERAGE_FLOOR;
+        if (decision && (!admitted || admitted.observed === admitted.planned) && coverage < floor)
             invalid.push(`measure '${p.measure}': coverage ${(coverage * 100).toFixed(1)}% is below its floor of ${(floor * 100).toFixed(1)}%`);
     }
-    const tested = decision && pair ? primaryVerdicts(plan, tallies, compare, one?.checks) : undefined;
-    // The sensitivity analysis for missing trials (REQ-56, decision 0010): whenever a primary measure
-    // misses a trial in either arm, each verdict is tested against the imputation that works
-    // against it.
-    let sensitivity = "not-needed";
-    const changed = new Set();
-    const changedNonInferiority = new Set();
-    const imputed = new Map();
-    let againstNonInferiority = new Map();
-    let againstRegression = new Map();
-    const missesOwnTrials = (measure) => pair !== undefined &&
-        [pair.base, pair.candidate].some((arm) => (tallies.get(measure)?.arms.get(arm)?.missing ?? 0) > 0);
-    const missesTrials = plan.primary.some((p) => missesOwnTrials(p.measure));
-    if (tested && pair && missesTrials) {
-        const again = (imputation) => primaryVerdicts(plan, new Map(plan.primary.map((p) => [
-            p.measure,
-            tally(plan, trials, values, p.measure, pair, imputation, unpaired),
-        ])), compare, one?.checks);
-        againstNonInferiority = again(AGAINST_NON_INFERIORITY);
-        againstRegression = again(AGAINST_REGRESSION);
-        for (const [id, v] of tested) {
-            const ni = againstNonInferiority.get(id);
-            const reg = againstRegression.get(id);
-            const changesNi = v.verdict === "NON-INFERIOR" && ni.verdict !== "NON-INFERIOR";
-            const changesReg = v.reasonCode !== undefined && reg.reasonCode === undefined;
-            if (changesNi)
-                changedNonInferiority.add(id);
-            if (changesNi || changesReg)
-                changed.add(id);
-            imputed.set(id, [
-                sensitivityResult("against-non-inferiority", ni, changesNi, 1 - plan.alpha),
-                sensitivityResult("against-regression", reg, changesReg, 1 - plan.alpha),
-            ]);
-        }
-        sensitivity = changed.size > 0 ? "changes-verdict" : "unchanged";
-    }
-    const dropped = [...(tested ?? [])]
-        .filter(([id, result]) => result.reasonCode !== undefined &&
-        (!missesTrials || againstRegression.get(id)?.reasonCode !== undefined))
-        .map(([id]) => id);
+    const blockResults = new Map(analysis && admitted
+        ? analysis.primary.flatMap((p) => {
+            const mask = analysis.applicability[p.measure];
+            const counted = tallies.get(p.measure);
+            if (!mask?.length || !counted || counted.unsupported)
+                return [];
+            const margin = p.margin === undefined ? undefined : p.margin - (p.safetyMargin ?? 0);
+            return [
+                [
+                    p.measure,
+                    compareBlocks(admitted.pairs, new Set(mask), counted.scores, {
+                        alpha: plan.alpha,
+                        blockEligible,
+                        replicates: analysis.replicates,
+                        ...(margin === undefined ? {} : { margin }),
+                    }),
+                ],
+            ];
+        })
+        : []);
+    const blockAdjusted = holm((analysis?.holm ?? []).map((id) => blockResults.get(id)?.blockP ?? 1));
+    const withinAdjusted = holm((analysis?.holm ?? []).map((id) => blockResults.get(id)?.withinP ?? 1));
+    const adjusted = new Map((analysis?.holm ?? []).map((id, index) => [
+        id,
+        {
+            block: blockAdjusted[index],
+            within: withinAdjusted[index],
+        },
+    ]));
     const measures = ids.map((id) => {
         const t = tallies.get(id);
         const tier = primaryIds.has(id) ? "primary" : "secondary";
@@ -1197,7 +774,6 @@ export function decideWith(input, compare) {
                 },
             };
         });
-        const analysis = plan.analysis;
         const masks = analysis?.applicability;
         const mask = masks?.[id] ?? [
             ...new Set([...t.byArmCase.values()].flatMap((cases) => [...cases.keys()])),
@@ -1221,14 +797,13 @@ export function decideWith(input, compare) {
             estimand: plan.estimand,
             arms: armsOut,
             coverage: coverageOf(t),
-            sensitivity: imputed.get(id) ?? [],
+            sensitivity: [],
         };
         const maskNotes = [];
         if (t.applicabilityContradictions > 0)
             maskNotes.push(`APPLICABILITY_CONTRADICTS_PLAN: ${t.applicabilityContradictions} planned trial value(s) were marked not applicable and count as missing`);
         if (t.valuesOutsideMask > 0)
             maskNotes.push(`ignored ${t.valuesOutsideMask} value(s) outside the planned applicability mask`);
-        const result = tier === "primary" ? tested?.get(id) : undefined;
         if (!pair)
             return {
                 ...outcome,
@@ -1236,61 +811,94 @@ export function decideWith(input, compare) {
                 verdict: "ESTIMATE-ONLY",
                 notes: [...maskNotes, ...(t.unsupported ? [t.unsupported] : [])],
             };
-        const margin = p?.margin ?? 0;
-        const safetyMargin = p?.safetyMargin ?? 0;
-        if (!result) {
-            const described = descriptiveComparison(plan, t, pair, margin, safetyMargin, compare, one?.checks);
+        const registered = analysis?.primary.find((primary) => primary.measure === id);
+        const margin = (analysis ? registered?.margin : p?.margin) ?? 0;
+        const safetyMargin = (analysis ? registered?.safetyMargin : p?.safetyMargin) ?? 0;
+        const randomized = blockResults.get(id);
+        const pAdjusted = adjusted.get(id);
+        if (admitted && randomized && pAdjusted) {
+            const observed = rateDifference(t, 1 - plan.alpha);
+            const withinDrop = familySupported && pAdjusted.within <= plan.alpha;
             return {
                 ...outcome,
-                comparisons: [described.comparison],
-                verdict: "ESTIMATE-ONLY",
+                blocks: {
+                    planned: admitted.planned,
+                    observed: admitted.observed,
+                    effective: admitted.effective,
+                },
+                comparisons: [
+                    {
+                        base: pair.base,
+                        candidate: pair.candidate,
+                        difference: {
+                            ...observed,
+                            lower: Math.min(randomized.blockLower, randomized.withinLower),
+                            upper: 1,
+                            method: "minimum of block and within-run lower bounds",
+                        },
+                        margin,
+                        safetyMargin,
+                        nonInferiorityP: NAN,
+                        regressionP: randomized.blockP,
+                        regressionPAdjusted: pAdjusted.block,
+                        regressionMethod: "randomized block sign-flip",
+                        regression: blockEligible
+                            ? { validated: true, limitations: [] }
+                            : {
+                                validated: false,
+                                limitations: ["effective block horizon cannot resolve the family"],
+                            },
+                        nonInferiority: randomized.passReason === undefined
+                            ? { validated: true, limitations: [] }
+                            : { validated: false, limitations: [randomized.passReason] },
+                        randomized: {
+                            withinP: randomized.withinP,
+                            withinPAdjusted: pAdjusted.within,
+                            blockLower: randomized.blockLower,
+                            withinLower: randomized.withinLower,
+                            pairs: randomized.withinPairs,
+                            imputedTrials: randomized.missing,
+                        },
+                        flips: flipsOf(t.cases),
+                    },
+                ],
+                verdict: blockEligible && pAdjusted.block <= plan.alpha
+                    ? "REGRESSION"
+                    : randomized.pass
+                        ? "NON-INFERIOR"
+                        : "INCONCLUSIVE",
                 notes: [
                     ...maskNotes,
-                    ...(t.unsupported ? [t.unsupported] : []),
-                    ...(tier === "primary" && !decision ? modeReasons : []),
-                    ...pairNote,
-                    ...described.notes,
+                    ...(withinDrop ? ["The paired randomization test found a drop within these runs."] : []),
+                    ...(blockEligible
+                        ? [
+                            `Block lower bound ${(100 * randomized.blockLower).toFixed(1)} points. Within-run Miettinen–Nurminen lower bound ${(100 * randomized.withinLower).toFixed(1)} points.`,
+                        ]
+                        : []),
+                    ...(randomized.missing > 0
+                        ? [`The analysis filled ${randomized.missing} missing score(s) against each claim.`]
+                        : []),
+                    ...(randomized.passReason === undefined ? [] : [randomized.passReason]),
                 ],
             };
         }
-        const c = result.comparison;
-        const notes = [...maskNotes, ...pairNote, ...result.notes];
-        if (dropped.includes(id))
-            notes.push("A drop was detected in these runs.");
-        if (c && c.excludedCases > 0)
-            notes.push(`${c.excludedCases} case(s) have no completed trial in an arm and count as missing`);
-        if (changed.has(id) && result.verdict === "NON-INFERIOR" && !changedNonInferiority.has(id)) {
-            notes.push("The missing trials can account for the observed drop.");
-        }
-        else if (changed.has(id))
-            notes.push(`imputing ${missesOwnTrials(id) ? "its missing trials" : "the missing trials of other primary measures"} against this verdict changes it, so it is INCONCLUSIVE (see the sensitivity analysis)`);
+        const described = descriptiveComparison(plan, t, pair, margin, safetyMargin, compare);
         return {
             ...outcome,
-            comparisons: [
-                {
-                    base: pair.base,
-                    candidate: pair.candidate,
-                    difference: c
-                        ? estimateOf(c.difference)
-                        : rateDifference(t, pair.base, pair.candidate, 1 - plan.alpha),
-                    margin,
-                    safetyMargin,
-                    nonInferiorityP: c ? c.nonInferiorityP : NAN,
-                    regressionP: c ? c.regressionP : NAN,
-                    regressionPAdjusted: result.regressionPAdjusted ?? NAN,
-                    regressionMethod: c ? c.regressionMethod : "none (no comparison)",
-                    ...(c ? validityOf(c) : noValidity(result.notes[0] ?? "no comparison")),
-                    flips: flipsOf(t.cases),
-                },
+            comparisons: [described.comparison],
+            verdict: "ESTIMATE-ONLY",
+            notes: [
+                ...maskNotes,
+                ...(t.unsupported ? [t.unsupported] : []),
+                ...(tier === "primary" && !decision ? modeReasons : []),
+                ...described.notes,
             ],
-            verdict: changedNonInferiority.has(id) ? "INCONCLUSIVE" : result.verdict,
-            notes,
         };
     });
     // Missingness per arm (REQ-56).
     const byArm = plan.arms.map((a) => {
         const planned = plan.trials.filter((t) => t.arm === a.name);
-        const missing = planned.filter((t) => MISSING.has(trials.get(t.id)?.outcome ?? "not_run")).length;
+        const missing = planned.filter((t) => MISSING.has(trials.get(t.id)?.outcome ?? "not_run") || admitted?.excluded.has(t.id)).length;
         return { arm: a.name, missing, planned: planned.length };
     });
     if (pair) {
@@ -1301,10 +909,13 @@ export function decideWith(input, compare) {
     const primaries = measures.filter((m) => m.tier === "primary");
     const gates = input.gates.filter((g) => plan.hardGates.includes(g.gate));
     const failedGate = gates.find((g) => !g.passed);
-    let verdict;
-    let reason;
     let reasonCode;
     let cause;
+    const withinDrops = familySupported
+        ? (analysis?.holm ?? []).filter((id) => (adjusted.get(id)?.within ?? 1) <= plan.alpha)
+        : [];
+    let verdict;
+    let reason;
     if (invalid.length > 0) {
         verdict = "INVALID";
         reason = invalid[0];
@@ -1313,39 +924,69 @@ export function decideWith(input, compare) {
         // A hard gate is deterministic and does not depend on power, so it decides in both modes.
         verdict = "REGRESSION";
         cause = "gate";
+        reasonCode = "HARD_CHECK_FAILED";
         reason = `Hard gate '${failedGate.gate}' failed.`;
     }
-    else if (!decision) {
+    else if (!admitted) {
         verdict = null;
+        reasonCode = refused?.reason;
         reason = `Estimate-only: ${modeReasons.join("; ") || "the plan supports no verdict"}. It reports estimates, intervals, differences and flips without a verdict.`;
     }
-    else if (dropped.length > 0) {
-        verdict = "INCONCLUSIVE";
-        reasonCode = "DROP_IN_THESE_RUNS_ONLY";
-        reason = `${measureList(dropped)} dropped in these runs.`;
-    }
     else {
-        verdict = "INCONCLUSIVE";
-        const open = primaries
-            .filter((m) => m.verdict !== "NON-INFERIOR")
-            .map((m) => {
-            const p = plan.primary.find((x) => x.measure === m.measure);
-            return {
-                measure: m.measure,
-                cause: inconclusiveCause(tested?.get(m.measure), (p?.margin ?? 0) - (p?.safetyMargin ?? 0), {
-                    changed: changed.has(m.measure),
-                    missesOwnTrials: missesOwnTrials(m.measure),
-                    againstNonInferiority: againstNonInferiority.get(m.measure),
-                }),
-            };
-        });
-        // The floor alone keeps every measure from NON-INFERIOR: say so in plain words.
-        reason =
-            open.length === 0
-                ? "No drop was detected in these runs. A statistical pass needs randomized blocks."
-                : open.every((o) => o.cause.onlyTheFloor)
-                    ? FLOOR_NOT_SET_REASON
-                    : inconclusiveReason(open);
+        const regressed = primaries.filter((m) => m.verdict === "REGRESSION").map((m) => m.measure);
+        if (regressed.length > 0) {
+            verdict = "REGRESSION";
+            cause = "statistical";
+            reasonCode = "REGRESSION_DETECTED";
+            reason = `The randomized block test found a harmful direction for ${regressed.join(", ")}. The configurations were not interchangeable. The size of the decrease remains uncertain.`;
+        }
+        else if (admitted.observed < admitted.planned) {
+            verdict = "INCONCLUSIVE";
+            reasonCode = "TOO_FEW_BLOCKS";
+            reason = `Only ${admitted.observed} of ${admitted.planned} planned blocks completed.`;
+            if (withinDrops.length > 0)
+                reason += ` Measures ${withinDrops.join(", ")} dropped in these runs.`;
+        }
+        else if (withinDrops.length > 0) {
+            verdict = "INCONCLUSIVE";
+            reasonCode = "DROP_IN_THESE_RUNS_ONLY";
+            reason = `Measures ${withinDrops.join(", ")} dropped in these runs.`;
+        }
+        else if (primaries.length > 0 && primaries.every((m) => m.verdict === "NON-INFERIOR")) {
+            verdict = "PASS";
+            reasonCode = "PASS";
+            reason =
+                "Every primary measure cleared its registered margin with both bounds. Every hard gate passed.";
+        }
+        else if (!blockEligible && admitted.effective < admitted.observed) {
+            verdict = "INCONCLUSIVE";
+            reasonCode = "TOO_FEW_BLOCKS";
+            reason = `Shared contexts leave ${admitted.effective} effective blocks. The recorded horizon cannot resolve the planned family.`;
+        }
+        else if (!familySupported || admitted.effective > MAX_TEST_BLOCKS) {
+            verdict = "INCONCLUSIVE";
+            reasonCode = "REGRESSION_TEST_UNVALIDATED";
+            reason =
+                admitted.effective > MAX_TEST_BLOCKS
+                    ? `The recorded horizon exceeds the limit of ${MAX_TEST_BLOCKS} effective blocks for exact enumeration.`
+                    : "The randomized decision rule was validated at alpha 0.05 for one to four primary measures.";
+        }
+        else {
+            verdict = "INCONCLUSIVE";
+            if (!blockEligible) {
+                reasonCode = "TOO_FEW_BLOCKS";
+                reason = "The effective block horizon cannot resolve the planned family.";
+            }
+            else if (blockResults.size === familySize &&
+                [...blockResults.values()].every((result) => result.passReason === undefined)) {
+                reasonCode = "MARGIN_NOT_CLEARED";
+                reason = "The evidence does not clear every registered margin with both bounds.";
+            }
+            else {
+                reasonCode = "NON_INFERIORITY_UNVALIDATED";
+                reason = "One or more comparisons fall outside the validated domain for both bounds.";
+            }
+        }
     }
     const { scope, cases } = scopeOf(verdict, cause === "gate", plan, tallies);
     const limitations = [
@@ -1353,8 +994,15 @@ export function decideWith(input, compare) {
             ? [`The result is about these ${cases} cases. It makes no claim about new inputs.`]
             : []),
         "An observed model identity cannot detect a silent update behind the same identity.",
-        "Hosted models rarely honour seeds. Repeated trials measure variability within these runs.",
-        ...(one ? [CLOCK_LIMITATION] : []),
+        "The recorded seed controls Ichnaea's arm order.",
+        ...(admitted
+            ? [
+                "Both sharp-null tests use the independently assigned order of each case pair.",
+                "Back-to-back blocks protect against instance, cache and sandbox state. They protect against a provider shock to one arm only when the blocks are spread in time.",
+                "PASS is about the measure as scored.",
+                "PASS assumes a common shift across blocks and independent binary trials. Shared shocks can make both bounds too optimistic.",
+            ]
+            : []),
         ...importedCallsLimitation(input),
         ...invalid.slice(1).map((m) => `Also invalid: ${m}`),
     ];
@@ -1377,6 +1025,7 @@ export function decideWith(input, compare) {
         reason,
         ...(reasonCode === undefined ? {} : { reasonCode }),
         ...(cause === undefined ? {} : { cause }),
+        ...(verdict === "INCONCLUSIVE" && withinDrops.length > 0 ? { withinRunDrop: true } : {}),
         scope,
         plan: digest(plan),
         run: run.id,
@@ -1393,7 +1042,13 @@ export function decideWith(input, compare) {
         ...(resolution === undefined ? {} : { resolution }),
         ...(trialReduction === undefined ? {} : { trialReduction }),
         ...(mustNever === undefined ? {} : { mustNever }),
-        missingness: { byArm, differs: new Set(byArm.map((a) => a.missing)).size > 1, sensitivity },
+        missingness: {
+            byArm,
+            differs: new Set(byArm.map((a) => a.missing)).size > 1,
+            sensitivity: [...blockResults.values()].some((result) => result.missing > 0)
+                ? "adverse-completion"
+                : "not-needed",
+        },
         invalidReasons: invalid,
         limitations,
         seed: plan.seed,

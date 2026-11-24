@@ -1,3 +1,6 @@
+import type * as z from "zod";
+
+import { type PairDraw, pairFirst } from "../contracts/block-order.ts";
 import { checkCaptured } from "./capture.ts";
 import { canonicalize, digest } from "../contracts/canonical.ts";
 import type { Case } from "../contracts/records/case.ts";
@@ -83,6 +86,10 @@ function passing(value: MeasureValue["value"]): boolean {
   );
 }
 
+type CapturedBlock = Omit<z.input<typeof ExecutedBlock>, "draws"> & {
+  readonly draws?: readonly PairDraw[];
+};
+
 export interface RecordRunInput {
   readonly host: Host;
   readonly store: { createRun(records: RunRecords): Promise<void> };
@@ -92,7 +99,7 @@ export interface RecordRunInput {
   readonly id: string;
   readonly execution:
     | { readonly source: "import" | "re-score" }
-    | { readonly source: "runner"; readonly blocks: readonly ExecutedBlock[] };
+    | { readonly source: "runner"; readonly blocks: readonly CapturedBlock[] };
   readonly producer?: Run["lineage"][number];
   readonly startedAt: string;
   readonly completedAt: string;
@@ -118,6 +125,23 @@ export async function recordRun(
       ? input.execution.blocks.map((block) => ExecutedBlock.parse(block))
       : undefined;
   const byBlock = new Map(blocks?.map((block) => [block.block, block]));
+  const draws = new Map(
+    blocks?.map((block) => [
+      block.block,
+      new Map(block.draws?.map((draw) => [canonicalize([draw.case, draw.replicate]), draw])),
+    ]),
+  );
+  for (const block of blocks ?? []) {
+    if (!block.draws) continue;
+    if (
+      draws.get(block.block)?.size !== block.draws.length ||
+      block.draws.some((draw) => draw.first !== pairFirst(plan.seed, block.block, draw))
+    )
+      throw new ImportError(
+        `block ${block.block} has a duplicate draw or an order that differs from the plan seed`,
+      );
+  }
+
   if (blocks && byBlock.size !== blocks.length) throw new ImportError("duplicate execution block");
   const completed = blocks?.filter((block) => block.status === "complete") ?? [];
   if (new Set(completed.map((block) => block.plannedBlock)).size !== completed.length)
@@ -158,8 +182,26 @@ export async function recordRun(
       if (block?.status !== "complete" || block.plannedBlock !== slot.block)
         throw new ImportError(`trial '${trial.id}' belongs to an abandoned or unplanned block`);
     }
+    if (blocks && trial.block !== undefined && trial.first !== undefined) {
+      const draw = draws.get(trial.block)?.get(canonicalize([slot.case, slot.replicate]));
+      if (
+        !draw ||
+        trial.first !== draw.first ||
+        (trial.armOrderSeed !== undefined &&
+          canonicalize(trial.armOrderSeed) !== canonicalize(plan.seed))
+      )
+        throw new ImportError(`trial '${trial.id}' contradicts its recorded pair assignment`);
+    }
     const observed = checkConfiguration(trial, arms.get(slot.arm), analysisPlan !== undefined);
-    return checkCaptured(analysisPlan ? Trial.parse({ ...observed, analysisPlan }) : observed);
+    return checkCaptured(
+      analysisPlan
+        ? Trial.parse({
+            ...observed,
+            analysisPlan,
+            ...(blocks && trial.first !== undefined ? { armOrderSeed: plan.seed } : {}),
+          })
+        : observed,
+    );
   });
   const byTrial = new Map(trials.map((t) => [t.id as string, t]));
 
@@ -298,14 +340,18 @@ export async function recordRun(
     plan: digest(plan),
     exploratory:
       input.execution.source === "re-score" ||
-      (analysisPlan !== undefined && input.execution.source === "import"),
+      (analysisPlan !== undefined && input.execution.source === "import") ||
+      (blocks !== undefined &&
+        plan.arms.length === 2 &&
+        (completed.some((block) => !block.draws) ||
+          trials.some((trial) => trial.first === undefined))),
     ...(analysisPlan === undefined
       ? {}
       : {
           execution: {
             source: input.execution.source,
             analysisPlan,
-            ...(blocks === undefined ? {} : { blocks }),
+            ...(blocks === undefined ? {} : { seed: plan.seed, blocks }),
           },
           ...(Object.keys(valuesOutsideMask).length > 0 ? { valuesOutsideMask } : {}),
         }),

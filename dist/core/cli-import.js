@@ -39,7 +39,11 @@ export const importCommand = {
         vary: { type: "string", description: "Factor that the change varies", multiple: true },
         concurrency: { type: "string", description: "Concurrency used by the original runner" },
         endpoint: { type: "string", description: "Endpoint used by the original runner" },
-        aa: { type: "string", description: "A decided A/A run to cite", multiple: true },
+        aa: {
+            type: "string",
+            description: "A legacy A/A citation recorded for replay",
+            multiple: true,
+        },
         seed: { type: "string", description: "Random seed (default 1)" },
         now: { type: "string", description: "Import time (default now)" },
     },

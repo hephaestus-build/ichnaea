@@ -10,6 +10,7 @@ import {
   Json,
   RecordDataClass,
   RunId,
+  Seed,
   Text,
   Timestamp,
   TrialId,
@@ -100,6 +101,11 @@ export const Trial = z.strictObject({
   analysisPlan: none(Digest).optional(),
   /** The physical block whose worker captured this trial. */
   block: none(z.int().min(0)).optional(),
+  /** The first arm drawn for this case pair. */
+  first: none(z.enum(["base", "candidate"])).optional(),
+  /** The runner's recorded arm-order seed for replay. */
+  armOrderSeed: Seed.optional(),
+  responseIds: none(z.array(Text)).optional(),
   /** The execution context reported by the worker. */
   context: none(Text).optional(),
   outcome: none(Outcome, { [CLOSED_KEY]: true }),

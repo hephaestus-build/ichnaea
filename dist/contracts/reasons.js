@@ -25,8 +25,11 @@ const JUDGE_LABELS = [];
  */
 export const REASON_CODES = [
     "REGRESSION_DETECTED",
-    "HARD_CHECK_FAILED",
     "DROP_IN_THESE_RUNS_ONLY",
+    "TOO_FEW_BLOCKS",
+    "EXECUTION_UNRECORDED",
+    "ARMS_NOT_INTERLEAVED",
+    "HARD_CHECK_FAILED",
     "PASS",
     "NO_DECREASE_DETECTED",
     "NON_INFERIORITY_UNVALIDATED",
@@ -80,20 +83,43 @@ export const REASON_CODES = [
  * no "safe", no improvement claim, at most 25 words.
  */
 export const REASONS = {
-    REGRESSION_DETECTED: run(["Regression"], "Reserved for a harmful result from a randomized block comparison.", [always("scope", "The configurations are not interchangeable on these cases.")]),
+    REGRESSION_DETECTED: run(["Regression"], "A randomized block test rejects the sharp null across the declared primary measures.", [
+        always("block", "The configurations were not interchangeable, and the difference was in the harmful direction."),
+        always("magnitude", "The size of the decrease remains uncertain."),
+    ]),
+    DROP_IN_THESE_RUNS_ONLY: run(["Inconclusive"], "A paired randomization test found a decrease in this run.", [always("decrease", "A measure decreased in these runs.")], 'Set policy.onRunDrop to "block" to stop CI when the paired test detects a decrease.'),
+    TOO_FEW_BLOCKS: run(["Inconclusive"], "The effective block horizon cannot support a statistical verdict.", [always("blocks", "There are too few complete independent blocks to decide.")]),
+    EXECUTION_UNRECORDED: run(["Estimate only"], "The recorded execution is incomplete.", [
+        always("execution", "An execution block, context or timestamp is missing."),
+    ]),
+    ARMS_NOT_INTERLEAVED: run(["Estimate only"], "The trials did not follow the recorded pair assignment or start ranks.", [
+        always("interleaving", "The base and candidate did not run in the planned interleaved order."),
+    ]),
     HARD_CHECK_FAILED: run(["Regression"], "A hard check failed. A hard check is deterministic, so it decides without a statistical test.", [
         always("failed", 'Hard check "{check}" failed on {failures} of {checked} answers. A hard check is exact, so one failure is enough.'),
     ], "Inspect the {failures} failing answers."),
-    DROP_IN_THESE_RUNS_ONLY: run(["Inconclusive"], "The within-run test detected a drop after adjustment across the primary measures.", [always("detected", "A drop was detected in these runs.")], 'Set policy.onRunDrop to "block" to stop CI on a detected drop.'),
-    PASS: run(["Pass"], "Reserved for a comparison whose block bound and within-run bound both clear the limit.", [always("scope", "This holds for these {cases} cases.")]),
-    NO_DECREASE_DETECTED: run(["Inconclusive"], "The within-run test did not detect a drop. A statistical pass needs randomized blocks and a validated limit.", [
+    PASS: run(["Pass"], "Both lower bounds clear the limit for every primary measure in the validated domain.", [
+        {
+            key: "one-measure",
+            when: "the plan has one primary measure",
+            text: "Both bounds place the decrease on these cases within the {margin}-point limit.",
+        },
+        {
+            key: "measures",
+            when: "the plan has more than one primary measure",
+            text: "Both bounds clear the limit for each primary measure on these cases.",
+        },
+        always("model", "Pass assumes a common shift across blocks and independent pass or fail trials."),
+        always("scope", "The result applies to these {cases} cases."),
+    ]),
+    NO_DECREASE_DETECTED: run(["Inconclusive"], "No primary measure’s validated regression test finds a decrease beyond run-to-run noise, but that is not evidence that no larger decrease exists. The verdict is Inconclusive, and the codes beside it say why it is not a Pass.", [
         always("both-halves", "No decrease detected. The data cannot rule out a decrease larger than your limit of {margin} points."),
     ]),
-    NON_INFERIORITY_UNVALIDATED: run(["Inconclusive"], "A bound clears its limit, but the non-inferiority result is not validated, so no Pass is possible yet.", [
+    NON_INFERIORITY_UNVALIDATED: run(["Inconclusive"], "The evidence is outside the validated domain or fails to clear the limit with both bounds.", [
         {
             key: "floor",
-            when: "the smallest validated limit is not set yet",
-            text: "This is not a statistical Pass: this Ichnaea version cannot establish non-inferiority yet.",
+            when: "the registered limit is outside the validated domain",
+            text: "This comparison is outside the validated range of limits.",
         },
         {
             key: "single-trial",
@@ -109,7 +135,7 @@ export const REASONS = {
         always("consequence", "So this suite cannot clear the {margin}-point limit of {measure}, even when nothing changes. Chance of a Pass at no change: 0%."),
     ], "To make a Pass possible for {measure}, add at least {add} cases."),
     MISSING_TRIALS_CHANGE_VERDICT: run(["Inconclusive"], "Imputing the missing trials against the verdict changes it, so no verdict holds. Missing trials are missing, never failures.", [
-        always("sensitivity", "The recorded trials show a drop ({test}, {p}). If the {missing} missing trials of the {side} ({arm}) had {imputed}, the test would no longer detect it ({imputedP})."),
+        always("sensitivity", "As recorded, the decrease is beyond run-to-run noise ({test}, {p}). If the {missing} missing trials of the {side} ({arm}) had {imputed}, it would not be ({imputedP}). No verdict holds."),
         always("missing", "Missing trials are not failures: the system gave no answer, so Ichnaea has no result for them."),
     ], "Find out why {missing} trials did not finish, then resume the run."),
     REGRESSION_TEST_UNVALIDATED: run(["Inconclusive"], "A primary measure’s regression test is outside its validated domain, so it can show neither a decrease nor its absence.", [always("domain", "The regression test is not validated for this design: {limitation}.")]),
@@ -141,7 +167,9 @@ export const REASONS = {
     ESTIMATE_ONLY_SAMPLED_CASES: run(["Estimate only"], "The suite asks about new inputs (sampled cases), and no method for that is validated yet.", [
         always("sampled", "The suite asks about new inputs like these, and no method for that is validated yet."),
     ], "Use fixed cases to decide."),
-    ESTIMATE_ONLY_EXPLORATORY: run(["Estimate only"], "The plan changed after the first trial, so the run is exploratory.", [always("exploratory", "The plan changed after the run started, so the run cannot decide.")], "Start a new run."),
+    ESTIMATE_ONLY_EXPLORATORY: run(["Estimate only"], "An import, a re-score or a missing assignment record makes the run exploratory.", [
+        always("exploratory", "This run gives estimates because it lacks verified randomized assignments."),
+    ], "Use the runner to record a randomized run."),
     ESTIMATE_ONLY_CACHED_ARM: run(["Estimate only"], "The base or the candidate reused cached outputs, so they did not run side by side.", [
         always("cached", "The base answers came from the cache, so base and candidate did not run side by side."),
     ], "To decide, run base and candidate together."),
@@ -342,8 +370,11 @@ export const CONTEXT_SLOTS = [
 /** The parameter names of each reason, as values, so a test can match them to the templates. */
 export const REASON_PARAMS = {
     REGRESSION_DETECTED: [],
-    HARD_CHECK_FAILED: ["check", "failures", "checked"],
+    ARMS_NOT_INTERLEAVED: [],
     DROP_IN_THESE_RUNS_ONLY: [],
+    EXECUTION_UNRECORDED: [],
+    TOO_FEW_BLOCKS: [],
+    HARD_CHECK_FAILED: ["check", "failures", "checked"],
     PASS: [],
     NO_DECREASE_DETECTED: [],
     NON_INFERIORITY_UNVALIDATED: [],

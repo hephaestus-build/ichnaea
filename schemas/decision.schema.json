@@ -71,7 +71,70 @@
     },
     "reasonCode": {
       "type": "string",
-      "const": "DROP_IN_THESE_RUNS_ONLY",
+      "enum": [
+        "REGRESSION_DETECTED",
+        "DROP_IN_THESE_RUNS_ONLY",
+        "TOO_FEW_BLOCKS",
+        "EXECUTION_UNRECORDED",
+        "ARMS_NOT_INTERLEAVED",
+        "HARD_CHECK_FAILED",
+        "PASS",
+        "NO_DECREASE_DETECTED",
+        "NON_INFERIORITY_UNVALIDATED",
+        "MARGIN_NOT_CLEARED",
+        "MARGIN_UNREACHABLE",
+        "MISSING_TRIALS_CHANGE_VERDICT",
+        "REGRESSION_TEST_UNVALIDATED",
+        "INVALID_COVERAGE",
+        "INVALID_BUDGET",
+        "INVALID_NO_BASE_RESULTS",
+        "INVALID_UNDECLARED_CHANGE",
+        "INVALID_RECORDS_MISMATCH",
+        "INVALID_RECORDS_CONTRADICT",
+        "INVALID_HARD_CHECK_MISSING",
+        "INVALID_SUITE_SETUP",
+        "ESTIMATE_ONLY_SINGLE_TRIAL",
+        "ESTIMATE_ONLY_FEW_CASES",
+        "ESTIMATE_ONLY_NO_COMPARISON",
+        "ESTIMATE_ONLY_NO_PRIMARY",
+        "ESTIMATE_ONLY_SAMPLED_CASES",
+        "ESTIMATE_ONLY_EXPLORATORY",
+        "ESTIMATE_ONLY_CACHED_ARM",
+        "ESTIMATE_ONLY_PLACEHOLDER_MARGIN",
+        "ESTIMATE_ONLY_NO_METHOD",
+        "INTERVAL_UNAVAILABLE_NO_METHOD",
+        "INTERVAL_UNAVAILABLE_NO_VALUE",
+        "INTERVAL_UNAVAILABLE_DESCRIPTIVE",
+        "INTERVAL_UNAVAILABLE_METHOD",
+        "JUDGE_ARM_BIAS_WITHIN_BOUND",
+        "JUDGE_DIAGNOSTIC",
+        "RATERS_BELOW_FLOOR",
+        "JUDGE_BELOW_RATERS",
+        "ARM_BIAS_NOT_SHOWN_SMALL",
+        "ATTENTION_FAILED",
+        "PROBE_FAILED",
+        "JUDGE_NOT_COVERED",
+        "JUDGE_MODEL_NOT_COVERED",
+        "SYSTEM_MODEL_NOT_COVERED",
+        "ANSWER_LENGTH_OUTSIDE",
+        "POPULATION_NOT_COVERED",
+        "JUDGE_CALIBRATION_EXPIRED",
+        "JUDGE_CHANGED",
+        "RUBRIC_CHANGED",
+        "INPUTS_CHANGED",
+        "AGE_EXPIRED"
+      ],
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
+      }
+    },
+    "withinRunDrop": {
+      "type": "boolean",
       "x-ichnaea-data": {
         "class": "none",
         "identifier": "none",
@@ -83,7 +146,10 @@
     },
     "cause": {
       "type": "string",
-      "const": "gate",
+      "enum": [
+        "gate",
+        "statistical"
+      ],
       "x-ichnaea-data": {
         "class": "none",
         "identifier": "none",
@@ -1193,6 +1259,98 @@
                       "additionalProperties": false
                     }
                   ]
+                },
+                "randomized": {
+                  "type": "object",
+                  "properties": {
+                    "withinP": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1,
+                      "x-ichnaea-data": {
+                        "class": "none",
+                        "identifier": "none",
+                        "egress": [
+                          "*"
+                        ],
+                        "retention": "record"
+                      }
+                    },
+                    "withinPAdjusted": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1,
+                      "x-ichnaea-data": {
+                        "class": "none",
+                        "identifier": "none",
+                        "egress": [
+                          "*"
+                        ],
+                        "retention": "record"
+                      }
+                    },
+                    "blockLower": {
+                      "type": "number",
+                      "minimum": -1,
+                      "maximum": 1,
+                      "x-ichnaea-data": {
+                        "class": "none",
+                        "identifier": "none",
+                        "egress": [
+                          "*"
+                        ],
+                        "retention": "record"
+                      }
+                    },
+                    "withinLower": {
+                      "type": "number",
+                      "minimum": -1,
+                      "maximum": 1,
+                      "x-ichnaea-data": {
+                        "class": "none",
+                        "identifier": "none",
+                        "egress": [
+                          "*"
+                        ],
+                        "retention": "record"
+                      }
+                    },
+                    "pairs": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "x-ichnaea-data": {
+                        "class": "none",
+                        "identifier": "none",
+                        "egress": [
+                          "*"
+                        ],
+                        "retention": "record"
+                      }
+                    },
+                    "imputedTrials": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "x-ichnaea-data": {
+                        "class": "none",
+                        "identifier": "none",
+                        "egress": [
+                          "*"
+                        ],
+                        "retention": "record"
+                      }
+                    }
+                  },
+                  "required": [
+                    "withinP",
+                    "withinPAdjusted",
+                    "blockLower",
+                    "withinLower",
+                    "pairs",
+                    "imputedTrials"
+                  ],
+                  "additionalProperties": false
                 },
                 "flips": {
                   "type": "array",
@@ -3625,7 +3783,8 @@
           "enum": [
             "unchanged",
             "changes-verdict",
-            "not-needed"
+            "not-needed",
+            "adverse-completion"
           ],
           "x-ichnaea-data": {
             "class": "none",

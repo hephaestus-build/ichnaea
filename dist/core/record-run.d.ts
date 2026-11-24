@@ -1,3 +1,5 @@
+import type * as z from "zod";
+import { type PairDraw } from "../contracts/block-order.ts";
 import type { Case } from "../contracts/records/case.ts";
 import { Plan } from "../contracts/records/plan.ts";
 import { ExecutedBlock, Run } from "../contracts/records/run.ts";
@@ -10,6 +12,9 @@ export declare class ImportError extends Error {
     /** The error's name, for `instanceof`-free checks. */
     readonly name = "ImportError";
 }
+type CapturedBlock = Omit<z.input<typeof ExecutedBlock>, "draws"> & {
+    readonly draws?: readonly PairDraw[];
+};
 export interface RecordRunInput {
     readonly host: Host;
     readonly store: {
@@ -23,7 +28,7 @@ export interface RecordRunInput {
         readonly source: "import" | "re-score";
     } | {
         readonly source: "runner";
-        readonly blocks: readonly ExecutedBlock[];
+        readonly blocks: readonly CapturedBlock[];
     };
     readonly producer?: Run["lineage"][number];
     readonly startedAt: string;

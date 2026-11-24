@@ -13,7 +13,7 @@ export function exitCode(decision: Decision, policy: Plan["policy"]): number {
       ? policy.onEstimateOnly
       : decision.verdict === "REGRESSION"
         ? policy.onRegression
-        : decision.reasonCode === "DROP_IN_THESE_RUNS_ONLY"
+        : decision.withinRunDrop || decision.reasonCode === "DROP_IN_THESE_RUNS_ONLY"
           ? (policy.onRunDrop ?? policy.onInconclusive)
           : policy.onInconclusive;
   return action === "block" ? 1 : 0;

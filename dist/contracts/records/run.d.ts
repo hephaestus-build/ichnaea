@@ -31,10 +31,11 @@ export declare const LedgerEntry: z.ZodObject<{
 export declare const ExecutedBlock: z.ZodObject<{
     block: z.ZodInt;
     plannedBlock: z.ZodInt;
-    first: z.ZodEnum<{
+    first: z.ZodOptional<z.ZodEnum<{
         base: "base";
         candidate: "candidate";
-    }>;
+    }>>;
+    draws: z.ZodOptional<z.ZodArray<z.ZodType<import("../block-order.ts").PairDraw, unknown, z.core.$ZodTypeInternals<import("../block-order.ts").PairDraw, unknown>>>>;
     status: z.ZodEnum<{
         abandoned: "abandoned";
         complete: "complete";
@@ -59,13 +60,18 @@ export declare const Run: z.ZodObject<{
             runner: "runner";
         }>;
         analysisPlan: z.ZodString;
+        seed: z.ZodOptional<z.ZodObject<{
+            algorithm: z.ZodString;
+            value: z.ZodString;
+        }, z.core.$strict>>;
         blocks: z.ZodOptional<z.ZodArray<z.ZodObject<{
             block: z.ZodInt;
             plannedBlock: z.ZodInt;
-            first: z.ZodEnum<{
+            first: z.ZodOptional<z.ZodEnum<{
                 base: "base";
                 candidate: "candidate";
-            }>;
+            }>>;
+            draws: z.ZodOptional<z.ZodArray<z.ZodType<import("../block-order.ts").PairDraw, unknown, z.core.$ZodTypeInternals<import("../block-order.ts").PairDraw, unknown>>>>;
             status: z.ZodEnum<{
                 abandoned: "abandoned";
                 complete: "complete";
