@@ -5,8 +5,8 @@
   "license": "CC-BY-4.0",
   "type": "module",
   "scripts": {
-    "dev": "astro dev",
-    "build": "astro build && node scripts/check-page-scripts.ts dist",
+    "dev": "pnpm -w run generate:requirements-status && astro dev",
+    "build": "pnpm -w run generate:requirements-status && astro build && node scripts/check-page-scripts.ts dist",
     "preview": "astro preview",
     "check": "astro check"
   },

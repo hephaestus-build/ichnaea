@@ -14,3 +14,6 @@ packages/*/src/**/*.js
 packages/*/src/**/*.d.ts
 packages/*/src/**/*.map
 .astro/
+
+# The docs build indexes current requirement citations.
+/docs/site/src/content/docs/reference/requirements-status.md

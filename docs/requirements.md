@@ -1,5 +1,9 @@
 # Requirements
 
+> Frozen. [Design](design.md) supersedes these requirements. Keep this document as the registry
+> of requirement IDs. The generated [requirement status](https://hephaestus-build.github.io/ichnaea/reference/requirements-status/)
+> page links to files that cite them.
+
 Ichnaea's system requirements. Each one has an ID, a priority and an acceptance criterion that a test can show.
 
 - **IDs are stable.** Code, tests and changelogs cite `REQ-nn`. A requirement that is dropped keeps its number, and a new one gets the next free number. The sections group them by area, so the numbers are not in order.

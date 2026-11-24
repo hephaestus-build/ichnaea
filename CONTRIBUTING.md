@@ -74,9 +74,9 @@ migrated reader-only fixtures, including records with unknown fields.
 
 ## Requirements and decisions
 
-- `REQ-n` in code, tests and docs refers to [`docs/requirements.md`](docs/requirements.md). The
-  maintainers generate that file from their requirements record and replace it as a whole. Never
-  edit it by hand. To propose a change to a requirement, open an issue.
+- [The design](docs/design.md) supersedes [the frozen requirements](docs/requirements.md).
+  Keep the original `REQ-n` IDs for citations. The repository check rejects unknown IDs, and
+  the docs build generates the status page from the files that cite them.
 - Framework decisions are recorded in [`docs/decisions/`](docs/decisions/README.md). Code cites
   them by number.
 

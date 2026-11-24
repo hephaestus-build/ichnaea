@@ -29,6 +29,12 @@ gates and drops within these runs.
 Ichnaea is a TypeScript library and CLI. It runs in your CI and inside your deployment. Its records
 are plain JSON files, and it runs no server, dashboard or labelling tool.
 
+## What the results can show
+
+The result covers the cases, measures and trials in the comparison. It can identify a failed hard
+gate or a drop in the recorded runs. A regression across runs or a claim that a change is safe
+needs evidence beyond this comparison. See the [design](docs/design.md) for the decision boundary.
+
 ## Packages
 
 Ichnaea is one package, `@tumaet/ichnaea`. Its subpaths:
