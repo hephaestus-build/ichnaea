@@ -18,3 +18,10 @@ export const CandidateHistory = z.strictObject({
     }),
   ),
 });
+
+export const RunFailure = z.enum([
+  "protocol",
+  "budget-exceeded",
+  "worker-closed",
+  "worker-unresponsive",
+]);

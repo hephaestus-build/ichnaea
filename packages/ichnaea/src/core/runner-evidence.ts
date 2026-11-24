@@ -22,7 +22,7 @@ interface EvidenceContext {
   readonly settings: string;
   readonly expected?: Configuration;
   readonly requireFullObservations?: boolean;
-  readonly artifacts?: Trial["evidence"];
+  readonly artifacts?: Trial["evidence"] | undefined;
   readonly startedAt: string;
   readonly endedAt: string;
   readonly attempts?: Trial["attempts"];

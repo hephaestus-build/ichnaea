@@ -1,10 +1,12 @@
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 
+import { classRank } from "../contracts/data-class.ts";
 import { canonicalize, digest, sha256 } from "../contracts/canonical.ts";
 import { caseDigest } from "../contracts/identity.ts";
 import type { Case } from "../contracts/records/case.ts";
 import type { Plan } from "../contracts/records/plan.ts";
+import type { Run } from "../contracts/records/run.ts";
 import { Trial } from "../contracts/records/trial.ts";
 import { TrialRequest, TrialResult, WorkerEvent } from "../contracts/records/worker.ts";
 import { type Attempt, BlockRunner } from "../run/blocks.ts";
@@ -13,10 +15,10 @@ import { publishRecord } from "./publish-record.ts";
 import { NOT_CAPTURED } from "./record-run.ts";
 import { workerEvidence } from "./runner-evidence.ts";
 import type { RunWork } from "./runner-work.ts";
+import { captureArtifacts } from "./worker-artifacts.ts";
 import { readWorkerRecord } from "./worker-record.ts";
 import { CommandWorker } from "./worker-transport.ts";
 
-const TRIAL_MS = 60_000;
 const CANCEL_MS = 500;
 
 type Prepared = { readonly cases: readonly Case[]; readonly plan: Plan };
@@ -39,8 +41,9 @@ export async function runWorkerBlock(input: {
   block: Block;
   prepared: Prepared;
   signal: AbortSignal;
-}): Promise<"complete" | "protocol" | "budget-exceeded" | "worker-closed"> {
-  const { work, worker, runner, block, prepared, signal } = input;
+  deadlineMs: number;
+}): Promise<"complete" | NonNullable<NonNullable<Run["execution"]>["failure"]>> {
+  const { work, worker, runner, block, prepared, signal, deadlineMs } = input;
   const directory = join(work.directory, "worker", String(block.block));
   await mkdir(directory, { recursive: true });
   const cases = new Map(prepared.cases.map((entry) => [entry.id, entry]));
@@ -60,6 +63,7 @@ export async function runWorkerBlock(input: {
     flight: Flight,
     settlement: Settled,
     result: TrialResult,
+    artifacts?: Trial["evidence"],
   ): Promise<"protocol" | undefined> {
     const { request, attempt } = flight;
     flights.delete(request.trial.id);
@@ -85,6 +89,7 @@ export async function runWorkerBlock(input: {
       analysisPlan,
       configuration: flight.arm.identity,
       settings: flight.settings,
+      artifacts,
       expected: flight.arm.configuration,
       ...(attempt.first === undefined ? {} : { first: attempt.first }),
       startedAt: flight.startedAt,
@@ -120,7 +125,7 @@ export async function runWorkerBlock(input: {
         trial: attempt.trial,
         case: { id, digest: caseDigest(trialCase), unit, input: caseInput, turns, fixtures },
         workdir,
-        deadline: `PT${TRIAL_MS / 1000}S`,
+        deadline: `PT${deadlineMs / 1000}S`,
         configuration: { path: file.path },
         limits: { calls: attempt.calls },
       });
@@ -155,7 +160,7 @@ export async function runWorkerBlock(input: {
     if (frame.kind === "closed") return "worker-closed";
     if (frame.kind === "timeout") {
       if ([...flights.values()].some(({ cancel }) => cancel && cancel.deadline <= deadline))
-        return "worker-closed";
+        return "worker-unresponsive";
       for (const settlement of runner.expire(deadline)) {
         const flight = flights.get(settlement.attempt.trial.id);
         if (!flight) throw new Error("missing expired attempt");
@@ -212,8 +217,37 @@ export async function runWorkerBlock(input: {
       continue;
     }
     if (!result) return "protocol";
-    const settlement = runner.accept(block.block, result, frame.received);
-    const failure = await settle(flight, settlement, result);
+    let admitted = result;
+    let artifacts: Trial["evidence"];
+    if (!result.failure && !result.truncated && result.artifacts?.length) {
+      const dataClass = result.artifacts.reduce(
+        (current, item) =>
+          item.class !== undefined && classRank(item.class) > classRank(current)
+            ? item.class
+            : current,
+        result.dataClass,
+      );
+      const captured = await captureArtifacts(
+        work.directory,
+        flight.request.workdir,
+        result.artifacts,
+      );
+      if ("failure" in captured) {
+        admitted = {
+          ...result,
+          dataClass,
+          failure: captured.failure,
+          output: undefined,
+          pointer: undefined,
+          artifacts: undefined,
+        };
+      } else {
+        admitted = { ...result, dataClass };
+        artifacts = captured.evidence;
+      }
+    }
+    const settlement = runner.accept(block.block, admitted, frame.received);
+    const failure = await settle(flight, settlement, admitted, artifacts);
     if (failure) return failure;
     if (settlement.disposition === "protocol" || settlement.disposition === "budget-exceeded")
       return settlement.disposition;

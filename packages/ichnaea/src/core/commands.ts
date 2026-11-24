@@ -105,6 +105,9 @@ export async function decideRun(
     code: exitCode(decision, stored.plan.policy) === 1 ? 1 : 0,
     text: [
       `${decision.verdict ?? "ESTIMATE-ONLY"}: ${decision.reason}${decision.registration ? ` [${decision.registration}]` : ""}`,
+      ...(decision.registration === "unregistered"
+        ? ["The analysis was not anchored before this run."]
+        : []),
       ...(decision.resolution ?? []).map((entry) => resolutionLine(entry)),
     ],
     json: projectForEgress(Decision, decision, { maxClass: "none", purpose: "PU-1" }).value,

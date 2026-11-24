@@ -15,8 +15,9 @@ import { type ExecutedBlock, Run } from "../contracts/records/run.ts";
 import { Plan } from "../contracts/records/plan.ts";
 import { Trial } from "../contracts/records/trial.ts";
 import { sha256Hex } from "../contracts/sha256.ts";
+import { DEFAULT_TRIAL_DEADLINE_MS } from "../plan/analysis.ts";
 import { resolutionLine } from "../plan/resolution.ts";
-import { BlockRunner } from "../run/blocks.ts";
+import { BlockRunner, InsufficientCallBudget } from "../run/blocks.ts";
 
 import { bindRunnerPlan, readLockedPlan } from "./analysis-plan.ts";
 import { hostAndStore } from "./cli-config.ts";
@@ -240,13 +241,17 @@ export const runCommand: Command = {
           });
     if (anchored && (!bytes || anchored.planFileDigest !== `sha256:${sha256Hex(bytes)}`))
       throw new CliError("RECORDS", "the analysis plan changed while it was being anchored");
+    if (anchor && !anchored)
+      diagnostic("[ichnaea] The analysis plan could not be verified against the anchor ref.");
+    const deadlineMs = analysis.deadlineMs ?? DEFAULT_TRIAL_DEADLINE_MS;
+    const options = { capacity: 32, maxAttempts: 2, deadlineMs };
+    const fresh = saved ? undefined : new BlockRunner(plan, options);
     const work = await RunWork.open(root, run, anchored, resume ? "resume" : "new");
     const stopped = new AbortController();
     const interrupt = (): void => stopped.abort(new Error("run interrupted"));
     process.once("SIGINT", interrupt);
     process.once("SIGTERM", interrupt);
     const store = new FileStore(root);
-    const retries = 2;
     let repository: RecordsRepository | undefined;
     try {
       const receipt = work.receipt();
@@ -258,11 +263,7 @@ export const runCommand: Command = {
       )
         throw new Error("the bound plan differs from the journal receipt");
       const replayed = await replay(work);
-      const runner = new BlockRunner(
-        plan,
-        { capacity: 32, maxAttempts: retries, deadlineMs: 60_000 },
-        replayed.blocks,
-      );
+      const runner = fresh ?? new BlockRunner(plan, options, replayed.blocks);
       if (saved)
         repository = records === undefined ? undefined : await RecordsRepository.open(records);
       else {
@@ -270,9 +271,18 @@ export const runCommand: Command = {
         await publishRecord(work.directory, "prepared.json", snapshot);
       }
       let failure = replayed.failure;
+      let disrupted: "worker-closed" | "worker-unresponsive" | undefined;
       while (!failure) {
         stopped.signal.throwIfAborted();
-        const block = runner.startBlock();
+        let block: ReturnType<BlockRunner["startBlock"]>;
+        try {
+          block = runner.startBlock();
+        } catch (error) {
+          if (!disrupted || !(error instanceof InsufficientCallBudget)) throw error;
+          failure = disrupted;
+          await work.fail(failure);
+          break;
+        }
         if (!block) break;
         const worker = await CommandWorker.start(
           args.worker,
@@ -298,6 +308,7 @@ export const runCommand: Command = {
             prepared: snapshot,
             run,
             signal: stopped.signal,
+            deadlineMs,
           });
         } finally {
           await worker.close();
@@ -305,6 +316,11 @@ export const runCommand: Command = {
         if (status === "complete") {
           runner.finishBlock();
           await work.completeBlock();
+          disrupted = undefined;
+        } else if (status === "worker-closed" || status === "worker-unresponsive") {
+          runner.abandonBlock("transport");
+          await work.abandonBlock();
+          disrupted = status;
         } else {
           await work.abandonBlock(status);
           failure = status;

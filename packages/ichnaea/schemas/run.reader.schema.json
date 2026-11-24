@@ -353,7 +353,8 @@
           "x-ichnaea-known": [
             "protocol",
             "budget-exceeded",
-            "worker-closed"
+            "worker-closed",
+            "worker-unresponsive"
           ]
         }
       },

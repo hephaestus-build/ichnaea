@@ -7,7 +7,7 @@ import { expect, it } from "vitest";
 
 import { main } from "../../src/cli.ts";
 import { pairFirst } from "../../src/contracts/block-order.ts";
-import { digest } from "../../src/contracts/canonical.ts";
+import { digest, sha256 } from "../../src/contracts/canonical.ts";
 import { RecordsRepository } from "../../src/core/records-repository.ts";
 import { FileStore } from "../../src/core/store.ts";
 
@@ -27,9 +27,9 @@ async function suite(directory: string, records?: string, confirmation = false):
           purpose: ${JSON.stringify(confirmation ? "confirmation" : undefined)},
           id: "answers", cases: "cases.jsonl", blocks: 2, maxCalls: 4,
           caseDefaults: {
-            unit: "turn", dataClass: "none", pool: "development",
+            unit: "turn", dataClass: "none", pool: ${JSON.stringify(confirmation ? "sealed" : "development")},
             provenance: { source: "authored", selection: "curated", created: "2026-11-24",
-              exposure: "private", licence: "CC0-1.0" },
+              exposure: ${JSON.stringify(confirmation ? "sealed" : "private")}, licence: "CC0-1.0" },
           },
           arms: { base: { model: "first" }, candidate: { model: "second" } },
           objective: "Compare answers", construct: "Accuracy", decision: "Release",
@@ -236,6 +236,192 @@ it("seals a protocol failure as INVALID without admitting the uncorrelated resul
       failure: "protocol",
       blocks: [{ status: "abandoned" }],
     });
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+it("binds the registered deadline and per-trial call allowance", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "ichnaea-run-budget-"));
+  try {
+    const config = await suite(directory);
+    const store = join(directory, "store");
+    const body = await readFile(config, "utf8");
+    await writeFile(
+      config,
+      body.replace("maxCalls: 4,", "maxCalls: 8, callsPerTrial: 2, deadlineMs: 2000,"),
+    );
+    const text: string[] = [];
+    const errors: string[] = [];
+    expect(
+      await main(
+        [
+          "run",
+          "--config",
+          config,
+          "--store",
+          store,
+          "--run",
+          "two-calls",
+          "--",
+          ...worker,
+          "use-limit",
+        ],
+        (line) => text.push(line),
+        undefined,
+        (line) => errors.push(line),
+      ),
+      errors.join("\n"),
+    ).toBe(0);
+    expect(text[0]).toMatch(/^plan: 1 case, 2 blocks, 8 calls/);
+    const recorded = await new FileStore(store).read("two-calls");
+    expect(recorded.plan.analysis).toMatchObject({
+      callsPerTrial: 2,
+      deadlineMs: 2000,
+      maxCalls: 8,
+    });
+    expect(recorded.trials.map((trial) => trial.usage?.calls)).toEqual([2, 2, 2, 2]);
+
+    const tooSmall = join(directory, "smaller-budget.ts");
+    await writeFile(tooSmall, body.replace("maxCalls: 4,", "maxCalls: 7, callsPerTrial: 2,"));
+    expect(
+      await main(
+        ["run", "--config", tooSmall, "--store", store, "--run", "too-small", "--", ...worker],
+        () => {},
+        undefined,
+        () => {},
+      ),
+    ).toBe(2);
+    await expect(
+      readFile(join(store, "work", "too-small", "journal", "0.json"), "utf8"),
+    ).rejects.toMatchObject({ code: "ENOENT" });
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+it("runs a base-only suite as an A/A pilot within its generated two-arm budget", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "ichnaea-noise-run-"));
+  try {
+    const config = await suite(directory);
+    const store = join(directory, "store");
+    const body = await readFile(config, "utf8");
+    await writeFile(
+      config,
+      body.replace(", maxCalls: 4", "").replace(', candidate: { model: "second" }', ""),
+    );
+    const lines: string[] = [];
+    const errors: string[] = [];
+    expect(
+      await main(
+        ["run", "--noise", "--config", config, "--store", store, "--run", "pilot", "--", ...worker],
+        (line) => lines.push(line),
+        undefined,
+        (line) => errors.push(line),
+      ),
+      errors.join("\n"),
+    ).toBe(0);
+    expect(lines.at(-1)).toMatch(/^plan: 1 case, 2 blocks, 4 calls/);
+    const recorded = await new FileStore(store).read("pilot");
+    expect(new Set(recorded.plan.arms.map(({ identity }) => identity)).size).toBe(1);
+    expect(recorded.trials).toHaveLength(4);
+    expect(recorded.decision).toMatchObject({ verdict: null, registration: "exploratory" });
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+it("replaces an unresponsive block when the locked budget covers a fresh block", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "ichnaea-deadline-"));
+  try {
+    const config = await suite(directory);
+    const store = join(directory, "store");
+    const body = await readFile(config, "utf8");
+    await writeFile(config, body.replace("maxCalls: 4,", "maxCalls: 6, deadlineMs: 200,"));
+    const errors: string[] = [];
+    expect(
+      await main(
+        [
+          "run",
+          "--config",
+          config,
+          "--store",
+          store,
+          "--run",
+          "replaced",
+          "--",
+          ...worker,
+          "ignore-first-cancel",
+        ],
+        () => {},
+        undefined,
+        (line) => errors.push(line),
+      ),
+      errors.join("\n"),
+    ).toBe(0);
+    const saved = await new FileStore(store).read("replaced");
+    expect(
+      saved.run.execution?.blocks?.map(({ block, plannedBlock, status }) => [
+        block,
+        plannedBlock,
+        status,
+      ]),
+    ).toEqual([
+      [0, 0, "abandoned"],
+      [1, 0, "complete"],
+      [2, 1, "complete"],
+    ]);
+    expect(saved.trials.every(({ block }) => block === 1 || block === 2)).toBe(true);
+    const bookings = (
+      await readFile(
+        join(store, "ledger", "runner", `${saved.run.startedAt.slice(0, 7)}.jsonl`),
+        "utf8",
+      )
+    )
+      .trim()
+      .split("\n");
+    expect(bookings.map((line) => JSON.parse(line).calls)).toEqual([2, 2, 2]);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+it("seals the bytes of an artifact-only trial as evidence", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "ichnaea-artifact-"));
+  try {
+    const config = await suite(directory);
+    const store = join(directory, "store");
+    const errors: string[] = [];
+    expect(
+      await main(
+        [
+          "run",
+          "--config",
+          config,
+          "--store",
+          store,
+          "--run",
+          "artifact",
+          "--",
+          ...worker,
+          "artifact",
+        ],
+        (line) => errors.push(line),
+        undefined,
+        (line) => errors.push(line),
+      ),
+      errors.join("\n"),
+    ).toBe(0);
+    const saved = await new FileStore(store).read("artifact");
+    expect(saved.trials).toHaveLength(4);
+    for (const trial of saved.trials) {
+      expect(trial.outcome).toBe("completed");
+      const artifact = trial.evidence?.[0];
+      expect(artifact?.digest).toBe(sha256("Paris"));
+      await expect(
+        readFile(join(store, "runs", "artifact", artifact?.uri ?? ""), "utf8"),
+      ).resolves.toBe("Paris");
+    }
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

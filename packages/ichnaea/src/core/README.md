@@ -137,3 +137,8 @@ Set `records` in the configuration to the path to a records checkout. A suite
 with `purpose: "confirmation"` requires this checkout. Ichnaea reserves the
 exact case digests before the worker starts. A failed run leaves them spent.
 Exact digests do not detect a rewritten case or a read outside the checkout.
+
+Set `callsPerTrial` and `deadlineMs` in the suite to change the defaults of one
+call and 60 seconds per trial. The analysis plan holds both values. Set `maxCalls`
+high enough for every planned trial at its full allowance and for any replacement
+blocks the run must be able to afford.

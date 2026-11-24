@@ -288,7 +288,10 @@ export async function recordRun(
     ...supplied,
     ...scoreTrials(
       [...host.measures.values()].filter((m) => planMeasures.has(m.card.id)),
-      trials,
+      trials.filter(
+        (trial) =>
+          !(trial.evidence?.length && trial.output === undefined && trial.pointer === undefined),
+      ),
       byCase,
       plan.analysis?.applicability,
     ),

@@ -9,7 +9,12 @@ import { Case, CaseSet } from "../contracts/records/case.ts";
 import { Plan } from "../contracts/records/plan.ts";
 import { Configuration } from "../contracts/records/configuration.ts";
 import { sha256Hex } from "../contracts/sha256.ts";
-import { checkCases, lockFor, resolveAnalysis } from "../plan/analysis.ts";
+import {
+  checkCases,
+  DEFAULT_TRIAL_DEADLINE_MS,
+  lockFor,
+  resolveAnalysis,
+} from "../plan/analysis.ts";
 import type { RunRecords } from "../contracts/run-records.ts";
 import { configurationDifferences } from "../plan/rules.ts";
 import { planResolution } from "../plan/resolution.ts";
@@ -32,6 +37,9 @@ export interface PlanSuiteInput {
   readonly ichnaea: string;
   /** Optional noise run used for the planning model. */
   readonly pilot?: RunRecords;
+  /** Book two base arms for a noise pilot. */
+
+  readonly noise?: boolean;
 }
 
 /** The two records that the plan command writes. */
@@ -84,7 +92,7 @@ export async function suiteCases(
         digest: caseSetDigest(entries),
         cases: entries,
       });
-  checkCases(caseSet, cases);
+  checkCases(caseSet, cases, suite.purpose);
   return { cases, caseSet };
 }
 
@@ -232,10 +240,13 @@ export async function planSuite(input: PlanSuiteInput): Promise<PlannedSuite> {
     measures,
     applicability,
     ichnaea: input.ichnaea,
+    callsPerTrial: suite.callsPerTrial ?? 1,
+    deadlineMs: suite.deadlineMs ?? DEFAULT_TRIAL_DEADLINE_MS,
   });
+  const armsToBook = input.noise || arms.candidate !== undefined || primary.length > 0 ? 2 : 1;
   const resolved = AnalysisPlan.parse({
     ...plan,
-    ...planResolution(plan, suite.blocks !== undefined, suite.maxCalls, input.pilot),
+    ...planResolution(plan, suite.blocks !== undefined, suite.maxCalls, input.pilot, armsToBook),
   });
   return { plan: resolved, lock: lockFor(resolved) };
 }
@@ -313,6 +324,7 @@ export async function bindRunnerPlan(
         directory: input.directory,
         ichnaea: options.ichnaea,
         host,
+        noise: execution.noise === true,
       })
     ).plan;
   return bindAnalysis(analysis, input, host, options, { noise: execution.noise === true });
@@ -435,12 +447,9 @@ async function bindAnalysis(
     policy: analysis.policy,
     power: [],
     budget: {
-      worstCaseCalls: execution === undefined ? 0 : trials.length,
-      maxCalls:
-        execution?.noise && candidate
-          ? Math.max(analysis.maxCalls, trials.length)
-          : analysis.maxCalls,
-      ...(execution === undefined ? {} : { callsPerTrial: 1 }),
+      worstCaseCalls: execution === undefined ? 0 : trials.length * (analysis.callsPerTrial ?? 1),
+      maxCalls: analysis.maxCalls,
+      ...(execution === undefined ? {} : { callsPerTrial: analysis.callsPerTrial ?? 1 }),
     },
     trials,
     seed: { algorithm: "mt19937", value: String(options.seed) },

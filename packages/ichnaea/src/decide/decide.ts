@@ -771,6 +771,10 @@ export function decideWith(input: DecideInput, compare: Compare): Decision {
   if (run.execution?.failure === "budget-exceeded")
     invalid.push("the worker exceeded its call bound");
   if (run.execution?.failure === "worker-closed") invalid.push("the worker closed during a block");
+  if (run.execution?.failure === "worker-unresponsive")
+    invalid.push(
+      "the worker did not answer after cancellation and the budget could not cover a replacement block",
+    );
   const trials = new Map(input.trials.map((t) => [t.id as string, t]));
   const values = new Map(input.values.map((v) => [`${v.measure}\u0000${v.trial}`, v]));
   const baseArm = plan.arms.find((a) => a.role === "base")?.name;

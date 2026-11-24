@@ -142,6 +142,8 @@ export const AnalysisPlan: z.ZodObject<{
         identity: z.core.$ZodBranded<z.ZodString, "ConfigurationIdentity", "out">;
     }, z.core.$strict>;
     maxCalls: z.ZodInt;
+    callsPerTrial: z.ZodOptional<z.ZodInt>;
+    deadlineMs: z.ZodOptional<z.ZodInt>;
     purpose: z.ZodOptional<z.ZodEnum<{
         confirmation: "confirmation";
         development: "development";
@@ -3453,6 +3455,8 @@ export const Plan: z.ZodObject<{
             identity: z.core.$ZodBranded<z.ZodString, "ConfigurationIdentity", "out">;
         }, z.core.$strict>;
         maxCalls: z.ZodInt;
+        callsPerTrial: z.ZodOptional<z.ZodInt>;
+        deadlineMs: z.ZodOptional<z.ZodInt>;
         purpose: z.ZodOptional<z.ZodEnum<{
             confirmation: "confirmation";
             development: "development";
@@ -4357,6 +4361,7 @@ export const Run: z.ZodObject<{
             "budget-exceeded": "budget-exceeded";
             protocol: "protocol";
             "worker-closed": "worker-closed";
+            "worker-unresponsive": "worker-unresponsive";
         }>>;
     }, z.core.$strict>>;
     valuesOutsideMask: z.ZodOptional<z.ZodRecord<z.core.$ZodBranded<z.ZodString, "MeasureId", "out">, z.ZodInt>>;

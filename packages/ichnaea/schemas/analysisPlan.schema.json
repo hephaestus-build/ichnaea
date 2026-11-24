@@ -877,6 +877,32 @@
         "retention": "record"
       }
     },
+    "callsPerTrial": {
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740991,
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
+      }
+    },
+    "deadlineMs": {
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 2147483647,
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
+      }
+    },
     "purpose": {
       "type": "string",
       "enum": [

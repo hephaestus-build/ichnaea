@@ -400,6 +400,7 @@ export interface PlanSuiteInput {
     readonly directory: string;
     readonly host: Host;
     readonly ichnaea: string;
+    readonly noise?: boolean;
     readonly pilot?: RunRecords;
     readonly suite: SuiteDefinition;
 }
@@ -902,6 +903,8 @@ export const SuiteDefinition: z.ZodObject<{
         development: "development";
         regression: "regression";
     }>>;
+    callsPerTrial: z.ZodOptional<z.ZodInt>;
+    deadlineMs: z.ZodOptional<z.ZodInt>;
     policy: z.ZodOptional<z.ZodObject<{
         onRegression: z.ZodEnum<{
             block: "block";

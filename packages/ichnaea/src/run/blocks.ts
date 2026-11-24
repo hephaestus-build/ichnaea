@@ -112,6 +112,8 @@ function slotsByBlock(plan: Plan): readonly (readonly Slot[])[] {
   });
 }
 
+export class InsufficientCallBudget extends Error {}
+
 /** Schedules an already bound analysis. The caller supplies the clock and transports attempts. */
 export class BlockRunner {
   readonly planDigest: string;
@@ -208,7 +210,7 @@ export class BlockRunner {
     const reserved = slots.length * this.#callsPerTrial;
     const remaining = this.#slots.length - this.#plannedBlock;
     if (this.#spent + remaining * reserved > this.#cap)
-      throw new Error("insufficient call budget to finish the planned blocks");
+      throw new InsufficientCallBudget("insufficient call budget to finish the planned blocks");
     const { draws, pending } = this.#order(slots, this.#nextBlock);
     const block: Block = { block: this.#nextBlock++, plannedBlock: this.#plannedBlock, draws };
     this.#active = {
@@ -328,10 +330,10 @@ export class BlockRunner {
     return { ...active.block, status: "complete" };
   }
 
-  abandonBlock(): ClosedBlock {
+  abandonBlock(reason?: "transport"): ClosedBlock {
     const active = this.#active;
     if (!active) throw new Error("there is no active block");
-    if (!this.#halt && active.pending.length === 0 && active.flight.size === 0)
+    if (!reason && !this.#halt && active.pending.length === 0 && active.flight.size === 0)
       throw new Error("a settled block must be completed");
     this.#spent += Math.max(active.reserved, active.calls);
     this.#active = undefined;

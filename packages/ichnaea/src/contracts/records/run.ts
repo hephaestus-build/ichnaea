@@ -13,7 +13,7 @@ import {
   Timestamp,
   TrialId,
 } from "../primitives.ts";
-import { CandidateHistory, Registration } from "./run-registration.ts";
+import { CandidateHistory, Registration, RunFailure } from "./run-registration.ts";
 import { Arm, LineageItem } from "./plan.ts";
 import { Outcome } from "./trial.ts";
 
@@ -64,7 +64,7 @@ export const Run = z.strictObject({
       blocks: z.array(ExecutedBlock).optional(),
       registration: Registration.optional(),
       history: CandidateHistory.optional(),
-      failure: none(z.enum(["protocol", "budget-exceeded", "worker-closed"])).optional(),
+      failure: none(RunFailure).optional(),
     })
     .optional(),
   /** Counts of supplied applicable values that the writer dropped outside the locked mask. */

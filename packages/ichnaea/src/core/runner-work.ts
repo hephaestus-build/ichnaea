@@ -8,6 +8,7 @@ import * as z from "zod";
 
 import { canonicalize } from "../contracts/canonical.ts";
 import { CaseId, Json } from "../contracts/primitives.ts";
+import { RunFailure } from "../contracts/records/run-registration.ts";
 import { TrialIdentity, WorkerReady } from "../contracts/records/worker.ts";
 
 import { CallLedger } from "./ledger.ts";
@@ -32,7 +33,7 @@ type Entry =
   | Takeover
   | BlockStart
   | { kind: "block-abandoned" | "block-complete"; block: number }
-  | { kind: "run-failed"; reason: "protocol" | "budget-exceeded" | "worker-closed" }
+  | { kind: "run-failed"; reason: z.infer<typeof RunFailure> }
   | { kind: "handshake"; block: number; ready: WorkerReady }
   | { kind: "intent"; block: number; trial: TrialIdentity }
   | { kind: "outcome"; block: number; trial: TrialIdentity; result: Json };
@@ -67,7 +68,7 @@ const EntrySchema: z.ZodType<Entry> = z.discriminatedUnion("kind", [
   BlockStartSchema,
   z.strictObject({
     kind: z.literal("run-failed"),
-    reason: z.enum(["protocol", "budget-exceeded", "worker-closed"]),
+    reason: RunFailure,
   }),
   z.strictObject({ kind: z.literal("block-abandoned"), block }),
   z.strictObject({ kind: z.literal("block-complete"), block }),
@@ -349,9 +350,15 @@ export class RunWork {
     });
   }
 
-  async abandonBlock(reason: Extract<Entry, { kind: "run-failed" }>["reason"]): Promise<void> {
+  async fail(reason: z.infer<typeof RunFailure>): Promise<void> {
     await this.#change(async () => {
       await this.#append({ kind: "run-failed", reason });
+    });
+  }
+
+  async abandonBlock(reason?: z.infer<typeof RunFailure>): Promise<void> {
+    await this.#change(async () => {
+      if (reason) await this.#append({ kind: "run-failed", reason });
       await this.#append({ kind: "block-abandoned", block: this.#openBlock() });
       this.#pending.clear();
       this.#block = undefined;
