@@ -1,0 +1,8 @@
+{
+  "workspaces": {
+    ".": {
+      // The package check builds absolute paths to these CLIs and runs them from a scratch tree.
+      "ignoreDependencies": ["@arethetypeswrong/cli", "publint"],
+    },
+  },
+}
