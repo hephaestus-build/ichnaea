@@ -13,29 +13,17 @@ A run verdict is reached in this order (decision 0011):
 3. **No verdict** when the plan is estimate-only or the run is exploratory. Each difference still
    has the interval of the plan's estimand where the data supports a comparison; otherwise its notes
    say why it has none.
-4. Otherwise, per primary measure (decision 0015):
-   - NON-INFERIOR when both results of the comparison, `regression` and `nonInferiority`, are
-     validated, and the one-sided bound clears the margin less its safety margin. Each measure is
-     tested at the unadjusted level.
-   - REGRESSION when the regression result is validated and the regression test rejects after Holm
-     across the comparisons whose regression result is validated.
-   - INCONCLUSIVE otherwise, with the reason.
+4. **INCONCLUSIVE** for statistical comparisons. A within-run test that rejects after Holm
+   adjustment gives `DROP_IN_THESE_RUNS_ONLY`. Unavailable or unvalidated tests contribute p = 1
+   to the Holm family. Set `policy.onRunDrop: "block"` to stop CI for this reason. If omitted,
+   `policy.onInconclusive` applies.
 
-   The run is PASS only when every primary measure is non-inferior.
+A statistical pass needs randomized blocks and a validated margin floor. These comparisons still
+record their estimates, bounds and validity. When a primary measure misses a trial in either arm,
+Ichnaea checks the drop against a completion in which a missing candidate trial passes and a
+missing base trial fails.
 
-**No run passes yet.** The statistics have not set the validated margin floor, so no
-non-inferiority result is validated. A real drop still gives REGRESSION. A candidate that does not
-regress gives INCONCLUSIVE, and the reason names the cause of each primary measure. When the lower
-bound does not clear the margin, the cases cannot tell yet, and the floor is named as well. When
-the bound clears the margin, only the floor stands in the way. When every measure has that second
-cause, the reason says that no candidate can PASS until the floor is set (`FLOOR_NOT_SET_REASON`).
-The reason says "beyond run-to-run noise" only where the scope sentence does: under `fixed-cases`,
-when every compared case has at least 2 completed trials in each arm (decision 0016).
-
-Whenever a primary measure misses a trial in either arm, each verdict is tested against the
-imputation that works against it. A verdict that this changes becomes INCONCLUSIVE (decision 0010).
-
-**One trial per case and arm** can give REGRESSION, never PASS (decision 0020). `decide` checks the
+**One trial per case and arm** can give a drop within these runs if the checks of decision 0020 pass. `decide` checks the
 records first. A case whose two trials ran against the plan's order, or more than 2c − 1 start ranks
 apart (c is the largest number of trials the records show running at once), is unpaired: it counts
 as missing. Every trial that ran must record when it started and ended, the plan must state its
@@ -54,5 +42,5 @@ it computes nothing and refuses nothing, each entry says "the plan carries no pl
 and none can be computed from it".
 
 `decidePrimaries` is the per-measure rule on counts alone. `test/decide/req51.sim.test.ts` uses it to
-show that the rate of false REGRESSION verdicts stays at or below α. Run it with
+check the type-I error of the within-run test under independent trials. Run it with
 `pnpm --filter @tumaet/ichnaea run test:sim:decide`.

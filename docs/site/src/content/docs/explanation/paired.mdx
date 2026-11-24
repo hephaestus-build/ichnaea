@@ -42,10 +42,10 @@ To make a claim about new inputs, you need a sample of cases drawn from them, an
 ## What it does not cover
 
 - Only pass/fail measures have a validated test today. Measures with scores show an estimate and no verdict.
-- With one trial per version in some cases, a Regression means "significant on these cases". It does not mean "beyond run-to-run noise".
+- A test that detects a drop gives Inconclusive with the reason `DROP_IN_THESE_RUNS_ONLY`.
 
 ## Evidence
 
 - [Decision 0004](https://github.com/hephaestus-build/ichnaea/blob/main/docs/decisions/0004-fixed-cases-interval.md): the estimate, its interval and the equal case weights.
-- [Decision 0016](https://github.com/hephaestus-build/ichnaea/blob/main/docs/decisions/0016-regression-test-and-noise-claim.md): the regression test, and when a verdict may say "beyond run-to-run noise".
+- [Decision 0016](https://github.com/hephaestus-build/ichnaea/blob/main/docs/decisions/0016-regression-test-and-noise-claim.md): the test used for a within-run drop.
 - [Statistics validation](https://github.com/hephaestus-build/ichnaea/blob/main/packages/ichnaea/src/stats/VALIDATION.md): the type-I error of each test, measured.

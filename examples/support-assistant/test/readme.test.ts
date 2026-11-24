@@ -64,19 +64,21 @@ describe("the example's README", () => {
     expect(commands.map((c) => c.exit)).toEqual([0, 0, 0, 0, 1, 0]);
   });
 
-  it("runs as written: INCONCLUSIVE for the same candidate, REGRESSION for the regressed one", async () => {
+  it("runs as written: reports both candidates and blocks only the one with a drop", async () => {
     const out: string[] = [];
     for (const { argv, exit } of commands) {
       const code = await main(argv, (t) => void out.push(t));
       expect(code, `${argv.join(" ")}\n${out.join("\n")}`).toBe(exit);
     }
     expect(verdictOf("same")).toBe("INCONCLUSIVE");
-    expect(verdictOf("regressed")).toBe("REGRESSION");
+    expect(verdictOf("regressed")).toBe("INCONCLUSIVE");
     // The README quotes the line decide prints for the same candidate, word for word.
     const printed = `INCONCLUSIVE: ${FLOOR_NOT_SET_REASON}`;
     expect(out).toContain(printed);
     expect(readme.replaceAll(/\s+/g, " ")).toContain(`\`${printed}\``);
-    expect(out.join("\n")).toMatch(/^REGRESSION/m);
+    expect(out.join("\n")).toMatch(
+      /^INCONCLUSIVE: Measure support\/facts-stated dropped in these runs\./m,
+    );
     // Each file the README says a run writes exists for both runs.
     for (const file of [
       "decision.json",

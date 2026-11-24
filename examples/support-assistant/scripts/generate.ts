@@ -80,6 +80,7 @@ const suite = {
   policy: {
     onRegression: "block",
     onInconclusive: "report",
+    onRunDrop: "block",
     onEstimateOnly: "report",
   },
   measureReviewDate: "2027-05-01",

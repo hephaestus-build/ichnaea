@@ -5,8 +5,8 @@
 [![MIT licence](https://img.shields.io/github/license/hephaestus-build/ichnaea?style=flat)](./LICENSE)
 
 Ichnaea evaluates GenAI features whenever their configuration changes: code, prompts, the model,
-its parameters or the application's settings. It gives each change a clear verdict from paired
-statistics, and says plainly when the cases cannot decide.
+its parameters or the application's settings. It compares paired results and reports failed hard
+gates and drops within these runs.
 
 > **Status: early development.** Ichnaea is 0.x on npm as `@tumaet/ichnaea`, and interfaces can
 > change in any minor version. The first release, 0.1.0, is not published yet: until then, pin a
@@ -16,9 +16,9 @@ statistics, and says plainly when the cases cannot decide.
 
 - **Evaluates a whole system configuration.** Code, prompts, model, parameters, tools and settings
   resolve to one record with an identity. Any change to it is a trigger.
-- **Decides with paired statistics.** A change is compared with its base on the same cases, with
-  intervals, per-case flips and a stated estimand. The verdict is Pass, Regression, Inconclusive or
-  Invalid. Before a run, the planner prints a power statement for the suite.
+- **Compares paired results.** Compare a change with its base on the same cases. See intervals,
+  per-case flips and the quantity being estimated. Before a run, the planner prints a power
+  statement for the suite.
 - **Keeps every planned trial.** Failures, abstentions and missing data stay visible. A skipped or
   over-budget run is never a pass.
 - **Keeps data where it lives.** Ichnaea opens no network port and makes no network call of its
@@ -150,7 +150,7 @@ pnpm exec ichnaea import --importer support/results \
   --trigger new-model --vary prompt.answer --run unchanged
 pnpm exec ichnaea decide --run unchanged
 pnpm exec ichnaea report --run unchanged
-# A regressed candidate
+# A candidate with a drop
 pnpm exec ichnaea import --importer support/results \
   --suite data/suite.json --case-set data/case-set.json --cases data/cases.jsonl \
   --arm base:base:configurations/base.json --arm candidate:candidate:configurations/candidate.json \
@@ -165,16 +165,16 @@ can act on it.
 
 <!-- The build consumer test checks these verdict lines and exit codes. -->
 
-| Scenario               | Results file                       | `decide` prints                                                                                                                         | `decide` exits |
-| ---------------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
-| An unchanged candidate | `results/candidate-same.json`      | `INCONCLUSIVE: No primary measure regressed, but no candidate can PASS yet: the validated margin floor for non-inferiority is not set.` | 0              |
-| A regressed candidate  | `results/candidate-regressed.json` | `REGRESSION: Measure support/facts-stated dropped beyond run-to-run noise and is not shown non-inferior.`                               | 1              |
+| Scenario                | Results file                       | `decide` prints                                                                                                              | `decide` exits |
+| ----------------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| An unchanged candidate  | `results/candidate-same.json`      | `INCONCLUSIVE: No drop was detected in these runs. A statistical pass needs randomized blocks and a validated margin floor.` | 0              |
+| A candidate with a drop | `results/candidate-regressed.json` | `INCONCLUSIVE: Measure support/facts-stated dropped in these runs.`                                                          | 1              |
 
-INCONCLUSIVE is the expected result for the unchanged candidate today. It does not mean that the
-setup is broken. A real drop already gives REGRESSION. PASS needs a validated non-inferiority
-result, and that needs a validated margin floor, which is not set yet (see
-[the statistics validation](packages/ichnaea/src/stats/VALIDATION.md)). The example's policy reports
-INCONCLUSIVE and does not block, so `decide` exits with 0.
+Ichnaea can show that a change failed a hard gate, or dropped within these runs. It cannot yet
+show a regression across runs, or that a change is safe.
+
+The example's `onRunDrop: "block"` policy stops CI when it detects a drop within these runs.
+The unchanged candidate exits with 0 because the example reports other inconclusive decisions.
 
 `report` writes `summary.md` and a self-contained `report.html` to
 `.ichnaea/runs/<run>/report/`. The store, `.ichnaea/`, keeps every record of the run.

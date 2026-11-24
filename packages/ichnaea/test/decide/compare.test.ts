@@ -21,7 +21,12 @@ describe("compare", () => {
     const decision = compare(s.plan, s, { decidedAt });
     expect(decision).not.toBeInstanceOf(Promise);
     expect(digest(compare(s.plan, structuredClone(s), { decidedAt }))).toBe(digest(decision));
-    expect(decision).toMatchObject({ verdict: "REGRESSION", decidedAt, plan: digest(s.plan) });
+    expect(decision).toMatchObject({
+      verdict: "INCONCLUSIVE",
+      reasonCode: "DROP_IN_THESE_RUNS_ONLY",
+      decidedAt,
+      plan: digest(s.plan),
+    });
   });
 
   it("is decide over the plan and the records, at the plan's Ichnaea version", () => {

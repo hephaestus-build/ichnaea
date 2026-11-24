@@ -40,7 +40,7 @@ describe("the sensitivity analysis for missing trials (REQ-56)", () => {
     const m = d.measures[0];
     expect(m?.comparisons[0]?.nonInferiority.validated).toBe(true);
     expect(m?.sensitivity.map((r) => [r.imputation, r.verdict, r.changesVerdict])).toEqual([
-      ["against-non-inferiority", "REGRESSION", true],
+      ["against-non-inferiority", "INCONCLUSIVE", true],
       ["against-regression", "NON-INFERIOR", false],
     ]);
     // While the floor is not set, the observed verdict is INCONCLUSIVE, so no imputation can change
@@ -50,7 +50,7 @@ describe("the sensitivity analysis for missing trials (REQ-56)", () => {
     expect(unset.verdict).toBe("INCONCLUSIVE");
     expect(unset.reason).not.toBe(FLOOR_REASON);
     expect(unset.reason).toBe(
-      "Measure app/correct could not be shown non-inferior: with its missing trials imputed against non-inferiority, it regresses. This is not a pass.",
+      "Measure app/correct could not be shown non-inferior: with its missing trials imputed against non-inferiority, the cases cannot tell yet, and the validated margin floor is not set. This is not a pass.",
     );
     expect(unset.missingness.sensitivity).toBe("unchanged");
     expect(
@@ -62,14 +62,14 @@ describe("the sensitivity analysis for missing trials (REQ-56)", () => {
         r.nonInferiority.validated,
       ]),
     ).toEqual([
-      ["against-non-inferiority", "REGRESSION", false, true, false],
+      ["against-non-inferiority", "INCONCLUSIVE", false, true, false],
       ["against-regression", "INCONCLUSIVE", false, true, false],
     ]);
   });
 
-  it("a REGRESSION that rests on missing trials is INCONCLUSIVE", async () => {
+  it("does not report a drop that depends on missing trials", async () => {
     // Only the base misses trials: 10 cases lose 1 of 3 base trials, and the candidate fails one of
-    // 3 trials in exactly those cases. Observed, that is a REGRESSION. Imputed as failures, the
+    // 3 trials in exactly those cases. The observed data show a drop. Imputed as failures, the
     // missing base trials make the base as good as the candidate there, and the drop is gone.
     const d = await run(
       await scenario({

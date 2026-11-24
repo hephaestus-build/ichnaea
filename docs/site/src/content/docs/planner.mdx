@@ -13,7 +13,7 @@ Enter the size of your suite. The explorer simulates comparisons with Ichnaea's 
 ## How to read the results
 
 - **Best-case floor.** The smallest limit that any run of this suite can clear, even when every trial passes. It is exact, not simulated.
-- **Smallest decrease detected in 80% of runs.** In these simulated runs, each case's pass rate falls by the same amount, or to zero if it is lower. A decrease this large then gives a Regression in 4 of 5 runs. Smaller decreases are often missed. The search finds this number to within 1 point. That is its resolution, not its precision: another seed can give a different number.
+- **Smallest decrease detected in 80% of runs.** In these simulated runs, each case's pass rate falls by the same amount, or to zero if it is lower. The within-run test detects a decrease this large in 4 of 5 runs. Smaller decreases are often missed. The search finds this number to within 1 point. That is its resolution, not its precision: another seed can give a different number.
 - **No change between the base and the candidate.** This is a noise check: every alarm here is false. Compare Ichnaea with a rule that blocks whenever the mean falls by 3 points.
 - **Bound clears the limit when nothing changes.** The share of runs whose bound clears your limit. Pass would also need both statistical results validated for this design. Today no run can pass.
 

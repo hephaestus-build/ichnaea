@@ -21,7 +21,7 @@ describe("while the validated margin floor is not set (decision 0015)", () => {
     expect(VALIDATED_MARGIN_FLOOR_SET).toBe(false);
   });
 
-  it("a realistic run with a real drop gives REGRESSION and blocks", async () => {
+  it("a detected drop blocks when the suite opts in", async () => {
     const s = await scenario({
       cases: 60,
       replicates: 3,
@@ -30,19 +30,17 @@ describe("while the validated margin floor is not set (decision 0015)", () => {
       margin: 0.05,
     });
     const d = await run(s);
-    expect(d.verdict).toBe("REGRESSION");
+    expect(d.reasonCode).toBe("DROP_IN_THESE_RUNS_ONLY");
     expect(d.measures[0]?.comparisons[0]).toMatchObject({
       regression: { validated: true, limitations: [] },
       nonInferiority: { validated: false, limitations: [MARGIN_FLOOR_NOT_SET] },
     });
     expect(d.measures[0]?.comparisons[0]?.regressionPAdjusted as number).toBeLessThanOrEqual(0.05);
-    expect(exitCode(d, s.plan.policy)).toBe(1);
+    expect(exitCode(d, { ...s.plan.policy, onRunDrop: "block" })).toBe(1);
   });
 
-  it("no run passes, whatever its cases, trials, rates, change or margin", () => {
-    // The per-measure rule on counts over a grid; the run is PASS only when every measure is
-    // NON-INFERIOR, so no NON-INFERIOR measure means no PASS.
-    const verdicts = new Set<string>();
+  it("the counts-only API detects drops without returning a regression verdict", () => {
+    const reasons = new Set<string | undefined>();
     for (const n of [5, 17, 60])
       for (const r of [2, 3])
         for (const base of [r, r - 1])
@@ -62,14 +60,13 @@ describe("while the validated margin floor is not set (decision 0015)", () => {
                 seed: 1,
                 measures: [{ measure: "app/m", margin, valueType: "binary", cases }],
               }).get("app/m");
-              verdicts.add(v?.verdict ?? "none");
-              expect(v?.verdict, JSON.stringify({ n, r, base, change, margin })).not.toBe(
-                "NON-INFERIOR",
+              reasons.add(v?.reasonCode);
+              expect(v?.verdict, JSON.stringify({ n, r, base, change, margin })).toBe(
+                "INCONCLUSIVE",
               );
               expect(v?.comparison?.nonInferiority.limitations).toContain(MARGIN_FLOOR_NOT_SET);
             }
-    // The grid reaches both verdicts that remain.
-    expect([...verdicts].toSorted()).toEqual(["INCONCLUSIVE", "REGRESSION"]);
+    expect(reasons).toEqual(new Set([undefined, "DROP_IN_THESE_RUNS_ONLY"]));
   });
 
   it("an unchanged candidate is INCONCLUSIVE with the floor's reason, and a report policy lets it through", async () => {

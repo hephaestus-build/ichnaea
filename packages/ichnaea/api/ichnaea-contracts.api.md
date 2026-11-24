@@ -151,6 +151,10 @@ export const AnalysisPlan: z.ZodObject<{
             block: "block";
             report: "report";
         }>;
+        onRunDrop: z.ZodOptional<z.ZodEnum<{
+            block: "block";
+            report: "report";
+        }>>;
         onEstimateOnly: z.ZodEnum<{
             block: "block";
             report: "report";
@@ -884,6 +888,10 @@ export const CiPolicy: z.ZodObject<{
         block: "block";
         report: "report";
     }>;
+    onRunDrop: z.ZodOptional<z.ZodEnum<{
+        block: "block";
+        report: "report";
+    }>>;
     onEstimateOnly: z.ZodEnum<{
         block: "block";
         report: "report";
@@ -1187,6 +1195,8 @@ export const Decision: z.ZodObject<{
         REGRESSION: "REGRESSION";
     }>>;
     reason: z.ZodString;
+    reasonCode: z.ZodOptional<z.ZodLiteral<"DROP_IN_THESE_RUNS_ONLY">>;
+    cause: z.ZodOptional<z.ZodLiteral<"gate">>;
     scope: z.ZodString;
     plan: z.core.$ZodBranded<z.ZodString, "PlanDigest", "out">;
     run: z.core.$ZodBranded<z.ZodString, "RunId", "out">;
@@ -3343,6 +3353,10 @@ export const Plan: z.ZodObject<{
                 block: "block";
                 report: "report";
             }>;
+            onRunDrop: z.ZodOptional<z.ZodEnum<{
+                block: "block";
+                report: "report";
+            }>>;
             onEstimateOnly: z.ZodEnum<{
                 block: "block";
                 report: "report";
@@ -3509,6 +3523,10 @@ export const Plan: z.ZodObject<{
             block: "block";
             report: "report";
         }>;
+        onRunDrop: z.ZodOptional<z.ZodEnum<{
+            block: "block";
+            report: "report";
+        }>>;
         onEstimateOnly: z.ZodEnum<{
             block: "block";
             report: "report";
@@ -3954,7 +3972,7 @@ export interface Reason {
 }
 
 // @public
-export const REASON_CODES: readonly ["REGRESSION_DETECTED", "HARD_CHECK_FAILED", "PASS", "NO_DECREASE_DETECTED", "NON_INFERIORITY_UNVALIDATED", "MARGIN_NOT_CLEARED", "MARGIN_UNREACHABLE", "MISSING_TRIALS_CHANGE_VERDICT", "REGRESSION_TEST_UNVALIDATED", "INVALID_COVERAGE", "INVALID_BUDGET", "INVALID_NO_BASE_RESULTS", "INVALID_UNDECLARED_CHANGE", "INVALID_RECORDS_MISMATCH", "INVALID_RECORDS_CONTRADICT", "INVALID_HARD_CHECK_MISSING", "INVALID_SUITE_SETUP", "ESTIMATE_ONLY_SINGLE_TRIAL", "ESTIMATE_ONLY_FEW_CASES", "ESTIMATE_ONLY_NO_COMPARISON", "ESTIMATE_ONLY_NO_PRIMARY", "ESTIMATE_ONLY_SAMPLED_CASES", "ESTIMATE_ONLY_EXPLORATORY", "ESTIMATE_ONLY_CACHED_ARM", "ESTIMATE_ONLY_PLACEHOLDER_MARGIN", "ESTIMATE_ONLY_NO_METHOD", "INTERVAL_UNAVAILABLE_NO_METHOD", "INTERVAL_UNAVAILABLE_NO_VALUE", "INTERVAL_UNAVAILABLE_DESCRIPTIVE", "INTERVAL_UNAVAILABLE_METHOD", "JUDGE_ARM_BIAS_WITHIN_BOUND", "JUDGE_DIAGNOSTIC", "RATERS_BELOW_FLOOR", "JUDGE_BELOW_RATERS", "ARM_BIAS_NOT_SHOWN_SMALL", "ATTENTION_FAILED", "PROBE_FAILED", "JUDGE_NOT_COVERED", "JUDGE_MODEL_NOT_COVERED", "SYSTEM_MODEL_NOT_COVERED", "ANSWER_LENGTH_OUTSIDE", "POPULATION_NOT_COVERED", "JUDGE_CALIBRATION_EXPIRED", "JUDGE_CHANGED", "RUBRIC_CHANGED", "INPUTS_CHANGED", "AGE_EXPIRED"];
+export const REASON_CODES: readonly ["REGRESSION_DETECTED", "HARD_CHECK_FAILED", "DROP_IN_THESE_RUNS_ONLY", "PASS", "NO_DECREASE_DETECTED", "NON_INFERIORITY_UNVALIDATED", "MARGIN_NOT_CLEARED", "MARGIN_UNREACHABLE", "MISSING_TRIALS_CHANGE_VERDICT", "REGRESSION_TEST_UNVALIDATED", "INVALID_COVERAGE", "INVALID_BUDGET", "INVALID_NO_BASE_RESULTS", "INVALID_UNDECLARED_CHANGE", "INVALID_RECORDS_MISMATCH", "INVALID_RECORDS_CONTRADICT", "INVALID_HARD_CHECK_MISSING", "INVALID_SUITE_SETUP", "ESTIMATE_ONLY_SINGLE_TRIAL", "ESTIMATE_ONLY_FEW_CASES", "ESTIMATE_ONLY_NO_COMPARISON", "ESTIMATE_ONLY_NO_PRIMARY", "ESTIMATE_ONLY_SAMPLED_CASES", "ESTIMATE_ONLY_EXPLORATORY", "ESTIMATE_ONLY_CACHED_ARM", "ESTIMATE_ONLY_PLACEHOLDER_MARGIN", "ESTIMATE_ONLY_NO_METHOD", "INTERVAL_UNAVAILABLE_NO_METHOD", "INTERVAL_UNAVAILABLE_NO_VALUE", "INTERVAL_UNAVAILABLE_DESCRIPTIVE", "INTERVAL_UNAVAILABLE_METHOD", "JUDGE_ARM_BIAS_WITHIN_BOUND", "JUDGE_DIAGNOSTIC", "RATERS_BELOW_FLOOR", "JUDGE_BELOW_RATERS", "ARM_BIAS_NOT_SHOWN_SMALL", "ATTENTION_FAILED", "PROBE_FAILED", "JUDGE_NOT_COVERED", "JUDGE_MODEL_NOT_COVERED", "SYSTEM_MODEL_NOT_COVERED", "ANSWER_LENGTH_OUTSIDE", "POPULATION_NOT_COVERED", "JUDGE_CALIBRATION_EXPIRED", "JUDGE_CHANGED", "RUBRIC_CHANGED", "INPUTS_CHANGED", "AGE_EXPIRED"];
 
 // @public
 export const REASON_PARAMS: {
@@ -3993,6 +4011,7 @@ export interface ReasonParams {
     ATTENTION_FAILED: {
         readonly pseudonym: string;
     };
+    DROP_IN_THESE_RUNS_ONLY: NoParams;
     ESTIMATE_ONLY_CACHED_ARM: NoParams;
     ESTIMATE_ONLY_EXPLORATORY: NoParams;
     ESTIMATE_ONLY_FEW_CASES: NoParams;
@@ -4890,6 +4909,10 @@ export const Suite: z.ZodObject<{
             block: "block";
             report: "report";
         }>;
+        onRunDrop: z.ZodOptional<z.ZodEnum<{
+            block: "block";
+            report: "report";
+        }>>;
         onEstimateOnly: z.ZodEnum<{
             block: "block";
             report: "report";

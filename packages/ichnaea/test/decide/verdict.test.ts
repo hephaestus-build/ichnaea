@@ -58,12 +58,12 @@ describe("verdict order: INVALID, a failed hard gate, estimate-only, statistics"
 });
 
 describe("scope sentences come from the records", () => {
-  it("'beyond run-to-run noise' only with at least 2 trials per case and arm", async () => {
-    const pass = await run(
+  it("the scope stays on the compared cases with or without missing trials", async () => {
+    const complete = await run(
       await scenario({ cases: 60, replicates: 3, base: () => 0.97, candidate: () => 0.97 }),
     );
-    expect(pass.scope).toBe("on these 60 cases, beyond run-to-run noise");
-    // One case keeps a single candidate trial: the claim drops the noise clause.
+    expect(complete.scope).toBe("on these 60 cases");
+    // One case keeps a single candidate trial.
     const thin = await run(
       await scenario({
         cases: 60,
@@ -80,14 +80,12 @@ describe("scope sentences come from the records", () => {
     expect(thin.scope).toBe("on these 60 cases");
   });
 
-  it("the REGRESSION reason claims run-to-run noise only where the scope does", async () => {
+  it("a detected drop has the same scope with or without missing trials", async () => {
     const drop = { cases: 60, replicates: 3, base: () => 0.95, candidate: () => 0.8, margin: 0.05 };
     const replicated = await run(await scenario(drop));
-    expect(replicated.verdict).toBe("REGRESSION");
-    expect(replicated.scope).toBe("on these 60 cases, beyond run-to-run noise");
-    expect(replicated.reason).toBe(
-      "Measure app/correct dropped beyond run-to-run noise and is not shown non-inferior.",
-    );
+    expect(replicated.reasonCode).toBe("DROP_IN_THESE_RUNS_ONLY");
+    expect(replicated.scope).toBe("on these 60 cases");
+    expect(replicated.reason).toBe("Measure app/correct dropped in these runs.");
     // case-003 loses 2 of its 3 candidate trials: neither text may claim run-to-run noise.
     const thin = await run(
       await scenario({
@@ -98,9 +96,9 @@ describe("scope sentences come from the records", () => {
             : undefined,
       }),
     );
-    expect(thin.verdict).toBe("REGRESSION");
+    expect(thin.reasonCode).toBe("DROP_IN_THESE_RUNS_ONLY");
     expect(thin.scope).toBe("on these 60 cases");
-    expect(thin.reason).toBe("Measure app/correct dropped and is not shown non-inferior.");
+    expect(thin.reason).toBe("Measure app/correct dropped in these runs.");
   });
 
   it("estimate-only and INVALID decisions make no claim beyond run-to-run noise", async () => {
@@ -132,7 +130,7 @@ describe("scope sentences come from the records", () => {
         applies: (_m, i) => i < 17,
       }),
     );
-    expect(d.scope).toBe("on these 17 cases, beyond run-to-run noise");
+    expect(d.scope).toBe("on these 17 cases");
     expect(d.limitations[0]).toBe(
       "The result is about these 17 cases. It makes no claim about new inputs.",
     );
@@ -165,7 +163,7 @@ describe("the INCONCLUSIVE reason names its cause", () => {
     );
     // In plain words, so a first run of an unchanged candidate does not read as a broken setup.
     expect(d.reason).toBe(
-      "No primary measure regressed, but no candidate can PASS yet: the validated margin floor for non-inferiority is not set.",
+      "No drop was detected in these runs. A statistical pass needs randomized blocks and a validated margin floor.",
     );
     expect(d.reason).toBe(FLOOR_REASON);
   });
@@ -245,11 +243,8 @@ describe("the INCONCLUSIVE reason names its cause", () => {
     );
   });
 
-  it("names missing trials only for the measure that misses them", async () => {
-    // app/a misses no trial; its candidate fails one trial in 5 cases, a REGRESSION on its own.
-    // app/b, app/c and app/d have no candidate value in case-000, so their comparisons are outside
-    // the validated domain and outside the Holm family. Imputing their missing trials brings them
-    // into the family, and app/a no longer regresses.
+  it("keeps the plan's Holm family when three comparisons lose coverage (REQ-51)", async () => {
+    // app/a fails one trial in 5 cases, enough for a REGRESSION if it were the only primary.
     const s = await scenario({
       cases: 60,
       replicates: 3,
@@ -259,25 +254,78 @@ describe("the INCONCLUSIVE reason names its cause", () => {
       measures: ["app/a", "app/b", "app/c", "app/d"],
     });
     const trials = new Map(s.trials.map((t) => [t.id as string, t]));
-    const values = s.values.flatMap((v) => {
+    const complete = s.values.map((v) => {
       const t = trials.get(v.trial);
-      if (t?.arm !== "candidate") return [v];
-      if (v.measure !== "app/a") return t.case === "case-000" ? [] : [v];
+      if (t?.arm !== "candidate" || v.measure !== "app/a") return v;
       const index = Number(t.case?.slice(5));
       return index >= 1 && index <= 5 && t.replicate === 0
+        ? { ...v, value: { type: "binary" as const, pass: false } }
+        : v;
+    });
+    const values = complete.filter((v) => {
+      const t = trials.get(v.trial);
+      return v.measure === "app/a" || t?.arm !== "candidate" || t.case !== "case-000";
+    });
+    const baseline = await run({ ...s, values: complete });
+    const d = await run({ ...s, values });
+    expect(baseline.verdict).toBe("INCONCLUSIVE");
+    expect(d.verdict).toBe("INCONCLUSIVE");
+    expect(d.measures[0]?.comparisons[0]?.regression.validated).toBe(true);
+    expect(d.measures[0]?.comparisons[0]?.regressionP).toBeCloseTo(0.03125);
+    expect(d.measures[0]?.comparisons[0]?.regressionPAdjusted).toBeCloseTo(0.125);
+    expect(d.measures[0]?.comparisons[0]).toEqual(baseline.measures[0]?.comparisons[0]);
+    expect(d.measures.map((m) => m.verdict)).toEqual(Array(4).fill("INCONCLUSIVE"));
+    for (const measure of d.measures.slice(1)) {
+      expect(measure.comparisons[0]?.regression.validated).toBe(false);
+    }
+    expect(d.missingness.sensitivity).toBe("unchanged");
+  });
+
+  it("names missing trials in other primaries when their imputation changes a verdict", async () => {
+    const s = await scenario({
+      cases: 60,
+      replicates: 3,
+      base: () => 1,
+      candidate: () => 1,
+      margin: 0.05,
+      measures: ["app/a", "app/b"],
+    });
+    const trials = new Map(s.trials.map((t) => [t.id as string, t]));
+    const values = s.values.flatMap((v) => {
+      const t = trials.get(v.trial);
+      if (t === undefined) throw new Error("expected a trial for each value");
+      // The missing candidate value in a case where both arms failed can favor app/b on imputation.
+      if (v.measure === "app/b" && t.case === "case-000") {
+        if (t.arm === "candidate" && t.replicate === 0) return [];
+        return [{ ...v, value: { type: "binary" as const, pass: false } }];
+      }
+      // app/b rejects at α/2 and app/a at α. After imputation, app/a's p is the smallest.
+      const index = Number(t.case?.slice(5));
+      return t.arm === "candidate" &&
+        t.replicate === 0 &&
+        index >= 1 &&
+        index <= (v.measure === "app/a" ? 5 : 6)
         ? [{ ...v, value: { type: "binary" as const, pass: false } }]
         : [v];
     });
-    const d = await run({ ...s, values });
+    const d = run({ ...s, values });
+    const a = d.measures[0];
     expect(d.verdict).toBe("INCONCLUSIVE");
-    expect(d.measures.map((m) => m.verdict)).toEqual(Array(4).fill("INCONCLUSIVE"));
-    expect(d.reason).toBe(
-      "Not every primary measure was shown non-inferior. Measure app/a: imputing the missing trials of other primary measures against the verdict changes it. Measures app/b, app/c and app/d: their comparisons are outside the validated domain. This is not a pass.",
+    expect(a?.coverage).toBe(1);
+    expect(a?.comparisons[0]?.regressionPAdjusted).toBeLessThan(s.plan.alpha);
+    expect(a?.sensitivity).toContainEqual(
+      expect.objectContaining({
+        imputation: "against-regression",
+        changesVerdict: true,
+        verdict: "INCONCLUSIVE",
+      }),
     );
-    expect(d.measures[0]?.notes).toContain(
+    expect(d.reason).toContain(
+      "Measure app/a: imputing the missing trials of other primary measures against the verdict changes it",
+    );
+    expect(a?.notes).toContain(
       "imputing the missing trials of other primary measures against this verdict changes it, so it is INCONCLUSIVE (see the sensitivity analysis)",
     );
-    expect(d.reason).not.toMatch(/its missing trials/);
   });
 });
 

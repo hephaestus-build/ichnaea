@@ -46,12 +46,8 @@ describe("reports", () => {
   it("state the scope next to the verdict, so it never reads as a claim about new inputs", async () => {
     const { decision } = await decided();
     const view = decisionView(decision, "synthetic");
-    expect(renderMarkdown(view)).toContain(
-      `**${view.verdict}** on these 40 cases, beyond run-to-run noise: `,
-    );
-    expect(renderHtml(view)).toContain(
-      "<strong>on these 40 cases, beyond run-to-run noise</strong>: ",
-    );
+    expect(renderMarkdown(view)).toContain(`**${view.verdict}** on these 40 cases: `);
+    expect(renderHtml(view)).toContain("<strong>on these 40 cases</strong>: ");
   });
 
   it("carry the verdict as text, a lineage footer, and no forbidden wording", async () => {
@@ -322,7 +318,7 @@ describe("reports", () => {
     expect(lintReport(html)).toEqual([]);
     expect(lintReport(renderMarkdown(view))).toEqual([]);
     const set = decisionView(await decideFloorSet(s), "synthetic");
-    expect(set.verdict).toBe("PASS");
+    expect(set.verdict).toBe("INCONCLUSIVE");
     expect(set.measures[0]?.difference?.bound).toMatch(/^≥ [+−]?\d+\.\d pts$/);
     expect(renderHtml(set)).not.toMatch(/data-col="bound"[^>]*>[^<]*not validated/);
   });
@@ -422,12 +418,12 @@ describe("reports", () => {
     const decision = await decide({ ...s, decidedAt: "2026-11-15T12:00:00Z", ichnaea: "0.0.0" });
     const view = decisionView(decision, "synthetic");
     expect(renderMarkdown(view)).toContain(
-      `**INCONCLUSIVE** on these 60 cases, beyond run-to-run noise: ${FLOOR_NOT_SET_REASON}`,
+      `**INCONCLUSIVE** on these 60 cases: ${FLOOR_NOT_SET_REASON}`,
     );
     expect(renderHtml(view)).toContain(FLOOR_NOT_SET_REASON);
   });
 
-  it("a REGRESSION headline claims no run-to-run noise when a case has fewer than 2 trials in an arm", async () => {
+  it("a headline describes a drop only within these runs", async () => {
     // case-003 loses 2 of its 3 candidate trials.
     const { decision } = await decided({
       cases: 60,
@@ -440,11 +436,11 @@ describe("reports", () => {
           ? "infrastructure_failure"
           : undefined,
     });
-    expect(decision.verdict).toBe("REGRESSION");
+    expect(decision.reasonCode).toBe("DROP_IN_THESE_RUNS_ONLY");
     const view = decisionView(decision, "synthetic");
     const md = renderMarkdown(view);
     expect(md).toContain(
-      "**REGRESSION** on these 60 cases: Measure app/correct dropped and is not shown non-inferior.",
+      "**INCONCLUSIVE** on these 60 cases: Measure app/correct dropped in these runs.",
     );
     expect(md).not.toMatch(/beyond run-to-run noise/);
     expect(renderHtml(view)).not.toMatch(/beyond run-to-run noise/);

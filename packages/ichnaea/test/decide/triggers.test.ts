@@ -122,6 +122,6 @@ describe("trigger factors (REQ-15)", () => {
       candidateConfig: prompt,
       varies: ["prompt.answer", "factor.code.commit"],
     });
-    expect((await decideFloorSet(declared)).verdict).toBe("PASS");
+    expect((await decideFloorSet(declared)).verdict).toBe("INCONCLUSIVE");
   });
 });

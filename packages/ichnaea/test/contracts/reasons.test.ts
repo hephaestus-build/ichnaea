@@ -20,7 +20,6 @@ const texts = entries.flatMap(([code, r]) => [
 
 /** Words the card never uses, with the rule each breaks. */
 const BANNED: ReadonlyArray<readonly [RegExp, string]> = [
-  [/\bdrop(s|ped)?\b/i, "the card says 'decrease', never 'drop'"],
   [/\bat worst\b/i, "no unvalidated confidence claim"],
   [/\bsafe\b/i, "never 'safe'"],
   [/\bsignifican(t|ce)\b/i, "never 'significant'"],
@@ -170,10 +169,12 @@ describe("REASONS", () => {
     }
   });
 
-  it("says that a regression does not establish a loss beyond the limit", () => {
-    expect(REASONS.REGRESSION_DETECTED.sentences.find((s) => s.when === "always")?.text).toBe(
-      "This does not establish that the loss exceeds the {margin}-point limit.",
+  it("defines a detected drop as Inconclusive and reserves Regression for a randomized block result", () => {
+    expect(REASONS.DROP_IN_THESE_RUNS_ONLY.labels).toEqual(["Inconclusive"]);
+    expect(REASONS.DROP_IN_THESE_RUNS_ONLY.sentences[0]?.text).toBe(
+      "A drop was detected in these runs.",
     );
+    expect(REASONS.REGRESSION_DETECTED.meaning).toContain("Reserved");
   });
 
   it("calls a missing trial missing, never a failure", () => {
