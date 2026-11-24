@@ -4,9 +4,10 @@ import type { MustNeverDeclaration } from "../contracts/records/must-never.ts";
 import type { Configuration } from "../contracts/records/configuration.ts";
 /** The smallest decision horizon with one extra block. */
 export declare function defaultBlocks(primaryComparisons: number, alpha: number): number;
-export declare function checkCases(caseSet: CaseSet, cases: readonly Case[]): void;
+export declare const DEFAULT_TRIAL_DEADLINE_MS = 60000;
+export declare function checkCases(caseSet: CaseSet, cases: readonly Case[], purpose?: AnalysisPlan["purpose"]): void;
 /** Planned calls for the block horizon, before any retries. */
-export declare function blockCalls(cases: number, comparisons: number, blocks: number, replicates: number): number;
+export declare function blockCalls(cases: number, comparisons: number, blocks: number, replicates: number, callsPerTrial?: number, arms?: number): number;
 export interface AnalysisInput {
     readonly suite: string;
     readonly suiteDigest: string;
@@ -23,7 +24,10 @@ export interface AnalysisInput {
     readonly applicability: AnalysisPlan["applicability"];
     readonly trialReduction?: TrialReductionRegistration | undefined;
     readonly mustNever?: readonly MustNeverDeclaration[] | undefined;
+    readonly purpose?: AnalysisPlan["purpose"];
     readonly maxCalls?: number | undefined;
+    readonly callsPerTrial?: number | undefined;
+    readonly deadlineMs?: number | undefined;
     readonly policy?: AnalysisPlan["policy"] | undefined;
     readonly ichnaea: string;
 }

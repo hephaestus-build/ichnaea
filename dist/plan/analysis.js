@@ -6,7 +6,8 @@ import { PlanError } from "./resolve.js";
 export function defaultBlocks(primaryComparisons, alpha) {
     return primaryComparisons === 0 ? 1 : Math.ceil(Math.log2(primaryComparisons / alpha)) + 1;
 }
-export function checkCases(caseSet, cases) {
+export const DEFAULT_TRIAL_DEADLINE_MS = 60_000;
+export function checkCases(caseSet, cases, purpose) {
     const byId = new Map(cases.map((entry) => [entry.id, entry]));
     if (byId.size !== cases.length ||
         new Set(caseSet.cases.map((entry) => entry.id)).size !== cases.length ||
@@ -21,7 +22,7 @@ export function checkCases(caseSet, cases) {
             record.pool !== entry.pool ||
             record.family !== entry.family)
             throw new PlanError(`case '${entry.id}' does not match the case set`);
-        if (entry.pool === "sealed")
+        if (entry.pool === "sealed" && purpose !== "confirmation")
             throw new PlanError("a sealed pool needs a confirmation plan");
     }
 }
@@ -31,8 +32,8 @@ const DEFAULT_POLICY = {
     onEstimateOnly: "report",
 };
 /** Planned calls for the block horizon, before any retries. */
-export function blockCalls(cases, comparisons, blocks, replicates) {
-    return cases * (comparisons > 0 ? 2 : 1) * blocks * replicates;
+export function blockCalls(cases, comparisons, blocks, replicates, callsPerTrial = 1, arms = comparisons > 0 ? 2 : 1) {
+    return cases * arms * blocks * replicates * callsPerTrial;
 }
 export function resolveAnalysis(input) {
     const holm = input.primary.map((entry) => entry.measure);
@@ -103,7 +104,11 @@ export function resolveAnalysis(input) {
         ...(reduction === undefined ? {} : { trialReduction: reduction }),
         ...(input.mustNever === undefined ? {} : { mustNever: input.mustNever }),
         base: { role: "base", identity: configurationIdentity(input.base) },
-        maxCalls: input.maxCalls ?? blockCalls(input.caseSet.cases.length, holm.length, blocks, replicates),
+        maxCalls: input.maxCalls ??
+            blockCalls(input.caseSet.cases.length, holm.length, blocks, replicates, input.callsPerTrial),
+        ...(input.callsPerTrial === undefined ? {} : { callsPerTrial: input.callsPerTrial }),
+        ...(input.deadlineMs === undefined ? {} : { deadlineMs: input.deadlineMs }),
+        ...(input.purpose === undefined ? {} : { purpose: input.purpose }),
         policy: input.policy ?? DEFAULT_POLICY,
         ichnaea: input.ichnaea,
     });

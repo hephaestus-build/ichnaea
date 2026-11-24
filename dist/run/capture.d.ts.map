@@ -1,0 +1,1 @@
+{"version":3,"file":"capture.d.ts","sourceRoot":"","sources":["../../src/run/capture.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,WAAW,EAAE,MAAM,gCAAgC,CAAC;AAElE,MAAM,MAAM,OAAO,GAAG,IAAI,CAAC,WAAW,EAAE,QAAQ,GAAG,SAAS,GAAG,WAAW,GAAG,WAAW,CAAC,CAAC;AAE1F,6FAA6F;AAC7F,wBAAgB,aAAa,CAAC,MAAM,EAAE,OAAO,GAAG,SAAS,GAAG,cAAc,GAAG,WAAW,CAKvF"}

@@ -1,3 +1,4 @@
+import { RunPurpose } from "./run-registration.js";
 import * as z from "zod";
 import { none } from "../data-class.js";
 import { CaseId, ConfigurationIdentity, Digest, GateId, MeasureId, RunId, SemVer, SuiteId, Text, } from "../primitives.js";
@@ -53,6 +54,9 @@ export const AnalysisPlan = z.strictObject({
         identity: none(ConfigurationIdentity),
     }),
     maxCalls: none(z.int().min(0)),
+    callsPerTrial: none(z.int().positive()).optional(),
+    deadlineMs: none(z.int().positive().max(2_147_483_647)).optional(),
+    purpose: none(RunPurpose).optional(),
     policy: CiPolicy,
     ichnaea: none(SemVer),
 });

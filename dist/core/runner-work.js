@@ -4,7 +4,8 @@ import { hostname } from "node:os";
 import { basename, join } from "node:path";
 import * as z from "zod";
 import { canonicalize } from "../contracts/canonical.js";
-import { Json } from "../contracts/primitives.js";
+import { CaseId, Json } from "../contracts/primitives.js";
+import { RunFailure } from "../contracts/records/run-registration.js";
 import { TrialIdentity, WorkerReady } from "../contracts/records/worker.js";
 import { CallLedger } from "./ledger.js";
 import { publishRecord } from "./publish-record.js";
@@ -18,7 +19,15 @@ const block = z.int().nonnegative();
 const BlockStartSchema = z.strictObject({
     kind: z.literal("block-start"),
     block,
-    first: z.enum(["base", "candidate"]),
+    first: z.enum(["base", "candidate"]).optional(),
+    plannedBlock: block.optional(),
+    draws: z
+        .array(z.strictObject({
+        case: CaseId,
+        replicate: z.int().nonnegative(),
+        first: z.enum(["base", "candidate"]),
+    }))
+        .optional(),
 });
 const TakeoverCause = z.enum(["dead-pid", "expired-lease"]);
 const EntrySchema = z.discriminatedUnion("kind", [
@@ -30,10 +39,15 @@ const EntrySchema = z.discriminatedUnion("kind", [
         cause: TakeoverCause,
     }),
     BlockStartSchema,
+    z.strictObject({
+        kind: z.literal("run-failed"),
+        reason: RunFailure,
+    }),
     z.strictObject({ kind: z.literal("block-abandoned"), block }),
     z.strictObject({ kind: z.literal("block-complete"), block }),
     z.strictObject({ kind: z.literal("handshake"), block, ready: WorkerReady }),
     z.strictObject({ kind: z.literal("intent"), block, trial: TrialIdentity }),
+    z.strictObject({ kind: z.literal("attempt-expired"), block, trial: TrialIdentity }),
     z.strictObject({ kind: z.literal("outcome"), block, trial: TrialIdentity, result: Json }),
 ]);
 function hasCode(error, code) {
@@ -163,7 +177,7 @@ export class RunWork {
             }
         }
     }
-    static async open(root, run, receipt) {
+    static async open(root, run, receipt, mode) {
         const directory = runDirectory(root, "work", run);
         const sealed = runDirectory(root, "runs", run);
         if (existsSync(sealed))
@@ -175,6 +189,11 @@ export class RunWork {
             const journal = join(directory, "journal");
             await mkdir(journal, { recursive: true });
             const entries = await readEntries(journal);
+            const prepared = existsSync(join(directory, "prepared.json"));
+            if (mode === "new" && (prepared || entries.length > 0))
+                throw new Error(`run '${run}' already has a work area; use --resume`);
+            if (mode === "resume" && (!prepared || entries.length === 0))
+                throw new Error(`run '${run}' has no resumable plan`);
             const work = new RunWork(root, run, directory, lease, entries);
             if (receipt && receipt.run !== run)
                 throw new Error("receipt belongs to another run");
@@ -236,10 +255,11 @@ export class RunWork {
         return this.#change(async () => {
             if (this.#block)
                 throw new Error("a block is already open");
+            const order = draw(this.#draw);
             const entry = BlockStartSchema.parse({
+                ...(typeof order === "string" ? { first: order } : order),
                 kind: "block-start",
                 block: this.#draw,
-                first: draw(this.#draw),
             });
             await new CallLedger(this.#root).reserve(booking.endpoint, booking.cap, {
                 run: this.#run,
@@ -267,6 +287,13 @@ export class RunWork {
             this.#pending.add(key);
         });
     }
+    async expire(trial) {
+        await this.#change(async () => {
+            if (!this.#pending.has(canonicalize(trial)))
+                throw new Error("expiry has no outstanding intent");
+            await this.#append({ kind: "attempt-expired", block: this.#openBlock(), trial });
+        });
+    }
     async outcome(trial, result) {
         const parsed = TrialIdentity.parse(trial);
         const key = canonicalize(parsed);
@@ -287,6 +314,20 @@ export class RunWork {
             if (this.#pending.size)
                 throw new Error("block has attempts without outcomes");
             await this.#append({ kind: "block-complete", block: this.#openBlock() });
+            this.#block = undefined;
+        });
+    }
+    async fail(reason) {
+        await this.#change(async () => {
+            await this.#append({ kind: "run-failed", reason });
+        });
+    }
+    async abandonBlock(reason) {
+        await this.#change(async () => {
+            if (reason)
+                await this.#append({ kind: "run-failed", reason });
+            await this.#append({ kind: "block-abandoned", block: this.#openBlock() });
+            this.#pending.clear();
             this.#block = undefined;
         });
     }

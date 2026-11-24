@@ -17,6 +17,8 @@ export interface PlanSuiteInput {
     readonly ichnaea: string;
     /** Optional noise run used for the planning model. */
     readonly pilot?: RunRecords;
+    /** Book two base arms for a noise pilot. */
+    readonly noise?: boolean;
 }
 /** The two records that the plan command writes. */
 export interface PlannedSuite {
@@ -32,7 +34,7 @@ export declare function suiteCases(suite: SuiteDefinition, directory: string): P
 export declare function armConfiguration(definition: ArmDefinition, directory: string): Promise<Configuration>;
 /** Resolves the case and measure pins without reading or binding a candidate. */
 export declare function planSuite(input: PlanSuiteInput): Promise<PlannedSuite>;
-export declare function readLockedPlan(path: string): Promise<AnalysisPlan>;
+export declare function readLockedPlan(path: string, bytes?: Uint8Array): Promise<AnalysisPlan>;
 /** Writes the authoring plan and the single lock beside the suite configuration. */
 export declare function writeAnalysis(directory: string, planned: PlannedSuite, frozen: boolean): Promise<void>;
 export interface LockedImport {
@@ -40,10 +42,18 @@ export interface LockedImport {
     readonly definition: SuiteDefinition;
     readonly directory: string;
 }
-export declare function bindImportedPlan(input: LockedImport, host: Host, options: Pick<Plan, "trigger" | "varies" | "createdAt" | "ichnaea"> & {
-    readonly seed: number;
-}): Promise<{
+type BindingOptions = Pick<Plan, "trigger" | "varies" | "createdAt" | "ichnaea"> & {
+    readonly seed: number | string;
+};
+type BoundPlan = {
     readonly cases: readonly Case[];
     readonly plan: Plan;
-}>;
+};
+export declare function bindImportedPlan(input: LockedImport, host: Host, options: BindingOptions): Promise<BoundPlan>;
+/** Binds the already checked analysis or plans an unanchored run from the current suite. */
+export declare function bindRunnerPlan(input: Omit<LockedImport, "planPath">, host: Host, options: BindingOptions, execution: {
+    readonly analysis?: AnalysisPlan | undefined;
+    readonly noise?: boolean;
+}): Promise<BoundPlan>;
+export {};
 //# sourceMappingURL=analysis-plan.d.ts.map

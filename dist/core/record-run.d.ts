@@ -26,10 +26,10 @@ export interface RecordRunInput {
     readonly id: string;
     readonly execution: {
         readonly source: "import" | "re-score";
-    } | {
+    } | (Pick<NonNullable<Run["execution"]>, "registration" | "history" | "failure"> & {
         readonly source: "runner";
         readonly blocks: readonly CapturedBlock[];
-    };
+    });
     readonly producer?: Run["lineage"][number];
     readonly startedAt: string;
     readonly completedAt: string;

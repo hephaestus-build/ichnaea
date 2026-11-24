@@ -44,6 +44,7 @@ const CONFIG_KEYS: ReadonlySet<string> = new Set([
   "plugins",
   "store",
   "suite",
+  "records",
 ] satisfies (keyof Config)[]);
 const PLUGIN_KEYS: ReadonlySet<string> = new Set([
   "id",

@@ -16,6 +16,7 @@ const CONFIG_KEYS = new Set([
     "plugins",
     "store",
     "suite",
+    "records",
 ]);
 const PLUGIN_KEYS = new Set([
     "id",

@@ -427,6 +427,13 @@ export declare const SuiteDefinition: z.ZodObject<{
         }, z.core.$strict>], "kind">;
     }, z.core.$strict>>>;
     maxCalls: z.ZodOptional<z.ZodInt>;
+    purpose: z.ZodOptional<z.ZodEnum<{
+        confirmation: "confirmation";
+        development: "development";
+        regression: "regression";
+    }>>;
+    callsPerTrial: z.ZodOptional<z.ZodInt>;
+    deadlineMs: z.ZodOptional<z.ZodInt>;
     policy: z.ZodOptional<z.ZodObject<{
         onRegression: z.ZodEnum<{
             block: "block";

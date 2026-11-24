@@ -77,6 +77,33 @@ export declare const Run: z.ZodObject<{
                 complete: "complete";
             }>;
         }, z.core.$strict>>>;
+        registration: z.ZodOptional<z.ZodEnum<{
+            exploratory: "exploratory";
+            registered: "registered";
+            unregistered: "unregistered";
+        }>>;
+        history: z.ZodOptional<z.ZodObject<{
+            scope: z.ZodEnum<{
+                records: "records";
+                store: "store";
+            }>;
+            candidates: z.ZodArray<z.ZodObject<{
+                run: z.core.$ZodBranded<z.ZodString, "RunId", "out">;
+                candidate: z.core.$ZodBranded<z.ZodString, "ConfigurationIdentity", "out">;
+                verdict: z.ZodNullable<z.ZodEnum<{
+                    INCONCLUSIVE: "INCONCLUSIVE";
+                    INVALID: "INVALID";
+                    PASS: "PASS";
+                    REGRESSION: "REGRESSION";
+                }>>;
+            }, z.core.$strict>>;
+        }, z.core.$strict>>;
+        failure: z.ZodOptional<z.ZodEnum<{
+            "budget-exceeded": "budget-exceeded";
+            protocol: "protocol";
+            "worker-closed": "worker-closed";
+            "worker-unresponsive": "worker-unresponsive";
+        }>>;
     }, z.core.$strict>>;
     valuesOutsideMask: z.ZodOptional<z.ZodRecord<z.core.$ZodBranded<z.ZodString, "MeasureId", "out">, z.ZodInt>>;
     environment: z.ZodObject<{

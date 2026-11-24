@@ -21,7 +21,7 @@ export interface Command {
     readonly optionalPositionals?: number;
     readonly together?: readonly [string, string];
     readonly worker?: boolean;
-    readonly run: (args: Arguments, load: ModuleLoader) => CommandResult | Promise<CommandResult>;
+    readonly run: (args: Arguments, load: ModuleLoader, diagnostic: (text: string) => void) => CommandResult | Promise<CommandResult>;
 }
 export type ErrorCode = z.infer<typeof CliErrorRecord>["code"];
 export declare class CliError extends Error {

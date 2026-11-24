@@ -112,6 +112,13 @@ export declare const AnalysisPlan: z.ZodObject<{
         identity: z.core.$ZodBranded<z.ZodString, "ConfigurationIdentity", "out">;
     }, z.core.$strict>;
     maxCalls: z.ZodInt;
+    callsPerTrial: z.ZodOptional<z.ZodInt>;
+    deadlineMs: z.ZodOptional<z.ZodInt>;
+    purpose: z.ZodOptional<z.ZodEnum<{
+        confirmation: "confirmation";
+        development: "development";
+        regression: "regression";
+    }>>;
     policy: z.ZodObject<{
         onRegression: z.ZodEnum<{
             block: "block";

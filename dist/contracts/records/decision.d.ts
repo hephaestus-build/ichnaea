@@ -1,11 +1,7 @@
+import { Verdict } from "./run-registration.ts";
 import * as z from "zod";
 /** A run verdict (REQ-53). */
-export declare const Verdict: z.ZodEnum<{
-    INCONCLUSIVE: "INCONCLUSIVE";
-    INVALID: "INVALID";
-    PASS: "PASS";
-    REGRESSION: "REGRESSION";
-}>;
+export { Verdict } from "./run-registration.ts";
 /** A run verdict. */
 export type Verdict = z.infer<typeof Verdict>;
 /** A verdict for one primary measure. */
@@ -1056,6 +1052,27 @@ export declare const Decision: z.ZodObject<{
             }>;
         }, z.core.$strict>>;
     }, z.core.$strict>>>;
+    registration: z.ZodOptional<z.ZodEnum<{
+        exploratory: "exploratory";
+        registered: "registered";
+        unregistered: "unregistered";
+    }>>;
+    history: z.ZodOptional<z.ZodObject<{
+        scope: z.ZodEnum<{
+            records: "records";
+            store: "store";
+        }>;
+        candidates: z.ZodArray<z.ZodObject<{
+            run: z.core.$ZodBranded<z.ZodString, "RunId", "out">;
+            candidate: z.core.$ZodBranded<z.ZodString, "ConfigurationIdentity", "out">;
+            verdict: z.ZodNullable<z.ZodEnum<{
+                INCONCLUSIVE: "INCONCLUSIVE";
+                INVALID: "INVALID";
+                PASS: "PASS";
+                REGRESSION: "REGRESSION";
+            }>>;
+        }, z.core.$strict>>;
+    }, z.core.$strict>>;
     missingness: z.ZodObject<{
         byArm: z.ZodArray<z.ZodObject<{
             arm: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;

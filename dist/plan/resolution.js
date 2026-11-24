@@ -88,7 +88,7 @@ function forMask(mask, rates) {
     return result;
 }
 /** Locks planning resolution using a matching A/A pilot or the default simulation model. */
-export function planResolution(analysis, fixedBlocks, maxCalls, pilot) {
+export function planResolution(analysis, fixedBlocks, maxCalls, pilot, arms) {
     if (pilot)
         validatePilot(analysis, pilot);
     const basis = pilot ? "noise-pilot" : "default-simulation";
@@ -99,7 +99,7 @@ export function planResolution(analysis, fixedBlocks, maxCalls, pilot) {
             : defaultBaseRates(mask.length);
         return { measure, rates };
     });
-    const perBlock = blockCalls(analysis.cases.length, analysis.holm.length, 1, analysis.replicates);
+    const perBlock = blockCalls(analysis.cases.length, analysis.holm.length, 1, analysis.replicates, analysis.callsPerTrial, arms);
     const targets = measures.filter(({ measure }) => measure.targetDrop !== undefined);
     let blocks = analysis.blocks;
     if (!fixedBlocks && targets.length > 0) {

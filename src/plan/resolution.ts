@@ -127,6 +127,7 @@ export function planResolution(
   fixedBlocks: boolean,
   maxCalls: number | undefined,
   pilot: RunRecords | undefined,
+  arms?: number,
 ): Pick<AnalysisPlan, "blocks" | "maxCalls" | "resolution" | "pilot"> {
   if (pilot) validatePilot(analysis, pilot);
   const basis = pilot ? "noise-pilot" : "default-simulation";
@@ -137,7 +138,14 @@ export function planResolution(
       : defaultBaseRates(mask.length);
     return { measure, rates };
   });
-  const perBlock = blockCalls(analysis.cases.length, analysis.holm.length, 1, analysis.replicates);
+  const perBlock = blockCalls(
+    analysis.cases.length,
+    analysis.holm.length,
+    1,
+    analysis.replicates,
+    analysis.callsPerTrial,
+    arms,
+  );
   const targets = measures.filter(({ measure }) => measure.targetDrop !== undefined);
   let blocks = analysis.blocks;
   if (!fixedBlocks && targets.length > 0) {

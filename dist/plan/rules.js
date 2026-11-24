@@ -1,3 +1,4 @@
+import { canonicalize } from "../contracts/canonical.js";
 /**
  * The parts of a configuration that each trigger varies by its kind (REQ-15). Arms may differ in
  * these parts and in the factor keys a plan declares in `varies`; any other difference between the
@@ -20,4 +21,32 @@ export const TRIGGER_VARIES = {
     "production-signal": null,
     manual: [],
 };
+/**
+ * The identity projection of a configuration as factor keys, each with its part: every model,
+ * generation parameter, prompt (by digest) and factor. Two arms with the same keys and values have
+ * the same identity.
+ */
+function identityFactors(config) {
+    const out = new Map();
+    if (!config)
+        return out;
+    for (const m of config.models)
+        out.set(`model.${m.role}`, { value: canonicalize(m), part: "model" });
+    for (const p of config.parameters)
+        out.set(`parameter.${p.name}`, { value: canonicalize(p), part: "parameter" });
+    for (const p of config.prompts)
+        out.set(`prompt.${p.name}`, { value: canonicalize([p.digest, p.status]), part: "prompt" });
+    for (const [n, f] of Object.entries(config.factors))
+        out.set(`factor.${n}`, { value: canonicalize(f), part: f.part });
+    return out;
+}
+/** The factor keys in which two arms differ, with their parts, sorted by key. */
+export function configurationDifferences(base, candidate) {
+    const fb = identityFactors(base);
+    const fc = identityFactors(candidate);
+    return [...new Set([...fb.keys(), ...fc.keys()])]
+        .filter((k) => fb.get(k)?.value !== fc.get(k)?.value)
+        .toSorted()
+        .map((key) => ({ key, part: (fb.get(key) ?? fc.get(key))?.part ?? "other" }));
+}
 //# sourceMappingURL=rules.js.map

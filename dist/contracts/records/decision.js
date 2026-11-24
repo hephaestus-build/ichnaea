@@ -1,3 +1,4 @@
+import { CandidateHistory, Registration, Verdict } from "./run-registration.js";
 import * as z from "zod";
 import { REASON_CODES } from "../reasons.js";
 import { content, none } from "../data-class.js";
@@ -7,7 +8,7 @@ import { MustNeverCount } from "./must-never.js";
 import { Resolution } from "./resolution.js";
 import { Estimand } from "./suite.js";
 /** A run verdict (REQ-53). */
-export const Verdict = z.enum(["PASS", "REGRESSION", "INCONCLUSIVE", "INVALID"]);
+export { Verdict } from "./run-registration.js";
 /** A verdict for one primary measure. */
 export const MeasureVerdict = z.enum([
     "NON-INFERIOR",
@@ -224,6 +225,8 @@ export const Decision = z.strictObject({
     resolution: z.array(Resolution).optional(),
     trialReduction: TrialReduction.optional(),
     mustNever: z.array(MustNeverCount).optional(),
+    registration: Registration.optional(),
+    history: CandidateHistory.optional(),
     missingness: Missingness,
     invalidReasons: none(z.array(Text)),
     limitations: none(z.array(Text)),

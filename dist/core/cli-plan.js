@@ -33,8 +33,8 @@ export const planCommand = {
             ichnaea: CORE_VERSION,
         });
         await writeAnalysis(directory, planned, frozen);
-        const { cases, holm, blocks, replicates } = planned.plan;
-        const calls = blockCalls(cases.length, holm.length, blocks, replicates);
+        const { cases, holm, blocks, replicates, callsPerTrial } = planned.plan;
+        const calls = blockCalls(cases.length, holm.length, blocks, replicates, callsPerTrial, config.suite.arms.candidate ? 2 : undefined);
         const resolution = (planned.plan.resolution ?? []).map((entry) => resolutionLine(entry));
         return {
             code: 0,

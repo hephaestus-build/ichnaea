@@ -22,6 +22,7 @@ const ConfigModule = z.looseObject({
         plugins: z.array(z.custom((value) => typeof value === "object" && value !== null)),
         store: z.string().min(1).optional(),
         suite: SuiteDefinition.optional(),
+        records: z.string().min(1).optional(),
     }),
 });
 /** Loads the configuration file and validates the shape of its default export. */
@@ -42,11 +43,12 @@ export async function loadConfig(path, load = importModule) {
     const parsed = ConfigModule.safeParse(module);
     if (!parsed.success)
         throw new Error(`${path} must export a configuration (defineConfig) as default`);
-    const { store, suite, ...config } = parsed.data.default;
+    const { store, suite, records, ...config } = parsed.data.default;
     return {
         ...config,
         ...(store === undefined ? {} : { store }),
         ...(suite === undefined ? {} : { suite }),
+        ...(records === undefined ? {} : { records }),
     };
 }
 async function configuration(path, load, optional) {

@@ -1,4 +1,4 @@
-import type { FactorPart } from "../contracts/records/configuration.ts";
+import type { Configuration, FactorPart } from "../contracts/records/configuration.ts";
 import type { Plan } from "../contracts/records/plan.ts";
 /**
  * The parts of a configuration that each trigger varies by its kind (REQ-15). Arms may differ in
@@ -11,4 +11,9 @@ import type { Plan } from "../contracts/records/plan.ts";
 export declare const TRIGGER_VARIES: {
     readonly [K in Plan["trigger"]]: readonly FactorPart[] | null;
 };
+/** The factor keys in which two arms differ, with their parts, sorted by key. */
+export declare function configurationDifferences(base: Configuration | undefined, candidate: Configuration | undefined): Array<{
+    readonly key: string;
+    readonly part: FactorPart;
+}>;
 //# sourceMappingURL=rules.d.ts.map

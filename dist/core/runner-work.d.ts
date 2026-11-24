@@ -1,5 +1,7 @@
+import type { PairDraw } from "../contracts/block-order.ts";
 import * as z from "zod";
 import { Json } from "../contracts/primitives.ts";
+import { RunFailure } from "../contracts/records/run-registration.ts";
 import { TrialIdentity, WorkerReady } from "../contracts/records/worker.ts";
 import { type RunRecords } from "../contracts/run-records.ts";
 import { type RegistrationReceipt } from "./registration.ts";
@@ -7,11 +9,15 @@ type Owner = {
     host: string;
     pid: number;
 };
+type BlockOrder = {
+    first?: PairDraw["first"] | undefined;
+    plannedBlock?: number | undefined;
+    draws?: PairDraw[] | undefined;
+};
 type BlockStart = {
     kind: "block-start";
     block: number;
-    first: "base" | "candidate";
-};
+} & BlockOrder;
 type Takeover = {
     kind: "owner-takeover";
     previous: Owner;
@@ -26,11 +32,18 @@ type Entry = {
     kind: "block-abandoned" | "block-complete";
     block: number;
 } | {
+    kind: "run-failed";
+    reason: z.infer<typeof RunFailure>;
+} | {
     kind: "handshake";
     block: number;
     ready: WorkerReady;
 } | {
     kind: "intent";
+    block: number;
+    trial: TrialIdentity;
+} | {
+    kind: "attempt-expired";
     block: number;
     trial: TrialIdentity;
 } | {
@@ -49,15 +62,18 @@ export declare class RunWork {
     #private;
     readonly directory: string;
     private constructor();
-    static open(root: string, run: string, receipt?: RegistrationReceipt): Promise<RunWork>;
+    static open(root: string, run: string, receipt?: RegistrationReceipt, mode?: "new" | "resume"): Promise<RunWork>;
     receipt(): RegistrationReceipt | undefined;
     entries(): Promise<Entry[]>;
     /** Book the entire block before emitting any attempt intent. A dead runner cannot refund it. */
-    startBlock(booking: BlockBooking, draw: (number: number) => BlockStart["first"]): Promise<BlockStart>;
+    startBlock(booking: BlockBooking, draw: (number: number) => PairDraw["first"] | BlockOrder): Promise<BlockStart>;
     handshake(ready: WorkerReady): Promise<void>;
     intent(trial: z.input<typeof TrialIdentity>): Promise<void>;
+    expire(trial: TrialIdentity): Promise<void>;
     outcome(trial: z.input<typeof TrialIdentity>, result: z.infer<typeof Json>): Promise<void>;
     completeBlock(): Promise<void>;
+    fail(reason: z.infer<typeof RunFailure>): Promise<void>;
+    abandonBlock(reason?: z.infer<typeof RunFailure>): Promise<void>;
     seal(records: RunRecords): Promise<void>;
     close(): Promise<void>;
 }

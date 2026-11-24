@@ -9,8 +9,14 @@ import { Case, CaseSet } from "../contracts/records/case.ts";
 import { Plan } from "../contracts/records/plan.ts";
 import { Configuration } from "../contracts/records/configuration.ts";
 import { sha256Hex } from "../contracts/sha256.ts";
-import { checkCases, lockFor, resolveAnalysis } from "../plan/analysis.ts";
+import {
+  checkCases,
+  DEFAULT_TRIAL_DEADLINE_MS,
+  lockFor,
+  resolveAnalysis,
+} from "../plan/analysis.ts";
 import type { RunRecords } from "../contracts/run-records.ts";
+import { configurationDifferences } from "../plan/rules.ts";
 import { planResolution } from "../plan/resolution.ts";
 import { PlanError } from "../plan/resolve.ts";
 
@@ -31,6 +37,9 @@ export interface PlanSuiteInput {
   readonly ichnaea: string;
   /** Optional noise run used for the planning model. */
   readonly pilot?: RunRecords;
+  /** Book two base arms for a noise pilot. */
+
+  readonly noise?: boolean;
 }
 
 /** The two records that the plan command writes. */
@@ -83,7 +92,7 @@ export async function suiteCases(
         digest: caseSetDigest(entries),
         cases: entries,
       });
-  checkCases(caseSet, cases);
+  checkCases(caseSet, cases, suite.purpose);
   return { cases, caseSet };
 }
 
@@ -231,16 +240,23 @@ export async function planSuite(input: PlanSuiteInput): Promise<PlannedSuite> {
     measures,
     applicability,
     ichnaea: input.ichnaea,
+    callsPerTrial: suite.callsPerTrial ?? 1,
+    deadlineMs: suite.deadlineMs ?? DEFAULT_TRIAL_DEADLINE_MS,
   });
+  const armsToBook = input.noise || arms.candidate !== undefined || primary.length > 0 ? 2 : 1;
   const resolved = AnalysisPlan.parse({
     ...plan,
-    ...planResolution(plan, suite.blocks !== undefined, suite.maxCalls, input.pilot),
+    ...planResolution(plan, suite.blocks !== undefined, suite.maxCalls, input.pilot, armsToBook),
   });
   return { plan: resolved, lock: lockFor(resolved) };
 }
 
-export async function readLockedPlan(path: string): Promise<AnalysisPlan> {
-  const plan = AnalysisPlan.parse(await jsonFile(path));
+export async function readLockedPlan(path: string, bytes?: Uint8Array): Promise<AnalysisPlan> {
+  const plan = AnalysisPlan.parse(
+    bytes === undefined
+      ? await jsonFile(path)
+      : JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)),
+  );
   const lock = AnalysisLock.parse(await jsonFile(join(dirname(path), "ichnaea.lock")));
   if (digest(lock) !== digest(lockFor(plan)))
     throw new PlanError("the plan does not match ichnaea.lock");
@@ -280,12 +296,47 @@ export interface LockedImport {
   readonly directory: string;
 }
 
+type BindingOptions = Pick<Plan, "trigger" | "varies" | "createdAt" | "ichnaea"> & {
+  readonly seed: number | string;
+};
+type BoundPlan = { readonly cases: readonly Case[]; readonly plan: Plan };
+
 export async function bindImportedPlan(
   input: LockedImport,
   host: Host,
-  options: Pick<Plan, "trigger" | "varies" | "createdAt" | "ichnaea"> & { readonly seed: number },
-): Promise<{ readonly cases: readonly Case[]; readonly plan: Plan }> {
-  const analysis = await readLockedPlan(input.planPath);
+  options: BindingOptions,
+): Promise<BoundPlan> {
+  return bindAnalysis(await readLockedPlan(input.planPath), input, host, options, undefined);
+}
+
+/** Binds the already checked analysis or plans an unanchored run from the current suite. */
+export async function bindRunnerPlan(
+  input: Omit<LockedImport, "planPath">,
+  host: Host,
+  options: BindingOptions,
+  execution: { readonly analysis?: AnalysisPlan | undefined; readonly noise?: boolean },
+): Promise<BoundPlan> {
+  const analysis =
+    execution.analysis ??
+    (
+      await planSuite({
+        suite: input.definition,
+        directory: input.directory,
+        ichnaea: options.ichnaea,
+        host,
+        noise: execution.noise === true,
+      })
+    ).plan;
+  return bindAnalysis(analysis, input, host, options, { noise: execution.noise === true });
+}
+
+async function bindAnalysis(
+  analysis: AnalysisPlan,
+  input: Omit<LockedImport, "planPath">,
+  host: Host,
+  options: BindingOptions,
+  execution: { readonly noise: boolean } | undefined,
+): Promise<BoundPlan> {
   const suite = SuiteDefinition.parse(input.definition);
   const { arms: definitions, ...rules } = suite;
   if (suite.trialReduction && definitions.candidate !== undefined)
@@ -311,16 +362,36 @@ export async function bindImportedPlan(
   if (baseIdentity !== analysis.base.identity)
     throw new PlanError("the base configuration differs from the locked plan");
 
-  const arms = [{ name: "base", role: "base", identity: baseIdentity, configuration: base }];
-  if (definitions.candidate !== undefined) {
-    const candidate = await armConfiguration(definitions.candidate, input.directory);
+  const armName = (role: string): string =>
+    execution ? `arm-${digest(["worker-arm", options.seed, role]).slice(7, 23)}` : role;
+  const runs = execution ? { runs: true } : {};
+  const arms = [
+    { ...runs, name: armName("base"), role: "base", identity: baseIdentity, configuration: base },
+  ];
+  const candidate = execution?.noise
+    ? base
+    : definitions.candidate === undefined
+      ? undefined
+      : await armConfiguration(definitions.candidate, input.directory);
+  if (candidate) {
     arms.push({
-      name: "candidate",
+      ...runs,
+      name: armName("candidate"),
       role: "candidate",
       identity: configurationIdentity(candidate),
       configuration: candidate,
     });
   }
+  const estimateReason =
+    execution === undefined
+      ? "the results were imported"
+      : execution.noise
+        ? "the noise run used the base configuration on both arms"
+        : arms.length === 1
+          ? "the run used one arm"
+          : analysis.primary.length === 0 || analysis.method === "estimate-only"
+            ? "the analysis plan supports estimates"
+            : undefined;
   const trials = [];
   for (let block = 0; block < analysis.blocks; block++) {
     for (const entry of analysis.cases) {
@@ -342,6 +413,9 @@ export async function bindImportedPlan(
   }
   const plan = Plan.parse({
     ...options,
+    ...(execution && candidate
+      ? { varies: configurationDifferences(base, candidate).map(({ key }) => key) }
+      : {}),
     schema: "ichnaea.plan/1",
     analysis,
     suite: analysis.suite,
@@ -349,8 +423,8 @@ export async function bindImportedPlan(
     suiteDigest: analysis.suiteDigest,
     caseSet: analysis.caseSet,
     caseSetDigest: analysis.caseSetDigest,
-    mode: "estimate-only",
-    modeReasons: ["the results were imported"],
+    mode: estimateReason === undefined ? "decision" : "estimate-only",
+    modeReasons: estimateReason === undefined ? [] : [estimateReason],
     estimand: analysis.estimand,
     alpha: analysis.alpha,
     replicates: analysis.replicates,
@@ -369,10 +443,14 @@ export async function bindImportedPlan(
         primary.margin === undefined ? "No margin registered" : "From the analysis plan",
     })),
     secondary: analysis.secondary,
-    hardGates: analysis.hardGates,
+    hardGates: execution?.noise ? [] : analysis.hardGates,
     policy: analysis.policy,
     power: [],
-    budget: { worstCaseCalls: 0, maxCalls: analysis.maxCalls },
+    budget: {
+      worstCaseCalls: execution === undefined ? 0 : trials.length * (analysis.callsPerTrial ?? 1),
+      maxCalls: analysis.maxCalls,
+      ...(execution === undefined ? {} : { callsPerTrial: analysis.callsPerTrial ?? 1 }),
+    },
     trials,
     seed: { algorithm: "mt19937", value: String(options.seed) },
   });

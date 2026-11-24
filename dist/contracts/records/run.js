@@ -2,6 +2,7 @@ import * as z from "zod";
 import { PairDrawRecord } from "../block-order.js";
 import { CLOSED_KEY, none } from "../data-class.js";
 import { Digest, MeasureId, PlanDigest, RunId, Seed, SemVer, Text, Timestamp, TrialId, } from "../primitives.js";
+import { CandidateHistory, Registration, RunFailure } from "./run-registration.js";
 import { Arm, LineageItem } from "./plan.js";
 import { Outcome } from "./trial.js";
 /** The runtime that computed a record: its name, version, operating system and architecture. */
@@ -42,6 +43,9 @@ export const Run = z.strictObject({
         analysisPlan: none(Digest),
         seed: Seed.optional(),
         blocks: z.array(ExecutedBlock).optional(),
+        registration: Registration.optional(),
+        history: CandidateHistory.optional(),
+        failure: none(RunFailure).optional(),
     })
         .optional(),
     /** Counts of supplied applicable values that the writer dropped outside the locked mask. */

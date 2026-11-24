@@ -7,8 +7,10 @@ import { importCommand } from "./core/cli-import.js";
 import { planCommand } from "./core/cli-plan.js";
 import { argumentsFor, CliError, COMMON_OPTIONS, CONFIG_OPTION, jsonRequested, } from "./core/command-grammar.js";
 import { decideCommand, reportCommand } from "./core/commands.js";
+import { runCommand } from "./core/run-command.js";
 import { testMeasure } from "./core/measures.js";
 import { CORE_VERSION } from "./core/version.js";
+import { workerCommand } from "./core/worker-check.js";
 import { TRIGGER_VARIES } from "./plan/rules.js";
 export { loadConfig } from "./core/cli-config.js";
 const schemaCommand = {
@@ -87,6 +89,8 @@ const COMMANDS = [
     decideCommand,
     reportCommand,
     planCommand,
+    workerCommand,
+    runCommand,
     doctorCommand,
     helpCommand,
     versionCommand,
@@ -174,7 +178,7 @@ export async function main(argv, out = (text) => process.stdout.write(`${text}\n
         const args = argumentsFor(command, globalJson ? ["--json", ...rest] : rest);
         const result = args.values["help"] === true
             ? help(command === helpCommand ? undefined : command)
-            : await command.run(args, load);
+            : await command.run(args, load, err);
         if (json)
             out(JSON.stringify(Json.parse(result.json)));
         else

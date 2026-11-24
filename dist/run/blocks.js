@@ -1,6 +1,7 @@
-import { canonicalize, digest } from "../contracts/canonical.js";
 import { pairFirst } from "../contracts/block-order.js";
+import { canonicalize, digest } from "../contracts/canonical.js";
 import { Plan } from "../contracts/records/plan.js";
+import { captureStatus } from "./capture.js";
 function count(value, what, minimum = 1) {
     if (!Number.isSafeInteger(value) || value < minimum)
         throw new Error(`invalid ${what}`);
@@ -48,6 +49,8 @@ function slotsByBlock(plan) {
         })).flat());
     });
 }
+export class InsufficientCallBudget extends Error {
+}
 /** Schedules an already bound analysis. The caller supplies the clock and transports attempts. */
 export class BlockRunner {
     planDigest;
@@ -61,7 +64,7 @@ export class BlockRunner {
     #plannedBlock = 0;
     #spent = 0;
     #halt;
-    constructor(plan, options) {
+    constructor(plan, options, history = []) {
         count(options.capacity, "worker capacity");
         count(options.maxAttempts, "retry horizon");
         if (!Number.isFinite(options.deadlineMs) || options.deadlineMs <= 0)
@@ -79,31 +82,38 @@ export class BlockRunner {
         if (this.#callsPerTrial * plan.trials.length > this.#cap)
             throw new Error("the planned attempts exceed the run budget");
         this.planDigest = digest(this.#plan);
+        for (const block of history) {
+            const slots = this.#slots[this.#plannedBlock];
+            if (!slots ||
+                block.block !== this.#nextBlock ||
+                block.plannedBlock !== this.#plannedBlock ||
+                canonicalize(block.draws) !== canonicalize(this.#order(slots, block.block).draws))
+                throw new Error("the run journal does not match the planned block order");
+            count(block.calls, "journal call count", 0);
+            const reserved = slots.length * this.#callsPerTrial;
+            this.#nextBlock++;
+            if (block.status === "complete") {
+                if (block.calls > reserved)
+                    throw new Error("the run journal completed an over-budget block");
+                this.#spent += block.calls;
+                this.#plannedBlock++;
+            }
+            else
+                this.#spent += Math.max(reserved, block.calls);
+        }
+        if (this.#spent > this.#cap)
+            this.#halt = "the run exceeded its call budget";
+    }
+    get stopped() {
+        return this.#halt !== undefined;
     }
     get calls() {
         return this.#spent + (this.#active?.calls ?? 0);
     }
-    startBlock() {
-        if (this.#halt)
-            throw new Error(this.#halt);
-        if (this.#active)
-            throw new Error("finish or abandon the active block first");
-        const slots = this.#slots[this.#plannedBlock];
-        if (!slots)
-            return undefined;
-        const reserved = slots.length * this.#callsPerTrial;
-        const remaining = this.#slots.length - this.#plannedBlock;
-        if (this.#spent + remaining * reserved > this.#cap)
-            throw new Error("insufficient call budget to finish the planned blocks");
+    #order(slots, block) {
         const draws = [];
-        const block = {
-            block: this.#nextBlock,
-            plannedBlock: this.#plannedBlock,
-            draws,
-        };
-        this.#nextBlock++;
-        const [firstArm] = this.#plan.arms;
         const pending = [];
+        const [firstArm] = this.#plan.arms;
         const width = this.#plan.arms.length;
         for (let index = 0; index < slots.length; index += width) {
             const a = slots[index];
@@ -116,12 +126,27 @@ export class BlockRunner {
             const b = slots[index + 1];
             if (!b)
                 throw new Error("missing trial at the end of a pair");
-            const first = pairFirst(this.#plan.seed, block.block, a);
+            const first = pairFirst(this.#plan.seed, block, a);
             draws.push({ case: a.case, replicate: a.replicate, first });
-            const ordered = firstArm?.role === first ? [a, b] : [b, a];
-            for (const slot of ordered)
+            for (const slot of firstArm?.role === first ? [a, b] : [b, a])
                 pending.push({ slot, first, attempt: 0, calls: 0 });
         }
+        return { draws, pending };
+    }
+    startBlock() {
+        if (this.#halt)
+            throw new Error(this.#halt);
+        if (this.#active)
+            throw new Error("finish or abandon the active block first");
+        const slots = this.#slots[this.#plannedBlock];
+        if (!slots)
+            return undefined;
+        const reserved = slots.length * this.#callsPerTrial;
+        const remaining = this.#slots.length - this.#plannedBlock;
+        if (this.#spent + remaining * reserved > this.#cap)
+            throw new InsufficientCallBudget("insufficient call budget to finish the planned blocks");
+        const { draws, pending } = this.#order(slots, this.#nextBlock);
+        const block = { block: this.#nextBlock++, plannedBlock: this.#plannedBlock, draws };
         this.#active = {
             block,
             reserved,
@@ -132,10 +157,10 @@ export class BlockRunner {
         };
         return { ...block, draws: draws.map((draw) => ({ ...draw })) };
     }
-    dispatch(now) {
+    dispatch(now, capacity = this.#options.capacity) {
         time(now);
         const active = this.#active;
-        if (this.#halt || !active || active.flight.size >= this.#options.capacity)
+        if (this.#halt || !active || active.flight.size >= Math.min(capacity, this.#options.capacity))
             return undefined;
         if ([...active.flight.values()].some(({ deadline }) => now >= deadline))
             return undefined;
@@ -189,7 +214,9 @@ export class BlockRunner {
             this.#halt = "the worker failed the protocol";
             return this.#settle(active, attempt, progress, calls, "protocol");
         }
-        const retry = (cause === "infrastructure" || cause === "not_run") &&
+        const retry = (cause === "infrastructure" ||
+            cause === "not_run" ||
+            (cause === undefined && captureStatus(result) === "not-captured")) &&
             progress.attempt < this.#options.maxAttempts &&
             calls < attempt.calls;
         return this.#settle(active, attempt, progress, calls, retry ? "retry" : "record");
@@ -228,11 +255,11 @@ export class BlockRunner {
         this.#active = undefined;
         return { ...active.block, status: "complete" };
     }
-    abandonBlock() {
+    abandonBlock(reason) {
         const active = this.#active;
         if (!active)
             throw new Error("there is no active block");
-        if (!this.#halt && active.pending.length === 0 && active.flight.size === 0)
+        if (!reason && !this.#halt && active.pending.length === 0 && active.flight.size === 0)
             throw new Error("a settled block must be completed");
         this.#spent += Math.max(active.reserved, active.calls);
         this.#active = undefined;

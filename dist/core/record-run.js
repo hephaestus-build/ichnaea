@@ -212,7 +212,7 @@ export async function recordRun(input) {
     const valid = new Set(trials.filter((t) => t.outcome !== "invalid_configuration").map((t) => t.id));
     const values = [
         ...supplied,
-        ...scoreTrials([...host.measures.values()].filter((m) => planMeasures.has(m.card.id)), trials, byCase, plan.analysis?.applicability),
+        ...scoreTrials([...host.measures.values()].filter((m) => planMeasures.has(m.card.id)), trials.filter((trial) => !(trial.evidence?.length && trial.output === undefined && trial.pointer === undefined)), byCase, plan.analysis?.applicability),
     ].filter((v) => valid.has(v.trial));
     // Gates: a gate with a check is computed here; the importer reports only gates without one.
     const gates = [];
@@ -272,6 +272,13 @@ export async function recordRun(input) {
                     source: input.execution.source,
                     analysisPlan,
                     ...(blocks === undefined ? {} : { seed: plan.seed, blocks }),
+                    ...(input.execution.source === "runner"
+                        ? {
+                            registration: input.execution.registration,
+                            history: input.execution.history,
+                            failure: input.execution.failure,
+                        }
+                        : { registration: "exploratory" }),
                 },
                 ...(Object.keys(valuesOutsideMask).length > 0 ? { valuesOutsideMask } : {}),
             }),
