@@ -53,6 +53,23 @@ function reductionNote(reduction: NonNullable<DecisionView["trialReduction"]>): 
   return `${reduction.measure} defines success. k = ${reduction.k}. Each case has equal weight. The policy assumes fresh trials from the same distribution within each case. Uncertainty unavailable.`;
 }
 
+function agreementLines(agreement: NonNullable<DecisionView["agreement"]>): string[] {
+  const { estimate, interval, counts } = agreement;
+  const value = estimate === null ? "undefined" : estimate.toFixed(4);
+  const limits =
+    interval.lower === null || interval.upper === null
+      ? `No interval is available because ${interval.unavailableReason ?? "the bounds are undefined"}.`
+      : `Descriptive 95% item-cluster percentile interval from ${interval.lower.toFixed(4)} to ${interval.upper.toFixed(4)}.`;
+  const omitted =
+    interval.omittedResamples > 0
+      ? ` ${interval.omittedResamples} of ${interval.resamples} resamples had undefined alpha.`
+      : "";
+  return [
+    `Krippendorff’s alpha (${agreement.metric}) is ${value}. ${limits}${omitted}`,
+    `${counts.pairedUnits} of ${counts.units} units had at least two ratings. They contribute ${counts.pairedRatings} of ${counts.ratings} ratings across ${counts.pairedItems} of ${counts.items} items and ${counts.raters} rater columns.`,
+  ];
+}
+
 /** Renders the CI summary in Markdown (a GitHub job summary or a merge-request note). */
 export function renderMarkdown(view: DecisionView): string {
   const lines: string[] = [];
@@ -77,6 +94,8 @@ export function renderMarkdown(view: DecisionView): string {
       );
     });
   }
+  if (view.agreement)
+    lines.push("", "**Inter-rater agreement**", "", ...agreementLines(view.agreement).map(md));
   const details = measureDetails(view);
   if (details.length > 0)
     lines.push("", "**Measure details**", "", ...details.map((d) => `- ${md(d)}`));
@@ -280,6 +299,13 @@ ${
 ${rows}
 </tbody>
 </table>`
+    : ""
+}
+${
+  view.agreement
+    ? `<h2>Inter-rater agreement</h2>${agreementLines(view.agreement)
+        .map((line) => `<p>${escape(line)}</p>`)
+        .join("")}`
     : ""
 }
 ${view.measures.length > 0 ? `<h2>Measure details</h2>${list(measureDetails(view))}` : ""}

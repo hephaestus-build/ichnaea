@@ -1,6 +1,9 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import * as z from "zod";
+
+import type { RatingSet } from "../calibration/ratings-agreement.ts";
 import { projectForEgress } from "../contracts/egress.ts";
 import { Decision } from "../contracts/records/decision.ts";
 import { canonicalize } from "../contracts/canonical.ts";
@@ -90,6 +93,31 @@ export const decideCommand: CommandDefinition = {
   },
 };
 
+const ratingSet = z.strictObject({
+  metric: z.enum(["nominal", "ordinal", "interval"]),
+  units: z
+    .array(
+      z.strictObject({
+        item: z.string().min(1),
+        stratum: z.string().min(1),
+        raters: z.array(z.number().nullable()).min(2),
+      }),
+    )
+    .min(1),
+}) satisfies z.ZodType<RatingSet>;
+
+async function readRatings(path: string): Promise<RatingSet> {
+  let value: unknown;
+  try {
+    value = JSON.parse(await readFile(path, "utf8"));
+  } catch {
+    throw new Error("cannot read the ratings JSON file");
+  }
+  const parsed = ratingSet.safeParse(value);
+  if (!parsed.success) throw new Error("the ratings file needs a metric and valid rating units");
+  return parsed.data;
+}
+
 export const reportCommand: CommandDefinition = {
   name: "report",
   description: "Render a stored decision as summary.md and report.html, after the recompute check",
@@ -97,6 +125,10 @@ export const reportCommand: CommandDefinition = {
     store: { type: "string", description: "The record store (default .ichnaea)" },
     run: { type: "string", description: "The run ID" },
     json: { type: "boolean", description: "Print the class-none record as JSON" },
+    ratings: {
+      type: "string",
+      description: "Read a canonical JSON ratings set for the agreement section",
+    },
     out: { type: "string", description: "Output directory (default <store>/runs/<run>/report)" },
   },
   async run(values, { out: print, err }) {
@@ -115,9 +147,11 @@ export const reportCommand: CommandDefinition = {
     let markdown: string;
     let html: string;
     try {
+      const ratings =
+        typeof values["ratings"] === "string" ? await readRatings(values["ratings"]) : undefined;
       const result = verifiedReport(
         { ...stored, decision: stored.decision, aa: await store.aaEvidence(stored.plan) },
-        { suite: stored.plan.suite },
+        { suite: stored.plan.suite, ...(ratings ? { ratings } : {}) },
         CORE_VERSION,
       );
       if (result.recalculation) await store.writeRecalculation(runId, result.recalculation);

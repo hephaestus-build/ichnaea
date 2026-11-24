@@ -87,6 +87,7 @@ export interface DecisionRecords extends RunRecords {
 
 // @public
 export interface DecisionView {
+    readonly agreement?: RatingAgreement;
     readonly claim: string;
     readonly differingFactors: readonly string[];
     readonly flips: ReadonlyArray<{
@@ -459,6 +460,45 @@ export interface PrimaryVerdict {
 }
 
 // @public
+export interface RatingAgreement {
+    readonly counts: {
+        readonly items: number;
+        readonly units: number;
+        readonly pairedUnits: number;
+        readonly pairedItems: number;
+        readonly raters: number;
+        readonly ratings: number;
+        readonly pairedRatings: number;
+    };
+    readonly estimate: number | null;
+    readonly interval: {
+        readonly method: "item-cluster-percentile";
+        readonly level: 0.95;
+        readonly validated: false;
+        readonly seed: number;
+        readonly algorithm: string;
+        readonly lower: number | null;
+        readonly upper: number | null;
+        readonly resamples: number;
+        readonly omittedResamples: number;
+        readonly unavailableReason: string | null;
+    };
+    readonly metric: RatingSet["metric"];
+    readonly statistic: "krippendorff-alpha";
+}
+
+// @public
+export interface RatingSet {
+    // Warning: (ae-forgotten-export) The symbol "AlphaMetric" needs to be exported by the entry point index.d.ts
+    readonly metric: AlphaMetric;
+    readonly units: readonly {
+        readonly item: string;
+        readonly stratum: string;
+        readonly raters: readonly (number | null)[];
+    }[];
+}
+
+// @public
 export function recompute(records: DecisionRecords): RecomputeResult;
 
 // @public
@@ -482,6 +522,7 @@ export class ReportError extends Error {
 export interface ReportOptions {
     readonly format: "markdown" | "html" | "json";
     readonly lineage?: Run["lineage"];
+    readonly ratings?: RatingSet;
     readonly suite?: string;
 }
 

@@ -10,6 +10,7 @@ import {
   ordinalAlpha,
   pairChange,
   quantile,
+  sampleItems,
   sensitivity,
   sorted,
   specificity,
@@ -131,6 +132,7 @@ export function bootstrapCalibration(set: LabelColumns, values: RuleValues, rng:
     strata.get(s)!.push(c);
   });
   const all = set.caseOf.map((_, i) => i);
+  const itemAnswers = [...strata.values()].map((cases) => cases.map((c) => answersOf[c]!));
 
   const statistics = statusStatistics(set.scale);
   const tolerance = (name: string): number =>
@@ -152,12 +154,7 @@ export function bootstrapCalibration(set: LabelColumns, values: RuleValues, rng:
   const pairBiases: number[] = [];
   let undefinedResamples = 0;
   for (let r = 0; r < values.resamples; r++) {
-    const answers: number[] = [];
-    for (const cases of strata.values()) {
-      for (let k = 0; k < cases.length; k++) {
-        answers.push(...answersOf[cases[Math.floor(rng.uniform() * cases.length)]!]!);
-      }
-    }
+    const answers = sampleItems(itemAnswers, rng);
     biases.push(armBias(set, answers, value));
     raterAgreement.push(raterStatistic(set.first, set.second, answers, set.weight));
     if (hasPair) {

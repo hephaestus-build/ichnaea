@@ -1,3 +1,5 @@
+import { summarizeRatings, type RatingSet } from "../calibration/ratings-agreement.ts";
+import { seedOf } from "../decide/decide.ts";
 import { canonicalize } from "../contracts/canonical.ts";
 import { projectForEgress } from "../contracts/egress.ts";
 import { Decision } from "../contracts/records/decision.ts";
@@ -23,6 +25,8 @@ export interface ReportOptions {
   readonly suite?: string;
   /** The run's lineage, shown in the footer. Default: none beyond the decision's own. */
   readonly lineage?: Run["lineage"];
+  /** Canonical ratings for a descriptive agreement section. */
+  readonly ratings?: RatingSet;
 }
 
 /** A run and its sealed digests, if they were recorded by the deciding engine. */
@@ -92,8 +96,12 @@ export function verifiedReport(
   );
   const suite = options.suite ?? `run ${decision.run}`;
   const lineage = options.lineage ?? records.run.lineage;
+  const agreement = options.ratings && summarizeRatings(options.ratings, seedOf(records.plan));
   const build = (neutral: boolean): DecisionView => {
-    const view = buildView(projected, suite, lineage, { neutral });
+    const view = {
+      ...buildView(projected, suite, lineage, { neutral }),
+      ...(agreement ? { agreement } : {}),
+    };
     return replay
       ? {
           ...view,
