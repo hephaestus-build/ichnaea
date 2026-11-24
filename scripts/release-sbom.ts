@@ -1,7 +1,7 @@
 // Writes an SBOM (CycloneDX JSON) from what is shipped: it installs the packed package into an
 // empty project (tarball-project.ts) and lets pnpm list that project's production dependencies.
 //
-// The build SBOM (`buildSbom`) describes one build tree of the `build` branch, and
+// The build SBOM (`buildSbom`) describes the package tree, and
 // scripts/build-package.ts writes it into the tree as sbom.cdx.json. It is deterministic: its
 // timestamp is the source commit's committer date and its serial number derives from the source
 // commit, so two builds of one commit give the same bytes.
@@ -21,7 +21,7 @@ import { installTarballs, registryUrl, type Tarball } from "./tarball-project.ts
 /**
  * The namespace of the build SBOMs' serial numbers: each serial number is the UUID version 5 of a
  * source commit's SHA in this namespace. It was drawn at random once. Never change it: the serial
- * numbers of every published build commit derive from it.
+ * numbers of existing builds derive from it.
  */
 export const SERIAL_NAMESPACE = "349797ff-cf93-4b84-ac87-5a356cce1d31";
 
@@ -65,8 +65,8 @@ const byRef = (a: { "bom-ref"?: string; ref?: string }, b: typeof a): number => 
 /**
  * Turns the SBOM that pnpm writes for the scratch project into the SBOM of the build: the package
  * becomes the top-level component, the scratch project leaves, the source commit is named, and
- * nothing depends on the time or the machine. The packed tarball's path and digest leave too: a
- * consumer never installs that tarball, it installs the build commit.
+ * nothing depends on the time or the machine. The packed tarball's path and digest belong to
+ * the release SBOM, which describes the exact file served by npm.
  */
 export function buildBom(
   bom: PnpmBom,

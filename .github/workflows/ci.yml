@@ -56,8 +56,7 @@ jobs:
       - name: Every published study output still matches its code
         working-directory: packages/ichnaea
         run: node scripts/stats/check-sweep-provenance.ts --all
-      # The tree that the build branch would hold for this commit: its manifest runs nothing on
-      # install, and its SBOM describes what it ships.
+      # The package's manifest runs nothing on install, and its SBOM describes what it ships.
       - name: The build tree has a manifest without scripts and an SBOM of what it ships
         run: |
           node scripts/build-package.ts "$RUNNER_TEMP/tree"

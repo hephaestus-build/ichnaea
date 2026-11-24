@@ -1,7 +1,7 @@
 // Checks the package that a consumer installs: packs a build tree with npm, as npm would publish
 // it, and runs publint in strict mode and Are the Types Wrong on that one tarball (REQ-110). The
 // package is ESM only, so attw's esm-only profile leaves out the CommonJS and node10 resolutions.
-// The build-branch workflow writes no build commit unless this passes.
+// A release runs this before packing the tarball it stages.
 // Usage: node scripts/check-package.ts <build tree>   (a directory from scripts/build-package.ts)
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, readdirSync, rmSync } from "node:fs";

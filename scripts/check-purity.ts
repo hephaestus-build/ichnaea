@@ -3,7 +3,7 @@
 // No tracked file cites a private design record: state the rule in place, or cite a decision record
 // in docs/decisions by number.
 //
-// No tracked file is a changeset: the titles on main are the change log (decision 0019).
+// No tracked file is a changeset: the titles on main are the change log (decision 0021).
 //
 // `node scripts/check-purity.ts` checks the repository. `--stdin` and `--env NAME` check text for
 // private records only, such as a pull request title and body that CI passes in environment
@@ -27,7 +27,7 @@ import { trackedFiles } from "./tracked-files.ts";
 
 /**
  * Terms that identify one application. Only the whole word `hephaestus-build`, the GitHub
- * organisation, is allowed: it appears in the repository URL and in pins of the `build` branch.
+ * organisation, is allowed because it appears in the repository URL.
  */
 export const TERMS: ReadonlyArray<readonly [RegExp, string]> = [
   [/hephaestus(?!-build\b)/i, "an application name"],
@@ -214,13 +214,13 @@ function behaviorProblems(
 
 /**
  * Returns one finding per tracked file under `.changeset/`. Ichnaea keeps no Changesets: the
- * conventional commit titles on signed `main` are the change log (decision 0019, point 9).
+ * conventional commit titles on signed `main` are the change log (decision 0021, point 9).
  */
 export function findChangesets(paths: readonly string[]): string[] {
   return paths
     .filter((path) => path.startsWith(".changeset/"))
     .map(
-      (path) => `${path}: a changeset, but the titles on main are the change log (decision 0019)`,
+      (path) => `${path}: a changeset, but the titles on main are the change log (decision 0021)`,
     );
 }
 

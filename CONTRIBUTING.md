@@ -34,9 +34,7 @@ Thank you for helping. Ichnaea is a general framework: it must work for any GenA
 
 A commit pushed to a branch in this repository must be signed. Its commit email must be an address
 verified on your GitHub account, so set `git config user.email` to one before you commit. The
-repository refuses a push that carries an unsigned commit. The `build` branch is the exception:
-only the build workflow writes it, and its commits are reproducible from signed commits on `main`
-instead (decision 0019).
+repository refuses a push that carries an unsigned commit.
 
 A pull request from a fork needs none of this. GitHub creates and signs the commit that enters
 `main`.

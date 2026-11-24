@@ -1,8 +1,6 @@
 // Builds the package and assembles its tree: the shipped package.json, dist/, src/, schemas/,
-// README.md, LICENSE, the SBOM (sbom.cdx.json) and build.json. The `build` branch holds this tree,
-// and a release packs it. The tree is deterministic: the same source commit, lockfile, Node and
-// pnpm give the same bytes and modes, so that anyone can rebuild a build commit and compare
-// (scripts/verify-build.ts).
+// README.md, LICENSE, the SBOM (sbom.cdx.json) and build.json. The release packs this tree.
+// The same source commit, lockfile, Node and pnpm give the same bytes and modes.
 // Usage: node scripts/build-package.ts <empty output directory> [--source-commit <sha>]
 //          [--version <version>]
 // Without --source-commit, the source commit is HEAD. The tree holds the working tree's files.
@@ -268,7 +266,7 @@ export function assemble(tree: string, sourceCommit: string, version?: string): 
     place(join(REPOSITORY, file), tree, relative(PACKAGE, join(REPOSITORY, file)));
   place(join(PACKAGE, "README.md"), tree, "README.md");
   place(join(REPOSITORY, "LICENSE"), tree, "LICENSE");
-  // The bin keeps its executable bit, as git records it on the build branch.
+  // The bin must be executable in the tarball.
   for (const target of Object.values((manifest["bin"] ?? {}) as Record<string, string>))
     chmodSync(join(tree, target), 0o755);
 

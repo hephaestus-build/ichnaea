@@ -355,9 +355,19 @@ describe("the release settings", () => {
       deployment_branch_policy: { protected_branches: false, custom_branch_policies: true },
     });
     expect(readdirSync(join(github, "environments")).toSorted()).toEqual([
-      "build-branch.json",
       "github-pages.json",
       "npm.json",
     ]);
+  });
+
+  it("requires signed commits on every branch", () => {
+    expect(json("rulesets", "signed-commits.json")).toEqual({
+      name: "signed commits",
+      target: "branch",
+      enforcement: "active",
+      conditions: { ref_name: { include: ["~ALL"], exclude: [] } },
+      rules: [{ type: "required_signatures" }],
+      bypass_actors: [],
+    });
   });
 });

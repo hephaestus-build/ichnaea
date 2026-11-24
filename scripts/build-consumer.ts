@@ -20,8 +20,7 @@
 //        node scripts/build-consumer.ts --tree <dir>     # an assembled tree, as the workflows have
 //        node scripts/build-consumer.ts --tarball <file> # a packed tarball, as a release stages it
 //        node scripts/build-consumer.ts --spec @tumaet/ichnaea@<version>
-//        node scripts/build-consumer.ts --spec github:hephaestus-build/ichnaea#<build-commit>
-// The --spec forms install a published version from npm, or a build commit from GitHub, and run
+// The --spec form installs a published version from npm and runs
 // the same checks.
 import { execFileSync, spawnSync } from "node:child_process";
 import {
@@ -400,14 +399,11 @@ if (import.meta.main) {
   const published = `${PACKAGE_NAME}@`;
   if (
     values.spec &&
-    !/^github:hephaestus-build\/ichnaea#[0-9a-f]{40}$/.test(values.spec) &&
     !(
       values.spec.startsWith(published) && RELEASE_VERSION.test(values.spec.slice(published.length))
     )
   )
-    throw new Error(
-      `--spec must be ${published}<version> or github:hephaestus-build/ichnaea#<build commit SHA>, not ${values.spec}`,
-    );
+    throw new Error(`--spec must be ${published}<version>, not ${values.spec}`);
   const work = mkdtempSync(join(tmpdir(), "ichnaea-consumer-"));
   try {
     let spec = values.spec ?? (values.tarball ? `file:${resolve(values.tarball)}` : undefined);

@@ -47,17 +47,13 @@ interface. Update to take it, and run `npm audit signatures`, as the
 Every commit on `main` is signed. The release workflow stages a version only from a `v*` tag whose
 commit is reachable from `main`, and a package owner approves each version on npm. The finish
 workflow, which runs only `main`'s code, gives a version a GitHub release only if its provenance
-names that tag and its commit on `main`. Until the first version is on npm, consumers pin a commit
-of the `build` branch. A build commit names its `main` commit and is reproducible from it, as the
-[README](README.md#before-the-first-npm-release) shows.
+names that tag and its commit on `main`.
 
 ## Scope
 
 Ichnaea is a library and a CLI that run on your machine. In scope:
 
 - the code of the packages in this repository, the CLI included;
-- the build branch: the build workflow, the build tree, its manifest and its SBOM, and the
-  reproducibility check;
 - the release process: the release workflows, the staged tarball and its provenance, the SBOM and
   the checksums;
 - the GitHub Actions workflows in this repository.
@@ -75,7 +71,7 @@ Out of scope:
 - vulnerabilities in third-party dependencies, zod included, without an Ichnaea-specific exploit
   path: report those upstream;
 - code that does not come from a signed commit on `main`: a version on npm without a provenance by
-  the release workflow, or a build commit that is not reproducible from `main`;
+  the release workflow;
 - denial of service through input that you control, and scanner output without a demonstrated
   impact;
 - social engineering or phishing of maintainers or users.
@@ -100,10 +96,8 @@ Independent of this reporting channel, the repository has:
   an earlier version of the same package ([`pnpm-workspace.yaml`](pnpm-workspace.yaml)).
 - **Workflow audit in CI:** actionlint and zizmor check every workflow on each pull request
   ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
-- **Build integrity:** only the build workflow's deploy key, held by a main-only environment,
-  writes the `build` branch, and nobody force-pushes it. Each build commit has an SBOM and a
-  manifest without install scripts, and CI rebuilds it byte for byte from its source commit
-  ([MAINTAINERS.md § The build branch](MAINTAINERS.md#the-build-branch)).
+- **Build integrity:** CI builds the package twice and compares its files. The package includes
+  an SBOM and its manifest has no install scripts.
 - **Release integrity:** only the release team creates a `v*` tag, and nobody moves or deletes
   one. The release workflow can only stage a version on npm, with provenance and no token. A
   package owner approves each version with two-factor authentication, and GitHub releases are
