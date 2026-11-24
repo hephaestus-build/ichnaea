@@ -4,7 +4,7 @@
 import type { TestProjectInlineConfiguration } from "vitest/config";
 
 const root = import.meta.dirname;
-const AREAS = ["contracts", "stats", "calibration", "core", "decide", "report"] as const;
+const AREAS = ["contracts", "stats", "calibration", "core", "run", "decide", "report"] as const;
 
 /**
  * The unit suite of each area, and the tests of the mutation harnesses in a project of their own.
