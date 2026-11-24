@@ -50,7 +50,10 @@ function fromJsonSchema(node: JsonSchema): fc.Arbitrary<unknown> {
     if (Array.isArray(options))
       return fc.oneof(...(options as JsonSchema[]).map((o) => fromJsonSchema(o)));
   }
-  switch (node["type"]) {
+  const type = node["type"];
+  if (Array.isArray(type))
+    return fc.oneof(...type.map((member) => fromJsonSchema({ ...node, type: member })));
+  switch (type) {
     case "string": {
       if (node["format"] === "date-time") return isoDateTime;
       if (node["format"] === "date") return isoDateTime.map((s) => s.slice(0, 10));
