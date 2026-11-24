@@ -1,7 +1,10 @@
-import { canonicalize, digest } from "../contracts/canonical.ts";
 import { type PairDraw, pairFirst } from "../contracts/block-order.ts";
+import { canonicalize, digest } from "../contracts/canonical.ts";
 import { Plan } from "../contracts/records/plan.ts";
 import type { TrialIdentity, TrialResult } from "../contracts/records/worker.ts";
+
+import { type Capture, captureStatus } from "./capture.ts";
+
 type Slot = Plan["trials"][number];
 
 export interface RunnerOptions {
@@ -20,6 +23,10 @@ interface ClosedBlock extends Block {
   readonly status: "complete" | "abandoned";
 }
 
+interface RecoveredBlock extends ClosedBlock {
+  readonly calls: number;
+}
+
 export interface Attempt {
   readonly trial: TrialIdentity;
   readonly block: number;
@@ -35,7 +42,7 @@ interface Settlement {
   readonly disposition: "record" | "retry" | "timeout" | "protocol" | "budget-exceeded";
 }
 
-type Result = Pick<TrialResult, "trial" | "usage" | "failure">;
+type Result = Pick<TrialResult, "trial" | "usage" | "failure"> & Capture;
 
 interface Progress {
   readonly slot: Slot;
@@ -119,7 +126,7 @@ export class BlockRunner {
   #spent = 0;
   #halt: string | undefined;
 
-  constructor(plan: Plan, options: RunnerOptions) {
+  constructor(plan: Plan, options: RunnerOptions, history: readonly RecoveredBlock[] = []) {
     count(options.capacity, "worker capacity");
     count(options.maxAttempts, "retry horizon");
     if (!Number.isFinite(options.deadlineMs) || options.deadlineMs <= 0)
@@ -141,10 +148,56 @@ export class BlockRunner {
     if (this.#callsPerTrial * plan.trials.length > this.#cap)
       throw new Error("the planned attempts exceed the run budget");
     this.planDigest = digest(this.#plan);
+    for (const block of history) {
+      const slots = this.#slots[this.#plannedBlock];
+      if (
+        !slots ||
+        block.block !== this.#nextBlock ||
+        block.plannedBlock !== this.#plannedBlock ||
+        canonicalize(block.draws) !== canonicalize(this.#order(slots, block.block).draws)
+      )
+        throw new Error("the run journal does not match the planned block order");
+      count(block.calls, "journal call count", 0);
+      const reserved = slots.length * this.#callsPerTrial;
+      this.#nextBlock++;
+      if (block.status === "complete") {
+        if (block.calls > reserved)
+          throw new Error("the run journal completed an over-budget block");
+        this.#spent += block.calls;
+        this.#plannedBlock++;
+      } else this.#spent += Math.max(reserved, block.calls);
+    }
+    if (this.#spent > this.#cap) this.#halt = "the run exceeded its call budget";
+  }
+
+  get stopped(): boolean {
+    return this.#halt !== undefined;
   }
 
   get calls(): number {
     return this.#spent + (this.#active?.calls ?? 0);
+  }
+
+  #order(slots: readonly Slot[], block: number): { draws: PairDraw[]; pending: Progress[] } {
+    const draws: PairDraw[] = [];
+    const pending: Progress[] = [];
+    const [firstArm] = this.#plan.arms;
+    const width = this.#plan.arms.length;
+    for (let index = 0; index < slots.length; index += width) {
+      const a = slots[index];
+      if (!a) throw new Error("missing trial at the start of a pair");
+      if (width === 1) {
+        pending.push({ slot: a, attempt: 0, calls: 0 });
+        continue;
+      }
+      const b = slots[index + 1];
+      if (!b) throw new Error("missing trial at the end of a pair");
+      const first = pairFirst(this.#plan.seed, block, a);
+      draws.push({ case: a.case, replicate: a.replicate, first });
+      for (const slot of firstArm?.role === first ? [a, b] : [b, a])
+        pending.push({ slot, first, attempt: 0, calls: 0 });
+    }
+    return { draws, pending };
   }
 
   startBlock(): Block | undefined {
@@ -156,30 +209,8 @@ export class BlockRunner {
     const remaining = this.#slots.length - this.#plannedBlock;
     if (this.#spent + remaining * reserved > this.#cap)
       throw new Error("insufficient call budget to finish the planned blocks");
-    const draws: PairDraw[] = [];
-    const block: Block = {
-      block: this.#nextBlock,
-      plannedBlock: this.#plannedBlock,
-      draws,
-    };
-    this.#nextBlock++;
-    const [firstArm] = this.#plan.arms;
-    const pending: Progress[] = [];
-    const width = this.#plan.arms.length;
-    for (let index = 0; index < slots.length; index += width) {
-      const a = slots[index];
-      if (!a) throw new Error("missing trial at the start of a pair");
-      if (width === 1) {
-        pending.push({ slot: a, attempt: 0, calls: 0 });
-        continue;
-      }
-      const b = slots[index + 1];
-      if (!b) throw new Error("missing trial at the end of a pair");
-      const first = pairFirst(this.#plan.seed, block.block, a);
-      draws.push({ case: a.case, replicate: a.replicate, first });
-      const ordered = firstArm?.role === first ? [a, b] : [b, a];
-      for (const slot of ordered) pending.push({ slot, first, attempt: 0, calls: 0 });
-    }
+    const { draws, pending } = this.#order(slots, this.#nextBlock);
+    const block: Block = { block: this.#nextBlock++, plannedBlock: this.#plannedBlock, draws };
     this.#active = {
       block,
       reserved,
@@ -191,10 +222,11 @@ export class BlockRunner {
     return { ...block, draws: draws.map((draw) => ({ ...draw })) };
   }
 
-  dispatch(now: number): Attempt | undefined {
+  dispatch(now: number, capacity: number = this.#options.capacity): Attempt | undefined {
     time(now);
     const active = this.#active;
-    if (this.#halt || !active || active.flight.size >= this.#options.capacity) return undefined;
+    if (this.#halt || !active || active.flight.size >= Math.min(capacity, this.#options.capacity))
+      return undefined;
     if ([...active.flight.values()].some(({ deadline }) => now >= deadline)) return undefined;
     const next = active.pending.shift();
     if (!next) return undefined;
@@ -249,7 +281,9 @@ export class BlockRunner {
       return this.#settle(active, attempt, progress, calls, "protocol");
     }
     const retry =
-      (cause === "infrastructure" || cause === "not_run") &&
+      (cause === "infrastructure" ||
+        cause === "not_run" ||
+        (cause === undefined && captureStatus(result) === "not-captured")) &&
       progress.attempt < this.#options.maxAttempts &&
       calls < attempt.calls;
     return this.#settle(active, attempt, progress, calls, retry ? "retry" : "record");

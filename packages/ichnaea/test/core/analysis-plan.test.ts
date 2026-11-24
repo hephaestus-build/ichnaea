@@ -7,6 +7,7 @@ import { expect, it } from "vitest";
 
 import { digest } from "../../src/contracts/canonical.ts";
 import { loadConfig, main } from "../../src/cli.ts";
+import { bindRunnerPlan } from "../../src/core/analysis-plan.ts";
 import { CORE_VERSION, createHost, defaultBlocks, FileStore, planSuite } from "../../src/index.ts";
 
 import { card } from "../decide/support/scenario.ts";
@@ -117,6 +118,31 @@ it("locks applicability and keeps a candidate change out of the analysis plan di
       ichnaea: CORE_VERSION,
     });
     expect(digest(library.plan)).toBe(digest(before));
+
+    const binding = { definition: loaded.suite, directory };
+    const host = createHost(loaded, { core: CORE_VERSION, contracts: CORE_VERSION });
+    const seed = {
+      seed: 10,
+      trigger: "manual" as const,
+      varies: [],
+      ichnaea: CORE_VERSION,
+      createdAt: "2026-11-24T00:00:00Z",
+    };
+    const capture = await bindRunnerPlan(binding, host, seed, { analysis: library.plan });
+    expect(capture.plan.budget).toMatchObject({
+      callsPerTrial: 1,
+      worstCaseCalls: 24,
+    });
+    expect(capture.plan.arms.every(({ name, runs }) => runs && !/base|candidate/.test(name))).toBe(
+      true,
+    );
+    expect(digest(capture.plan.analysis)).toBe(digest(library.plan));
+    const noise = await bindRunnerPlan(binding, host, seed, {
+      analysis: library.plan,
+      noise: true,
+    });
+    expect(noise.plan.arms[0]?.identity).toBe(noise.plan.arms[1]?.identity);
+    expect(noise.plan.mode).toBe("estimate-only");
 
     const largerHorizon = await planSuite({
       suite: { ...loaded.suite, primary: [{ measure: "app/correct", targetDrop: 1 }] },

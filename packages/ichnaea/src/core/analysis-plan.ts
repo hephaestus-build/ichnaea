@@ -280,12 +280,46 @@ export interface LockedImport {
   readonly directory: string;
 }
 
+type BindingOptions = Pick<Plan, "trigger" | "varies" | "createdAt" | "ichnaea"> & {
+  readonly seed: number;
+};
+type BoundPlan = { readonly cases: readonly Case[]; readonly plan: Plan };
+
 export async function bindImportedPlan(
   input: LockedImport,
   host: Host,
-  options: Pick<Plan, "trigger" | "varies" | "createdAt" | "ichnaea"> & { readonly seed: number },
-): Promise<{ readonly cases: readonly Case[]; readonly plan: Plan }> {
-  const analysis = await readLockedPlan(input.planPath);
+  options: BindingOptions,
+): Promise<BoundPlan> {
+  return bindAnalysis(await readLockedPlan(input.planPath), input, host, options, undefined);
+}
+
+/** Binds the already checked analysis or plans an unanchored run from the current suite. */
+export async function bindRunnerPlan(
+  input: Omit<LockedImport, "planPath">,
+  host: Host,
+  options: BindingOptions,
+  execution: { readonly analysis?: AnalysisPlan; readonly noise?: boolean },
+): Promise<BoundPlan> {
+  const analysis =
+    execution.analysis ??
+    (
+      await planSuite({
+        suite: input.definition,
+        directory: input.directory,
+        ichnaea: options.ichnaea,
+        host,
+      })
+    ).plan;
+  return bindAnalysis(analysis, input, host, options, { noise: execution.noise === true });
+}
+
+async function bindAnalysis(
+  analysis: AnalysisPlan,
+  input: Omit<LockedImport, "planPath">,
+  host: Host,
+  options: BindingOptions,
+  execution: { readonly noise: boolean } | undefined,
+): Promise<BoundPlan> {
   const suite = SuiteDefinition.parse(input.definition);
   const { arms: definitions, ...rules } = suite;
   if (suite.trialReduction && definitions.candidate !== undefined)
@@ -311,16 +345,36 @@ export async function bindImportedPlan(
   if (baseIdentity !== analysis.base.identity)
     throw new PlanError("the base configuration differs from the locked plan");
 
-  const arms = [{ name: "base", role: "base", identity: baseIdentity, configuration: base }];
-  if (definitions.candidate !== undefined) {
-    const candidate = await armConfiguration(definitions.candidate, input.directory);
+  const armName = (role: string): string =>
+    execution ? `arm-${digest(["worker-arm", options.seed, role]).slice(7, 23)}` : role;
+  const runs = execution ? { runs: true } : {};
+  const arms = [
+    { ...runs, name: armName("base"), role: "base", identity: baseIdentity, configuration: base },
+  ];
+  const candidate = execution?.noise
+    ? base
+    : definitions.candidate === undefined
+      ? undefined
+      : await armConfiguration(definitions.candidate, input.directory);
+  if (candidate) {
     arms.push({
-      name: "candidate",
+      ...runs,
+      name: armName("candidate"),
       role: "candidate",
       identity: configurationIdentity(candidate),
       configuration: candidate,
     });
   }
+  const estimateReason =
+    execution === undefined
+      ? "the results were imported"
+      : execution.noise
+        ? "the noise run used the base configuration on both arms"
+        : arms.length === 1
+          ? "the run used one arm"
+          : analysis.method === "estimate-only"
+            ? "the analysis plan supports estimates"
+            : undefined;
   const trials = [];
   for (let block = 0; block < analysis.blocks; block++) {
     for (const entry of analysis.cases) {
@@ -349,8 +403,8 @@ export async function bindImportedPlan(
     suiteDigest: analysis.suiteDigest,
     caseSet: analysis.caseSet,
     caseSetDigest: analysis.caseSetDigest,
-    mode: "estimate-only",
-    modeReasons: ["the results were imported"],
+    mode: estimateReason === undefined ? "decision" : "estimate-only",
+    modeReasons: estimateReason === undefined ? [] : [estimateReason],
     estimand: analysis.estimand,
     alpha: analysis.alpha,
     replicates: analysis.replicates,
@@ -372,7 +426,11 @@ export async function bindImportedPlan(
     hardGates: analysis.hardGates,
     policy: analysis.policy,
     power: [],
-    budget: { worstCaseCalls: 0, maxCalls: analysis.maxCalls },
+    budget: {
+      worstCaseCalls: execution === undefined ? 0 : trials.length,
+      maxCalls: analysis.maxCalls,
+      ...(execution === undefined ? {} : { callsPerTrial: 1 }),
+    },
     trials,
     seed: { algorithm: "mt19937", value: String(options.seed) },
   });
