@@ -1,6 +1,5 @@
-import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
-import { link, mkdir, readFile, readdir, rm, stat, utimes, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, stat, utimes, writeFile } from "node:fs/promises";
 import { hostname } from "node:os";
 import { basename, join } from "node:path";
 
@@ -11,7 +10,9 @@ import { Json } from "../contracts/primitives.ts";
 import { TrialIdentity, WorkerReady } from "../contracts/records/worker.ts";
 
 import { CallLedger } from "./ledger.ts";
+import { publishRecord } from "./publish-record.ts";
 import { type RunRecords } from "./records.ts";
+import { type RegistrationReceipt, RegistrationReceiptSchema } from "./registration.ts";
 import { sealRun } from "./store.ts";
 import { runDirectory } from "./store-path.ts";
 
@@ -20,7 +21,8 @@ type Owner = { host: string; pid: number };
 type BlockStart = { kind: "block-start"; block: number; first: "base" | "candidate" };
 type Takeover = { kind: "owner-takeover"; previous: Owner; cause: "dead-pid" | "expired-lease" };
 type Entry =
-  | { kind: "receipt"; receipt?: Json | undefined }
+  | { kind: "run-opened" }
+  | { kind: "receipt"; receipt: RegistrationReceipt }
   | Takeover
   | BlockStart
   | { kind: "block-abandoned" | "block-complete"; block: number }
@@ -38,7 +40,8 @@ const BlockStartSchema = z.strictObject({
 });
 const TakeoverCause = z.enum(["dead-pid", "expired-lease"]);
 const EntrySchema: z.ZodType<Entry> = z.discriminatedUnion("kind", [
-  z.strictObject({ kind: z.literal("receipt"), receipt: Json.optional() }),
+  z.strictObject({ kind: z.literal("run-opened") }),
+  z.strictObject({ kind: z.literal("receipt"), receipt: RegistrationReceiptSchema }),
   z.strictObject({
     kind: z.literal("owner-takeover"),
     previous: OwnerSchema,
@@ -64,17 +67,6 @@ function dead(pid: number): boolean {
     if (hasCode(error, "ESRCH")) return true;
     if (hasCode(error, "EPERM")) return false;
     throw error;
-  }
-}
-
-/** Publish a complete file without replacing an existing entry. */
-async function publish(dir: string, name: string, record: unknown): Promise<void> {
-  const temporary = join(dir, `.temporary-${randomUUID()}`);
-  try {
-    await writeFile(temporary, `${canonicalize(record)}\n`, { flag: "wx", flush: true });
-    await link(temporary, join(dir, name));
-  } finally {
-    await rm(temporary, { force: true });
   }
 }
 
@@ -132,7 +124,7 @@ async function takeLease(dir: string): Promise<{ lease: Lease; takeover: Takeove
   // All contenders for a generation publish the same name. Keeping prior generations fences
   // their owners even after a later owner releases the run.
   try {
-    await publish(dir, String(generation), { host, pid: process.pid });
+    await publishRecord(dir, String(generation), { host, pid: process.pid });
   } catch (error) {
     if (hasCode(error, "EEXIST"))
       throw new Error("run is owned by another runner", { cause: error });
@@ -196,7 +188,7 @@ export class RunWork {
     }
   }
 
-  static async open(root: string, run: string, receipt?: z.infer<typeof Json>): Promise<RunWork> {
+  static async open(root: string, run: string, receipt?: RegistrationReceipt): Promise<RunWork> {
     const directory = runDirectory(root, "work", run);
     const sealed = runDirectory(root, "runs", run);
     if (existsSync(sealed)) throw new Error(`run '${run}' is already sealed`);
@@ -207,15 +199,21 @@ export class RunWork {
       await mkdir(journal, { recursive: true });
       const entries = await readEntries(journal);
       const work = new RunWork(root, run, directory, lease, entries);
-      if (!entries.length)
-        await work.#append({ kind: "receipt", ...(receipt === undefined ? {} : { receipt }) });
-      else if (entries[0]?.kind !== "receipt")
-        throw new Error("the first run journal entry must be the receipt");
-      else if (
-        receipt !== undefined &&
-        canonicalize(entries[0].receipt ?? null) !== canonicalize(receipt)
-      )
-        throw new Error("the receipt changed since the run began");
+      if (receipt && receipt.run !== run) throw new Error("receipt belongs to another run");
+      const opening = entries[0];
+      if (!opening) {
+        await work.#append(receipt ? { kind: "receipt", receipt } : { kind: "run-opened" });
+      } else {
+        if (opening.kind !== "receipt" && opening.kind !== "run-opened")
+          throw new Error("the first run journal entry must record the opening");
+        if (opening.kind === "receipt" && opening.receipt.run !== run)
+          throw new Error("journal receipt belongs to another run");
+        if (
+          receipt &&
+          (opening.kind !== "receipt" || canonicalize(opening.receipt) !== canonicalize(receipt))
+        )
+          throw new Error("the receipt changed since the run began");
+      }
       if (takeover) await work.#append(takeover);
       if (work.#block) {
         await work.#append({ kind: "block-abandoned", block: work.#block.block });
@@ -228,14 +226,21 @@ export class RunWork {
     }
   }
 
+  receipt(): RegistrationReceipt | undefined {
+    const opening = this.#entries[0];
+    if (opening?.kind === "receipt") return RegistrationReceiptSchema.parse(opening.receipt);
+    return undefined;
+  }
+
   async entries(): Promise<Entry[]> {
     return readEntries(this.#journal);
   }
 
   async #append(entry: Entry): Promise<void> {
     await this.#lease.refresh();
-    await publish(this.#journal, `${this.#entries.length}.json`, EntrySchema.parse(entry));
-    this.#entries.push(entry);
+    const parsed = EntrySchema.parse(entry);
+    await publishRecord(this.#journal, `${this.#entries.length}.json`, parsed);
+    this.#entries.push(parsed);
   }
 
   async #change<T>(operation: () => Promise<T>): Promise<T> {

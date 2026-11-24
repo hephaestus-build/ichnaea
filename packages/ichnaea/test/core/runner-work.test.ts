@@ -42,7 +42,7 @@ it("allows only one concurrent resume, then lets another runner resume after rel
   });
   await owners[0]?.close();
   const work = await RunWork.open(root, "resume");
-  expect(await work.entries()).toEqual([{ kind: "receipt" }]);
+  expect(await work.entries()).toEqual([{ kind: "run-opened" }]);
   await work.close();
 });
 
@@ -62,7 +62,7 @@ it("abandons a dispatched block when its runner dies and charges both draws", as
     await work.completeBlock();
     const entries = await work.entries();
     expect(entries).toEqual([
-      { kind: "receipt" },
+      { kind: "run-opened" },
       { kind: "block-start", block: 0, first: "base" },
       { kind: "handshake", block: 0, ready: expect.objectContaining({ capacity: 1 }) },
       { kind: "intent", block: 0, trial },
