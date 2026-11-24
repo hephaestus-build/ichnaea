@@ -194,7 +194,7 @@ export async function writeRunReport(
   let verified: ReturnType<typeof verifiedReport>;
   try {
     verified = verifiedReport(
-      { ...stored, decision: stored.decision },
+      { ...stored, decision: stored.decision, aa: await store.aaEvidence(stored.plan) },
       { suite: stored.plan.suite, ...(ratings ? { ratings } : {}) },
       CORE_VERSION,
     );

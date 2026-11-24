@@ -75,10 +75,15 @@ it("runs a local suite, seals the pair order and writes an unregistered verdict 
     expect(stored.trials.map((trial) => trial.analysisPlan)).toEqual(
       Array(4).fill(digest(stored.plan.analysis)),
     );
+    expect(stored.run.execution?.seed).toEqual(stored.plan.seed);
     expect(stored.run.execution?.blocks).toHaveLength(2);
     for (const block of stored.run.execution?.blocks ?? []) {
       const trials = stored.trials.filter((trial) => trial.block === block.block);
       expect(trials).toHaveLength(2);
+      expect(trials.map(({ armOrderSeed }) => armOrderSeed)).toEqual([
+        stored.plan.seed,
+        stored.plan.seed,
+      ]);
       expect(block.draws).toEqual([
         {
           case: "capital-fr",
