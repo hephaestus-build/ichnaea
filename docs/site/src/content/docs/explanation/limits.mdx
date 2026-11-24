@@ -51,28 +51,15 @@ The planner checks this before the first trial and says so.
 A non-inferiority result is validated only for limits from a smallest validated limit up to 30 points.
 That smallest limit is not set yet.
 The studies found case structures in which the lower bound is too optimistic.
-So until that smallest limit is set, Ichnaea gives no Pass. An unchanged candidate gets Inconclusive.
-A real decrease beyond run-to-run noise still gives Regression.
+A statistical pass requires randomized blocks and a validated limit.
+The current test can detect a drop only within these runs.
 
-## What the bound tells you, once Pass is validated
+## How to read the bound
 
 Ichnaea computes a one-sided 95% lower bound for the change.
-Read it against the limit and against 0:
-
-| The bound             | The regression test | Verdict                                                 |
-| --------------------- | ------------------- | ------------------------------------------------------- |
-| Above minus the limit | Any result          | Pass: the candidate is not worse by more than the limit |
-| Below minus the limit | Rejects             | Regression: the decrease is significant on these cases  |
-| Below minus the limit | Does not reject     | Inconclusive: no decrease detected, and none ruled out  |
-
-The table is for one primary measure. The run passes only when every primary measure is non-inferior.
-The limit in the table is the registered limit less any safety margin that the suite sets.
-With 2 or more trials per case, a Regression means the decrease is beyond run-to-run noise. At one trial per case it means only that the decrease is significant on these cases.
-
-The last row is the one that surprises people.
-The bound crosses the limit, so a decrease larger than the limit is still possible.
-The test found no decrease, so nothing is proven bad either. The verdict says so, and says that this is not a Pass.
-More cases or more trials move the bound closer to the estimate.
+If the bound crosses minus your limit, the trials leave open a larger drop.
+A test that detects a drop reports `DROP_IN_THESE_RUNS_ONLY` with an Inconclusive verdict.
+The suite can stop CI on this result with `onRunDrop: "block"`.
 
 ## What it does not cover
 

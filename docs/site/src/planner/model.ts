@@ -36,7 +36,7 @@ function binomial(rng: Rng, trials: number, rate: number): number {
   return successes;
 }
 
-/** A REGRESSION as the decision rule gives it: the test rejects and is validated for the design. */
+/** A within-run drop: the test rejects and is validated for this design. */
 const isRegression = (comparison: ReturnType<typeof compareCounts>): boolean =>
   comparison.regression.validated && comparison.regressionP < ALPHA;
 
@@ -73,7 +73,7 @@ export function regressionLimitations(design: Design): readonly string[] {
 /** Runs with no change between the arms, and how often each rule raises an alarm. */
 export interface NoChangeRuns {
   readonly runs: number;
-  /** Runs with a REGRESSION: the validated regression test rejects at α = 0.05. */
+  /** Runs with a detected drop: the validated test rejects at α = 0.05. */
   readonly regressionAlarms: number;
   /** Runs in which the candidate's mean fell by the threshold or more. */
   readonly thresholdAlarms: number;
@@ -96,7 +96,7 @@ export function simulateNoChange(design: Design, runs: number, seed: number): No
   return { runs, regressionAlarms, thresholdAlarms, boundClearsMargin };
 }
 
-/** The share of runs that give REGRESSION for a decrease of the given size. */
+/** The share of runs that detect a decrease of the given size. */
 export function detectionRate(
   design: Design,
   decrease: number,

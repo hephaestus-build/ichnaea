@@ -67,7 +67,7 @@ describe("the power statement (REQ-54)", () => {
     );
     expect(d.power.run[0]).toMatchObject({ computed: true, decidable: false });
     expect(d.mode).toBe("decision");
-    expect(d.verdict).toBe("REGRESSION");
+    expect(d.reasonCode).toBe("DROP_IN_THESE_RUNS_ONLY");
   });
 
   it("an entry that was not computed says why, never a bare NaN", async () => {

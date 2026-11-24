@@ -937,6 +937,21 @@
                 "report"
               ]
             },
+            "onRunDrop": {
+              "type": "string",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              },
+              "x-ichnaea-known": [
+                "block",
+                "report"
+              ]
+            },
             "onEstimateOnly": {
               "type": "string",
               "x-ichnaea-data": {
@@ -1922,6 +1937,21 @@
           ]
         },
         "onInconclusive": {
+          "type": "string",
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          },
+          "x-ichnaea-known": [
+            "block",
+            "report"
+          ]
+        },
+        "onRunDrop": {
           "type": "string",
           "x-ichnaea-data": {
             "class": "none",

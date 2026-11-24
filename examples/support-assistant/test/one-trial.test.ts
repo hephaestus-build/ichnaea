@@ -134,7 +134,7 @@ describe("one trial per case and arm, from the CLI", async () => {
       log,
     );
 
-  it("decides two A/A runs, cites them, and validates the change's REGRESSION", async () => {
+  it("decides two A/A runs, cites them, and reports the change's within-run drop", async () => {
     for (const [run, seed] of [
       ["aa-1", 11],
       ["aa-2", 12],
@@ -159,7 +159,9 @@ describe("one trial per case and arm, from the CLI", async () => {
     ).toBe(0);
     expect(out.join("\n")).toContain("import: run run-1: 24 trials");
     expect(await decideRun("run-1"), out.join("\n")).toBe(1);
-    expect(out.join("\n")).toMatch(/^REGRESSION: Measure support\/facts-stated dropped/m);
+    expect(out.join("\n")).toMatch(
+      /^INCONCLUSIVE: Measure support\/facts-stated dropped in these runs\./m,
+    );
 
     const read = async (run: string, name: string): Promise<Record<string, unknown>> =>
       JSON.parse(await readFile(join(store, "runs", run, name), "utf8")) as Record<string, unknown>;

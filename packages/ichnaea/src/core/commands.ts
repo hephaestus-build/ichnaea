@@ -78,9 +78,17 @@ export const decideCommand: Command = {
     }
     const verdictFile =
       text(args, "verdict-file") ?? join(runDirectory(store.root, "runs", run), "verdict.json");
+    const { mode, verdict, reason, reasonCode, cause } = decision;
     await writeFile(
       verdictFile,
-      `${canonicalize({ run: decision.run, mode: decision.mode, verdict: decision.verdict, reason: decision.reason })}\n`,
+      `${canonicalize({
+        run: decision.run,
+        mode,
+        verdict,
+        reason,
+        ...(reasonCode === undefined ? {} : { reasonCode }),
+        ...(cause === undefined ? {} : { cause }),
+      })}\n`,
     );
     return {
       code: exitCode(decision, stored.plan.policy) === 1 ? 1 : 0,

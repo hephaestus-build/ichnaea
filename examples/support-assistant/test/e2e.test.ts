@@ -163,18 +163,25 @@ describe("example application, end to end", () => {
     expect(verdict).toMatchObject({ verdict: "INCONCLUSIVE", reason: FLOOR_NOT_SET_REASON });
     // The report gives the same reason next to the verdict, and labels the bound.
     const summary = await readFile(join(store, "runs", "run-1", "report", "summary.md"), "utf8");
-    expect(summary).toContain(
-      `**INCONCLUSIVE** on these 12 cases, beyond run-to-run noise: ${FLOOR_NOT_SET_REASON}`,
-    );
+    expect(summary).toContain(`**INCONCLUSIVE** on these 12 cases: ${FLOOR_NOT_SET_REASON}`);
     expect(summary).toMatch(/≥ [+−]?\d+\.\d pts \(not validated\)/);
   });
 
-  it("blocks a regression and names the broken cases in the report", async () => {
+  it("blocks a within-run drop and names the broken cases in the report", async () => {
     const { store, codes, out } = await flow("results/candidate-regressed.json");
     expect(codes[1]).toBe(1);
-    expect(out.join("\n")).toMatch(/^REGRESSION: /m);
+    expect(out.join("\n")).toMatch(
+      /^INCONCLUSIVE: Measure support\/facts-stated dropped in these runs\./m,
+    );
+    const verdict: unknown = JSON.parse(
+      await readFile(join(store, "runs", "run-1", "verdict.json"), "utf8"),
+    );
+    expect(verdict).toMatchObject({
+      verdict: "INCONCLUSIVE",
+      reasonCode: "DROP_IN_THESE_RUNS_ONLY",
+    });
     const summary = await readFile(join(store, "runs", "run-1", "report", "summary.md"), "utf8");
-    expect(summary).toMatch(/REGRESSION/);
+    expect(summary).toContain("dropped in these runs.");
     expect(summary).toContain("support-03");
     const html = await readFile(join(store, "runs", "run-1", "report", "report.html"), "utf8");
     expect(html).toContain("Lineage");

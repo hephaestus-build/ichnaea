@@ -76,7 +76,7 @@ const modelB = (c: ReturnType<typeof configuration>) => ({
 describe("a run at one trial per case and arm", async () => {
   const aa = await cleanAa();
 
-  it("with two clean A/A decisions validates REGRESSION, and a real drop gives REGRESSION", async () => {
+  it("reports a detectable within-run drop after two clean A/A decisions", async () => {
     const same = await decideOne(aa);
     expect(same.mode).toBe("decision");
     expect(regression(same)).toEqual({ validated: true, limitations: [] });
@@ -87,9 +87,9 @@ describe("a run at one trial per case and arm", async () => {
     // 8 of 20 cases fail under the candidate: exact McNemar p = 0.5^8.
     const drop = await decideOne(aa, { candidate: (i) => (i < 8 ? 0 : 1) });
     expect(regression(drop)?.validated).toBe(true);
-    expect(drop.measures[0]?.verdict).toBe("REGRESSION");
-    expect(drop.verdict).toBe("REGRESSION");
-    expect(drop.reason).toBe("Measure app/correct dropped and is not shown non-inferior.");
+    expect(drop.measures[0]?.verdict).toBe("INCONCLUSIVE");
+    expect(drop.reasonCode).toBe("DROP_IN_THESE_RUNS_ONLY");
+    expect(drop.reason).toBe("Measure app/correct dropped in these runs.");
     expect(drop.scope).toBe("on these 20 cases");
     expect(drop.limitations).toContain(
       "Decide trusts the trial timestamps as recorded. An importer that merges several hosts states its clock source.",
@@ -267,11 +267,11 @@ describe("the A/A precondition", async () => {
     ]);
   });
 
-  it("6: no primary measure in it may give REGRESSION", async () => {
+  it("6: no primary measure in it may detect a drop", async () => {
     const regressed = await aaRun("aa-2", { candidate: (i) => (i < 8 ? 0 : 1) });
-    expect(regressed.decision.measures[0]?.verdict).toBe("REGRESSION");
+    expect(regressed.decision.reasonCode).toBe("DROP_IN_THESE_RUNS_ONLY");
     expect(await limitations([first, regressed])).toEqual([
-      "A/A run 'aa-2': a primary measure gave REGRESSION",
+      "A/A run 'aa-2': a primary measure dropped in the A/A run",
     ]);
   });
 

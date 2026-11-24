@@ -925,6 +925,21 @@
                 "retention": "record"
               }
             },
+            "onRunDrop": {
+              "type": "string",
+              "enum": [
+                "block",
+                "report"
+              ],
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
             "onEstimateOnly": {
               "type": "string",
               "enum": [
@@ -1924,6 +1939,21 @@
           }
         },
         "onInconclusive": {
+          "type": "string",
+          "enum": [
+            "block",
+            "report"
+          ],
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          }
+        },
+        "onRunDrop": {
           "type": "string",
           "enum": [
             "block",

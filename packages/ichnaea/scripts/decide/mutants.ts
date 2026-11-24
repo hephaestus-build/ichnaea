@@ -263,10 +263,10 @@ export const MUTANTS: readonly Mutant[] = [
     to: "    if (false)",
   },
   {
-    id: "a/a: a REGRESSION allowed",
+    id: "a/a: a detected drop allowed",
     file: D,
-    from: '    if (primaries.some((m) => m.verdict === "REGRESSION"))\n      fail(',
-    to: "    if (false)\n      fail(",
+    from: 'e.decision.reasonCode === "DROP_IN_THESE_RUNS_ONLY"',
+    to: "false",
   },
   {
     id: "a/a: another suite allowed",
@@ -372,9 +372,9 @@ export const MUTANTS: readonly Mutant[] = [
     to: "      continue;",
   },
   {
-    id: "sensitivity does not test REGRESSION",
+    id: "sensitivity does not test the within-run drop",
     file: D,
-    from: 'const changesReg = v.verdict === "REGRESSION" && reg.verdict !== "REGRESSION";',
+    from: "const changesReg = v.reasonCode !== undefined && reg.reasonCode === undefined;",
     to: "const changesReg = false;",
   },
   {
@@ -403,29 +403,22 @@ export const MUTANTS: readonly Mutant[] = [
     to: 'const decision = plan.analysis === undefined && plan.mode === "decision";',
   },
   {
-    id: "scope always claims run-to-run noise",
+    id: "scope claims run-to-run noise",
     file: D,
-    from: 'scope: `on these ${cases} cases${noise ? ", beyond run-to-run noise" : ""}`,',
-    to: "scope: `on these ${cases} cases, beyond run-to-run noise`,",
+    from: "return { scope: `on these ${cases} cases`, cases };",
+    to: "return { scope: `on these ${cases} cases, beyond run-to-run noise`, cases };",
   },
   {
-    id: "noise claimed without 2 trials per case and arm",
+    id: "within-run drop ignores adverse completion",
     file: D,
-    from: "    if (c.base.trials < 2 || c.candidate.trials < 2) return false;",
-    to: "",
+    from: "(!missesTrials || againstRegression.get(id)?.reasonCode !== undefined)",
+    to: "true",
   },
   {
-    id: "the regression reason always claims noise",
-    file: D,
-    from: 'dropped${noise ? " beyond run-to-run noise" : ""} and is not shown non-inferior.',
-    to: "dropped beyond run-to-run noise and is not shown non-inferior.",
-    projects: CORE,
-  },
-  {
-    id: "the non-inferiority note always claims noise",
-    file: D,
-    from: '${replicated(cases) ? "beyond run-to-run noise" : "significant"}',
-    to: "beyond run-to-run noise",
+    id: "CI ignores the within-run drop policy",
+    file: P,
+    from: "(policy.onRunDrop ?? policy.onInconclusive)",
+    to: "policy.onInconclusive",
   },
   {
     id: "INVALID claims a scope",
@@ -440,10 +433,10 @@ export const MUTANTS: readonly Mutant[] = [
     to: "  const cases = new Set(plan.trials.map((t) => t.case)).size;",
   },
   {
-    id: "PASS by falling through",
+    id: "single-run comparison becomes a pass",
     file: D,
-    from: 'primaries.length > 0 && primaries.every((m) => m.verdict === "NON-INFERIOR")',
-    to: "true",
+    from: '  } else {\n    verdict = "INCONCLUSIVE";\n    const open',
+    to: '  } else {\n    verdict = "PASS";\n    const open',
   },
   // Per-measure verdicts and multiplicity (REQ-51).
   {
@@ -480,7 +473,7 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "validity: the floor's plain reason dropped",
     file: D,
-    from: "      open.length > 0 && open.every((o) => o.cause.onlyTheFloor)",
+    from: "open.every((o) => o.cause.onlyTheFloor)",
     to: "      false",
     projects: CORE,
   },
@@ -560,10 +553,10 @@ export const MUTANTS: readonly Mutant[] = [
     to: "    const effective = p.margin;\n    if (!(effective >= 0 && p.margin < 1)) {",
   },
   {
-    id: "REGRESSION ignores non-inferiority",
+    id: "a non-inferior result hides a within-run drop",
     file: D,
-    from: '    if (v.verdict !== "NON-INFERIOR") {',
-    to: "    if (true) {",
+    from: "pa <= input.alpha ?",
+    to: 'pa <= input.alpha && v.verdict !== "NON-INFERIOR" ?',
   },
   {
     id: "Holm replaced by raw p-values",
@@ -580,8 +573,8 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "Holm boundary",
     file: D,
-    from: "    if (pa > input.alpha) {",
-    to: "    if (pa >= input.alpha) {",
+    from: "pa <= input.alpha ?",
+    to: "pa < input.alpha ?",
   },
   {
     id: "non-inferiority at alpha over the number of measures",
@@ -815,15 +808,12 @@ export const CANARY: Mutant = {
   projects: [...new Set(MUTANTS.flatMap((m) => m.projects ?? ["decide"]))],
 };
 
-/**
- * The control: a release that every primary passes reads INCONCLUSIVE, which the decide tests
- * assert. It runs second and must be killed; otherwise this run cannot show a kill.
- */
+/** A single-run drop is mislabeled as REGRESSION. The acceptance test must reject it. */
 export const CONTROL: Mutant = {
-  id: "control: PASS read as INCONCLUSIVE",
+  id: "control: a within-run drop reads as REGRESSION",
   file: D,
-  from: '    verdict = "PASS";',
-  to: '    verdict = "INCONCLUSIVE";',
+  from: '    verdict = "INCONCLUSIVE";\n    reasonCode = "DROP_IN_THESE_RUNS_ONLY";',
+  to: '    verdict = "REGRESSION";\n    reasonCode = "DROP_IN_THESE_RUNS_ONLY";',
 };
 
 const selected = MUTANTS.filter(

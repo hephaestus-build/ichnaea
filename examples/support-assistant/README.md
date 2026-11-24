@@ -7,8 +7,8 @@ Ichnaea makes no model call.
 The example shows the whole path from the command line:
 
 1. `import` checks another runner's results and stores them as records.
-2. `decide` runs a paired non-inferiority test on the stored records. The verdict is PASS,
-   REGRESSION, INCONCLUSIVE or INVALID. Today no candidate can PASS: see below.
+2. `decide` checks the records and tests for a drop within these runs. A failed hard gate gives
+   REGRESSION. A statistical comparison gives INCONCLUSIVE.
 3. `report` renders the stored decision as a Markdown summary and an HTML report.
 
 The change under test is a new model with a new prompt. The base arm uses `example-model-2026-10`.
@@ -55,14 +55,10 @@ pnpm exec ichnaea report --run same # exit 0
 
 `decide` prints this line and exits with 0:
 
-`INCONCLUSIVE: No primary measure regressed, but no candidate can PASS yet: the validated margin floor for non-inferiority is not set.`
+`INCONCLUSIVE: No drop was detected in these runs. A statistical pass needs randomized blocks and a validated margin floor.`
 
-INCONCLUSIVE is the expected result today. It does not mean that the setup is broken. A PASS needs
-the candidate shown non-inferior, and that result is validated only from a smallest margin, the
-validated margin floor. The statistics have not set that floor yet, so no candidate can
-PASS. A drop beyond run-to-run noise can still be shown, as the next scenario does. The suite
-reports an INCONCLUSIVE verdict and does not block, so `decide` exits with 0. The report gives the
-same reason next to the verdict, and it labels the lower bound of the difference "not validated".
+The suite reports this result and continues. The report repeats the reason and labels the lower
+bound of the difference "not validated".
 
 ### A candidate that answers worse
 
@@ -72,8 +68,8 @@ pnpm exec ichnaea decide --run regressed --now 2026-11-15T11:00:00Z # exit 1
 pnpm exec ichnaea report --run regressed # exit 0
 ```
 
-`decide` prints `REGRESSION` and exits with 1. A CI job that runs `decide` blocks the change on that exit
-code. The report names the broken cases, for example `support-03`.
+`decide` prints `INCONCLUSIVE: Measure support/facts-stated dropped in these runs.` and exits
+with 1 because the suite sets `onRunDrop: "block"`. The report names the broken cases, for example `support-03`.
 
 ## What the flags mean
 

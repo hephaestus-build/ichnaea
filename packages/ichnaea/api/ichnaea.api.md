@@ -170,7 +170,7 @@ export class FileStore {
 }
 
 // @public
-export const FLOOR_NOT_SET_REASON = "No primary measure regressed, but no candidate can PASS yet: the validated margin floor for non-inferiority is not set.";
+export const FLOOR_NOT_SET_REASON = "No drop was detected in these runs. A statistical pass needs randomized blocks and a validated margin floor.";
 
 // @public
 export interface GateDefinition<Id extends string = string> {
@@ -469,8 +469,9 @@ export interface PrimaryVerdict {
     // Warning: (ae-forgotten-export) The symbol "Comparison" needs to be exported by the entry point index.d.ts
     readonly comparison?: Comparison;
     readonly notes: readonly string[];
+    readonly reasonCode?: Decision["reasonCode"];
     readonly regressionPAdjusted?: number;
-    readonly verdict: "NON-INFERIOR" | "REGRESSION" | "INCONCLUSIVE";
+    readonly verdict: "NON-INFERIOR" | "INCONCLUSIVE";
 }
 
 // @public
@@ -949,6 +950,10 @@ export const SuiteDefinition: z.ZodObject<{
             block: "block";
             report: "report";
         }>;
+        onRunDrop: z.ZodOptional<z.ZodEnum<{
+            block: "block";
+            report: "report";
+        }>>;
         onEstimateOnly: z.ZodEnum<{
             block: "block";
             report: "report";
