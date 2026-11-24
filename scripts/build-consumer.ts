@@ -23,6 +23,7 @@
 //        node scripts/build-consumer.ts --spec github:hephaestus-build/ichnaea#<build-commit>
 // The --spec forms install a published version from npm, or a build commit from GitHub, and run
 // the same checks.
+// Add --example-root <dir> to use the README and example files saved by the tagged run.
 import { execFileSync, spawnSync } from "node:child_process";
 import {
   cpSync,
@@ -58,9 +59,6 @@ import {
 import { RELEASE_VERSION } from "./release-version.ts";
 import { hasProvenance } from "./verify-published.ts";
 
-const readme = readFileSync(join(REPOSITORY, "README.md"), "utf8");
-const install = readmeInstall(readme);
-const example = readmeExample(readme);
 const root = JSON.parse(readFileSync(join(REPOSITORY, "package.json"), "utf8")) as {
   packageManager: string;
   devDependencies: Record<string, string>;
@@ -232,7 +230,10 @@ function scenarioFailures(
 }
 
 /** Installs `spec` as the README says into a new project, and runs every consumer check. */
-function consume(spec: string, work: string): void {
+function consume(spec: string, work: string, exampleRoot?: string): void {
+  const readme = readFileSync(join(exampleRoot ?? REPOSITORY, "README.md"), "utf8");
+  const install = readmeInstall(readme);
+  const example = readmeExample(readme);
   const project = join(work, "consumer");
   mkdirSync(project);
   writeFileSync(
@@ -320,17 +321,21 @@ function consume(spec: string, work: string): void {
     );
   }
 
-  // The README's example with the CLI. Its clone of this repository is a copy of the working tree's
-  // example, so that the example of this checkout runs.
+  // The README's example with the CLI. Replace its clone command with a copy of the example files.
   const MARK = "@@ichnaea-consumer-exit";
   const script = [
     "exec 2>&1",
     ...example.commands.map((command) => {
       const clone = /^git clone .* (\S+)$/.exec(command);
       if (!clone) return `${command}\nprintf '\\n${MARK} %s\\n' "$?"`;
-      const into = join(project, clone[1]!, "examples", "support-assistant");
-      for (const file of workingTree().filter((f) => f.startsWith("examples/support-assistant/")))
-        cpSync(join(REPOSITORY, file), join(project, clone[1]!, file));
+      const examplePath = "examples/support-assistant";
+      const into = join(project, clone[1]!, examplePath);
+      if (exampleRoot !== undefined) {
+        cpSync(join(exampleRoot, examplePath), into, { recursive: true });
+      } else {
+        for (const file of workingTree().filter((f) => f.startsWith(`${examplePath}/`)))
+          cpSync(join(REPOSITORY, file), join(project, clone[1]!, file));
+      }
       if (!existsSync(into)) throw new Error(`the example is not at ${into}`);
       return `printf '\\n${MARK} 0\\n'`;
     }),
@@ -393,7 +398,12 @@ function consume(spec: string, work: string): void {
 
 if (import.meta.main) {
   const { values } = parseArgs({
-    options: { tree: { type: "string" }, tarball: { type: "string" }, spec: { type: "string" } },
+    options: {
+      tree: { type: "string" },
+      tarball: { type: "string" },
+      spec: { type: "string" },
+      "example-root": { type: "string" },
+    },
   });
   if ([values.tree, values.tarball, values.spec].filter((v) => v !== undefined).length > 1)
     throw new Error("give one of --tree, --tarball and --spec");
@@ -426,7 +436,7 @@ if (import.meta.main) {
       }
       spec = `file:${checkAndPack(tree, work)}`;
     }
-    consume(spec, work);
+    consume(spec, work, values["example-root"]);
   } finally {
     rmSync(work, { recursive: true, force: true });
   }

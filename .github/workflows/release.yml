@@ -125,6 +125,10 @@ jobs:
         env:
           DIST_TAG: ${{ needs.check.outputs.dist-tag }}
         run: printf '%s\n' "$DIST_TAG" > release/dist-tag
+      - name: Save the tagged README and example for both consumer checks
+        run: |
+          mkdir release/example
+          git archive "$GITHUB_SHA" README.md examples/support-assistant | tar -x -C release/example
       # Kept until a package owner approved the version and release-finish.yml read it.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -162,7 +166,7 @@ jobs:
       - name: A consumer installs the tarball, type-checks it and runs the README's example
         env:
           TARBALL: ${{ needs.pack.outputs.tarball }}
-        run: node scripts/build-consumer.ts --tarball "release/assets/$TARBALL"
+        run: node scripts/build-consumer.ts --tarball "release/assets/$TARBALL" --example-root release/example
 
   stage:
     name: stage on npm

@@ -5,15 +5,15 @@ name: Release finish
 # starts it by hand with the tag, or the daily run finds every v* tag whose version npm lists as
 # published and that has no GitHub release yet.
 #
-# Every job checks out the default branch, never the tag: this workflow runs no code of the
-# version that it checks, only that version as npm serves it, in a scratch project.
+# The verifier runs from the default branch. It installs the version from npm and replays the
+# tagged README's example from the release artifact in a scratch project.
 #
 # - The pending job finds those tags.
 # - The verify job, one per tag, finds the release run of the tag by the tag's commit and
 #   downloads the files that it staged. It checks that npm serves the version with the staged
 #   SHA-512, that a new npm project installs it with valid signatures, and that its provenance
 #   names release.yml at the tag and the tag's commit, which is on main. It checks that the bin
-#   prints the version and that the README's install and example run against it. Then it records
+#   prints the version and that the staged README's install and example run against it. Then it records
 #   the run as verified.
 # - The release job, one per tag, runs no repository code. It needs the tag's verified record, so a
 #   tag that failed its checks gets no release and the others still do. It checks the files
@@ -116,7 +116,7 @@ jobs:
           TAG: ${{ matrix.tag }}
         run: |
           VERSION="${TAG#v}"
-          node scripts/build-consumer.ts --spec "@tumaet/ichnaea@$VERSION"
+          node scripts/build-consumer.ts --spec "@tumaet/ichnaea@$VERSION" --example-root "$RUNNER_TEMP/release/example"
       - name: Record the verified run
         env:
           RUN: ${{ steps.run.outputs.run }}
