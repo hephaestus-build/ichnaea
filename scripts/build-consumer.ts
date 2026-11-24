@@ -54,6 +54,7 @@ import {
   PACKAGE_NAME,
   readmeExample,
   readmeInstall,
+  readmeNewcomer,
   type Scenario,
 } from "./readme-example.ts";
 import { RELEASE_VERSION } from "./release-version.ts";
@@ -229,6 +230,37 @@ function scenarioFailures(
   return failures;
 }
 
+function checkNewcomer(project: string, bin: string, readme: string): void {
+  const directory = join(project, "newcomer");
+  mkdirSync(directory);
+  for (const [file, contents] of Object.entries(readmeNewcomer(readme)))
+    writeFileSync(join(directory, file), contents);
+  const run = (...flags: string[]): string[] =>
+    execFileSync(process.execPath, [bin, "run", ...flags, "--", process.execPath, "worker.ts"], {
+      cwd: directory,
+      encoding: "utf8",
+      timeout: 15_000,
+    })
+      .trimEnd()
+      .split("\n");
+  const candidate = run();
+  if (
+    !candidate[0]?.startsWith("plan: 1 case, ") ||
+    !candidate.some((line) => line.endsWith("[unregistered]"))
+  )
+    throw new Error(
+      `the three-file run example did not print a plan and unregistered verdict:\n${candidate.join("\n")}`,
+    );
+  const pilot = run("--noise");
+  if (!pilot.at(-1)?.startsWith("plan: 1 case, "))
+    throw new Error(
+      `the three-file noise example did not finish with the plan:\n${pilot.join("\n")}`,
+    );
+  console.log(
+    "consumer: the packed three-file example runs a candidate comparison and a noise pilot",
+  );
+}
+
 /** Installs `spec` as the README says into a new project, and runs every consumer check. */
 function consume(spec: string, work: string, exampleRoot?: string): void {
   const readme = readFileSync(join(exampleRoot ?? REPOSITORY, "README.md"), "utf8");
@@ -263,6 +295,15 @@ function consume(spec: string, work: string, exampleRoot?: string): void {
     string,
     unknown
   >;
+  const bin = manifest["bin"];
+  if (
+    typeof bin !== "object" ||
+    bin === null ||
+    !("ichnaea" in bin) ||
+    typeof bin.ichnaea !== "string"
+  )
+    throw new Error("the installed package has no ichnaea command");
+  checkNewcomer(project, join(pkg, bin.ichnaea), readme);
   if ("scripts" in manifest) throw new Error("the installed manifest has scripts");
   if (/\b(preinstall|install|postinstall|prepare)\$/.test(installed.stdout + installed.stderr))
     throw new Error("installing the package ran a lifecycle script");

@@ -30,7 +30,8 @@ The core of Ichnaea: the plugin host, the planner, import mode, the record store
   capacity before it receives a request. It can report its runtime, harness and tool catalogue
   digest in the handshake. The run journal keeps the handshake and each attempt's intent and
   outcome. A run reserves each block's worst-case calls before dispatch. Resume abandons an
-  interrupted block, keeps its booked calls and starts a replacement with a new arm-order draw.
+  interrupted block and keeps its booked calls. It draws a replacement block when the remaining
+  budget covers it and the journal has no expired attempt in the interrupted block.
   A runner can take over when the owner's PID is gone on the same host or when the owner has
   missed its heartbeat for ten minutes. The journal records the reason. Sealing moves the work
   area into the run store in one rename. The index can recover decisions from sealed runs.
@@ -130,8 +131,9 @@ the plan commit and its parent before anchoring from a shallow checkout.
 
 The run journal records the arm identities, seed, case-pair draws and attempts.
 Resume a work area with `run --run <id> --resume -- <original worker command>`.
-An interrupted block remains charged. Its replacement uses a new draw and
-requires enough budget to finish the locked horizon.
+An interrupted block remains charged. Its replacement uses new case-pair draws and
+requires enough budget to finish the locked horizon. If the journal records an expired
+attempt in the interrupted block, the run seals as INVALID.
 
 Set `records` in the configuration to the path to a records checkout. A suite
 with `purpose: "confirmation"` requires this checkout. Ichnaea reserves the
