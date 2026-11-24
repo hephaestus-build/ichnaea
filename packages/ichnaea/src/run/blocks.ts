@@ -1,17 +1,8 @@
 import { canonicalize, digest } from "../contracts/canonical.ts";
+import { type PairDraw, pairFirst } from "../contracts/block-order.ts";
 import { Plan } from "../contracts/records/plan.ts";
 import type { TrialIdentity, TrialResult } from "../contracts/records/worker.ts";
-import { sha256Hex } from "../contracts/sha256.ts";
-
-type ArmRole = "base" | "candidate";
 type Slot = Plan["trials"][number];
-
-/** The draw for a physical block, including replacements of an abandoned block. */
-export function firstArm(seed: Plan["seed"], block: number): ArmRole {
-  const input = new TextEncoder().encode(canonicalize(["arm-order", seed, block]));
-  const last = sha256Hex(input).slice(-1);
-  return Number.parseInt(last, 16) % 2 === 0 ? "base" : "candidate";
-}
 
 export interface RunnerOptions {
   readonly capacity: number;
@@ -22,7 +13,7 @@ export interface RunnerOptions {
 interface Block {
   readonly block: number;
   readonly plannedBlock: number;
-  readonly first: ArmRole;
+  readonly draws: readonly PairDraw[];
 }
 
 interface ClosedBlock extends Block {
@@ -32,6 +23,7 @@ interface ClosedBlock extends Block {
 export interface Attempt {
   readonly trial: TrialIdentity;
   readonly block: number;
+  readonly first?: PairDraw["first"];
   readonly started: number;
   readonly deadline: number;
   readonly calls: number;
@@ -47,6 +39,7 @@ type Result = Pick<TrialResult, "trial" | "usage" | "failure">;
 
 interface Progress {
   readonly slot: Slot;
+  readonly first?: PairDraw["first"];
   attempt: number;
   calls: number;
   last?: Settlement["disposition"];
@@ -163,25 +156,30 @@ export class BlockRunner {
     const remaining = this.#slots.length - this.#plannedBlock;
     if (this.#spent + remaining * reserved > this.#cap)
       throw new Error("insufficient call budget to finish the planned blocks");
-    const block = {
+    const draws: PairDraw[] = [];
+    const block: Block = {
       block: this.#nextBlock,
       plannedBlock: this.#plannedBlock,
-      first:
-        this.#plan.arms.length === 1
-          ? ("base" as const)
-          : firstArm(this.#plan.seed, this.#nextBlock),
+      draws,
     };
     this.#nextBlock++;
-    const first = this.#plan.arms.find(({ role }) => role === block.first)?.name;
-    const ordered = [...slots];
-    if (this.#plan.arms.length === 2) {
-      for (let index = 0; index < ordered.length; index += 2) {
-        const a = ordered[index];
-        const b = ordered[index + 1];
-        if (a && b && b.arm === first) [ordered[index], ordered[index + 1]] = [b, a];
+    const [firstArm] = this.#plan.arms;
+    const pending: Progress[] = [];
+    const width = this.#plan.arms.length;
+    for (let index = 0; index < slots.length; index += width) {
+      const a = slots[index];
+      if (!a) throw new Error("missing trial at the start of a pair");
+      if (width === 1) {
+        pending.push({ slot: a, attempt: 0, calls: 0 });
+        continue;
       }
+      const b = slots[index + 1];
+      if (!b) throw new Error("missing trial at the end of a pair");
+      const first = pairFirst(this.#plan.seed, block.block, a);
+      draws.push({ case: a.case, replicate: a.replicate, first });
+      const ordered = firstArm?.role === first ? [a, b] : [b, a];
+      for (const slot of ordered) pending.push({ slot, first, attempt: 0, calls: 0 });
     }
-    const pending = ordered.map((slot) => ({ slot, attempt: 0, calls: 0 }));
     this.#active = {
       block,
       reserved,
@@ -190,7 +188,7 @@ export class BlockRunner {
       flight: new Map(),
       calls: 0,
     };
-    return { ...block };
+    return { ...block, draws: draws.map((draw) => ({ ...draw })) };
   }
 
   dispatch(now: number): Attempt | undefined {
@@ -206,6 +204,7 @@ export class BlockRunner {
     const attempt: Attempt = {
       trial: { id, case: caseId, arm, replicate, suite: this.#plan.suite, attempt: ++next.attempt },
       block: active.block.block,
+      ...(next.first === undefined ? {} : { first: next.first }),
       started: now,
       deadline,
       calls: this.#callsPerTrial - next.calls,

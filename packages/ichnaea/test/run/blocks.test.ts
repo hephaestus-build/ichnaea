@@ -2,9 +2,11 @@ import fc from "fast-check";
 import { expect, it } from "vitest";
 
 import { CaseId } from "../../src/contracts/primitives.ts";
-import { digest } from "../../src/contracts/canonical.ts";
+import { canonicalize, digest } from "../../src/contracts/canonical.ts";
+import { pairFirst } from "../../src/contracts/block-order.ts";
+import { candidateRunsFirst } from "../../src/contracts/pair-order.ts";
 import { resolveAnalysis } from "../../src/plan/analysis.ts";
-import { BlockRunner, firstArm, type Attempt } from "../../src/run/blocks.ts";
+import { BlockRunner, type Attempt } from "../../src/run/blocks.ts";
 
 import { scenario } from "../decide/support/scenario.ts";
 
@@ -56,7 +58,7 @@ function next(runner: BlockRunner, now: number): Attempt {
   return attempt;
 }
 
-it("interleaves the two arms and reproduces every block draw from the locked seed", async () => {
+it("interleaves the two arms in the seeded order for each case and replicate", async () => {
   const locked = await plan();
   const runner = new BlockRunner(locked, options);
   let now = 0;
@@ -65,13 +67,23 @@ it("interleaves the two arms and reproduces every block draw from the locked see
     expect(started).toMatchObject({
       block,
       plannedBlock: block,
-      first: firstArm(locked.seed, block),
+      draws: expect.arrayContaining([
+        expect.objectContaining({ first: "base" }),
+        expect.objectContaining({ first: "candidate" }),
+      ]),
     });
+    expect(started?.draws).toHaveLength(6);
     for (let pair = 0; pair < 6; pair++) {
       const a = next(runner, now++);
       const b = next(runner, now++);
       expect(a.trial.case).toBe(b.trial.case);
-      expect(a.trial.arm).toBe(started?.first);
+      expect(a.trial.replicate).toBe(b.trial.replicate);
+      const draw = started?.draws[pair];
+      const first = pairFirst(locked.seed, block, a.trial);
+      expect(draw).toEqual({ case: a.trial.case, replicate: a.trial.replicate, first });
+      expect(a.first).toBe(first);
+      expect(b.first).toBe(first);
+      expect(a.trial.arm).toBe(locked.arms.find(({ role }) => role === first)?.name);
       expect(b.trial.arm).not.toBe(a.trial.arm);
       expect(runner.dispatch(now)).toBeUndefined();
       expect(runner.accept(block, result(b, 1), now).disposition).toBe("record");
@@ -138,19 +150,60 @@ it("charges an abandoned block before replacing it and refuses an unaffordable r
   expect(larger.startBlock()).toMatchObject({
     block: 1,
     plannedBlock: 0,
-    first: firstArm(locked.seed, 1),
+    draws: locked.analysis.cases.map(({ id }) => ({
+      case: id,
+      replicate: 0,
+      first: pairFirst(locked.seed, 1, { case: id, replicate: 0 }),
+    })),
   });
   expect(() => larger.accept(0, result(dispatched, 1), 1)).toThrow(/late/);
 });
 
-it("draws a stable block sequence across the complete unsigned seed domain", () => {
+it("draws a reproducible, domain-separated coin for each physical block, case and replicate", () => {
   fc.assert(
-    fc.property(fc.bigInt({ min: 0n, max: 2n ** 64n - 1n }), fc.nat(), (seed, block) => {
-      const input = { algorithm: "fixture", value: String(seed) };
-      const draw = firstArm(input, block);
-      expect(["base", "candidate"]).toContain(draw);
-      expect(firstArm({ ...input }, block)).toBe(draw);
+    fc.property(
+      fc.bigInt({ min: 0n, max: 2n ** 64n - 1n }),
+      fc.nat(),
+      fc.string(),
+      fc.nat(),
+      (seed, block, caseId, replicate) => {
+        const input = { algorithm: "fixture", value: String(seed) };
+        const pair = { case: caseId.toWellFormed(), replicate };
+        const reference = candidateRunsFirst(
+          input,
+          canonicalize(["randomized-pair", block, pair.case]),
+          replicate,
+        );
+        expect(pairFirst(input, block, pair)).toBe(reference ? "candidate" : "base");
+        expect(pairFirst({ ...input }, block, { ...pair })).toBe(pairFirst(input, block, pair));
+      },
+    ),
+  );
+});
+
+it("gives distinct pairs all four joint orders across sampled seeds", () => {
+  fc.assert(
+    fc.property(fc.nat(), fc.nat(), (block, replicate) => {
+      for (const second of [
+        { case: "second", replicate },
+        { case: "first", replicate: replicate + 1 },
+      ]) {
+        const counts = new Map<string, number>();
+        for (let index = 0; index < 256; index++) {
+          const seed = { algorithm: "mt19937", value: String(index) };
+          const a = pairFirst(seed, block, { case: "first", replicate });
+          const b = pairFirst(seed, block, second);
+          const joint = `${a}/${b}`;
+          counts.set(joint, (counts.get(joint) ?? 0) + 1);
+        }
+        expect(counts.size).toBe(4);
+        for (const count of counts.values()) {
+          expect(count).toBeGreaterThanOrEqual(32);
+          expect(count).toBeLessThanOrEqual(96);
+        }
+      }
     }),
+    { seed: 109, numRuns: 24 },
   );
 });
 
@@ -195,6 +248,6 @@ it("refuses to dispatch a plan missing a trial and supports a base-only plan", a
     },
     options,
   );
-  expect(runner.startBlock()?.first).toBe("base");
+  expect(runner.startBlock()?.draws).toEqual([]);
   expect(next(runner, 0).trial.arm).toBe(baseName);
 });
