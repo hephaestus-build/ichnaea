@@ -114,3 +114,26 @@ changes, the prior test digest is stale. Declare files that supply values captur
 scorer's closure. A do-nothing fixture must produce a failing score from captured output.
 The incomplete-capture fixture starts as completed with its capture absent. Imported measures
 can supply a producer-attested `validation.tester.instrumentPin`.
+
+## Command workers
+
+Run a suite with `ichnaea run -- node worker.ts`. The command binds the suite and
+arms, draws the order of each case pair from the run seed, and starts a command
+worker for each block. The worker receives the bound settings and case input.
+Call `ichnaea worker check -- node worker.ts` to check the protocol with synthetic
+requests and a zero-call limit.
+
+Use `run --plan plan.json --anchor origin/main` to check the exact plan bytes
+against a Git ref. If Ichnaea cannot confirm the plan commit from the checkout,
+the resulting decision says `unregistered`. Fetch enough history to include
+the plan commit and its parent before anchoring from a shallow checkout.
+
+The run journal records the arm identities, seed, case-pair draws and attempts.
+Resume a work area with `run --run <id> --resume -- <original worker command>`.
+An interrupted block remains charged. Its replacement uses a new draw and
+requires enough budget to finish the locked horizon.
+
+Set `records` in the configuration to the path to a records checkout. A suite
+with `purpose: "confirmation"` requires this checkout. Ichnaea reserves the
+exact case digests before the worker starts. A failed run leaves them spent.
+Exact digests do not detect a rewritten case or a read outside the checkout.

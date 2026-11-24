@@ -33,6 +33,7 @@ export function compare(plan: Plan, records: Omit<RunRecords, "plan">, options: 
 // @public
 export interface Config<Plugins extends readonly Plugin[] = readonly Plugin[]> {
     readonly plugins: Plugins;
+    readonly records?: string;
     readonly store?: string;
     readonly suite?: SuiteDefinition;
 }
@@ -896,6 +897,11 @@ export const SuiteDefinition: z.ZodObject<{
         }, z.core.$strict>], "kind">;
     }, z.core.$strict>>>;
     maxCalls: z.ZodOptional<z.ZodInt>;
+    purpose: z.ZodOptional<z.ZodEnum<{
+        confirmation: "confirmation";
+        development: "development";
+        regression: "regression";
+    }>>;
     policy: z.ZodOptional<z.ZodObject<{
         onRegression: z.ZodEnum<{
             block: "block";

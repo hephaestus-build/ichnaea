@@ -889,6 +889,22 @@
         "retention": "record"
       }
     },
+    "purpose": {
+      "type": "string",
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
+      },
+      "x-ichnaea-known": [
+        "development",
+        "regression",
+        "confirmation"
+      ]
+    },
     "policy": {
       "type": "object",
       "properties": {

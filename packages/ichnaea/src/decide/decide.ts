@@ -3,7 +3,7 @@ import { compareBlocks, MAX_TEST_BLOCKS } from "./block-comparison.ts";
 import { canonicalize, digest } from "../contracts/canonical.ts";
 import { verifyArms } from "../contracts/identity.ts";
 import type { MeasuredValue } from "../contracts/primitives.ts";
-import { type Configuration, FactorPart } from "../contracts/records/configuration.ts";
+import { FactorPart } from "../contracts/records/configuration.ts";
 import { Decision, type GateResult } from "../contracts/records/decision.ts";
 import type { MeasureValue } from "../contracts/records/measure.ts";
 import { type Plan, REFUSED_MARGIN } from "../contracts/records/plan.ts";
@@ -14,7 +14,7 @@ import { FAILED_TRIAL_OUTCOMES as FAILED } from "../plan/trial-counting.ts";
 import { runReduction } from "./trial-reduction.ts";
 import { mustNeverCounts } from "./must-never.ts";
 import { runResolution } from "../plan/resolution.ts";
-import { TRIGGER_VARIES } from "../plan/rules.ts";
+import { configurationDifferences, TRIGGER_VARIES } from "../plan/rules.ts";
 import { recordProblems } from "../contracts/run-records.ts";
 import {
   type CaseCounts,
@@ -295,39 +295,15 @@ function flipsOf(cases: ReadonlyMap<string, CaseCounts>): ComparisonResult["flip
   );
 }
 
-/**
- * The identity projection of a configuration as factor keys, each with its part: every model,
- * generation parameter, prompt (by digest) and factor. Two arms with the same keys and values have
- * the same identity.
- */
-function identityFactors(
-  config: Configuration | undefined,
-): Map<string, { readonly value: string; readonly part: FactorPartName }> {
-  const out = new Map<string, { value: string; part: FactorPartName }>();
-  if (!config) return out;
-  for (const m of config.models)
-    out.set(`model.${m.role}`, { value: canonicalize(m), part: "model" });
-  for (const p of config.parameters)
-    out.set(`parameter.${p.name}`, { value: canonicalize(p), part: "parameter" });
-  for (const p of config.prompts)
-    out.set(`prompt.${p.name}`, { value: canonicalize([p.digest, p.status]), part: "prompt" });
-  for (const [n, f] of Object.entries(config.factors))
-    out.set(`factor.${n}`, { value: canonicalize(f), part: f.part });
-  return out;
-}
-
-/** The factor keys in which two arms differ, with their parts, sorted by key. */
 function differences(
   plan: Plan,
   base: string,
   candidate: string,
-): Array<{ readonly key: string; readonly part: FactorPartName }> {
-  const fb = identityFactors(plan.arms.find((a) => a.name === base)?.configuration);
-  const fc = identityFactors(plan.arms.find((a) => a.name === candidate)?.configuration);
-  return [...new Set([...fb.keys(), ...fc.keys()])]
-    .filter((k) => fb.get(k)?.value !== fc.get(k)?.value)
-    .toSorted()
-    .map((key) => ({ key, part: (fb.get(key) ?? fc.get(key))?.part ?? "other" }));
+): ReturnType<typeof configurationDifferences> {
+  return configurationDifferences(
+    plan.arms.find((arm) => arm.name === base)?.configuration,
+    plan.arms.find((arm) => arm.name === candidate)?.configuration,
+  );
 }
 
 /** The part an observation belongs to: the first segment of its dotted name, else `other`. */
@@ -791,6 +767,10 @@ export function decide(input: DecideInput): Decision {
 export function decideWith(input: DecideInput, compare: Compare): Decision {
   const { plan, run } = input;
   const invalid = recordChecks(input);
+  if (run.execution?.failure === "protocol") invalid.push("the worker failed the protocol");
+  if (run.execution?.failure === "budget-exceeded")
+    invalid.push("the worker exceeded its call bound");
+  if (run.execution?.failure === "worker-closed") invalid.push("the worker closed during a block");
   const trials = new Map(input.trials.map((t) => [t.id as string, t]));
   const values = new Map(input.values.map((v) => [`${v.measure}\u0000${v.trial}`, v]));
   const baseArm = plan.arms.find((a) => a.role === "base")?.name;
@@ -1229,6 +1209,10 @@ export function decideWith(input: DecideInput, compare: Compare): Decision {
     ...(resolution === undefined ? {} : { resolution }),
     ...(trialReduction === undefined ? {} : { trialReduction }),
     ...(mustNever === undefined ? {} : { mustNever }),
+    ...(run.execution?.registration === undefined
+      ? {}
+      : { registration: run.execution.registration }),
+    ...(run.execution?.history === undefined ? {} : { history: run.execution.history }),
     missingness: {
       byArm,
       differs: new Set(byArm.map((a) => a.missing)).size > 1,

@@ -99,7 +99,10 @@ export interface RecordRunInput {
   readonly id: string;
   readonly execution:
     | { readonly source: "import" | "re-score" }
-    | { readonly source: "runner"; readonly blocks: readonly CapturedBlock[] };
+    | (Pick<NonNullable<Run["execution"]>, "registration" | "history" | "failure"> & {
+        readonly source: "runner";
+        readonly blocks: readonly CapturedBlock[];
+      });
   readonly producer?: Run["lineage"][number];
   readonly startedAt: string;
   readonly completedAt: string;
@@ -352,6 +355,13 @@ export async function recordRun(
             source: input.execution.source,
             analysisPlan,
             ...(blocks === undefined ? {} : { seed: plan.seed, blocks }),
+            ...(input.execution.source === "runner"
+              ? {
+                  registration: input.execution.registration,
+                  history: input.execution.history,
+                  failure: input.execution.failure,
+                }
+              : { registration: "exploratory" }),
           },
           ...(Object.keys(valuesOutsideMask).length > 0 ? { valuesOutsideMask } : {}),
         }),

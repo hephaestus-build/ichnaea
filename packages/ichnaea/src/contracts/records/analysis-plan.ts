@@ -1,3 +1,4 @@
+import { RunPurpose } from "./run-registration.ts";
 import * as z from "zod";
 
 import { none } from "../data-class.ts";
@@ -39,7 +40,6 @@ export const RegisteredTrialReduction = z.strictObject({
 
 /** Authored reduction settings before their identifiers are validated. */
 export type TrialReductionRegistration = z.input<typeof RegisteredTrialReduction>;
-
 /** Analysis that can be registered before a candidate exists. */
 export const AnalysisPlan = z.strictObject({
   schema: none(z.literal("ichnaea.analysisPlan/1")),
@@ -74,6 +74,7 @@ export const AnalysisPlan = z.strictObject({
     identity: none(ConfigurationIdentity),
   }),
   maxCalls: none(z.int().min(0)),
+  purpose: none(RunPurpose).optional(),
   policy: CiPolicy,
   ichnaea: none(SemVer),
 });

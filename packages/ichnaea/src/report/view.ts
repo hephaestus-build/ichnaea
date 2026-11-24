@@ -358,6 +358,25 @@ export function decisionView(
     ["Seed", `${decision.seed.algorithm} ${decision.seed.value}`],
     ["Ichnaea", decision.ichnaea],
     ["Decided", decision.decidedAt],
+    ...(decision.registration ? ([["Registration", decision.registration]] as const) : []),
+    ...(decision.registration === "unregistered"
+      ? ([["Registration note", "The analysis was not anchored before this run."]] as const)
+      : []),
+    ...(decision.history
+      ? ([
+          [
+            "Earlier runs",
+            decision.history.scope === "store" ? "This store only" : "Records repository",
+          ],
+          ...decision.history.candidates.map(
+            ({ candidate, verdict: earlierVerdict }, index) =>
+              [
+                `Candidate ${index + 1} against this base on these cases`,
+                `${candidate} · ${earlierVerdict ?? "estimate-only"}`,
+              ] as const,
+          ),
+        ] as const)
+      : []),
   ];
   return {
     title: `Ichnaea decision: ${id(suite)}`,

@@ -188,7 +188,11 @@ it("locks applicability and keeps a candidate change out of the analysis plan di
     );
     const stored = await store.read(run);
     expect(stored.run.exploratory).toBe(true);
-    expect(stored.run.execution).toEqual({ source: "import", analysisPlan: digest(before) });
+    expect(stored.run.execution).toEqual({
+      source: "import",
+      analysisPlan: digest(before),
+      registration: "exploratory",
+    });
     expect(stored.trials.every((trial) => trial.analysisPlan === digest(before))).toBe(true);
     expect(stored.plan.analysis?.applicability).toEqual({ "app/correct": ["a"] });
     expect(stored.decision?.verdict).toBeNull();

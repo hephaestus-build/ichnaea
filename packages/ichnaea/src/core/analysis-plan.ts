@@ -11,6 +11,7 @@ import { Configuration } from "../contracts/records/configuration.ts";
 import { sha256Hex } from "../contracts/sha256.ts";
 import { checkCases, lockFor, resolveAnalysis } from "../plan/analysis.ts";
 import type { RunRecords } from "../contracts/run-records.ts";
+import { configurationDifferences } from "../plan/rules.ts";
 import { planResolution } from "../plan/resolution.ts";
 import { PlanError } from "../plan/resolve.ts";
 
@@ -239,8 +240,12 @@ export async function planSuite(input: PlanSuiteInput): Promise<PlannedSuite> {
   return { plan: resolved, lock: lockFor(resolved) };
 }
 
-export async function readLockedPlan(path: string): Promise<AnalysisPlan> {
-  const plan = AnalysisPlan.parse(await jsonFile(path));
+export async function readLockedPlan(path: string, bytes?: Uint8Array): Promise<AnalysisPlan> {
+  const plan = AnalysisPlan.parse(
+    bytes === undefined
+      ? await jsonFile(path)
+      : JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)),
+  );
   const lock = AnalysisLock.parse(await jsonFile(join(dirname(path), "ichnaea.lock")));
   if (digest(lock) !== digest(lockFor(plan)))
     throw new PlanError("the plan does not match ichnaea.lock");
@@ -281,7 +286,7 @@ export interface LockedImport {
 }
 
 type BindingOptions = Pick<Plan, "trigger" | "varies" | "createdAt" | "ichnaea"> & {
-  readonly seed: number;
+  readonly seed: number | string;
 };
 type BoundPlan = { readonly cases: readonly Case[]; readonly plan: Plan };
 
@@ -298,7 +303,7 @@ export async function bindRunnerPlan(
   input: Omit<LockedImport, "planPath">,
   host: Host,
   options: BindingOptions,
-  execution: { readonly analysis?: AnalysisPlan; readonly noise?: boolean },
+  execution: { readonly analysis?: AnalysisPlan | undefined; readonly noise?: boolean },
 ): Promise<BoundPlan> {
   const analysis =
     execution.analysis ??
@@ -372,7 +377,7 @@ async function bindAnalysis(
         ? "the noise run used the base configuration on both arms"
         : arms.length === 1
           ? "the run used one arm"
-          : analysis.method === "estimate-only"
+          : analysis.primary.length === 0 || analysis.method === "estimate-only"
             ? "the analysis plan supports estimates"
             : undefined;
   const trials = [];
@@ -396,6 +401,9 @@ async function bindAnalysis(
   }
   const plan = Plan.parse({
     ...options,
+    ...(execution && candidate
+      ? { varies: configurationDifferences(base, candidate).map(({ key }) => key) }
+      : {}),
     schema: "ichnaea.plan/1",
     analysis,
     suite: analysis.suite,
@@ -423,12 +431,15 @@ async function bindAnalysis(
         primary.margin === undefined ? "No margin registered" : "From the analysis plan",
     })),
     secondary: analysis.secondary,
-    hardGates: analysis.hardGates,
+    hardGates: execution?.noise ? [] : analysis.hardGates,
     policy: analysis.policy,
     power: [],
     budget: {
       worstCaseCalls: execution === undefined ? 0 : trials.length,
-      maxCalls: analysis.maxCalls,
+      maxCalls:
+        execution?.noise && candidate
+          ? Math.max(analysis.maxCalls, trials.length)
+          : analysis.maxCalls,
       ...(execution === undefined ? {} : { callsPerTrial: 1 }),
     },
     trials,

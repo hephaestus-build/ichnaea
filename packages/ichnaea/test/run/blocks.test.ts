@@ -279,13 +279,13 @@ it("picks up at the next physical draw after a completed and an abandoned block"
     analysis: { ...locked.analysis, maxCalls: 100 },
     budget: { ...locked.budget, maxCalls: 100 },
   };
-  const draws = (block: number, planned: number) =>
+  const draws = (physical: number, planned: number) =>
     locked.trials
       .filter(({ block, arm }) => block === planned && arm === "base")
       .map(({ case: id, replicate }) => ({
         case: id,
         replicate,
-        first: pairFirst(locked.seed, block, { case: id, replicate }),
+        first: pairFirst(locked.seed, physical, { case: id, replicate }),
       }));
   const history = [
     { block: 0, plannedBlock: 0, draws: draws(0, 0), status: "complete", calls: 12 },

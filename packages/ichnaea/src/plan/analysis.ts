@@ -71,6 +71,7 @@ export interface AnalysisInput {
   readonly applicability: AnalysisPlan["applicability"];
   readonly trialReduction?: TrialReductionRegistration | undefined;
   readonly mustNever?: readonly MustNeverDeclaration[] | undefined;
+  readonly purpose?: AnalysisPlan["purpose"];
   readonly maxCalls?: number | undefined;
   readonly policy?: AnalysisPlan["policy"] | undefined;
   readonly ichnaea: string;
@@ -158,6 +159,7 @@ export function resolveAnalysis(input: AnalysisInput): AnalysisPlan {
     base: { role: "base", identity: configurationIdentity(input.base) },
     maxCalls:
       input.maxCalls ?? blockCalls(input.caseSet.cases.length, holm.length, blocks, replicates),
+    ...(input.purpose === undefined ? {} : { purpose: input.purpose }),
     policy: input.policy ?? DEFAULT_POLICY,
     ichnaea: input.ichnaea,
   });

@@ -16,6 +16,7 @@ import { NOT_CAPTURED } from "./record-run.ts";
 interface EvidenceContext {
   readonly run: string;
   readonly block: number;
+  readonly first?: "base" | "candidate";
   readonly analysisPlan: string;
   readonly configuration: string;
   readonly settings: string;
@@ -82,6 +83,8 @@ export function workerEvidence(
     replicate: request.trial.replicate,
     analysisPlan: context.analysisPlan,
     block: context.block,
+    first: context.first,
+    responseIds: result.usage.responseIds,
     startedAt: context.startedAt,
     endedAt: context.endedAt,
     context: result.context,
@@ -147,8 +150,5 @@ export function workerEvidence(
             { name: "environment", value: observed.environment },
           ]),
     ],
-    joinKeys: Object.fromEntries(
-      result.usage.responseIds.map((id, index) => [`responseId.${index}`, id]),
-    ),
   });
 }
