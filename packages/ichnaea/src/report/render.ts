@@ -13,6 +13,42 @@ const md = (text: string | number): string =>
     .replaceAll(/[\\`*_[\]{}()#+!|~]/g, (c) => `\\${c}`);
 const cell = md;
 
+const variance = (value: number | null): string => (value === null ? "unavailable" : String(value));
+
+function measureDetails(view: DecisionView): string[] {
+  return view.measures.flatMap((m) => [
+    ...m.arms.map((a) => {
+      const d = a.denominators;
+      const cases =
+        d.observedCases === null
+          ? `Case counts unavailable (${d.caseCountsReason ?? "missing denominator"})`
+          : `${d.observedCases} of ${d.plannedCases} cases`;
+      const limits =
+        a.validity.limitations.length > 0 ? ` (${a.validity.limitations.join(", ")})` : "";
+      return `${m.measure}, ${a.arm}. ${cases}, ${a.n} trials. ${a.estimand}. ${a.method}, ${a.sidedness === "two" ? "two-sided" : "one-sided"} ${a.level * 100}% interval${limits}.`;
+    }),
+    ...(m.difference
+      ? [
+          `${m.measure} difference. ${m.difference.method}, ${m.difference.sidedness === "two" ? "two-sided" : "one-sided"} ${m.difference.level * 100}%.`,
+        ]
+      : []),
+    ...(m.blocks
+      ? [
+          `${m.measure}. Blocks ${m.blocks.observed} observed of ${m.blocks.planned} planned. Effective blocks ${m.blocks.effective ?? `unavailable (${m.blocks.reason ?? "missing denominator"})`}.`,
+        ]
+      : []),
+    ...(m.noise
+      ? [
+          ...m.noise.arms.map(
+            (a) =>
+              `${m.measure}, ${a.arm}. Within-case variance ${variance(a.withinCaseVariance)} over ${a.replicatedCells} replicated case-block cells. Case dispersion ${variance(a.caseDispersion)} describes this suite.`,
+          ),
+          `${m.measure}. Between planned-block variance ${variance(m.noise.betweenBlockVariance)} over ${m.noise.contrastBlocks} contrasts. These use planned block labels.`,
+        ]
+      : []),
+  ]);
+}
+
 /** Renders the CI summary in Markdown (a GitHub job summary or a merge-request note). */
 export function renderMarkdown(view: DecisionView): string {
   const lines: string[] = [];
@@ -25,7 +61,7 @@ export function renderMarkdown(view: DecisionView): string {
     "",
   );
   lines.push(
-    "| Measure | Verdict | Arm | Rate | 95% interval | n | Missing | Difference | Bound | Margin |",
+    "| Measure | Verdict | Arm | Rate | Interval | n | Missing | Difference | Bound | Margin |",
     "|---|---|---|---|---|---|---|---|---|---|",
   );
   for (const m of view.measures) {
@@ -36,6 +72,9 @@ export function renderMarkdown(view: DecisionView): string {
       );
     });
   }
+  const details = measureDetails(view);
+  if (details.length > 0)
+    lines.push("", "**Measure details**", "", ...details.map((d) => `- ${md(d)}`));
   const notes = view.measures.flatMap((m) => m.notes.map((n) => `- ${md(m.measure)}: ${md(n)}`));
   if (notes.length > 0) lines.push("", ...notes);
   if (view.gates.length > 0)
@@ -218,11 +257,12 @@ figure { margin: .5rem 0 1rem; } svg text { fill: var(--muted); font-size: 10px;
 <p class="muted">${escape(view.method)}</p>
 <table>
 <caption>Primary and secondary measures</caption>
-<thead><tr><th scope="col">Measure</th><th scope="col">Verdict</th><th scope="col">Arm</th><th scope="col">Rate</th><th scope="col">95% interval</th><th scope="col">n</th><th scope="col">Missing</th><th scope="col">Difference</th><th scope="col">Bound</th><th scope="col">Margin</th></tr></thead>
+<thead><tr><th scope="col">Measure</th><th scope="col">Verdict</th><th scope="col">Arm</th><th scope="col">Rate</th><th scope="col">Interval</th><th scope="col">n</th><th scope="col">Missing</th><th scope="col">Difference</th><th scope="col">Bound</th><th scope="col">Margin</th></tr></thead>
 <tbody>
 ${rows}
 </tbody>
 </table>
+${view.measures.length > 0 ? `<h2>Measure details</h2>${list(measureDetails(view))}` : ""}
 ${view.measures.some((m) => m.difference?.axis) ? `<h2>Differences</h2>${view.measures.flatMap((m) => (m.difference?.axis ? [axisFigure(m.measure, m.difference.axis)] : [])).join("\n")}` : ""}
 ${view.measures.some((m) => m.notes.length > 0) ? `<h2>Notes</h2>${list(view.measures.flatMap((m) => m.notes.map((n) => `${m.measure}: ${n}`)))}` : ""}
 ${view.gates.length > 0 ? `<h2>Hard gates</h2>${list(view.gates.map((g) => `${g.gate}: ${g.result}`))}` : ""}
@@ -245,7 +285,7 @@ ${list(view.limitations)}
 /** A shown rate, a difference in points, and the cells that state their intervals. */
 const RATE = /^\d+\.\d%$/;
 const DIFFERENCE = /^[+−]?\d+\.\d pts$/;
-const INTERVAL = /^\d+\.\d% to \d+\.\d%$/;
+const INTERVAL = /^(?:\d+\.\d% to \d+\.\d%(?: \(not validated\))?|No interval yet: .+)$/;
 const BOUND = /^≥ [+−]?\d+\.\d pts( \(not validated\))?$/;
 const NO_BOUND_CELL = new RegExp(`^${NO_BOUND} \\(.+\\)$`);
 

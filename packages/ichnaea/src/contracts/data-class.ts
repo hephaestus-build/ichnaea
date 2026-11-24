@@ -82,10 +82,13 @@ export function none<T extends z.ZodType>(schema: T, extra: Record<string, unkno
   );
 }
 
-/** Content whose class the enclosing record declares in `dataClass`. */
-export function content<T extends z.ZodType>(schema: T): T {
+/** Content classified explicitly or by the enclosing record's `dataClass`. */
+export function content<T extends z.ZodType>(
+  schema: T,
+  classification: DataClass | "inherit" = "inherit",
+): T {
   return withPolicy(schema, {
-    class: "inherit",
+    class: classification,
     identifier: "content",
     egress: [ANY_PURPOSE],
     retention: "subject",

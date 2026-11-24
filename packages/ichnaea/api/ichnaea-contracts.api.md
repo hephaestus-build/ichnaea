@@ -299,6 +299,17 @@ export const ArmEstimate: z.ZodObject<{
         notApplicable: z.ZodInt;
         missing: z.ZodInt;
     }, z.core.$strict>;
+    caseAvailability: z.ZodOptional<z.ZodObject<{
+        planned: z.ZodInt;
+        observed: z.ZodInt;
+    }, z.core.$strict>>;
+    intervalValidity: z.ZodOptional<z.ZodDiscriminatedUnion<[z.ZodObject<{
+        validated: z.ZodLiteral<true>;
+        limitations: z.ZodArray<z.ZodString>;
+    }, z.core.$strict>, z.ZodObject<{
+        validated: z.ZodLiteral<false>;
+        limitations: z.ZodArray<z.ZodString>;
+    }, z.core.$strict>], "validated">>;
 }, z.core.$strict>;
 
 // @public
@@ -1081,7 +1092,7 @@ export const ConfigurationV2: z.ZodObject<{
 export type ConfigurationV2 = z.infer<typeof ConfigurationV2>;
 
 // @public
-export function content<T extends z.ZodType>(schema: T): T;
+export function content<T extends z.ZodType>(schema: T, classification?: DataClass | "inherit"): T;
 
 // @public
 export const CONTEXT_SLOTS: readonly ["measure", "margin", "change", "bound", "cases", "caseNoun", "trials", "changed", "broke", "fixed", "test", "p", "rawP", "m", "side"];
@@ -1221,6 +1232,17 @@ export const Decision: z.ZodObject<{
                 notApplicable: z.ZodInt;
                 missing: z.ZodInt;
             }, z.core.$strict>;
+            caseAvailability: z.ZodOptional<z.ZodObject<{
+                planned: z.ZodInt;
+                observed: z.ZodInt;
+            }, z.core.$strict>>;
+            intervalValidity: z.ZodOptional<z.ZodDiscriminatedUnion<[z.ZodObject<{
+                validated: z.ZodLiteral<true>;
+                limitations: z.ZodArray<z.ZodString>;
+            }, z.core.$strict>, z.ZodObject<{
+                validated: z.ZodLiteral<false>;
+                limitations: z.ZodArray<z.ZodString>;
+            }, z.core.$strict>], "validated">>;
         }, z.core.$strict>>;
         comparisons: z.ZodArray<z.ZodObject<{
             base: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
@@ -1310,6 +1332,22 @@ export const Decision: z.ZodObject<{
             REGRESSION: "REGRESSION";
         }>;
         coverage: z.ZodNumber;
+        blocks: z.ZodOptional<z.ZodObject<{
+            planned: z.ZodInt;
+            observed: z.ZodInt;
+            effective: z.ZodNullable<z.ZodInt>;
+            reason: z.ZodOptional<z.ZodString>;
+        }, z.core.$strict>>;
+        noise: z.ZodOptional<z.ZodObject<{
+            arms: z.ZodArray<z.ZodObject<{
+                arm: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
+                withinCaseVariance: z.ZodNullable<z.ZodNumber>;
+                replicatedCells: z.ZodInt;
+                caseDispersion: z.ZodNullable<z.ZodNumber>;
+            }, z.core.$strict>>;
+            betweenBlockVariance: z.ZodNullable<z.ZodNumber>;
+            contrastBlocks: z.ZodInt;
+        }, z.core.$strict>>;
         sensitivity: z.ZodArray<z.ZodObject<{
             imputation: z.ZodEnum<{
                 "against-non-inferiority": "against-non-inferiority";
@@ -2642,6 +2680,17 @@ export const MeasureOutcome: z.ZodObject<{
             notApplicable: z.ZodInt;
             missing: z.ZodInt;
         }, z.core.$strict>;
+        caseAvailability: z.ZodOptional<z.ZodObject<{
+            planned: z.ZodInt;
+            observed: z.ZodInt;
+        }, z.core.$strict>>;
+        intervalValidity: z.ZodOptional<z.ZodDiscriminatedUnion<[z.ZodObject<{
+            validated: z.ZodLiteral<true>;
+            limitations: z.ZodArray<z.ZodString>;
+        }, z.core.$strict>, z.ZodObject<{
+            validated: z.ZodLiteral<false>;
+            limitations: z.ZodArray<z.ZodString>;
+        }, z.core.$strict>], "validated">>;
     }, z.core.$strict>>;
     comparisons: z.ZodArray<z.ZodObject<{
         base: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
@@ -2731,6 +2780,22 @@ export const MeasureOutcome: z.ZodObject<{
         REGRESSION: "REGRESSION";
     }>;
     coverage: z.ZodNumber;
+    blocks: z.ZodOptional<z.ZodObject<{
+        planned: z.ZodInt;
+        observed: z.ZodInt;
+        effective: z.ZodNullable<z.ZodInt>;
+        reason: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>>;
+    noise: z.ZodOptional<z.ZodObject<{
+        arms: z.ZodArray<z.ZodObject<{
+            arm: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
+            withinCaseVariance: z.ZodNullable<z.ZodNumber>;
+            replicatedCells: z.ZodInt;
+            caseDispersion: z.ZodNullable<z.ZodNumber>;
+        }, z.core.$strict>>;
+        betweenBlockVariance: z.ZodNullable<z.ZodNumber>;
+        contrastBlocks: z.ZodInt;
+    }, z.core.$strict>>;
     sensitivity: z.ZodArray<z.ZodObject<{
         imputation: z.ZodEnum<{
             "against-non-inferiority": "against-non-inferiority";
