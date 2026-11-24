@@ -289,8 +289,8 @@ describe("the worker protocol", () => {
       [...artifact, "name"],
       [...artifact, "path"],
       ["properties", "events", "items", "properties", "artifact"],
-      ["properties", "observed", "properties", "environment"],
-      ["properties", "observed", "properties", "modules"],
+      ["properties", "observed", "anyOf", "0", "properties", "environment"],
+      ["properties", "observed", "anyOf", "0", "properties", "modules"],
     ])
       expect(at("trialResult", path), path.join(".")).toMatchObject(inherits);
     const copy = ["properties", "units", "items", "properties", "artifacts", "items", "properties"];
