@@ -162,7 +162,7 @@ function checkAndPack(tree: string, work: string): string {
 }
 
 /** The consumer file that each profile type-checks: every code subpath, used with its types. */
-const API = `import { CORE_VERSION, decide, main, reportPlugin } from "${PACKAGE_NAME}";
+const API = `import { CORE_VERSION, decide, main, report } from "${PACKAGE_NAME}";
 import { Case, canonicalize, type Decision } from "${PACKAGE_NAME}/contracts";
 import { compareCounts, type Comparison } from "${PACKAGE_NAME}/stats";
 import { analyzeCalibration, type CalibrationAnalysis } from "${PACKAGE_NAME}/calibration";
@@ -173,7 +173,7 @@ const text: string = canonicalize({ a: 1 });
 const verdict = (d: Decision): string => d.verdict ?? "none";
 const validated = (c: Comparison): boolean => c.regression.validated;
 const secondary = (a: CalibrationAnalysis): boolean => a.use === "secondary";
-export const used = [version, exit, decide, reportPlugin, Case, compareCounts, text, verdict, validated, analyzeCalibration, secondary];
+export const used = [version, exit, decide, report, Case, compareCounts, text, verdict, validated, analyzeCalibration, secondary];
 `;
 
 /** The consumer file that Node runs: every subpath, the JSON Schema files and the manifest. */

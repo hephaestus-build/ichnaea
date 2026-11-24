@@ -141,7 +141,6 @@ const results: Importer<"support/results"> = {
 export const support = definePlugin({
   id: "support",
   version: "1.0.0",
-  stability: "stable",
   measures: [factsStated],
   importers: [results],
   gates: [

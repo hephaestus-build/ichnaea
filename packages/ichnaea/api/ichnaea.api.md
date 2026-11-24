@@ -33,31 +33,6 @@ export class CallLedger {
 }
 
 // @public
-export interface CommandDefinition {
-    readonly description: string;
-    readonly name: string;
-    readonly options: Readonly<Record<string, {
-        readonly type: "string" | "boolean";
-        readonly multiple?: boolean;
-        readonly description: string;
-    }>>;
-    readonly run: (args: {
-        readonly values: Readonly<Record<string, unknown>>;
-        readonly positionals: readonly string[];
-    }, host: CommandHost) => Promise<number>;
-}
-
-// @public
-export interface CommandHost {
-    readonly err: (text: string) => void;
-    readonly gates: ReadonlyMap<string, GateDefinition>;
-    readonly hooks: HookRunner;
-    readonly importers: ReadonlyMap<string, Importer>;
-    readonly measures: ReadonlyMap<string, MeasureDefinition>;
-    readonly out: (text: string) => void;
-}
-
-// @public
 export function compare(plan: Plan, records: Omit<RunRecords, "plan">, options: {
     readonly decidedAt: string;
     readonly aa?: readonly AaEvidence[];
@@ -65,32 +40,21 @@ export function compare(plan: Plan, records: Omit<RunRecords, "plan">, options: 
 
 // @public
 export interface Config<Plugins extends readonly Plugin[] = readonly Plugin[]> {
-    readonly allowStability?: readonly Exclude<Stability, "stable">[];
-    readonly governance?: string;
     readonly plugins: Plugins;
     readonly store?: string;
 }
 
 // @public
-export const CORE_COMMANDS: readonly string[];
-
-// @public
 export const CORE_VERSION: string;
 
 // @public
-export function createHost(config: Config, versions: HostVersions, log?: (message: string) => void): Host;
+export function createHost(config: Config, versions: HostVersions): Host;
 
 // @public
 export function createPlan(input: PlanInput): Promise<Plan>;
 
 // @public
 export function decide(input: DecideInput): Decision;
-
-// @public
-export function decideEgress(request: EgressRequest, hooks: ReadonlyArray<[Plugin, NonNullable<Hooks["beforeEgress"]>]>, ctx: HookContext, governance?: string): Promise<{
-    allow: boolean;
-    reasons: string[];
-}>;
 
 // @public
 export interface DecideInput {
@@ -106,9 +70,6 @@ export interface DecideInput {
     // Warning: (ae-forgotten-export) The symbol "MeasureValue" needs to be exported by the entry point index.d.ts
     readonly values: readonly MeasureValue[];
 }
-
-// @public
-export function decidePlugin(): Plugin<"decide">;
 
 // @public
 export function decidePrimaries(input: PrimariesInput): Map<string, PrimaryVerdict>;
@@ -163,25 +124,6 @@ export function definePlugin<const Id extends string, const P extends Plugin<Id>
 export function describeCounts(counts: readonly number[]): string;
 
 // @public
-export type EgressAnswer = {
-    readonly allow: true;
-} | {
-    readonly allow: false;
-    readonly reason: string;
-} | undefined;
-
-// @public
-export interface EgressRequest {
-    // Warning: (ae-forgotten-export) The symbol "DataClass" needs to be exported by the entry point index.d.ts
-    readonly dataClass: DataClass;
-    readonly destination: string;
-    readonly operation: "sample" | "label-publish" | "promote" | "export" | "share" | "model-call";
-    readonly pointers: readonly string[];
-    // Warning: (ae-forgotten-export) The symbol "Purpose" needs to be exported by the entry point index.d.ts
-    readonly purpose: Purpose;
-}
-
-// @public
 export function exitCode(decision: Decision, policy: Plan["policy"]): number;
 
 // @public
@@ -220,48 +162,11 @@ export type GateIdsOf<Plugins extends readonly Plugin[]> = Plugins[number] exten
 } ? Id : never : never;
 
 // @public
-export const HOOK_MODES: {
-    readonly [K in keyof Hooks]: "sequential" | "parallel";
-};
-
-// @public
-export interface HookContext {
-    readonly log: (message: string) => void;
-}
-
-// @public
-export interface HookRunner {
-    beforeEgress(request: EgressRequest): Promise<{
-        allow: boolean;
-        reasons: string[];
-    }>;
-    configResolved(): Promise<void>;
-    decisionMade(decision: Decision): Promise<void>;
-    planCreated(plan: Plan): Promise<Plan>;
-    reportRendered(files: readonly string[]): Promise<void>;
-    runCompleted(run: Run): Promise<void>;
-    trialRecorded(trial: Trial): Promise<void>;
-}
-
-// @public
-export interface Hooks {
-    readonly beforeEgress: (ctx: HookContext, request: EgressRequest) => EgressAnswer | Promise<EgressAnswer>;
-    readonly configResolved: (ctx: HookContext) => void | Promise<void>;
-    readonly decisionMade: (ctx: HookContext, decision: Decision) => void | Promise<void>;
-    readonly planCreated: (ctx: HookContext, plan: Plan) => PlanAdditions | void | Promise<PlanAdditions | void>;
-    readonly reportRendered: (ctx: HookContext, files: readonly string[]) => void | Promise<void>;
-    readonly runCompleted: (ctx: HookContext, run: Run) => void | Promise<void>;
-    readonly trialRecorded: (ctx: HookContext, trial: Trial) => void | Promise<void>;
-}
-
-// @public
-export interface Host extends HookRunner {
-    readonly commands: ReadonlyMap<string, CommandDefinition>;
+export interface Host {
     readonly gates: ReadonlyMap<string, GateDefinition>;
     readonly importers: ReadonlyMap<string, Importer>;
     readonly measures: ReadonlyMap<string, MeasureDefinition>;
     readonly plugins: readonly Plugin[];
-    readonly warnings: readonly string[];
 }
 
 // @public
@@ -444,67 +349,36 @@ export function packageVersion(from: string): string;
 export function percent(value: Real | number): string;
 
 // @public
-export type PlanAdditions = Partial<Pick<Plan, "power" | "modeReasons">> & {
-    readonly mode?: "estimate-only";
-    readonly refuse?: string;
-};
-
-// @public
 export class PlanError extends Error {
     readonly name = "PlanError";
 }
 
+// Warning: (ae-forgotten-export) The symbol "PreparedPlanInput" needs to be exported by the entry point index.d.ts
+//
 // @public
-export interface PlanInput {
-    readonly aa?: Plan["aa"];
-    readonly arms: ReadonlyArray<{
-        readonly name?: string;
-        readonly role: "base" | "candidate" | "reference";
-        readonly configuration: Configuration;
-    }>;
-    readonly armsToRun?: readonly string[];
-    readonly cases: readonly Case[];
-    // Warning: (ae-forgotten-export) The symbol "CaseSet" needs to be exported by the entry point index.d.ts
-    readonly caseSet: CaseSet;
+export interface PlanInput extends Omit<PreparedPlanInput, "measures" | "gates" | "tested"> {
     readonly gates: ReadonlyMap<string, GateDefinition>;
-    readonly ichnaea: string;
     readonly measures: ReadonlyMap<string, MeasureDefinition>;
-    readonly monthlyRemaining?: number;
-    readonly now: string;
-    readonly schedule?: Plan["schedule"];
-    readonly seed: number;
-    // Warning: (ae-forgotten-export) The symbol "Suite" needs to be exported by the entry point index.d.ts
-    readonly suite: Suite;
-    readonly trigger: Plan["trigger"];
-    readonly varies?: readonly string[];
 }
 
 // @public
 export function plannedTrialsPerCase(plan: Plan, arm: string): Map<string, number>;
 
+// Warning: (ae-forgotten-export) The symbol "PlanPowerStatement" needs to be exported by the entry point index.d.ts
+//
 // @public
-export function planningPower(plan: Plan): PlanAdditions;
+export function planningPower(plan: Plan): PlanPowerStatement;
 
 // @public
 export interface Plugin<Id extends string = string> {
-    readonly commands?: readonly CommandDefinition[];
-    readonly deprecated?: {
-        readonly since: string;
-        readonly removeIn: string;
-        readonly replacement: string;
-        readonly url: string;
-    };
     readonly gates?: readonly GateDefinition<`${Id}/${string}`>[];
-    readonly hooks?: Partial<Hooks>;
     readonly id: Id;
     readonly importers?: readonly Importer<`${Id}/${string}`>[];
     readonly measures?: readonly MeasureDefinition<`${Id}/${string}`>[];
-    readonly placement?: "pre" | "post";
     readonly requires?: {
         readonly contracts?: string;
         readonly core?: string;
     };
-    readonly stability: Stability;
     readonly version: string;
 }
 
@@ -600,9 +474,6 @@ export interface ReportOptions {
 }
 
 // @public
-export function reportPlugin(): Plugin<"report">;
-
-// @public
 export interface RunIndexEntry {
     readonly decidedAt: string;
     readonly plan: string;
@@ -638,9 +509,6 @@ export interface SensitivityRow {
 }
 
 // @public
-export type Stability = "development" | "alpha" | "beta" | "stable";
-
-// @public
 export const STALE_LOCK_MS = 30000;
 
 // @public
@@ -663,17 +531,9 @@ export interface TesterResult {
 // @public
 export function testMeasure(measure: MeasureDefinition): Promise<TesterResult>;
 
-// Warning: (ae-forgotten-export) The symbol "FactorPart" needs to be exported by the entry point index.d.ts
-//
-// @public
-export const TRIGGER_VARIES: {
-    readonly [K in Plan["trigger"]]: readonly FactorPart[] | null;
-};
-
 // Warnings were encountered during analysis:
 //
-// src/core/planner.ts:35:5 - (ae-forgotten-export) The symbol "Configuration" needs to be exported by the entry point index.d.ts
-// src/core/plugin.ts:60:5 - (ae-forgotten-export) The symbol "Case" needs to be exported by the entry point index.d.ts
+// src/core/plugin.ts:54:5 - (ae-forgotten-export) The symbol "Case" needs to be exported by the entry point index.d.ts
 
 // (No @packageDocumentation comment for this package)
 

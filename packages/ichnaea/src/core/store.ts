@@ -14,7 +14,7 @@ import { Run, type Run as RunRecord } from "../contracts/records/run.ts";
 import { Trial } from "../contracts/records/trial.ts";
 import * as z from "zod";
 
-import { recordProblems, type RunRecords } from "./records.ts";
+import { recordProblems, type RunRecords } from "../contracts/run-records.ts";
 
 /** Thrown when a write would change a record that already exists. */
 export class AppendOnlyError extends Error {

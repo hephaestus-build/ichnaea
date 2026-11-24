@@ -9,8 +9,8 @@ import { type Plan, REFUSED_MARGIN } from "../contracts/records/plan.ts";
 import type { Run } from "../contracts/records/run.ts";
 import type { Trial } from "../contracts/records/trial.ts";
 import { proportionProblem } from "../contracts/values.ts";
-import { TRIGGER_VARIES } from "../core/planner.ts";
-import { recordProblems } from "../core/records.ts";
+import { TRIGGER_VARIES } from "../plan/rules.ts";
+import { recordProblems } from "../contracts/run-records.ts";
 import {
   type CaseCounts,
   type Comparison,
@@ -27,7 +27,7 @@ import { createRng } from "../stats/rng.ts";
 import { wilson } from "../stats/wilson.ts";
 import type * as z from "zod";
 
-import { describeCounts, plannedTrialsPerCase, planningPower } from "./planning.ts";
+import { describeCounts, plannedTrialsPerCase, planningPower } from "../plan/power.ts";
 
 /** Everything a decision is computed from. Reports never compute anything new. */
 export interface DecideInput {

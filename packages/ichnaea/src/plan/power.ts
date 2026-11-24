@@ -1,5 +1,4 @@
 import type { Plan, PowerEntry } from "../contracts/records/plan.ts";
-import type { PlanAdditions } from "../core/plugin.ts";
 import { VALIDATED_MARGIN_CEILING, VALIDATED_MARGIN_FLOOR } from "../stats/compare.ts";
 import { sampledCasesFloor, zeroNoiseFloor } from "../stats/power.ts";
 
@@ -20,6 +19,12 @@ export function describeCounts(counts: readonly number[]): string {
     .join(", ");
 }
 
+/** What the planning power calculation adds to a plan. */
+export type PlanPowerStatement = Partial<Pick<Plan, "power" | "modeReasons">> & {
+  readonly mode?: "estimate-only";
+  readonly refuse?: string;
+};
+
 /**
  * The planning power statement (REQ-27, REQ-54): per primary measure, the zero-noise floor of the
  * fixed-cases bound for the plan's cases and trials. The floor is a lower bound on the minimum
@@ -38,7 +43,7 @@ export function describeCounts(counts: readonly number[]): string {
  * possible. Under fixed-cases with fewer than 2 trials in a case, each entry says why it is not
  * computed.
  */
-export function planningPower(plan: Plan): PlanAdditions {
+export function planningPower(plan: Plan): PlanPowerStatement {
   for (const p of plan.estimand === "fixed-cases" ? plan.primary : []) {
     const tested = p.margin - (p.safetyMargin ?? 0);
     const broken =

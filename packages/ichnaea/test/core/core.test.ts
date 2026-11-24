@@ -16,7 +16,6 @@ import { join } from "node:path";
 import {
   type Case,
   candidateRunsFirst,
-  type Decision,
   type GateResult,
   Plan as PlanSchema,
   type Plan,
@@ -30,10 +29,8 @@ import {
   CallLedger,
   CORE_VERSION,
   createHost,
-  decideEgress,
   definePlugin,
   FileStore,
-  HostError,
   MonthlyCapError,
   type MeasureDefinition,
   type Plugin,
@@ -44,9 +41,9 @@ import {
   STALE_LOCK_MS,
   StoreError,
   testMeasure,
-  TRIGGER_VARIES,
 } from "../../src/core/index.ts";
 import { main } from "../../src/cli.ts";
+import { TRIGGER_VARIES } from "../../src/plan/rules.ts";
 
 const fixture = async (name: string): Promise<unknown> =>
   JSON.parse(
@@ -67,226 +64,65 @@ const records = (id: string): RunRecords => ({
 });
 
 const versions = { core: "0.3.1", contracts: "1.2.0" };
-const stable = (id: string, extra: Partial<Plugin> = {}): Plugin => ({
+const plugin = (id: string, extra: Partial<Plugin> = {}): Plugin => ({
   id,
   version: "1.0.0",
-  stability: "stable",
   ...extra,
 });
 
 describe("plugin host (REQ-80)", () => {
   it("fails at load time on duplicate plugins, un-namespaced parts and duplicate measures, naming the plugin", () => {
-    expect(() => createHost({ plugins: [stable("a"), stable("a")] }, versions)).toThrow(
+    expect(() => createHost({ plugins: [plugin("a"), plugin("a")] }, versions)).toThrow(
       "plugin 'a' is listed twice",
     );
     const measure = {
       ...exact,
       card: { ...exact.card, id: "b/m" },
     } as unknown as MeasureDefinition<"a/m">;
-    expect(() => createHost({ plugins: [stable("a", { measures: [measure] })] }, versions)).toThrow(
+    expect(() => createHost({ plugins: [plugin("a", { measures: [measure] })] }, versions)).toThrow(
       "must be namespaced as 'a/…'",
     );
     const m = { ...exact, card: { ...exact.card, id: "a/m" } } as MeasureDefinition<"a/m">;
-    expect(() => createHost({ plugins: [stable("a", { measures: [m, m] })] }, versions)).toThrow(
+    expect(() => createHost({ plugins: [plugin("a", { measures: [m, m] })] }, versions)).toThrow(
       "duplicate measure 'a/m'",
     );
   });
 
   it("validates measure cards when a plugin loads (REQ-29)", () => {
     const noCard = {} as unknown as MeasureDefinition<"a/m">;
-    expect(() => createHost({ plugins: [stable("a", { measures: [noCard] })] }, versions)).toThrow(
+    expect(() => createHost({ plugins: [plugin("a", { measures: [noCard] })] }, versions)).toThrow(
       "plugin 'a': a measure has no card",
     );
     const bad = {
       ...exact,
       card: { ...exact.card, id: "a/m", valueType: "fuzzy" },
     } as unknown as MeasureDefinition<"a/m">;
-    expect(() => createHost({ plugins: [stable("a", { measures: [bad] })] }, versions)).toThrow(
+    expect(() => createHost({ plugins: [plugin("a", { measures: [bad] })] }, versions)).toThrow(
       /the card of measure 'a\/m' is invalid: valueType/,
     );
   });
 
-  it("refuses a plugin command that would replace a core command", () => {
-    for (const name of ["import", "doctor", "schema", "help"]) {
-      const command = { name, description: "d", options: {}, run: async () => 0 };
-      expect(() =>
-        createHost({ plugins: [stable("a", { commands: [command] })] }, versions),
-      ).toThrow(`command '${name}' is a core command`);
-    }
-  });
-
-  it("requires a named opt-in for plugins below stable", () => {
-    expect(() => createHost({ plugins: [stable("a", { stability: "beta" })] }, versions)).toThrow(
-      HostError,
+  it("refuses lifecycle hooks and commands on a contributed plugin", () => {
+    const extra = { ...plugin("a"), hooks: { planCreated: () => ({ refuse: "underpowered" }) } };
+    expect(() => createHost({ plugins: [extra] }, versions)).toThrow(
+      "plugin 'a': unsupported field(s): hooks",
     );
-    expect(() =>
-      createHost(
-        { plugins: [stable("a", { stability: "beta" })], allowStability: ["beta"] },
-        versions,
-      ),
-    ).not.toThrow();
+    const withCommand = { ...plugin("b"), commands: [{ name: "decide" }] };
+    expect(() => createHost({ plugins: [withCommand] }, versions)).toThrow(
+      "plugin 'b': unsupported field(s): commands",
+    );
   });
 
-  it("refuses a plugin outside its peer range and warns on deprecation with the replacement", () => {
+  it("refuses a plugin outside its peer range", () => {
     expect(() =>
-      createHost({ plugins: [stable("a", { requires: { core: "^0.4.0" } })] }, versions),
+      createHost({ plugins: [plugin("a", { requires: { core: "^0.4.0" } })] }, versions),
     ).toThrow("requires core ^0.4.0, but 0.3.1 is loaded");
-    const host = createHost(
-      {
-        plugins: [
-          stable("a", {
-            deprecated: {
-              since: "1.1.0",
-              removeIn: "2.0.0",
-              replacement: "b",
-              url: "https://example.org",
-            },
-          }),
-        ],
-      },
-      versions,
-    );
-    expect(host.warnings[0]).toMatch(/use b/);
-  });
-
-  it("runs sequential hooks in plugin order with pre and post placement", async () => {
-    const order: string[] = [];
-    const plugin = (id: string, placement?: "pre" | "post"): Plugin =>
-      stable(id, {
-        ...(placement ? { placement } : {}),
-        hooks: { planCreated: () => void order.push(id) },
-      });
-    const host = createHost(
-      { plugins: [plugin("late", "post"), plugin("middle"), plugin("early", "pre")] },
-      versions,
-    );
-    await host.planCreated(plan);
-    expect(order).toEqual(["early", "middle", "late"]);
-  });
-
-  it("fires every lifecycle hook, and no hook turns an estimate-only plan into a decision", async () => {
-    const seen: string[] = [];
-    const host = createHost(
-      {
-        plugins: [
-          stable("watch", {
-            hooks: {
-              configResolved: () => void seen.push("configResolved"),
-              trialRecorded: () => void seen.push("trialRecorded"),
-              runCompleted: () => void seen.push("runCompleted"),
-              decisionMade: () => void seen.push("decisionMade"),
-              reportRendered: () => void seen.push("reportRendered"),
-            },
-          }),
-        ],
-      },
-      versions,
-    );
-    await host.configResolved();
-    await host.trialRecorded(trialWith("completed"));
-    await host.runCompleted({} as Run);
-    await host.decisionMade({} as Decision);
-    await host.reportRendered([]);
-    expect(seen).toEqual([
-      "configResolved",
-      "trialRecorded",
-      "runCompleted",
-      "decisionMade",
-      "reportRendered",
-    ]);
-    const upgrade = createHost(
-      {
-        plugins: [
-          stable("sneaky", { hooks: { planCreated: () => ({ mode: "decision" }) as never } }),
-        ],
-      },
-      versions,
-    );
-    await expect(upgrade.planCreated({ ...plan, mode: "estimate-only" })).rejects.toThrow(
-      "cannot turn an estimate-only plan into a decision",
-    );
-    const downgrade = createHost(
-      {
-        plugins: [
-          stable("careful", {
-            hooks: { planCreated: () => ({ mode: "estimate-only", modeReasons: ["why"] }) },
-          }),
-        ],
-      },
-      versions,
-    );
-    expect(await downgrade.planCreated(plan)).toMatchObject({
-      mode: "estimate-only",
-      modeReasons: ["why"],
-    });
-  });
-
-  it("lets a planCreated hook refuse a plan", async () => {
-    const host = createHost(
-      {
-        plugins: [
-          stable("gatekeeper", { hooks: { planCreated: () => ({ refuse: "underpowered" }) } }),
-        ],
-      },
-      versions,
-    );
-    await expect(host.planCreated({} as never)).rejects.toThrow("refused the plan: underpowered");
   });
 
   it("infers literal plugin and measure IDs", () => {
-    const p = definePlugin({ id: "app", version: "1.0.0", stability: "stable" });
+    const p = definePlugin({ id: "app", version: "1.0.0" });
     const id: "app" = p.id;
     expect(id).toBe("app");
-  });
-});
-
-const request = (dataClass: "none" | "pseudonymous" | "personal") => ({
-  operation: "export" as const,
-  purpose: "PU-1" as const,
-  dataClass,
-  destination: "file",
-  pointers: [],
-});
-
-describe("egress (REQ-126)", () => {
-  const ctx = { log: () => undefined };
-
-  it("denies every class but none by default", async () => {
-    expect((await decideEgress(request("none"), [], ctx)).allow).toBe(true);
-    expect((await decideEgress(request("pseudonymous"), [], ctx)).allow).toBe(false);
-    expect((await decideEgress(request("personal"), [], ctx)).reasons[0]).toMatch(/default deny/);
-  });
-
-  it("lets any plugin refuse, and only the governance plugin the configuration names allow", async () => {
-    const notGovernance = stable("helpful");
-    const logged: string[] = [];
-    expect(
-      (
-        await decideEgress(request("personal"), [[notGovernance, () => ({ allow: true })]], {
-          log: (m) => logged.push(m),
-        })
-      ).allow,
-    ).toBe(false);
-    expect(logged[0]).toMatch(/'helpful' is not a governance plugin/);
-    const allow = stable("govern");
-    const refuse = stable("strict");
-    const allowing: Array<[Plugin, () => { allow: true }]> = [[allow, () => ({ allow: true })]];
-    expect((await decideEgress(request("pseudonymous"), allowing, ctx, "govern")).allow).toBe(true);
-    // The same plugin, not named by the configuration, cannot open egress.
-    expect((await decideEgress(request("pseudonymous"), allowing, ctx)).allow).toBe(false);
-    expect((await decideEgress(request("pseudonymous"), allowing, ctx, "other")).allow).toBe(false);
-    expect(() => createHost({ plugins: [allow], governance: "missing" }, versions)).toThrow(
-      "governance names plugin 'missing', which the configuration does not list",
-    );
-    expect(
-      (
-        await decideEgress(
-          request("none"),
-          [[refuse, () => ({ allow: false, reason: "no purpose record" })]],
-          ctx,
-        )
-      ).reasons[0],
-    ).toBe("strict: no purpose record");
   });
 });
 
@@ -554,7 +390,7 @@ describe("CLI (REQ-26, REQ-114)", () => {
         (t) => errors.push(t),
       ),
     ).toBe(2);
-    expect(errors[0]).toBe("unknown command 'nothing'. Commands: help, schema, doctor, import");
+    expect(errors[0]).toBe("unknown command 'nothing'. Use 'ichnaea help' to list the commands.");
     expect(
       await main(
         base,
@@ -628,7 +464,7 @@ describe("CLI (REQ-26, REQ-114)", () => {
     const cwd = process.cwd();
     process.chdir(dir);
     try {
-      for (const argv of [["doctor"], ["decide"], ["nothing"], ["import"]]) {
+      for (const argv of [["doctor"], ["import"]]) {
         const errors: string[] = [];
         expect(
           await main(

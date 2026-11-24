@@ -19,15 +19,15 @@ points.
 
 ## What is in the directory
 
-| Path                               | What it is                                                         |
-| ---------------------------------- | ------------------------------------------------------------------ |
-| `ichnaea.config.ts`                | The configuration: the application's plugin, `decide` and `report` |
-| `plugin.ts`                        | The measure, and the importer for the application's result files   |
-| `data/`                            | The cases, the case set and the suite                              |
-| `configurations/`                  | The two arms' configurations                                       |
-| `results/base.json`                | The base arm's results                                             |
-| `results/candidate-same.json`      | A candidate that answers as well as the base                       |
-| `results/candidate-regressed.json` | A candidate that answers worse than the base                       |
+| Path                               | What it is                                                       |
+| ---------------------------------- | ---------------------------------------------------------------- |
+| `ichnaea.config.ts`                | The configuration lists the application's plugin                 |
+| `plugin.ts`                        | The measure, and the importer for the application's result files |
+| `data/`                            | The cases, the case set and the suite                            |
+| `configurations/`                  | The two arms' configurations                                     |
+| `results/base.json`                | The base arm's results                                           |
+| `results/candidate-same.json`      | A candidate that answers as well as the base                     |
+| `results/candidate-regressed.json` | A candidate that answers worse than the base                     |
 
 [`scripts/generate.ts`](scripts/generate.ts) writes all the data again, byte for byte.
 
