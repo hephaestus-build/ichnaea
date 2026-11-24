@@ -137,6 +137,22 @@
       }
     },
     {
+      "files": ["packages/ichnaea/src/run/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**", "!./**", "!../contracts/**", "!../plan/*.ts", "**/index.ts"],
+                "message": "src/run imports only its own modules, src/contracts and src/plan."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
       "files": ["packages/ichnaea/src/plan/**"],
       "rules": {
         "no-restricted-imports": [

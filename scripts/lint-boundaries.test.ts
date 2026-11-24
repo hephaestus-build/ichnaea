@@ -66,6 +66,8 @@ describe("the boundaries between the areas of the package", () => {
     ["src/core/a.ts", "../stats/rng.ts", "src/core calls the planner"],
     ["src/plan/a.ts", "../core/store.ts", "src/plan imports only"],
     ["src/plan/a.ts", "node:fs", "src/plan imports only"],
+    ["src/run/a.ts", "node:fs", "src/run imports only"],
+    ["src/run/a.ts", "../core/store.ts", "src/run imports only"],
     ["src/decide/a.ts", "../core/store.ts", "src/decide imports only"],
     ["src/decide/a.ts", "@tumaet/ichnaea/stats", "src/decide imports only"],
     ["src/report/a.ts", "@tumaet/ichnaea", "src/report imports only"],
