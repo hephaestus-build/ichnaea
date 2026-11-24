@@ -13,9 +13,12 @@ await serveWorker(async ({ arm, limits, case: trialCase, signal, workdir }) => {
     await setTimeout(30_000);
   if (process.argv[2] === "close-first-block" && basename(dirname(workdir)) === "0")
     process.exit(0);
-  if (process.argv[2] === "artifact") {
+  if (process.argv[2] === "artifact" || process.argv[2] === "artifact-inline") {
     await writeFile(join(workdir, "answer.txt"), "Paris");
-    return { artifacts: [{ name: "answer", path: "answer.txt", mediaType: "text/plain" }] };
+    return {
+      ...(process.argv[2] === "artifact-inline" ? { output: null } : {}),
+      artifacts: [{ name: "answer", path: "answer.txt", mediaType: "text/plain" }],
+    };
   }
   return {
     output: arm.settings["answer"] ?? null,

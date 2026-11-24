@@ -11,6 +11,8 @@ import { digest, sha256 } from "../../src/contracts/canonical.ts";
 import { RecordsRepository } from "../../src/core/records-repository.ts";
 import { FileStore } from "../../src/core/store.ts";
 
+import { card } from "../decide/support/scenario.ts";
+
 async function suite(directory: string, records?: string, confirmation = false): Promise<string> {
   const config = join(directory, "ichnaea.config.ts");
   await writeFile(
@@ -472,6 +474,140 @@ it("invalidates an unresponsive run without replacing a block that timed out", a
     const saved = await new FileStore(store).read("timed-out");
     expect(saved.run.execution?.blocks).toMatchObject([{ block: 0, status: "abandoned" }]);
     expect(saved.trials).toHaveLength(0);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+it("re-scores captured output as an exploratory run with source lineage", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "ichnaea-rescore-"));
+  try {
+    const originalConfig = await suite(directory);
+    const rescoringConfig = join(directory, "rescoring.ts");
+    const body = await readFile(originalConfig, "utf8");
+    const definition = {
+      ...card("app/correct").card,
+      computedBy: "ichnaea",
+      validation: undefined,
+    };
+    const fixtureCase = {
+      schema: "ichnaea.case/1",
+      id: "capital-fr",
+      input: { q: "Capital of France?" },
+      unit: "turn",
+      dataClass: "none",
+      pool: "development",
+      provenance: {
+        source: "authored",
+        selection: "curated",
+        created: "2026-11-24",
+        exposure: "private",
+        licence: "CC0-1.0",
+      },
+    };
+    const plugin = (includeNull: boolean) => `
+      const example = ${JSON.stringify(fixtureCase)};
+      const sample = (name, output, expected) => ({
+        name, case: example, trial: {
+          schema: "ichnaea.trial/1", id: name, source: "offline", case: example.id,
+          unit: "turn", configuration: "${digest("fixture arm")}", replicate: 0,
+          outcome: "completed", dataClass: "none", ...(output === undefined ? {} : { output }),
+        }, expected,
+      });
+      ${body
+        .replace(
+          "plugins: [],",
+          `
+        plugins: [{ id: "app", version: "1.0.0", measures: [{
+          card: ${JSON.stringify(definition)},
+          score: (trial) => ({
+            type: "binary", pass: trial.output === "Paris" || (${includeNull} && trial.output === null),
+          }),
+          examples: {
+            good: [sample("good", "Paris", { type: "binary", pass: true })],
+            bad: [sample("bad", "Lyon", { type: "binary", pass: false })],
+            nothing: [sample("nothing", "", { type: "binary", pass: false })],
+            incomplete: [sample("incomplete", undefined, "missing")],
+          },
+        }] }],
+      `,
+        )
+        .replace('id: "answers",', 'id: "answers", primary: ["app/correct"],')}
+    `;
+    await writeFile(originalConfig, plugin(true));
+    await writeFile(rescoringConfig, plugin(false));
+    const store = join(directory, "store");
+    const diagnostics: string[] = [];
+    const cli = (config: string, command: string, ...args: string[]): Promise<number> =>
+      main(
+        [command, "--config", config, "--store", store, ...args],
+        () => {},
+        undefined,
+        (line) => diagnostics.push(line),
+      );
+    expect(
+      await cli(
+        originalConfig,
+        "run",
+        "--run",
+        "source",
+        "--no-decide",
+        "--",
+        ...worker,
+        "artifact-inline",
+      ),
+      diagnostics.join("\n"),
+    ).toBe(0);
+    expect(await cli(rescoringConfig, "plan"), diagnostics.join("\n")).toBe(0);
+    const read = new FileStore(store);
+    const source = await read.read("source");
+    const code = await cli(
+      rescoringConfig,
+      "import",
+      "--run",
+      "rescored",
+      "--plan",
+      join(directory, "plan.json"),
+      "--importer",
+      "ichnaea/re-score",
+      "--file",
+      "source",
+    );
+    expect(code, diagnostics.join("\n")).toBe(0);
+    const rescored = await read.read("rescored");
+    expect(rescored.run.exploratory).toBe(true);
+    expect(rescored.run.execution).toMatchObject({
+      source: "re-score",
+      registration: "exploratory",
+    });
+    expect(rescored.trials).toHaveLength(source.trials.length);
+    expect(source.trials[0]?.armOrderSeed).toEqual(source.plan.seed);
+    expect(source.values.map(({ value }) => value)).toEqual(
+      Array.from({ length: 4 }, () => ({ type: "binary", pass: true })),
+    );
+    expect(rescored.values.map(({ value }) => value)).toEqual(
+      Array.from({ length: 4 }, () => ({ type: "binary", pass: false })),
+    );
+    expect(
+      rescored.trials.every(
+        (trial) =>
+          trial.run === "rescored" &&
+          trial.block === undefined &&
+          trial.first === undefined &&
+          trial.armOrderSeed === undefined,
+      ),
+    ).toBe(true);
+    expect(rescored.trials.map((trial) => trial.output)).toEqual(
+      source.trials.map((trial) => trial.output),
+    );
+    expect(rescored.run.lineage).toContainEqual({
+      kind: "package",
+      id: "re-score-source:source",
+      version: source.run.environment.ichnaea,
+      digest: digest({ plan: source.plan, run: source.run, trials: source.trials }),
+    });
+    expect(source.trials[0]?.evidence?.[0]?.uri).toBeTruthy();
+    expect(rescored.trials[0]?.evidence).toEqual([{ name: "artifact-1", digest: sha256("Paris") }]);
+    expect((await read.read("source")).run).toEqual(source.run);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

@@ -142,3 +142,11 @@ Set `callsPerTrial` and `deadlineMs` in the suite to change the defaults of one
 call and 60 seconds per trial. The analysis plan holds both values. Set `maxCalls`
 high enough for every planned trial at its full allowance and for any replacement
 blocks the run must be able to afford.
+
+## Re-score a stored run
+
+Use `ichnaea import --plan plan.json --importer ichnaea/re-score --file <source-run> --run <new-run>`
+to apply the current scorers to a run in the same store. Use the same case set and arm
+configurations. The new run records the source run ID and evidence digest as lineage.
+It is exploratory and uses the source's captured output. The source run holds the artifact
+files. The new run keeps their digests and records the source in its lineage.

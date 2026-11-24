@@ -12,6 +12,7 @@ import { planningPower } from "../plan/power.ts";
 import { bindImportedPlan, type LockedImport } from "./analysis-plan.ts";
 import type { Host } from "./host.ts";
 import { createPlan } from "./planner.ts";
+import { reScoreTrials } from "./re-score.ts";
 import { ImportError, recordRun } from "./record-run.ts";
 import { FileStore, StoreError } from "./store.ts";
 
@@ -163,8 +164,13 @@ export async function importRun(
   input: ImportRunInput,
 ): Promise<{ plan: Plan; trials: number; values: number }> {
   const { host } = input;
+  const reScore = input.importer === "ichnaea/re-score";
   const importer = host.importers.get(input.importer);
-  if (!importer)
+  if (reScore && (!("locked" in input) || input.files.length !== 1))
+    throw new ImportError(
+      "ichnaea/re-score requires --plan and one --file containing the source run ID",
+    );
+  if (!reScore && !importer)
     throw new ImportError(
       `no importer '${input.importer}'; the plugins provide: ${[...host.importers.keys()].join(", ") || "none"}`,
     );
@@ -180,6 +186,28 @@ export async function importRun(
         })
       : await prepareLegacyImport(input, store);
 
+  const sourceId = reScore ? input.files[0] : undefined;
+  if (sourceId !== undefined) {
+    const source = await store.read(sourceId);
+    return recordRun({
+      host,
+      store,
+      plan,
+      cases,
+      result: { trials: reScoreTrials(source, plan, input.run), values: [] },
+      id: input.run,
+      execution: { source: "re-score" },
+      startedAt: input.now,
+      completedAt: input.now,
+      producer: {
+        kind: "package",
+        id: `re-score-source:${source.run.id}`,
+        version: source.run.environment.ichnaea,
+        digest: digest({ plan: source.plan, run: source.run, trials: source.trials }),
+      },
+    });
+  }
+  if (!importer) throw new ImportError("the source run is required");
   const result = await importer.run({
     files: input.files,
     plan,
