@@ -97,6 +97,17 @@ it("locks applicability and keeps a candidate change out of the analysis plan di
     });
     await expect(readFile(join(directory, "ichnaea.lock"), "utf8")).resolves.toContain("a");
 
+    output.length = 0;
+    expect(await plan("candidate-1", "--frozen", "--json"), diagnostics.join("\n")).toBe(0);
+    expect(output).toHaveLength(1);
+    expect(JSON.parse(output[0] ?? "")).toEqual(before);
+
+    output.length = 0;
+    expect(await plan("candidate-1", "--frozen", "--frozen", "--json")).toBe(2);
+    expect(output).toHaveLength(1);
+    expect(JSON.parse(output[0] ?? "")).toMatchObject({ code: "USAGE" });
+    expect(diagnostics.pop()).toBe(output[0]);
+
     const loaded = await loadConfig(configPath("candidate-1"));
     if (!loaded.suite) throw new Error("expected the configured suite");
     const library = await planSuite({

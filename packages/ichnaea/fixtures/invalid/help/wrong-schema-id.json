@@ -1,0 +1,24 @@
+{
+  "schema": "ichnaea.help/2",
+  "commands": [
+    {
+      "name": "report",
+      "description": "Recompute and report a stored decision",
+      "positionals": [],
+      "optionalPositionals": 0,
+      "options": [
+        {
+          "name": "run",
+          "type": "string",
+          "description": "The run ID",
+          "required": true
+        }
+      ]
+    }
+  ],
+  "exitCodes": {
+    "success": 0,
+    "blocked": 1,
+    "error": 2
+  }
+}

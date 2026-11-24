@@ -180,6 +180,42 @@ const SUITE_V2 = {
 };
 
 export const VALID: Record<string, Record<string, unknown>> = {
+  "cli.error": {
+    schema: "ichnaea.cli.error/1",
+    code: "USAGE",
+    message: "decide: --run is required",
+  },
+  help: {
+    schema: "ichnaea.help/1",
+    commands: [
+      {
+        name: "report",
+        description: "Recompute and report a stored decision",
+        positionals: [],
+        optionalPositionals: 0,
+        options: [{ name: "run", type: "string", description: "The run ID", required: true }],
+      },
+    ],
+    exitCodes: { success: 0, blocked: 1, error: 2 },
+  },
+  doctor: { schema: "ichnaea.doctor/1", plugins: [], measures: [], problems: 0 },
+  reportView: {
+    schema: "ichnaea.reportView/1",
+    title: "An example decision",
+    verdict: "ESTIMATE-ONLY",
+    claim: "on this case set",
+    reason: "estimate-only",
+    method: "descriptive",
+    measures: [],
+    gates: [],
+    flips: [],
+    power: [],
+    sensitivity: [],
+    missingness: "no missing trials",
+    differingFactors: [],
+    limitations: [],
+    lineage: [{ label: "Run", value: "example" }],
+  },
   case: {
     schema: "ichnaea.case/1",
     id: "refund-window-de",
@@ -851,6 +887,13 @@ type Mutation = (record: Record<string, unknown>) => void;
 
 /** Invalid variants of each valid fixture: each must fail in every validator. */
 export const INVALID: Record<string, Record<string, Mutation>> = {
+  "cli.error": { "unknown-code": (record) => (record["code"] = "OTHER") },
+  help: {
+    "extra-exit-code": (record) => (record["exitCodes"] = { success: 0, blocked: 1, error: 3 }),
+  },
+  doctor: { "negative-problems": (record) => (record["problems"] = -1) },
+  reportView: { "missing-verdict": (record) => delete record["verdict"] },
+
   case: {
     "missing-unit": (r) => delete r["unit"],
     "reused-without-dataset": (r) =>

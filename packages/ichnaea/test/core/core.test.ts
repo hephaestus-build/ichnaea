@@ -422,7 +422,7 @@ describe("CLI (REQ-26, REQ-114)", () => {
         (t) => errors.push(t),
       ),
     ).toBe(2);
-    expect(errors[0]).toBe("unknown command 'nothing'. Use 'ichnaea help' to list the commands.");
+    expect(errors[0]).toMatch(/unknown command 'nothing'; one of: schema, import, decide/);
     expect(
       await main(
         base,
@@ -496,7 +496,24 @@ describe("CLI (REQ-26, REQ-114)", () => {
     const cwd = process.cwd();
     process.chdir(dir);
     try {
-      for (const argv of [["doctor"], ["import"]]) {
+      for (const argv of [
+        ["doctor"],
+        [
+          "import",
+          "--importer",
+          "x",
+          "--suite",
+          "s",
+          "--case-set",
+          "cs",
+          "--cases",
+          "c",
+          "--run",
+          "r",
+          "--arm",
+          "a:base:f",
+        ],
+      ]) {
         const errors: string[] = [];
         expect(
           await main(

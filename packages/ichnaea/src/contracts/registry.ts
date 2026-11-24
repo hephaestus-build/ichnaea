@@ -1,6 +1,7 @@
 import type * as z from "zod";
 
 import { AnalysisLock, AnalysisPlan } from "./records/analysis-plan.ts";
+import { CliDoctor, CliErrorRecord, CliHelp, ReportView } from "./records/cli.ts";
 import { Case, CaseSet } from "./records/case.ts";
 import { Configuration } from "./records/configuration.ts";
 import { ConfigurationV2 } from "./records/configuration-v2.ts";
@@ -56,6 +57,34 @@ export interface RecordContract {
 
 /** Every record contract, by name. The generated JSON Schema files follow this list. */
 export const RECORD_CONTRACTS: readonly RecordContract[] = [
+  {
+    name: "cli.error",
+    id: "ichnaea.cli.error/1",
+    schema: CliErrorRecord,
+    stability: "alpha",
+    description: "The CLI error code and safe message.",
+  },
+  {
+    name: "help",
+    id: "ichnaea.help/1",
+    schema: CliHelp,
+    stability: "alpha",
+    description: "The command grammar and exit codes.",
+  },
+  {
+    name: "doctor",
+    id: "ichnaea.doctor/1",
+    schema: CliDoctor,
+    stability: "alpha",
+    description: "The CLI configuration and measure tester status.",
+  },
+  {
+    name: "reportView",
+    id: "ichnaea.reportView/1",
+    schema: ReportView,
+    stability: "alpha",
+    description: "The verified decision view that the CLI exports.",
+  },
   {
     name: "case",
     id: "ichnaea.case/1",

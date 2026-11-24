@@ -61,3 +61,64 @@ describe("command help", () => {
     expect(result.stdout).toContain("Where to write the machine-readable verdict");
   });
 });
+
+describe("structured CLI output", () => {
+  it.each([
+    ["decide", "--run", "first", "--run", "second"],
+    ["report", "--run", "first", "--format", "nonsense"],
+    ["doctor", "--unknown"],
+    ["schema", "trial", "extra"],
+  ])("refuses invalid grammar (%s)", (...argv) => {
+    const result = run(...argv, "--json");
+    expect(result.status).toBe(2);
+    const error = JSON.parse(result.stdout);
+    expect(error).toMatchObject({ schema: "ichnaea.cli.error/1", code: "USAGE" });
+    expect(JSON.parse(result.stderr)).toEqual(error);
+  });
+
+  it("keeps diagnostics separate when a configuration logs and throws", () => {
+    const noisy = join(cwd, "noisy.ts");
+    writeFileSync(
+      noisy,
+      'console.log("loading"); process.stdout.write("still loading"); throw new Error("private-config-sentinel");\n',
+    );
+    const result = run("doctor", "--config", noisy, "--json");
+    expect(result.status).toBe(2);
+    const error = JSON.parse(result.stdout);
+    expect(error).toMatchObject({ schema: "ichnaea.cli.error/1", code: "CONFIGURATION" });
+    expect(result.stdout + result.stderr).not.toContain("private-config-sentinel");
+    const lines = result.stderr.trimEnd().split("\n");
+    expect(lines).toContain("[plugin] loading");
+    expect(lines).toContain("[plugin] still loading");
+    expect(JSON.parse(lines.at(-1) ?? "")).toEqual(error);
+  });
+
+  it("shows the registry as one help document", () => {
+    const result = run("report", "--help", "--json");
+    expect(result.status).toBe(0);
+    expect(result.stderr).toBe("");
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      schema: "ichnaea.help/1",
+      commands: [
+        {
+          name: "report",
+          options: expect.arrayContaining([
+            expect.objectContaining({ name: "format", choices: ["md", "html", "json"] }),
+          ]),
+        },
+      ],
+    });
+  });
+});
+
+it("names the store path in a structured missing-record error", () => {
+  const result = run("decide", "--run", "missing+candidate", "--json");
+  expect(result.status).toBe(2);
+  const document = JSON.parse(result.stdout);
+  expect(document).toMatchObject({
+    schema: "ichnaea.cli.error/1",
+    code: "RECORDS",
+    message: expect.stringContaining(join(".ichnaea", "runs", "missing%2Bcandidate")),
+  });
+  expect(JSON.parse(result.stderr)).toEqual(document);
+});

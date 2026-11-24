@@ -1,0 +1,5 @@
+{
+  "schema": "ichnaea.cli.error/2",
+  "code": "USAGE",
+  "message": "decide: --run is required"
+}

@@ -95,7 +95,21 @@ it("writes one deterministic recalculation for an older sealed decision", async 
           output.push(line),
         ),
       ).toBe(0);
+      expect(output).toHaveLength(1);
       expect(output[0]).toContain("Recalculation");
+      expect(JSON.parse(output[0] ?? "")).toMatchObject({
+        schema: "ichnaea.reportView/1",
+        measures: [
+          {
+            arms: expect.arrayContaining([
+              expect.objectContaining({
+                arm: "base",
+                denominators: expect.objectContaining({ observedCases: 2, observedTrials: 4 }),
+              }),
+            ]),
+          },
+        ],
+      });
     }
     expect(await readdir(join(runDir, "recalculations"))).toHaveLength(1);
     expect(await readFile(join(runDir, "decision.json"), "utf8")).toBe(original);
@@ -108,18 +122,22 @@ it("writes one deterministic recalculation for an older sealed decision", async 
         failures: 0,
       })}\n`,
     );
+    const output: string[] = [];
     const errors: string[] = [];
     expect(
       await main(
         ["report", "--json", "--store", directory, "--run", s.run.id],
-        () => {
-          throw new Error("rendered changed records");
-        },
+        (line) => output.push(line),
         undefined,
         (error) => errors.push(error),
       ),
-    ).toBe(1);
-    expect(errors[0]).toContain("run manifest digests differ");
+    ).toBe(2);
+    expect(output).toHaveLength(1);
+    expect(errors).toEqual(output);
+    expect(JSON.parse(output[0] ?? "")).toMatchObject({
+      schema: "ichnaea.cli.error/1",
+      code: "RECOMPUTE_MISMATCH",
+    });
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

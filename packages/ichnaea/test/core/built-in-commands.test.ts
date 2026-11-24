@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 import { expect, it } from "vitest";
 
-import { digest, PlanDigest } from "../../src/contracts/index.ts";
+import { digest, GateResult, PlanDigest } from "../../src/contracts/index.ts";
 import { createHost, createPlan, defineConfig, FileStore, main } from "../../src/index.ts";
 
 import { scenario } from "../decide/support/scenario.ts";
@@ -15,7 +15,7 @@ it("plans, decides and reports with a configuration that has no plugins", async 
     const config = defineConfig({ plugins: [] });
     const host = createHost(config, { core: "0.0.0", contracts: "0.0.0" });
     const configuration = join(directory, "ichnaea.config.ts");
-    await writeFile(configuration, "export default { plugins: [] };\n");
+    await writeFile(configuration, 'export default { plugins: [], store: "store" };\n');
     const s = await scenario({ cases: 5, replicates: 1, base: () => 1, candidate: () => 1 });
     const plan = await createPlan({
       suite: { ...s.suite, primary: [], secondary: [], hardGates: [] },
@@ -38,7 +38,7 @@ it("plans, decides and reports with a configuration that has no plugins", async 
       values: [],
       gates: [],
     });
-    const args = ["--config", configuration, "--store", store.root, "--run", s.run.id];
+    const args = ["--config", configuration, "--run", s.run.id];
     const diagnostics: string[] = [];
     const run = (command: string) =>
       main(
@@ -48,7 +48,11 @@ it("plans, decides and reports with a configuration that has no plugins", async 
         (line) => diagnostics.push(line),
       );
     expect(await run("decide"), diagnostics.join("\n")).toBe(0);
-    expect(await run("report"), diagnostics.join("\n")).toBe(0);
+    await writeFile(configuration, 'export default { plugins: [], store: "elsewhere" };\n');
+    expect(
+      await main(["report", ...args, "--store", store.root], () => undefined),
+      diagnostics.join("\n"),
+    ).toBe(0);
     const stored = await store.read(s.run.id);
     expect(stored.decision).toMatchObject({ mode: "estimate-only", verdict: null });
     const report = await readFile(
@@ -84,7 +88,7 @@ it("plans, decides and reports with a configuration that has no plugins", async 
     const output: string[] = [];
     const reportRatings = (...options: string[]) =>
       main(
-        ["report", ...args, "--ratings", ratings, ...options],
+        ["report", ...args, "--store", store.root, "--ratings", ratings, ...options],
         (line) => output.push(line),
         undefined,
         (line) => diagnostics.push(line),
@@ -115,6 +119,88 @@ it("plans, decides and reports with a configuration that has no plugins", async 
     expect(rendered).toContain("Krippendorff’s alpha");
     expect(rendered).toContain("0.8154");
     expect(rendered).toContain("11 of 12");
+    for (const [input, message] of [
+      ["private-ratings-sentinel", "Cannot read the ratings JSON file."],
+      ['{"units":[]}', "The ratings file needs a metric and valid rating units."],
+    ] as const) {
+      await writeFile(ratings, input);
+      output.length = 0;
+      diagnostics.length = 0;
+      expect(await reportRatings("--json")).toBe(2);
+      expect(output).toHaveLength(1);
+      expect(diagnostics).toEqual(output);
+      expect(JSON.parse(output[0]!)).toEqual({
+        schema: "ichnaea.cli.error/1",
+        code: "RECORDS",
+        message,
+      });
+    }
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+it("returns the decision when policy blocks and keeps gate details out of JSON", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "ichnaea-cli-gate-"));
+  try {
+    const s = await scenario({ cases: 5, replicates: 1, base: () => 1, candidate: () => 1 });
+    const gate = GateResult.parse({
+      gate: "fixture/test",
+      passed: false,
+      failures: 1,
+      detail: "private-gate-sentinel",
+    });
+    const plan = {
+      ...s.plan,
+      hardGates: [gate.gate],
+      policy: { ...s.plan.policy, onRegression: "block" as const },
+    };
+    const store = new FileStore(directory);
+    await store.createRun({
+      plan,
+      run: { ...s.run, plan: PlanDigest.parse(digest(plan)) },
+      trials: s.trials,
+      values: s.values,
+      gates: [gate],
+    });
+    const args = ["--store", directory, "--run", s.run.id, "--json"];
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    const cli = (argv: string[]) =>
+      main(
+        argv,
+        (output) => stdout.push(output),
+        undefined,
+        (error) => stderr.push(error),
+      );
+    expect(await cli(["decide", ...args]), stderr.join("\n")).toBe(1);
+    expect(stdout).toHaveLength(1);
+    const decision: unknown = JSON.parse(stdout[0] ?? "");
+    expect(decision).toMatchObject({
+      schema: "ichnaea.decision/1",
+      gates: [{ gate: gate.gate, passed: false }],
+    });
+    expect(stdout[0]).not.toContain(gate.detail);
+    expect(stderr).toEqual([]);
+    stdout.length = 0;
+    expect(await cli(["report", ...args, "--format", "json"]), stderr.join("\n")).toBe(0);
+    expect(stdout).toHaveLength(1);
+    expect(JSON.parse(stdout[0] ?? "")).toMatchObject({ schema: "ichnaea.reportView/1" });
+    expect(stdout[0]).not.toContain(gate.detail);
+    expect(
+      JSON.parse(
+        await readFile(join(directory, "runs", s.run.id, "report", "report.json"), "utf8"),
+      ),
+    ).toEqual(JSON.parse(stdout[0] ?? ""));
+    const decidedFile = join(directory, "runs", s.run.id, "decision.json");
+    const stored = await store.read(s.run.id);
+    await writeFile(
+      decidedFile,
+      JSON.stringify({ ...stored.decision, reason: "changed since decide" }),
+    );
+    stdout.length = 0;
+    expect(await cli(["report", ...args])).toBe(2);
+    expect(JSON.parse(stdout[0] ?? "")).toMatchObject({ code: "RECOMPUTE_MISMATCH" });
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

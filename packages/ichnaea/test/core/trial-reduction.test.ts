@@ -4,12 +4,14 @@ import { join } from "node:path";
 
 import { expect, it } from "vitest";
 
+import { main } from "../../src/cli.ts";
 import { digest } from "../../src/contracts/canonical.ts";
 import { MeasureValue } from "../../src/contracts/records/measure.ts";
 import { Run } from "../../src/contracts/records/run.ts";
 import { Trial } from "../../src/contracts/records/trial.ts";
 import { bindImportedPlan, planSuite, writeAnalysis } from "../../src/core/analysis-plan.ts";
 import { createHost } from "../../src/core/host.ts";
+import { FileStore } from "../../src/core/store.ts";
 import { runReduction } from "../../src/decide/trial-reduction.ts";
 import { decide } from "../../src/decide/decide.ts";
 import { report } from "../../src/report/report.ts";
@@ -157,6 +159,23 @@ it("locks one-arm reductions and reports fewer than k fresh trials as missing", 
     expect(report(records, { format: "html" })).toContain(
       "<td>case-002</td><td>2 of 3</td><td>Missing</td><td>Missing</td>",
     );
+    const store = new FileStore(join(directory, "store"));
+    await store.createRun(records);
+    await store.writeDecision(decision, plan.suite);
+    const output: string[] = [];
+    expect(
+      await main(["report", "--store", store.root, "--run", run.id, "--json"], (line) =>
+        output.push(line),
+      ),
+    ).toBe(0);
+    expect(output).toHaveLength(1);
+    expect(JSON.parse(output[0] ?? "")).toMatchObject({
+      trialReduction: {
+        measure,
+        k: 3,
+        rows: expect.arrayContaining([["case-002", "2 of 3", "Missing", "Missing", "missing"]]),
+      },
+    });
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
