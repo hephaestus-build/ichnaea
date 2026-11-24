@@ -2,6 +2,7 @@ import * as z from "zod";
 import { Json } from "../contracts/primitives.ts";
 import { TrialIdentity, WorkerReady } from "../contracts/records/worker.ts";
 import { type RunRecords } from "./records.ts";
+import { type RegistrationReceipt } from "./registration.ts";
 type Owner = {
     host: string;
     pid: number;
@@ -17,8 +18,10 @@ type Takeover = {
     cause: "dead-pid" | "expired-lease";
 };
 type Entry = {
+    kind: "run-opened";
+} | {
     kind: "receipt";
-    receipt?: Json | undefined;
+    receipt: RegistrationReceipt;
 } | Takeover | BlockStart | {
     kind: "block-abandoned" | "block-complete";
     block: number;
@@ -46,7 +49,8 @@ export declare class RunWork {
     #private;
     readonly directory: string;
     private constructor();
-    static open(root: string, run: string, receipt?: z.infer<typeof Json>): Promise<RunWork>;
+    static open(root: string, run: string, receipt?: RegistrationReceipt): Promise<RunWork>;
+    receipt(): RegistrationReceipt | undefined;
     entries(): Promise<Entry[]>;
     /** Book the entire block before emitting any attempt intent. A dead runner cannot refund it. */
     startBlock(booking: BlockBooking, draw: (number: number) => BlockStart["first"]): Promise<BlockStart>;

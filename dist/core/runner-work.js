@@ -1,6 +1,5 @@
-import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
-import { link, mkdir, readFile, readdir, rm, stat, utimes, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, stat, utimes, writeFile } from "node:fs/promises";
 import { hostname } from "node:os";
 import { basename, join } from "node:path";
 import * as z from "zod";
@@ -8,7 +7,9 @@ import { canonicalize } from "../contracts/canonical.js";
 import { Json } from "../contracts/primitives.js";
 import { TrialIdentity, WorkerReady } from "../contracts/records/worker.js";
 import { CallLedger } from "./ledger.js";
+import { publishRecord } from "./publish-record.js";
 import {} from "./records.js";
+import { RegistrationReceiptSchema } from "./registration.js";
 import { sealRun } from "./store.js";
 import { runDirectory } from "./store-path.js";
 const LEASE_MS = 10 * 60_000;
@@ -21,7 +22,8 @@ const BlockStartSchema = z.strictObject({
 });
 const TakeoverCause = z.enum(["dead-pid", "expired-lease"]);
 const EntrySchema = z.discriminatedUnion("kind", [
-    z.strictObject({ kind: z.literal("receipt"), receipt: Json.optional() }),
+    z.strictObject({ kind: z.literal("run-opened") }),
+    z.strictObject({ kind: z.literal("receipt"), receipt: RegistrationReceiptSchema }),
     z.strictObject({
         kind: z.literal("owner-takeover"),
         previous: OwnerSchema,
@@ -48,17 +50,6 @@ function dead(pid) {
         if (hasCode(error, "EPERM"))
             return false;
         throw error;
-    }
-}
-/** Publish a complete file without replacing an existing entry. */
-async function publish(dir, name, record) {
-    const temporary = join(dir, `.temporary-${randomUUID()}`);
-    try {
-        await writeFile(temporary, `${canonicalize(record)}\n`, { flag: "wx", flush: true });
-        await link(temporary, join(dir, name));
-    }
-    finally {
-        await rm(temporary, { force: true });
     }
 }
 class Lease {
@@ -114,7 +105,7 @@ async function takeLease(dir) {
     // All contenders for a generation publish the same name. Keeping prior generations fences
     // their owners even after a later owner releases the run.
     try {
-        await publish(dir, String(generation), { host, pid: process.pid });
+        await publishRecord(dir, String(generation), { host, pid: process.pid });
     }
     catch (error) {
         if (hasCode(error, "EEXIST"))
@@ -185,13 +176,21 @@ export class RunWork {
             await mkdir(journal, { recursive: true });
             const entries = await readEntries(journal);
             const work = new RunWork(root, run, directory, lease, entries);
-            if (!entries.length)
-                await work.#append({ kind: "receipt", ...(receipt === undefined ? {} : { receipt }) });
-            else if (entries[0]?.kind !== "receipt")
-                throw new Error("the first run journal entry must be the receipt");
-            else if (receipt !== undefined &&
-                canonicalize(entries[0].receipt ?? null) !== canonicalize(receipt))
-                throw new Error("the receipt changed since the run began");
+            if (receipt && receipt.run !== run)
+                throw new Error("receipt belongs to another run");
+            const opening = entries[0];
+            if (!opening) {
+                await work.#append(receipt ? { kind: "receipt", receipt } : { kind: "run-opened" });
+            }
+            else {
+                if (opening.kind !== "receipt" && opening.kind !== "run-opened")
+                    throw new Error("the first run journal entry must record the opening");
+                if (opening.kind === "receipt" && opening.receipt.run !== run)
+                    throw new Error("journal receipt belongs to another run");
+                if (receipt &&
+                    (opening.kind !== "receipt" || canonicalize(opening.receipt) !== canonicalize(receipt)))
+                    throw new Error("the receipt changed since the run began");
+            }
             if (takeover)
                 await work.#append(takeover);
             if (work.#block) {
@@ -205,13 +204,20 @@ export class RunWork {
             throw error;
         }
     }
+    receipt() {
+        const opening = this.#entries[0];
+        if (opening?.kind === "receipt")
+            return RegistrationReceiptSchema.parse(opening.receipt);
+        return undefined;
+    }
     async entries() {
         return readEntries(this.#journal);
     }
     async #append(entry) {
         await this.#lease.refresh();
-        await publish(this.#journal, `${this.#entries.length}.json`, EntrySchema.parse(entry));
-        this.#entries.push(entry);
+        const parsed = EntrySchema.parse(entry);
+        await publishRecord(this.#journal, `${this.#entries.length}.json`, parsed);
+        this.#entries.push(parsed);
     }
     async #change(operation) {
         if (this.#changing)
