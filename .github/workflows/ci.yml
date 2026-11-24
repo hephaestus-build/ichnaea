@@ -96,6 +96,17 @@ jobs:
       # compiler profile, and the README's example run with the CLI and the library API.
       - name: A consumer installs the built package, type-checks it and runs the example
         run: node scripts/build-consumer.ts
+      - name: A release's example still runs after the checkout's example changes
+        if: matrix.node == '24'
+        run: |
+          mkdir "$RUNNER_TEMP/example"
+          git archive HEAD README.md examples/support-assistant | tar -x -C "$RUNNER_TEMP/example"
+          node scripts/build-package.ts "$RUNNER_TEMP/replay-tree" --version 0.1.0-rc.1
+          pnpm --dir "$RUNNER_TEMP/replay-tree" pack --pack-destination "$RUNNER_TEMP"
+          printf '# A later README\n' > README.md
+          printf 'throw new Error("A later example");\n' > examples/support-assistant/ichnaea.config.ts
+          node scripts/build-consumer.ts --tarball "$RUNNER_TEMP/tumaet-ichnaea-0.1.0-rc.1.tgz" \
+            --example-root "$RUNNER_TEMP/example"
 
   simulation:
     name: simulation

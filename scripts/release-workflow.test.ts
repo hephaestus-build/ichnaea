@@ -164,7 +164,7 @@ describe("release.yml", () => {
     expect(release.job("consumer")).toContain('node: ["24.3.0", "26"]');
     expect(release.job("consumer")).toContain("node-version: ${{ matrix.node }}");
     expect(release.job("consumer")).toContain(
-      'node scripts/build-consumer.ts --tarball "release/assets/$TARBALL"',
+      'node scripts/build-consumer.ts --tarball "release/assets/$TARBALL" --example-root release/example',
     );
   });
 
@@ -265,7 +265,8 @@ describe("release-finish.yml", () => {
     expect(verify).toContain('node scripts/verify-published.ts "$TAG" "$INTEGRITY"');
     expect(verify).toContain('node scripts/build-consumer.ts --spec "@tumaet/ichnaea@$VERSION"');
     const [check] = finish.step("verify", "node scripts/verify-published.ts");
-    const [consumer] = finish.step("verify", "node scripts/build-consumer.ts");
+    const [consumer, consumerStep] = finish.step("verify", "node scripts/build-consumer.ts");
+    expect(consumerStep).toContain('--example-root "$RUNNER_TEMP/release/example"');
     const [record, recordStep] = finish.step("verify", "actions/upload-artifact@");
     expect(check).toBeLessThan(record);
     expect(consumer).toBeLessThan(record);
