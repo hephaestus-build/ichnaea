@@ -7,7 +7,8 @@ import { Configuration } from "./records/configuration.ts";
 import { InstrumentPin, LockedSource } from "./records/lock.ts";
 import { MeasureIdentity } from "./records/measure-identity.ts";
 import { ProjectConfig } from "./records/project.ts";
-import { MeasureDefinition, SuiteV2 } from "./records/suite-v2.ts";
+import { MeasureDefinition } from "./records/lock-vocabulary.ts";
+import { SuiteV2 } from "./records/suite-v2.ts";
 
 /** Thrown when a record cannot have a well-defined identity. */
 export class IdentityError extends Error {

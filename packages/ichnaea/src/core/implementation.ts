@@ -18,7 +18,7 @@ import * as z from "zod";
 import { digest } from "../contracts/canonical.ts";
 import { instrumentImplementation } from "../contracts/identity.ts";
 import type { Digest } from "../contracts/primitives.ts";
-import type { SuiteV2 } from "../contracts/records/suite-v2.ts";
+import type { MeasureDefinition } from "../contracts/records/lock-vocabulary.ts";
 
 import { type PinnedLoads, readPackage } from "./load-record.ts";
 
@@ -214,7 +214,7 @@ export interface ImplementationContext {
  * refuses first (`MEASURE_NOT_COMPUTED`).
  */
 export async function measureImplementation(
-  measure: SuiteV2["measures"][string],
+  measure: z.infer<typeof MeasureDefinition>,
   context: ImplementationContext,
 ): Promise<Digest> {
   const { scorer } = measure;
