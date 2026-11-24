@@ -244,6 +244,35 @@ export const VALID: Record<string, Record<string, unknown>> = {
     },
     measureReviewDate: "2027-05-01",
   },
+  analysisPlan: {
+    schema: "ichnaea.analysisPlan/1",
+    suite: "support-answers",
+    suiteDigest: d("11"),
+    cases: [{ id: "refund-window-de", digest: d("a2"), pool: "development" }],
+    caseSet: "support-answers",
+    caseSetDigest: d("b1"),
+    estimand: "fixed-cases",
+    method: "binary-randomized-blocks",
+    alpha: 0.05,
+    blocks: 6,
+    replicates: 1,
+    primary: [{ measure: "support/facts-correct" }],
+    secondary: [],
+    hardGates: [],
+    measures: [{ id: "support/facts-correct", version: "1.0.0", pin: d("12") }],
+    holm: ["support/facts-correct"],
+    applicability: { "support/facts-correct": ["refund-window-de"] },
+    base: { role: "base", identity: config },
+    maxCalls: 12,
+    policy: { onRegression: "block", onInconclusive: "report", onEstimateOnly: "report" },
+    ichnaea: "0.0.0",
+  },
+  analysisLock: {
+    schema: "ichnaea.lock/1",
+    plan: d("ad"),
+    cases: [{ id: "refund-window-de", digest: d("a2"), pool: "development" }],
+    instruments: { "support/facts-correct": d("12") },
+  },
   plan: {
     schema: "ichnaea.plan/1",
     suite: "support-answers",
@@ -838,6 +867,12 @@ export const INVALID: Record<string, Record<string, Mutation>> = {
       delete (r["provenance"] as Record<string, unknown>)["licence"],
     "bad-fixture-digest": (r) => (r["fixtures"] = [{ name: "x", digest: "md5:abc" }]),
     "empty-id": (r) => (r["id"] = ""),
+  },
+  analysisPlan: {
+    "zero-blocks": (r) => (r["blocks"] = 0),
+  },
+  analysisLock: {
+    "bad-digest": (r) => (r["plan"] = "unlocked"),
   },
   caseSet: {
     "no-cases": (r) => (r["cases"] = []),
@@ -1695,6 +1730,10 @@ export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
  * enumeration in a later minor version, and members the writer schema does not define.
  */
 export const READER_ONLY: Record<string, Record<string, Mutation>> = {
+  analysisPlan: {
+    "candidate-identity": (r) => (r["candidate"] = { identity: configB }),
+    "unknown-method": (r) => (r["method"] = "custom"),
+  },
   configuration: {
     // Statuses outside a field's enumeration read as a value a later minor version may add.
     "uncontrollable-model-id": (r) =>

@@ -165,54 +165,6 @@ describe("example application, end to end", () => {
     expect(decision.power.planning).toEqual([expect.objectContaining({ computed: true })]);
   });
 
-  it("without the decision plugin the plan has no power statement, and import says so", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "ichnaea-e2e-no-decide-"));
-    const config = join(dir, "ichnaea.config.ts");
-    await writeFile(
-      config,
-      `import { support } from ${JSON.stringify(at("plugin.ts"))};\nexport default { plugins: [support], allowStability: ["alpha"] };\n`,
-    );
-    const out: string[] = [];
-    const code = await main(
-      [
-        "import",
-        "--config",
-        config,
-        "--importer",
-        "support/results",
-        "--suite",
-        at("data/suite.json"),
-        "--case-set",
-        at("data/case-set.json"),
-        "--cases",
-        at("data/cases.jsonl"),
-        "--arm",
-        `base:base:${at("configurations/base.json")}`,
-        "--arm",
-        `candidate:candidate:${at("configurations/candidate.json")}`,
-        "--file",
-        at("results/base.json"),
-        "--file",
-        at("results/candidate-same.json"),
-        "--run",
-        "run-1",
-        "--store",
-        join(dir, "store"),
-        "--now",
-        "2026-11-15T10:00:00Z",
-        "--trigger",
-        "new-model",
-        "--vary",
-        "prompt.answer",
-      ],
-      (t) => void out.push(t),
-    );
-    expect(code, out.join("\n")).toBe(0);
-    expect(out).toContain(
-      "  power: not computed: no plugin in the configuration states one (decidePlugin() does)",
-    );
-  });
-
   it("the doctor passes: every measure's tester passes", async () => {
     const out: string[] = [];
     expect(

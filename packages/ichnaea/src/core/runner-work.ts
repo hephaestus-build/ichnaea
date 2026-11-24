@@ -11,7 +11,7 @@ import { TrialIdentity, WorkerReady } from "../contracts/records/worker.ts";
 
 import { CallLedger } from "./ledger.ts";
 import { publishRecord } from "./publish-record.ts";
-import { type RunRecords } from "./records.ts";
+import { type RunRecords } from "../contracts/run-records.ts";
 import { type RegistrationReceipt, RegistrationReceiptSchema } from "./registration.ts";
 import { sealRun } from "./store.ts";
 import { runDirectory } from "./store-path.ts";

@@ -53,7 +53,7 @@ describe("the pure core", () => {
     });
     const decision = compare(s.plan, s, { decidedAt: "2026-11-16T13:00:00Z" });
     for (const format of ["markdown", "html", "json"] as const)
-      expect(report(decision, { format })).not.toBe("");
+      expect(report({ ...s, decision }, { format })).not.toBe("");
     expect(decision.verdict).not.toBe("INVALID");
     expect(touched).toEqual([]);
   });

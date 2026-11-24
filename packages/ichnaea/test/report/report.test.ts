@@ -5,13 +5,9 @@ import { decide, FLOOR_NOT_SET_REASON } from "../../src/decide/index.ts";
 
 import { decideFloorSet } from "../decide/support/floor-set.ts";
 import { scenario } from "../decide/support/scenario.ts";
-import {
-  decisionView,
-  lintReport,
-  recompute,
-  renderHtml,
-  renderMarkdown,
-} from "../../src/report/index.ts";
+import { recompute } from "../../src/report/index.ts";
+import { lintReport, renderHtml, renderMarkdown } from "../../src/report/render.ts";
+import { decisionView } from "../../src/report/view.ts";
 
 async function decided(over: Partial<Parameters<typeof scenario>[0]> = {}) {
   const s = await scenario({
@@ -328,7 +324,7 @@ describe("reports", () => {
     const set = decisionView(await decideFloorSet(s), "synthetic");
     expect(set.verdict).toBe("PASS");
     expect(set.measures[0]?.difference?.bound).toMatch(/^≥ [+−]?\d+\.\d pts$/);
-    expect(renderHtml(set)).not.toContain("not validated");
+    expect(renderHtml(set)).not.toMatch(/data-col="bound"[^>]*>[^<]*not validated/);
   });
 
   it("labels each sensitivity bound by its own non-inferiority result", async () => {
@@ -346,7 +342,10 @@ describe("reports", () => {
 
   it("the lint finds an HTML bound marked not validated without its label", async () => {
     const { decision } = await decided();
-    const html = renderHtml(decisionView(decision, "synthetic")).replace(" (not validated)<", "<");
+    const html = renderHtml(decisionView(decision, "synthetic")).replace(
+      /(data-col="bound"[^>]*>[^<]*) \(not validated\)</,
+      "$1<",
+    );
     expect(lintReport(html)).toEqual([
       expect.stringMatching(
         /^an estimate without its interval: a bound \(≥ [^)]*\) that is not validated, without its label$/,

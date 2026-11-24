@@ -1,3 +1,4 @@
+import { resolutionLine } from "../plan/resolution.ts";
 import type { Real } from "../contracts/primitives.ts";
 import type { Decision } from "../contracts/records/decision.ts";
 import { notComputedReason, type PowerEntry } from "../contracts/records/plan.ts";
@@ -20,6 +21,8 @@ export function points(value: Real | number): string {
   return `${rounded > 0 ? "+" : rounded < 0 ? "−" : ""}${magnitude} pts`;
 }
 
+type DecisionNoise = NonNullable<Decision["measures"][number]["noise"]>;
+
 /** One row of the per-measure table. */
 export interface MeasureRow {
   /** The measure's ID. */
@@ -28,6 +31,8 @@ export interface MeasureRow {
   readonly tier: string;
   /** The measure's verdict. */
   readonly verdict: string;
+  /** The quantity the measure estimates. */
+  readonly estimand: string;
   /** One entry for each arm: its rate, interval, available of planned trials and missing trials. */
   readonly arms: ReadonlyArray<{
     readonly arm: string;
@@ -35,6 +40,18 @@ export interface MeasureRow {
     readonly interval: string;
     readonly n: string;
     readonly missing: number;
+    readonly denominators: {
+      readonly observedCases: number | null;
+      readonly plannedCases: number | null;
+      readonly observedTrials: number;
+      readonly plannedTrials: number;
+      readonly caseCountsReason?: string;
+    };
+    readonly estimand: "equal-weight observed cases";
+    readonly method: string;
+    readonly level: number;
+    readonly sidedness: string;
+    readonly validity: { readonly validated: boolean; readonly limitations: readonly string[] };
   }>;
   /**
    * The first comparison's difference with its bound, margin and flips; absent when the measure has
@@ -45,6 +62,8 @@ export interface MeasureRow {
     readonly bound: string;
     readonly margin: string;
     readonly method: string;
+    readonly sidedness: string;
+    readonly level: number;
     readonly negativeFlips: number;
     readonly positiveFlips: number;
     /**
@@ -59,6 +78,14 @@ export interface MeasureRow {
       readonly margin: number;
       readonly validated: boolean;
     };
+  };
+  /** Block counts and descriptive variance from the decision. */
+  readonly blocks?: Decision["measures"][number]["blocks"];
+  /** Within-case, between-block and across-case variance. */
+  readonly noise?: Omit<DecisionNoise, "arms"> & {
+    readonly arms: ReadonlyArray<
+      Omit<DecisionNoise["arms"][number], "arm"> & { readonly arm: string }
+    >;
   };
   /** The measure's notes from the decision. */
   readonly notes: readonly string[];
@@ -121,6 +148,12 @@ export interface DecisionView {
   readonly method: string;
   /** One row for each measure. */
   readonly measures: readonly MeasureRow[];
+  /** Registered case reductions. The entries are point estimates without intervals. */
+  readonly trialReduction?: {
+    readonly measure: string;
+    readonly k: number;
+    readonly rows: ReadonlyArray<readonly [string, string, string, string, string]>;
+  };
   /** Each hard gate with its result: `passed`, or `failed` with the number of failures. */
   readonly gates: ReadonlyArray<{
     readonly gate: string;
@@ -138,6 +171,8 @@ export interface DecisionView {
   }>;
   /** The planning power rows, then the run-time ones. */
   readonly power: readonly PowerRow[];
+  /** The block-resolution estimates, with the model and any unavailability reason. */
+  readonly resolution: readonly string[];
   /** The rows of the sensitivity analysis for missing trials. */
   readonly sensitivity: readonly SensitivityRow[];
   /** The missing trials of each arm and the outcome of the sensitivity analysis, in words. */
@@ -151,6 +186,28 @@ export interface DecisionView {
    * version.
    */
   readonly lineage: ReadonlyArray<readonly [string, string]>;
+}
+
+function reductionView(
+  reduction: NonNullable<Decision["trialReduction"]>,
+  id: (value: string) => string,
+): NonNullable<DecisionView["trialReduction"]> {
+  const cells = (row: typeof reduction.overall): readonly [string, string, string] =>
+    row.status === "missing"
+      ? ["Missing", "Missing", "missing"]
+      : [percent(row.passAll), percent(row.passAny), row.status];
+  const observed = reduction.cases.filter((row) => row.status !== "missing").length;
+  return {
+    measure: id(reduction.measure),
+    k: reduction.k,
+    rows: [
+      ...reduction.cases.map(
+        (row) =>
+          [id(row.case), `${row.validTrials} of ${row.plannedTrials}`, ...cells(row)] as const,
+      ),
+      ["Overall", `${observed} of ${reduction.cases.length} cases`, ...cells(reduction.overall)],
+    ],
+  };
 }
 
 /** The label of a bound that its comparison's non-inferiority result does not vouch for. */
@@ -286,7 +343,7 @@ export function decisionView(
     reason: prose(decision.reason),
     method:
       decision.mode === "estimate-only"
-        ? `Estimate-only (${decision.measures[0]?.estimand ?? "fixed-cases"}): no statistical verdict. Rates carry 95% Wilson intervals; differences carry one-sided ${level}% lower bounds and are descriptive.`
+        ? `Estimate-only (${decision.measures[0]?.estimand ?? "fixed-cases"}): no statistical verdict. Rates give cases equal weight; differences carry one-sided ${level}% lower bounds and are descriptive.`
         : `Estimand ${decision.measures[0]?.estimand ?? "fixed-cases"}; one-sided ${level}% lower bounds for differences (candidate minus base); intersection-union over primary measures; Holm across regression tests.`,
     measures: decision.measures.map((m) => {
       const comparison = m.comparisons[0];
@@ -294,12 +351,33 @@ export function decisionView(
         measure: id(m.measure),
         tier: m.tier,
         verdict: m.verdict,
+        estimand: m.estimand,
         arms: m.arms.map((a) => ({
           arm: armLabel(a.arm),
           rate: percent(a.rate.estimate),
-          interval: `${percent(a.rate.lower)} to ${percent(a.rate.upper)}`,
+          interval:
+            typeof a.rate.lower === "number" && typeof a.rate.upper === "number"
+              ? `${percent(a.rate.lower)} to ${percent(a.rate.upper)}${a.intervalValidity?.validated === false ? ` ${NOT_VALIDATED}` : ""}`
+              : "No interval yet: the available trials do not give one.",
           n: `${a.availability.available} of ${a.availability.planned}`,
           missing: a.availability.missing,
+          denominators: {
+            observedCases: a.caseAvailability?.observed ?? null,
+            plannedCases: a.caseAvailability?.planned ?? null,
+            observedTrials: a.availability.available,
+            plannedTrials: a.availability.planned,
+            ...(a.caseAvailability
+              ? {}
+              : { caseCountsReason: "the decision predates case counts" }),
+          },
+          estimand: "equal-weight observed cases",
+          method: a.rate.method,
+          level: a.rate.level,
+          sidedness: a.rate.sided,
+          validity: a.intervalValidity ?? {
+            validated: false,
+            limitations: ["the decision records no interval validity"],
+          },
         })),
         ...(comparison
           ? {
@@ -311,6 +389,8 @@ export function decisionView(
                     ? "–"
                     : `−${(comparison.margin * 100).toFixed(1)} pts${comparison.safetyMargin > 0 ? ` (safety ${(comparison.safetyMargin * 100).toFixed(1)})` : ""}`,
                 method: comparison.difference.method,
+                sidedness: comparison.difference.sided,
+                level: comparison.difference.level,
                 negativeFlips: comparison.flips.filter((f) => f.direction === "negative").length,
                 positiveFlips: comparison.flips.filter((f) => f.direction === "positive").length,
                 validated: comparison.nonInferiority.validated,
@@ -328,9 +408,21 @@ export function decisionView(
               },
             }
           : {}),
+        ...(m.blocks ? { blocks: m.blocks } : {}),
+        ...(m.noise
+          ? {
+              noise: {
+                ...m.noise,
+                arms: m.noise.arms.map((a) => ({ ...a, arm: armLabel(a.arm) })),
+              },
+            }
+          : {}),
         notes: m.notes.map(prose),
       };
     }),
+    ...(decision.trialReduction
+      ? { trialReduction: reductionView(decision.trialReduction, id) }
+      : {}),
     gates: decision.gates.map((g) => ({
       gate: id(g.gate),
       result: g.passed ? "passed" : `failed (${g.failures})`,
@@ -344,10 +436,16 @@ export function decisionView(
         candidate: percent(f.candidate),
       })),
     ),
-    power: [
-      ...decision.power.planning.map((p) => powerRow("planning", p, id, prose)),
-      ...decision.power.run.map((p) => powerRow("this run", p, id, prose)),
-    ],
+    power:
+      decision.resolution === undefined
+        ? [
+            ...decision.power.planning.map((p) => powerRow("planning", p, id, prose)),
+            ...decision.power.run.map((p) => powerRow("this run", p, id, prose)),
+          ]
+        : [],
+    resolution: (decision.resolution ?? []).map((entry) =>
+      prose(resolutionLine(entry, id(entry.measure))),
+    ),
     sensitivity: decision.measures
       .flatMap((m) =>
         m.sensitivity.map((s) => ({

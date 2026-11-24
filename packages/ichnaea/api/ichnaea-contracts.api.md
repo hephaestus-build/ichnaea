@@ -27,7 +27,141 @@ export const Agreement: z.ZodObject<{
 }, z.core.$strict>;
 
 // @public
+export const AnalysisLock: z.ZodObject<{
+    schema: z.ZodLiteral<"ichnaea.lock/1">;
+    plan: z.ZodString;
+    cases: z.ZodArray<z.ZodObject<{
+        id: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
+        digest: z.ZodString;
+        pool: z.ZodEnum<{
+            development: "development";
+            promoted: "promoted";
+            sealed: "sealed";
+            validation: "validation";
+        }>;
+        family: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>>;
+    instruments: z.ZodRecord<z.core.$ZodBranded<z.ZodString, "MeasureId", "out">, z.ZodString>;
+}, z.core.$strict>;
+
+// @public
+export type AnalysisLock = z.infer<typeof AnalysisLock>;
+
+// @public
+export const AnalysisPlan: z.ZodObject<{
+    schema: z.ZodLiteral<"ichnaea.analysisPlan/1">;
+    suite: z.core.$ZodBranded<z.ZodString, "SuiteId", "out">;
+    suiteDigest: z.ZodString;
+    cases: z.ZodArray<z.ZodObject<{
+        id: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
+        digest: z.ZodString;
+        pool: z.ZodEnum<{
+            development: "development";
+            promoted: "promoted";
+            sealed: "sealed";
+            validation: "validation";
+        }>;
+        family: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>>;
+    caseSet: z.ZodString;
+    caseSetDigest: z.ZodString;
+    estimand: z.ZodEnum<{
+        "fixed-cases": "fixed-cases";
+        "sampled-cases": "sampled-cases";
+    }>;
+    method: z.ZodEnum<{
+        "binary-randomized-blocks": "binary-randomized-blocks";
+        "estimate-only": "estimate-only";
+    }>;
+    alpha: z.ZodNumber;
+    blocks: z.ZodInt;
+    replicates: z.ZodInt;
+    primary: z.ZodArray<z.ZodObject<{
+        measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+        margin: z.ZodOptional<z.ZodNumber>;
+        safetyMargin: z.ZodOptional<z.ZodNumber>;
+        targetDrop: z.ZodOptional<z.ZodNumber>;
+        coverageFloor: z.ZodOptional<z.ZodNumber>;
+    }, z.core.$strict>>;
+    secondary: z.ZodArray<z.core.$ZodBranded<z.ZodString, "MeasureId", "out">>;
+    hardGates: z.ZodArray<z.core.$ZodBranded<z.ZodString, "GateId", "out">>;
+    measures: z.ZodArray<z.ZodObject<{
+        id: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+        version: z.ZodString;
+        pin: z.ZodString;
+    }, z.core.$strict>>;
+    holm: z.ZodArray<z.core.$ZodBranded<z.ZodString, "MeasureId", "out">>;
+    applicability: z.ZodRecord<z.core.$ZodBranded<z.ZodString, "MeasureId", "out">, z.ZodArray<z.core.$ZodBranded<z.ZodString, "CaseId", "out">>>;
+    resolution: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+        basis: z.ZodEnum<{
+            "base-arm-rates": "base-arm-rates";
+            "default-simulation": "default-simulation";
+            "noise-pilot": "noise-pilot";
+        }>;
+        targetPower: z.ZodNumber;
+        level: z.ZodNumber;
+        targetDrop: z.ZodOptional<z.ZodNumber>;
+        powerAtTarget: z.ZodOptional<z.ZodNumber>;
+        result: z.ZodDiscriminatedUnion<[z.ZodObject<{
+            kind: z.ZodLiteral<"detectable-drop">;
+            drop: z.ZodNumber;
+        }, z.core.$strict>, z.ZodObject<{
+            kind: z.ZodLiteral<"extreme">;
+            power: z.ZodNumber;
+        }, z.core.$strict>, z.ZodObject<{
+            kind: z.ZodLiteral<"unavailable">;
+            reason: z.ZodString;
+        }, z.core.$strict>], "kind">;
+    }, z.core.$strict>>>;
+    trialReduction: z.ZodOptional<z.ZodObject<{
+        measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+        k: z.ZodInt;
+        cases: z.ZodArray<z.core.$ZodBranded<z.ZodString, "CaseId", "out">>;
+    }, z.core.$strict>>;
+    pilot: z.ZodOptional<z.ZodObject<{
+        run: z.core.$ZodBranded<z.ZodString, "RunId", "out">;
+        digest: z.ZodString;
+    }, z.core.$strict>>;
+    base: z.ZodObject<{
+        role: z.ZodLiteral<"base">;
+        identity: z.core.$ZodBranded<z.ZodString, "ConfigurationIdentity", "out">;
+    }, z.core.$strict>;
+    maxCalls: z.ZodInt;
+    policy: z.ZodObject<{
+        onRegression: z.ZodEnum<{
+            block: "block";
+            report: "report";
+        }>;
+        onInconclusive: z.ZodEnum<{
+            block: "block";
+            report: "report";
+        }>;
+        onEstimateOnly: z.ZodEnum<{
+            block: "block";
+            report: "report";
+        }>;
+    }, z.core.$strict>;
+    ichnaea: z.ZodString;
+}, z.core.$strict>;
+
+// @public
+export type AnalysisPlan = z.infer<typeof AnalysisPlan>;
+
+// @public
+export const AnalysisPrimary: z.ZodObject<{
+    measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+    margin: z.ZodOptional<z.ZodNumber>;
+    safetyMargin: z.ZodOptional<z.ZodNumber>;
+    targetDrop: z.ZodOptional<z.ZodNumber>;
+    coverageFloor: z.ZodOptional<z.ZodNumber>;
+}, z.core.$strict>;
+
+// @public
 export const ANY_PURPOSE: "*";
+
+// @public
+export const Applicability: z.ZodRecord<z.core.$ZodBranded<z.ZodString, "MeasureId", "out">, z.ZodArray<z.core.$ZodBranded<z.ZodString, "CaseId", "out">>>;
 
 // @public
 export const AppliesTo: z.ZodObject<{
@@ -170,6 +304,17 @@ export const ArmEstimate: z.ZodObject<{
         notApplicable: z.ZodInt;
         missing: z.ZodInt;
     }, z.core.$strict>;
+    caseAvailability: z.ZodOptional<z.ZodObject<{
+        planned: z.ZodInt;
+        observed: z.ZodInt;
+    }, z.core.$strict>>;
+    intervalValidity: z.ZodOptional<z.ZodDiscriminatedUnion<[z.ZodObject<{
+        validated: z.ZodLiteral<true>;
+        limitations: z.ZodArray<z.ZodString>;
+    }, z.core.$strict>, z.ZodObject<{
+        validated: z.ZodLiteral<false>;
+        limitations: z.ZodArray<z.ZodString>;
+    }, z.core.$strict>], "validated">>;
 }, z.core.$strict>;
 
 // @public
@@ -680,6 +825,7 @@ export const CaseSet: z.ZodObject<{
         }>;
         family: z.ZodOptional<z.ZodString>;
     }, z.core.$strict>>;
+    applicability: z.ZodOptional<z.ZodRecord<z.core.$ZodBranded<z.ZodString, "MeasureId", "out">, z.ZodArray<z.core.$ZodBranded<z.ZodString, "CaseId", "out">>>>;
 }, z.core.$strict>;
 
 // @public
@@ -951,7 +1097,7 @@ export const ConfigurationV2: z.ZodObject<{
 export type ConfigurationV2 = z.infer<typeof ConfigurationV2>;
 
 // @public
-export function content<T extends z.ZodType>(schema: T): T;
+export function content<T extends z.ZodType>(schema: T, classification?: DataClass | "inherit"): T;
 
 // @public
 export const CONTEXT_SLOTS: readonly ["measure", "margin", "change", "bound", "cases", "caseNoun", "trials", "changed", "broke", "fixed", "test", "p", "rawP", "m", "side"];
@@ -1091,6 +1237,17 @@ export const Decision: z.ZodObject<{
                 notApplicable: z.ZodInt;
                 missing: z.ZodInt;
             }, z.core.$strict>;
+            caseAvailability: z.ZodOptional<z.ZodObject<{
+                planned: z.ZodInt;
+                observed: z.ZodInt;
+            }, z.core.$strict>>;
+            intervalValidity: z.ZodOptional<z.ZodDiscriminatedUnion<[z.ZodObject<{
+                validated: z.ZodLiteral<true>;
+                limitations: z.ZodArray<z.ZodString>;
+            }, z.core.$strict>, z.ZodObject<{
+                validated: z.ZodLiteral<false>;
+                limitations: z.ZodArray<z.ZodString>;
+            }, z.core.$strict>], "validated">>;
         }, z.core.$strict>>;
         comparisons: z.ZodArray<z.ZodObject<{
             base: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
@@ -1180,6 +1337,22 @@ export const Decision: z.ZodObject<{
             REGRESSION: "REGRESSION";
         }>;
         coverage: z.ZodNumber;
+        blocks: z.ZodOptional<z.ZodObject<{
+            planned: z.ZodInt;
+            observed: z.ZodInt;
+            effective: z.ZodNullable<z.ZodInt>;
+            reason: z.ZodOptional<z.ZodString>;
+        }, z.core.$strict>>;
+        noise: z.ZodOptional<z.ZodObject<{
+            arms: z.ZodArray<z.ZodObject<{
+                arm: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
+                withinCaseVariance: z.ZodNullable<z.ZodNumber>;
+                replicatedCells: z.ZodInt;
+                caseDispersion: z.ZodNullable<z.ZodNumber>;
+            }, z.core.$strict>>;
+            betweenBlockVariance: z.ZodNullable<z.ZodNumber>;
+            contrastBlocks: z.ZodInt;
+        }, z.core.$strict>>;
         sensitivity: z.ZodArray<z.ZodObject<{
             imputation: z.ZodEnum<{
                 "against-non-inferiority": "against-non-inferiority";
@@ -1325,6 +1498,58 @@ export const Decision: z.ZodObject<{
             refusal: z.ZodString;
         }, z.core.$strict>], "reason">], "computed">>;
     }, z.core.$strict>;
+    resolution: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+        basis: z.ZodEnum<{
+            "base-arm-rates": "base-arm-rates";
+            "default-simulation": "default-simulation";
+            "noise-pilot": "noise-pilot";
+        }>;
+        targetPower: z.ZodNumber;
+        level: z.ZodNumber;
+        targetDrop: z.ZodOptional<z.ZodNumber>;
+        powerAtTarget: z.ZodOptional<z.ZodNumber>;
+        result: z.ZodDiscriminatedUnion<[z.ZodObject<{
+            kind: z.ZodLiteral<"detectable-drop">;
+            drop: z.ZodNumber;
+        }, z.core.$strict>, z.ZodObject<{
+            kind: z.ZodLiteral<"extreme">;
+            power: z.ZodNumber;
+        }, z.core.$strict>, z.ZodObject<{
+            kind: z.ZodLiteral<"unavailable">;
+            reason: z.ZodString;
+        }, z.core.$strict>], "kind">;
+    }, z.core.$strict>>>;
+    trialReduction: z.ZodOptional<z.ZodObject<{
+        measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+        k: z.ZodInt;
+        cases: z.ZodArray<z.ZodDiscriminatedUnion<[z.ZodObject<{
+            status: z.ZodLiteral<"missing">;
+            case: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
+            plannedTrials: z.ZodInt;
+            validTrials: z.ZodInt;
+        }, z.core.$strict>, z.ZodObject<{
+            status: z.ZodEnum<{
+                "estimate-only": "estimate-only";
+                observed: "observed";
+            }>;
+            passAll: z.ZodNumber;
+            passAny: z.ZodNumber;
+            case: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
+            plannedTrials: z.ZodInt;
+            validTrials: z.ZodInt;
+        }, z.core.$strict>], "status">>;
+        overall: z.ZodDiscriminatedUnion<[z.ZodObject<{
+            status: z.ZodLiteral<"missing">;
+        }, z.core.$strict>, z.ZodObject<{
+            status: z.ZodEnum<{
+                "estimate-only": "estimate-only";
+                observed: "observed";
+            }>;
+            passAll: z.ZodNumber;
+            passAny: z.ZodNumber;
+        }, z.core.$strict>], "status">;
+    }, z.core.$strict>>;
     missingness: z.ZodObject<{
         byArm: z.ZodArray<z.ZodObject<{
             arm: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
@@ -2490,6 +2715,17 @@ export const MeasureOutcome: z.ZodObject<{
             notApplicable: z.ZodInt;
             missing: z.ZodInt;
         }, z.core.$strict>;
+        caseAvailability: z.ZodOptional<z.ZodObject<{
+            planned: z.ZodInt;
+            observed: z.ZodInt;
+        }, z.core.$strict>>;
+        intervalValidity: z.ZodOptional<z.ZodDiscriminatedUnion<[z.ZodObject<{
+            validated: z.ZodLiteral<true>;
+            limitations: z.ZodArray<z.ZodString>;
+        }, z.core.$strict>, z.ZodObject<{
+            validated: z.ZodLiteral<false>;
+            limitations: z.ZodArray<z.ZodString>;
+        }, z.core.$strict>], "validated">>;
     }, z.core.$strict>>;
     comparisons: z.ZodArray<z.ZodObject<{
         base: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
@@ -2579,6 +2815,22 @@ export const MeasureOutcome: z.ZodObject<{
         REGRESSION: "REGRESSION";
     }>;
     coverage: z.ZodNumber;
+    blocks: z.ZodOptional<z.ZodObject<{
+        planned: z.ZodInt;
+        observed: z.ZodInt;
+        effective: z.ZodNullable<z.ZodInt>;
+        reason: z.ZodOptional<z.ZodString>;
+    }, z.core.$strict>>;
+    noise: z.ZodOptional<z.ZodObject<{
+        arms: z.ZodArray<z.ZodObject<{
+            arm: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
+            withinCaseVariance: z.ZodNullable<z.ZodNumber>;
+            replicatedCells: z.ZodInt;
+            caseDispersion: z.ZodNullable<z.ZodNumber>;
+        }, z.core.$strict>>;
+        betweenBlockVariance: z.ZodNullable<z.ZodNumber>;
+        contrastBlocks: z.ZodInt;
+    }, z.core.$strict>>;
     sensitivity: z.ZodArray<z.ZodObject<{
         imputation: z.ZodEnum<{
             "against-non-inferiority": "against-non-inferiority";
@@ -2919,6 +3171,102 @@ export function plainDataProblems(value: unknown): string[];
 // @public
 export const Plan: z.ZodObject<{
     schema: z.ZodLiteral<"ichnaea.plan/1">;
+    analysis: z.ZodOptional<z.ZodObject<{
+        schema: z.ZodLiteral<"ichnaea.analysisPlan/1">;
+        suite: z.core.$ZodBranded<z.ZodString, "SuiteId", "out">;
+        suiteDigest: z.ZodString;
+        cases: z.ZodArray<z.ZodObject<{
+            id: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
+            digest: z.ZodString;
+            pool: z.ZodEnum<{
+                development: "development";
+                promoted: "promoted";
+                sealed: "sealed";
+                validation: "validation";
+            }>;
+            family: z.ZodOptional<z.ZodString>;
+        }, z.core.$strict>>;
+        caseSet: z.ZodString;
+        caseSetDigest: z.ZodString;
+        estimand: z.ZodEnum<{
+            "fixed-cases": "fixed-cases";
+            "sampled-cases": "sampled-cases";
+        }>;
+        method: z.ZodEnum<{
+            "binary-randomized-blocks": "binary-randomized-blocks";
+            "estimate-only": "estimate-only";
+        }>;
+        alpha: z.ZodNumber;
+        blocks: z.ZodInt;
+        replicates: z.ZodInt;
+        primary: z.ZodArray<z.ZodObject<{
+            measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+            margin: z.ZodOptional<z.ZodNumber>;
+            safetyMargin: z.ZodOptional<z.ZodNumber>;
+            targetDrop: z.ZodOptional<z.ZodNumber>;
+            coverageFloor: z.ZodOptional<z.ZodNumber>;
+        }, z.core.$strict>>;
+        secondary: z.ZodArray<z.core.$ZodBranded<z.ZodString, "MeasureId", "out">>;
+        hardGates: z.ZodArray<z.core.$ZodBranded<z.ZodString, "GateId", "out">>;
+        measures: z.ZodArray<z.ZodObject<{
+            id: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+            version: z.ZodString;
+            pin: z.ZodString;
+        }, z.core.$strict>>;
+        holm: z.ZodArray<z.core.$ZodBranded<z.ZodString, "MeasureId", "out">>;
+        applicability: z.ZodRecord<z.core.$ZodBranded<z.ZodString, "MeasureId", "out">, z.ZodArray<z.core.$ZodBranded<z.ZodString, "CaseId", "out">>>;
+        resolution: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+            basis: z.ZodEnum<{
+                "base-arm-rates": "base-arm-rates";
+                "default-simulation": "default-simulation";
+                "noise-pilot": "noise-pilot";
+            }>;
+            targetPower: z.ZodNumber;
+            level: z.ZodNumber;
+            targetDrop: z.ZodOptional<z.ZodNumber>;
+            powerAtTarget: z.ZodOptional<z.ZodNumber>;
+            result: z.ZodDiscriminatedUnion<[z.ZodObject<{
+                kind: z.ZodLiteral<"detectable-drop">;
+                drop: z.ZodNumber;
+            }, z.core.$strict>, z.ZodObject<{
+                kind: z.ZodLiteral<"extreme">;
+                power: z.ZodNumber;
+            }, z.core.$strict>, z.ZodObject<{
+                kind: z.ZodLiteral<"unavailable">;
+                reason: z.ZodString;
+            }, z.core.$strict>], "kind">;
+        }, z.core.$strict>>>;
+        trialReduction: z.ZodOptional<z.ZodObject<{
+            measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+            k: z.ZodInt;
+            cases: z.ZodArray<z.core.$ZodBranded<z.ZodString, "CaseId", "out">>;
+        }, z.core.$strict>>;
+        pilot: z.ZodOptional<z.ZodObject<{
+            run: z.core.$ZodBranded<z.ZodString, "RunId", "out">;
+            digest: z.ZodString;
+        }, z.core.$strict>>;
+        base: z.ZodObject<{
+            role: z.ZodLiteral<"base">;
+            identity: z.core.$ZodBranded<z.ZodString, "ConfigurationIdentity", "out">;
+        }, z.core.$strict>;
+        maxCalls: z.ZodInt;
+        policy: z.ZodObject<{
+            onRegression: z.ZodEnum<{
+                block: "block";
+                report: "report";
+            }>;
+            onInconclusive: z.ZodEnum<{
+                block: "block";
+                report: "report";
+            }>;
+            onEstimateOnly: z.ZodEnum<{
+                block: "block";
+                report: "report";
+            }>;
+        }, z.core.$strict>;
+        ichnaea: z.ZodString;
+    }, z.core.$strict>>;
     suite: z.core.$ZodBranded<z.ZodString, "SuiteId", "out">;
     suiteVersion: z.ZodString;
     suiteDigest: z.ZodString;
@@ -3127,6 +3475,7 @@ export const Plan: z.ZodObject<{
         family: z.ZodOptional<z.ZodString>;
         arm: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
         replicate: z.ZodInt;
+        block: z.ZodOptional<z.ZodInt>;
         batch: z.ZodInt;
     }, z.core.$strict>>;
     schedule: z.ZodOptional<z.ZodObject<{
@@ -3163,6 +3512,7 @@ export const PlannedTrial: z.ZodObject<{
     family: z.ZodOptional<z.ZodString>;
     arm: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
     replicate: z.ZodInt;
+    block: z.ZodOptional<z.ZodInt>;
     batch: z.ZodInt;
 }, z.core.$strict>;
 
@@ -3700,6 +4050,13 @@ export const RecordDataClass: z.ZodEnum<{
 
 // @public
 export const REFUSED_MARGIN = "the plan carries no planning statement, and its margin is refused";
+
+// @public
+export const RegisteredTrialReduction: z.ZodObject<{
+    measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+    k: z.ZodInt;
+    cases: z.ZodArray<z.core.$ZodBranded<z.ZodString, "CaseId", "out">>;
+}, z.core.$strict>;
 
 // @public
 export const Replay: z.ZodObject<{
@@ -5322,6 +5679,9 @@ export const TrialReduction: z.ZodXor<readonly [z.ZodObject<{
         k: z.ZodInt;
     }, z.core.$strict>;
 }, z.core.$strict>]>;
+
+// @public
+export type TrialReductionRegistration = z.input<typeof RegisteredTrialReduction>;
 
 // @public
 export const TrialRequest: z.ZodObject<{

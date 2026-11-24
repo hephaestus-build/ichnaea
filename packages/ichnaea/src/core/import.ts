@@ -5,20 +5,23 @@ import { Case, CaseSet } from "../contracts/records/case.ts";
 import { Configuration } from "../contracts/records/configuration.ts";
 import type { Decision, GateResult } from "../contracts/records/decision.ts";
 import type { MeasureValue } from "../contracts/records/measure.ts";
-import type { Plan } from "../contracts/records/plan.ts";
+import { Plan } from "../contracts/records/plan.ts";
 import { Run } from "../contracts/records/run.ts";
 import { Suite } from "../contracts/records/suite.ts";
 import type { Trial } from "../contracts/records/trial.ts";
 import { proportionProblem } from "../contracts/values.ts";
 
+import { planningPower } from "../plan/power.ts";
+
+import { bindImportedPlan, type LockedImport } from "./analysis-plan.ts";
 import type { Host } from "./host.ts";
 import { scoreTrials } from "./measures.ts";
 import { createPlan } from "./planner.ts";
-import { recordProblems } from "./records.ts";
+import { recordProblems } from "../contracts/run-records.ts";
 import { FileStore, StoreError } from "./store.ts";
 
 /** What `ichnaea import` needs. */
-export interface ImportRunInput {
+interface ImportRunOptions {
   /** The loaded configuration that provides the importer, measures and gates. */
   readonly host: Host;
   /** The directory of the file store that the run is written to. */
@@ -27,18 +30,6 @@ export interface ImportRunInput {
   readonly run: string;
   /** The ID of the importer that reads the result files. */
   readonly importer: string;
-  /** The path of the suite's JSON file. */
-  readonly suite: string;
-  /** The path of the case set's JSON file. */
-  readonly caseSet: string;
-  /** The path of the cases' JSON Lines file, one case per line; blank lines are skipped. */
-  readonly cases: string;
-  /** The arms, each with its name, role and the path of its configuration's JSON file. */
-  readonly arms: ReadonlyArray<{
-    readonly name: string;
-    readonly role: "base" | "candidate" | "reference";
-    readonly configuration: string;
-  }>;
   /** The other runner's result files that the importer reads. */
   readonly files: readonly string[];
   /** The kind of change that the run evaluates. */
@@ -58,6 +49,24 @@ export interface ImportRunInput {
    * lineage.
    */
   readonly ichnaea: string;
+}
+
+/** Resolve inputs from the locked analysis or from the original inline flags. */
+export type ImportRunInput = ImportRunOptions & ({ readonly locked: LockedImport } | LegacyInputs);
+
+interface LegacyInputs {
+  /** The path of the suite's JSON file. */
+  readonly suite: string;
+  /** The path of the case set's JSON file. */
+  readonly caseSet: string;
+  /** The path of the cases' JSON Lines file, one case per line; blank lines are skipped. */
+  readonly cases: string;
+  /** The arms, each with its name, role and the path of its configuration's JSON file. */
+  readonly arms: ReadonlyArray<{
+    readonly name: string;
+    readonly role: "base" | "candidate" | "reference";
+    readonly configuration: string;
+  }>;
 }
 
 /**
@@ -154,21 +163,11 @@ async function citations(store: FileStore, runs: readonly string[]): Promise<Pla
   return { decisions };
 }
 
-/**
- * Import mode (REQ-22): resolves the plan, runs an importer over another runner's result files,
- * scores the measures Ichnaea computes, runs the hard gates that have a check, and stores plan,
- * trials, values, gates and the run with its ledger in one atomic write. Every record is checked
- * before anything is written. Import mode makes no model call, so its worst-case calls are zero.
- */
-export async function importRun(
-  input: ImportRunInput,
-): Promise<{ plan: Plan; trials: number; values: number }> {
+async function prepareLegacyImport(
+  input: ImportRunOptions & LegacyInputs,
+  store: FileStore,
+): Promise<{ readonly plan: Plan; readonly cases: readonly Case[] }> {
   const { host } = input;
-  const importer = host.importers.get(input.importer);
-  if (!importer)
-    throw new ImportError(
-      `no importer '${input.importer}'; the plugins provide: ${[...host.importers.keys()].join(", ") || "none"}`,
-    );
   const suite = Suite.parse(await json(input.suite));
   const caseSet = CaseSet.parse(await json(input.caseSet));
   const cases = (await readFile(input.cases, "utf8")).split("\n").flatMap((line, i) => {
@@ -193,29 +192,60 @@ export async function importRun(
       configuration: Configuration.parse(await json(a.configuration)),
     })),
   );
-  const store = new FileStore(input.store);
   const aa = await citations(store, input.aa ?? []);
-  const plan = await host.planCreated(
-    await createPlan({
-      suite,
-      caseSet,
-      cases,
-      arms,
-      armsToRun: [],
-      measures: host.measures,
-      gates: host.gates,
-      trigger: input.trigger,
-      ...(input.varies === undefined ? {} : { varies: input.varies }),
-      ...(input.schedule === undefined ? {} : { schedule: input.schedule }),
-      ...(aa === undefined ? {} : { aa }),
-      seed: input.seed,
-      now: input.now,
-      ichnaea: input.ichnaea,
-    }),
-  );
+  const draft = await createPlan({
+    suite,
+    caseSet,
+    cases,
+    arms,
+    armsToRun: [],
+    measures: host.measures,
+    gates: host.gates,
+    trigger: input.trigger,
+    ...(input.varies === undefined ? {} : { varies: input.varies }),
+    ...(input.schedule === undefined ? {} : { schedule: input.schedule }),
+    ...(aa === undefined ? {} : { aa }),
+    seed: input.seed,
+    now: input.now,
+    ichnaea: input.ichnaea,
+  });
+  const { refuse, ...power } = planningPower(draft);
+  if (refuse !== undefined) throw new ImportError(refuse);
+  const plan = Plan.parse({ ...draft, ...power });
+
+  return { plan, cases };
+}
+
+/**
+ * Import mode (REQ-22): resolves the plan, runs an importer over another runner's result files,
+ * scores the measures Ichnaea computes, runs the hard gates that have a check, and stores plan,
+ * trials, values, gates and the run with its ledger in one atomic write. Every record is checked
+ * before anything is written. Import mode makes no model call, so its worst-case calls are zero.
+ */
+export async function importRun(
+  input: ImportRunInput,
+): Promise<{ plan: Plan; trials: number; values: number }> {
+  const { host } = input;
+  const importer = host.importers.get(input.importer);
+  if (!importer)
+    throw new ImportError(
+      `no importer '${input.importer}'; the plugins provide: ${[...host.importers.keys()].join(", ") || "none"}`,
+    );
+  const store = new FileStore(input.store);
+  const { plan, cases } =
+    "locked" in input
+      ? await bindImportedPlan(input.locked, host, {
+          trigger: input.trigger,
+          varies: [...(input.varies ?? [])],
+          seed: input.seed,
+          createdAt: input.now,
+          ichnaea: input.ichnaea,
+        })
+      : await prepareLegacyImport(input, store);
 
   const result = await importer.run({
     files: input.files,
+    plan,
     options: {
       arms: plan.arms.map((a) => ({ name: a.name, identity: a.identity })),
       run: input.run,
@@ -281,6 +311,7 @@ export async function importRun(
       [...host.measures.values()].filter((m) => planMeasures.has(m.card.id)),
       trials,
       byCase,
+      plan.analysis?.applicability,
     ),
   ].filter((v) => valid.has(v.trial));
 
@@ -323,7 +354,7 @@ export async function importRun(
     schema: "ichnaea.run/1",
     id: input.run,
     plan: await digest(plan),
-    exploratory: false,
+    exploratory: plan.analysis !== undefined,
     environment: {
       node: process.versions.node,
       platform: `${process.platform}-${process.arch}`,
@@ -350,7 +381,5 @@ export async function importRun(
   });
 
   await store.createRun({ plan, run, trials, values, gates });
-  for (const t of trials) await host.trialRecorded(t);
-  await host.runCompleted(run);
   return { plan, trials: trials.length, values: values.length };
 }

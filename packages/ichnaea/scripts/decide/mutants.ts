@@ -29,8 +29,8 @@ interface Mutant {
 }
 
 const D = "src/decide/decide.ts";
-const P = "src/decide/plugin.ts";
-const PL = "src/decide/planning.ts";
+const P = "src/decide/ci-policy.ts";
+const PL = "src/plan/power.ts";
 const CORE = ["core", "decide", "report", "example-support-assistant"];
 export const MUTANTS: readonly Mutant[] = [
   // Record checks: INVALID.
@@ -182,7 +182,7 @@ export const MUTANTS: readonly Mutant[] = [
   },
   {
     id: "trigger lets a case-set change vary the system",
-    file: "src/core/planner.ts",
+    file: "src/plan/rules.ts",
     from: '  "case-set": null,',
     to: '  "case-set": [],',
     projects: CORE,
@@ -197,7 +197,7 @@ export const MUTANTS: readonly Mutant[] = [
   },
   {
     id: "the planner ignores the coin",
-    file: "src/core/planner.ts",
+    file: "src/plan/resolve.ts",
     from: "        ? candidateRunsFirst(seed, c.id, replicate)",
     to: "          ? false",
     projects: CORE,
@@ -304,7 +304,7 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "system failure scored by its value",
     file: D,
-    from: "    if (FAILED.has(outcome)) {",
+    from: "    if (FAILED.has(outcome) && !contradictsPlan) {",
     to: "    if (false) {",
   },
   {
@@ -322,8 +322,15 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "not applicable counted as planned",
     file: D,
-    from: "      av.notApplicable++;\n      continue;",
-    to: "      av.notApplicable++;\n      av.planned++;\n      continue;",
+    from: "      av.notApplicable++;",
+    to: "      av.notApplicable++;\n      av.planned++;",
+  },
+  {
+    id: "late applicability overrides the sealed mask",
+    file: D,
+    from: "mask ? !mask.has(planned.case) : value?.applicable === false",
+    to: "value?.applicable === false",
+    projects: ["core"],
   },
   {
     id: "import keeps a passing system failure",
@@ -691,10 +698,10 @@ export const MUTANTS: readonly Mutant[] = [
     to: "  return reasons.length > 0",
   },
   {
-    id: "power: import is silent about a plan without a statement",
-    file: "src/core/cli.ts",
-    from: "  if (result.plan.power.length === 0 && result.plan.primary.length > 0)",
-    to: "  if (false)",
+    id: "power: import omits the planning statement",
+    file: "src/core/import.ts",
+    from: "const { refuse, ...power } = planningPower(draft);",
+    to: "const { refuse, ...power } = { ...planningPower(draft), power: [] };",
     projects: CORE,
   },
   // Margins (decision 0012).
@@ -748,7 +755,7 @@ export const MUTANTS: readonly Mutant[] = [
   },
   {
     id: "margin: placeholder plans decide",
-    file: "src/core/planner.ts",
+    file: "src/plan/resolve.ts",
     from: '    if (primary.marginStatus === "placeholder")',
     to: "    if (false)",
     projects: CORE,
@@ -771,15 +778,15 @@ export const MUTANTS: readonly Mutant[] = [
   // The planner's other refusals and the CI policy.
   {
     id: "planner allows a composite primary",
-    file: "src/core/planner.ts",
-    from: "    if (measure.card.composite === true)",
+    file: "src/plan/resolve.ts",
+    from: "    if (measure.composite === true)",
     to: "    if (false)",
     projects: CORE,
   },
   {
     id: "planner allows a secondary card as primary",
-    file: "src/core/planner.ts",
-    from: '    if (measure.card.tier !== "primary")',
+    file: "src/plan/resolve.ts",
+    from: '    if (measure.tier !== "primary")',
     to: "    if (false)",
     projects: CORE,
   },

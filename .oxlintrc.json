@@ -25,9 +25,8 @@
     },
     // The boundaries between the areas of the package. The statistics import nothing outside
     // src/stats. Judge calibration imports only the statistics. The contracts import nothing
-    // outside src/contracts but zod. The other areas import only the areas below them: core
-    // imports contracts; decide imports contracts, stats and core; report imports contracts,
-    // decide and core. Inside the package, and in the study scripts and the test support they
+    // outside src/contracts but zod. Core calls the pure modules, which cannot import core or
+    // Node built-ins. Inside the package, and in the study scripts and the test support they
     // load, a module imports the file that defines what it uses, never an index.ts barrel: a
     // barrel is only a public entry of the package, and a study's provenance pins every module it
     // loads, so a barrel would pin every file it re-exports. For the same reason they never import
@@ -125,18 +124,28 @@
           {
             "patterns": [
               {
-                "group": [
-                  "../stats/**",
-                  "../decide/**",
-                  "../report/**",
-                  "../index.ts",
-                  "**/index.ts"
-                ],
-                "message": "src/core imports only src/contracts from the other areas. A module imports the file that defines what it uses, never an index.ts barrel."
+                "group": ["../stats/**", "../index.ts", "**/index.ts"],
+                "message": "src/core calls the planner, decision and report modules. A module imports the file that defines what it uses, never an index.ts barrel."
               },
               {
                 "group": ["@*/ichnaea", "@*/ichnaea/**"],
                 "message": "A module inside the package imports its files by path, never the package by its name."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["packages/ichnaea/src/plan/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**", "!./**", "!../contracts/**", "!../stats/*.ts", "**/index.ts"],
+                "message": "src/plan imports only its own modules, src/contracts and src/stats. A module imports the file that defines what it uses, never an index.ts barrel."
               }
             ]
           }
@@ -151,12 +160,16 @@
           {
             "patterns": [
               {
-                "group": ["../report/**", "../index.ts", "**/index.ts"],
-                "message": "src/decide imports only src/contracts, src/stats and src/core from the other areas. A module imports the file that defines what it uses, never an index.ts barrel."
-              },
-              {
-                "group": ["@*/ichnaea", "@*/ichnaea/**"],
-                "message": "A module inside the package imports its files by path, never the package by its name."
+                "group": [
+                  "**",
+                  "!./**",
+                  "!../contracts/**",
+                  "!../plan/*.ts",
+                  "!../stats/*.ts",
+                  "!zod",
+                  "**/index.ts"
+                ],
+                "message": "src/decide imports only its own modules, src/contracts, src/plan, src/stats and zod. A module imports the file that defines what it uses, never an index.ts barrel."
               }
             ]
           }
@@ -171,12 +184,15 @@
           {
             "patterns": [
               {
-                "group": ["../stats/**", "../index.ts", "**/index.ts"],
-                "message": "src/report imports only src/contracts, src/decide and src/core from the other areas. A module imports the file that defines what it uses, never an index.ts barrel."
-              },
-              {
-                "group": ["@*/ichnaea", "@*/ichnaea/**"],
-                "message": "A module inside the package imports its files by path, never the package by its name."
+                "group": [
+                  "**",
+                  "!./**",
+                  "!../contracts/**",
+                  "!../decide/*.ts",
+                  "!../plan/resolution.ts",
+                  "**/index.ts"
+                ],
+                "message": "src/report imports only its own modules, src/contracts, src/decide and the resolution formatter. A module imports the file that defines what it uses, never an index.ts barrel."
               }
             ]
           }

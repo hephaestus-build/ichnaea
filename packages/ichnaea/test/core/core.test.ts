@@ -16,7 +16,6 @@ import { join } from "node:path";
 import {
   type Case,
   candidateRunsFirst,
-  type Decision,
   Decision as DecisionSchema,
   RunId,
   type GateResult,
@@ -32,11 +31,8 @@ import {
   CallLedger,
   CORE_VERSION,
   createHost,
-  decideEgress,
   definePlugin,
   FileStore,
-  HostError,
-  main,
   MonthlyCapError,
   type MeasureDefinition,
   type Plugin,
@@ -47,8 +43,9 @@ import {
   STALE_LOCK_MS,
   StoreError,
   testMeasure,
-  TRIGGER_VARIES,
 } from "../../src/core/index.ts";
+import { main } from "../../src/cli.ts";
+import { TRIGGER_VARIES } from "../../src/plan/rules.ts";
 
 import { RunWork } from "../../src/core/runner-work.ts";
 
@@ -71,226 +68,65 @@ const records = (id: string): RunRecords => ({
 });
 
 const versions = { core: "0.3.1", contracts: "1.2.0" };
-const stable = (id: string, extra: Partial<Plugin> = {}): Plugin => ({
+const plugin = (id: string, extra: Partial<Plugin> = {}): Plugin => ({
   id,
   version: "1.0.0",
-  stability: "stable",
   ...extra,
 });
 
 describe("plugin host (REQ-80)", () => {
   it("fails at load time on duplicate plugins, un-namespaced parts and duplicate measures, naming the plugin", () => {
-    expect(() => createHost({ plugins: [stable("a"), stable("a")] }, versions)).toThrow(
+    expect(() => createHost({ plugins: [plugin("a"), plugin("a")] }, versions)).toThrow(
       "plugin 'a' is listed twice",
     );
     const measure = {
       ...exact,
       card: { ...exact.card, id: "b/m" },
     } as unknown as MeasureDefinition<"a/m">;
-    expect(() => createHost({ plugins: [stable("a", { measures: [measure] })] }, versions)).toThrow(
+    expect(() => createHost({ plugins: [plugin("a", { measures: [measure] })] }, versions)).toThrow(
       "must be namespaced as 'a/…'",
     );
     const m = { ...exact, card: { ...exact.card, id: "a/m" } } as MeasureDefinition<"a/m">;
-    expect(() => createHost({ plugins: [stable("a", { measures: [m, m] })] }, versions)).toThrow(
+    expect(() => createHost({ plugins: [plugin("a", { measures: [m, m] })] }, versions)).toThrow(
       "duplicate measure 'a/m'",
     );
   });
 
   it("validates measure cards when a plugin loads (REQ-29)", () => {
     const noCard = {} as unknown as MeasureDefinition<"a/m">;
-    expect(() => createHost({ plugins: [stable("a", { measures: [noCard] })] }, versions)).toThrow(
+    expect(() => createHost({ plugins: [plugin("a", { measures: [noCard] })] }, versions)).toThrow(
       "plugin 'a': a measure has no card",
     );
     const bad = {
       ...exact,
       card: { ...exact.card, id: "a/m", valueType: "fuzzy" },
     } as unknown as MeasureDefinition<"a/m">;
-    expect(() => createHost({ plugins: [stable("a", { measures: [bad] })] }, versions)).toThrow(
+    expect(() => createHost({ plugins: [plugin("a", { measures: [bad] })] }, versions)).toThrow(
       /the card of measure 'a\/m' is invalid: valueType/,
     );
   });
 
-  it("refuses a plugin command that would replace a core command", () => {
-    for (const name of ["import", "doctor", "schema", "help"]) {
-      const command = { name, description: "d", options: {}, run: async () => 0 };
-      expect(() =>
-        createHost({ plugins: [stable("a", { commands: [command] })] }, versions),
-      ).toThrow(`command '${name}' is a core command`);
-    }
-  });
-
-  it("requires a named opt-in for plugins below stable", () => {
-    expect(() => createHost({ plugins: [stable("a", { stability: "beta" })] }, versions)).toThrow(
-      HostError,
+  it("refuses lifecycle hooks and commands on a contributed plugin", () => {
+    const extra = { ...plugin("a"), hooks: { planCreated: () => ({ refuse: "underpowered" }) } };
+    expect(() => createHost({ plugins: [extra] }, versions)).toThrow(
+      "plugin 'a': unsupported field(s): hooks",
     );
-    expect(() =>
-      createHost(
-        { plugins: [stable("a", { stability: "beta" })], allowStability: ["beta"] },
-        versions,
-      ),
-    ).not.toThrow();
+    const withCommand = { ...plugin("b"), commands: [{ name: "decide" }] };
+    expect(() => createHost({ plugins: [withCommand] }, versions)).toThrow(
+      "plugin 'b': unsupported field(s): commands",
+    );
   });
 
-  it("refuses a plugin outside its peer range and warns on deprecation with the replacement", () => {
+  it("refuses a plugin outside its peer range", () => {
     expect(() =>
-      createHost({ plugins: [stable("a", { requires: { core: "^0.4.0" } })] }, versions),
+      createHost({ plugins: [plugin("a", { requires: { core: "^0.4.0" } })] }, versions),
     ).toThrow("requires core ^0.4.0, but 0.3.1 is loaded");
-    const host = createHost(
-      {
-        plugins: [
-          stable("a", {
-            deprecated: {
-              since: "1.1.0",
-              removeIn: "2.0.0",
-              replacement: "b",
-              url: "https://example.org",
-            },
-          }),
-        ],
-      },
-      versions,
-    );
-    expect(host.warnings[0]).toMatch(/use b/);
-  });
-
-  it("runs sequential hooks in plugin order with pre and post placement", async () => {
-    const order: string[] = [];
-    const plugin = (id: string, placement?: "pre" | "post"): Plugin =>
-      stable(id, {
-        ...(placement ? { placement } : {}),
-        hooks: { planCreated: () => void order.push(id) },
-      });
-    const host = createHost(
-      { plugins: [plugin("late", "post"), plugin("middle"), plugin("early", "pre")] },
-      versions,
-    );
-    await host.planCreated(plan);
-    expect(order).toEqual(["early", "middle", "late"]);
-  });
-
-  it("fires every lifecycle hook, and no hook turns an estimate-only plan into a decision", async () => {
-    const seen: string[] = [];
-    const host = createHost(
-      {
-        plugins: [
-          stable("watch", {
-            hooks: {
-              configResolved: () => void seen.push("configResolved"),
-              trialRecorded: () => void seen.push("trialRecorded"),
-              runCompleted: () => void seen.push("runCompleted"),
-              decisionMade: () => void seen.push("decisionMade"),
-              reportRendered: () => void seen.push("reportRendered"),
-            },
-          }),
-        ],
-      },
-      versions,
-    );
-    await host.configResolved();
-    await host.trialRecorded(trialWith("completed"));
-    await host.runCompleted({} as Run);
-    await host.decisionMade({} as Decision);
-    await host.reportRendered([]);
-    expect(seen).toEqual([
-      "configResolved",
-      "trialRecorded",
-      "runCompleted",
-      "decisionMade",
-      "reportRendered",
-    ]);
-    const upgrade = createHost(
-      {
-        plugins: [
-          stable("sneaky", { hooks: { planCreated: () => ({ mode: "decision" }) as never } }),
-        ],
-      },
-      versions,
-    );
-    await expect(upgrade.planCreated({ ...plan, mode: "estimate-only" })).rejects.toThrow(
-      "cannot turn an estimate-only plan into a decision",
-    );
-    const downgrade = createHost(
-      {
-        plugins: [
-          stable("careful", {
-            hooks: { planCreated: () => ({ mode: "estimate-only", modeReasons: ["why"] }) },
-          }),
-        ],
-      },
-      versions,
-    );
-    expect(await downgrade.planCreated(plan)).toMatchObject({
-      mode: "estimate-only",
-      modeReasons: ["why"],
-    });
-  });
-
-  it("lets a planCreated hook refuse a plan", async () => {
-    const host = createHost(
-      {
-        plugins: [
-          stable("gatekeeper", { hooks: { planCreated: () => ({ refuse: "underpowered" }) } }),
-        ],
-      },
-      versions,
-    );
-    await expect(host.planCreated({} as never)).rejects.toThrow("refused the plan: underpowered");
   });
 
   it("infers literal plugin and measure IDs", () => {
-    const p = definePlugin({ id: "app", version: "1.0.0", stability: "stable" });
+    const p = definePlugin({ id: "app", version: "1.0.0" });
     const id: "app" = p.id;
     expect(id).toBe("app");
-  });
-});
-
-const request = (dataClass: "none" | "pseudonymous" | "personal") => ({
-  operation: "export" as const,
-  purpose: "PU-1" as const,
-  dataClass,
-  destination: "file",
-  pointers: [],
-});
-
-describe("egress (REQ-126)", () => {
-  const ctx = { log: () => undefined };
-
-  it("denies every class but none by default", async () => {
-    expect((await decideEgress(request("none"), [], ctx)).allow).toBe(true);
-    expect((await decideEgress(request("pseudonymous"), [], ctx)).allow).toBe(false);
-    expect((await decideEgress(request("personal"), [], ctx)).reasons[0]).toMatch(/default deny/);
-  });
-
-  it("lets any plugin refuse, and only the governance plugin the configuration names allow", async () => {
-    const notGovernance = stable("helpful");
-    const logged: string[] = [];
-    expect(
-      (
-        await decideEgress(request("personal"), [[notGovernance, () => ({ allow: true })]], {
-          log: (m) => logged.push(m),
-        })
-      ).allow,
-    ).toBe(false);
-    expect(logged[0]).toMatch(/'helpful' is not a governance plugin/);
-    const allow = stable("govern");
-    const refuse = stable("strict");
-    const allowing: Array<[Plugin, () => { allow: true }]> = [[allow, () => ({ allow: true })]];
-    expect((await decideEgress(request("pseudonymous"), allowing, ctx, "govern")).allow).toBe(true);
-    // The same plugin, not named by the configuration, cannot open egress.
-    expect((await decideEgress(request("pseudonymous"), allowing, ctx)).allow).toBe(false);
-    expect((await decideEgress(request("pseudonymous"), allowing, ctx, "other")).allow).toBe(false);
-    expect(() => createHost({ plugins: [allow], governance: "missing" }, versions)).toThrow(
-      "governance names plugin 'missing', which the configuration does not list",
-    );
-    expect(
-      (
-        await decideEgress(
-          request("none"),
-          [[refuse, () => ({ allow: false, reason: "no purpose record" })]],
-          ctx,
-        )
-      ).reasons[0],
-    ).toBe("strict: no purpose record");
   });
 });
 
@@ -520,8 +356,22 @@ describe("CLI (REQ-26, REQ-114)", () => {
     const out: string[] = [];
     expect(await main(["schema", "trial"], (t) => out.push(t))).toBe(0);
     expect(JSON.parse(out[0] as string).title).toBe("ichnaea.trial/1");
-    expect(await main(["schema", "nothing"], () => undefined)).toBe(2);
-    expect(await main([], () => undefined)).toBe(2);
+    expect(
+      await main(
+        ["schema", "nothing"],
+        () => undefined,
+        undefined,
+        () => undefined,
+      ),
+    ).toBe(2);
+    expect(
+      await main(
+        [],
+        () => undefined,
+        undefined,
+        () => undefined,
+      ),
+    ).toBe(2);
   });
 
   it("exits 2 on every error, so an error never reads as a policy block", async () => {
@@ -551,14 +401,36 @@ describe("CLI (REQ-26, REQ-114)", () => {
       ["--bogus"],
       ["--arm", "broken"],
     ]) {
-      const out: string[] = [];
-      expect(await main([...base, ...extra], (t) => out.push(t))).toBe(2);
-      expect(out.join(" ")).not.toMatch(/ZodError/);
+      const errors: string[] = [];
+      expect(
+        await main(
+          [...base, ...extra],
+          () => undefined,
+          undefined,
+          (t) => errors.push(t),
+        ),
+      ).toBe(2);
+      expect(errors).toHaveLength(1);
+      expect(errors.join(" ")).not.toMatch(/ZodError/);
     }
-    const out: string[] = [];
-    expect(await main(["nothing", "--config", config], (t) => out.push(t))).toBe(2);
-    expect(out[0]).toBe("unknown command 'nothing'. Commands: help, schema, doctor, import");
-    expect(await main([...base], () => undefined)).toBe(2);
+    const errors: string[] = [];
+    expect(
+      await main(
+        ["nothing", "--config", config],
+        () => undefined,
+        undefined,
+        (t) => errors.push(t),
+      ),
+    ).toBe(2);
+    expect(errors[0]).toBe("unknown command 'nothing'. Use 'ichnaea help' to list the commands.");
+    expect(
+      await main(
+        base,
+        () => undefined,
+        undefined,
+        () => undefined,
+      ),
+    ).toBe(2);
   });
 
   it("names the Node version a .ts configuration needs when Node cannot load it, and exits 2", async () => {
@@ -566,18 +438,23 @@ describe("CLI (REQ-26, REQ-114)", () => {
     const ts = join(dir, "ichnaea.config.ts");
     const txt = join(dir, "ichnaea.config.txt");
     for (const file of [ts, txt]) await writeFile(file, "export default { plugins: [] };\n");
-    const out: string[] = [];
-    expect(await main(["doctor", "--config", ts], (t) => out.push(t), unknownExtension)).toBe(2);
-    expect(out).toHaveLength(1);
-    expect(out[0]).toMatch(/^configuration error: .*ichnaea\.config\.ts is TypeScript/);
-    expect(out[0]).toContain("Ichnaea needs Node 24.3 or later");
+    const errors: string[] = [];
+    const error = (t: string): void => void errors.push(t);
+    expect(await main(["doctor", "--config", ts], () => undefined, unknownExtension, error)).toBe(
+      2,
+    );
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toMatch(/^configuration error: .*ichnaea\.config\.ts is TypeScript/);
+    expect(errors[0]).toContain("Ichnaea needs Node 24.3 or later");
     // Another failure of the loader, or the same code on a file that is not TypeScript, is not rewritten.
-    out.length = 0;
-    expect(await main(["doctor", "--config", ts], (t) => out.push(t), failing)).toBe(2);
-    expect(out).toEqual(["configuration error: boom"]);
-    out.length = 0;
-    expect(await main(["doctor", "--config", txt], (t) => out.push(t), unknownExtension)).toBe(2);
-    expect(out).toEqual(['configuration error: Unknown file extension ".ts"']);
+    errors.length = 0;
+    expect(await main(["doctor", "--config", ts], () => undefined, failing, error)).toBe(2);
+    expect(errors).toEqual(["configuration error: boom"]);
+    errors.length = 0;
+    expect(await main(["doctor", "--config", txt], () => undefined, unknownExtension, error)).toBe(
+      2,
+    );
+    expect(errors).toEqual(['configuration error: Unknown file extension ".ts"']);
   });
 
   it("lists every trigger and what its arms may differ in, from the rule decide applies", async () => {
@@ -619,14 +496,28 @@ describe("CLI (REQ-26, REQ-114)", () => {
     const cwd = process.cwd();
     process.chdir(dir);
     try {
-      for (const argv of [["doctor"], ["decide"], ["nothing"], ["import"]]) {
-        const out: string[] = [];
-        expect(await main(argv, (t) => out.push(t))).toBe(2);
-        expect(out).toEqual([`no ichnaea.config.ts in ${dir}; see the README's quick start`]);
+      for (const argv of [["doctor"], ["import"]]) {
+        const errors: string[] = [];
+        expect(
+          await main(
+            argv,
+            () => undefined,
+            undefined,
+            (t) => errors.push(t),
+          ),
+        ).toBe(2);
+        expect(errors).toEqual([`no ichnaea.config.ts in ${dir}; see the README's quick start`]);
       }
-      const out: string[] = [];
-      expect(await main(["doctor", "--config", "other.config.ts"], (t) => out.push(t))).toBe(2);
-      expect(out).toEqual([`no other.config.ts in ${dir}; see the README's quick start`]);
+      const errors: string[] = [];
+      expect(
+        await main(
+          ["doctor", "--config", "other.config.ts"],
+          () => undefined,
+          undefined,
+          (t) => errors.push(t),
+        ),
+      ).toBe(2);
+      expect(errors).toEqual([`no other.config.ts in ${dir}; see the README's quick start`]);
     } finally {
       process.chdir(cwd);
     }

@@ -33,30 +33,6 @@ export class CallLedger {
 }
 
 // @public
-export interface CommandDefinition {
-    readonly description: string;
-    readonly name: string;
-    readonly options: Readonly<Record<string, {
-        readonly type: "string" | "boolean";
-        readonly multiple?: boolean;
-        readonly description: string;
-    }>>;
-    readonly run: (args: {
-        readonly values: Readonly<Record<string, unknown>>;
-        readonly positionals: readonly string[];
-    }, host: CommandHost) => Promise<number>;
-}
-
-// @public
-export interface CommandHost {
-    readonly gates: ReadonlyMap<string, GateDefinition>;
-    readonly hooks: HookRunner;
-    readonly importers: ReadonlyMap<string, Importer>;
-    readonly measures: ReadonlyMap<string, MeasureDefinition>;
-    readonly out: (text: string) => void;
-}
-
-// @public
 export function compare(plan: Plan, records: Omit<RunRecords, "plan">, options: {
     readonly decidedAt: string;
     readonly aa?: readonly AaEvidence[];
@@ -64,32 +40,22 @@ export function compare(plan: Plan, records: Omit<RunRecords, "plan">, options: 
 
 // @public
 export interface Config<Plugins extends readonly Plugin[] = readonly Plugin[]> {
-    readonly allowStability?: readonly Exclude<Stability, "stable">[];
-    readonly governance?: string;
     readonly plugins: Plugins;
     readonly store?: string;
+    readonly suite?: SuiteDefinition;
 }
-
-// @public
-export const CORE_COMMANDS: readonly string[];
 
 // @public
 export const CORE_VERSION: string;
 
 // @public
-export function createHost(config: Config, versions: HostVersions, log?: (message: string) => void): Host;
+export function createHost(config: Config, versions: HostVersions): Host;
 
 // @public
 export function createPlan(input: PlanInput): Promise<Plan>;
 
 // @public
 export function decide(input: DecideInput): Decision;
-
-// @public
-export function decideEgress(request: EgressRequest, hooks: ReadonlyArray<[Plugin, NonNullable<Hooks["beforeEgress"]>]>, ctx: HookContext, governance?: string): Promise<{
-    allow: boolean;
-    reasons: string[];
-}>;
 
 // @public
 export interface DecideInput {
@@ -107,10 +73,17 @@ export interface DecideInput {
 }
 
 // @public
-export function decidePlugin(): Plugin<"decide">;
+export function decidePrimaries(input: PrimariesInput): Map<string, PrimaryVerdict>;
 
 // @public
-export function decidePrimaries(input: PrimariesInput): Map<string, PrimaryVerdict>;
+export interface DecisionRecords extends RunRecords {
+    readonly aa?: readonly {
+        decision: Decision;
+        plan: Plan;
+        run: Run;
+    }[];
+    readonly decision: Decision;
+}
 
 // @public
 export interface DecisionView {
@@ -134,18 +107,22 @@ export interface DecisionView {
     readonly missingness: string;
     readonly power: readonly PowerRow[];
     readonly reason: string;
+    readonly resolution: readonly string[];
     readonly sensitivity: readonly SensitivityRow[];
     readonly title: string;
+    readonly trialReduction?: {
+        readonly measure: string;
+        readonly k: number;
+        readonly rows: ReadonlyArray<readonly [string, string, string, string, string]>;
+    };
     readonly verdict: string;
 }
 
 // @public
-export function decisionView(decision: Decision, suite: string, lineage?: Run["lineage"], options?: DecisionViewOptions): DecisionView;
+export function decisionView(records: ReportRecords): DecisionView;
 
 // @public
-export interface DecisionViewOptions {
-    readonly neutral?: boolean;
-}
+export function defaultBlocks(primaryComparisons: number, alpha: number): number;
 
 // @public
 export function defineConfig<const Plugins extends readonly Plugin[]>(config: Config<Plugins>): Config<Plugins>;
@@ -159,26 +136,10 @@ export function definePlugin<const Id extends string, const P extends Plugin<Id>
 } & Plugin<NoInfer<Id>>): P;
 
 // @public
+export function defineSuite(suite: SuiteDefinition): SuiteDefinition;
+
+// @public
 export function describeCounts(counts: readonly number[]): string;
-
-// @public
-export type EgressAnswer = {
-    readonly allow: true;
-} | {
-    readonly allow: false;
-    readonly reason: string;
-} | undefined;
-
-// @public
-export interface EgressRequest {
-    // Warning: (ae-forgotten-export) The symbol "DataClass" needs to be exported by the entry point index.d.ts
-    readonly dataClass: DataClass;
-    readonly destination: string;
-    readonly operation: "sample" | "label-publish" | "promote" | "export" | "share" | "model-call";
-    readonly pointers: readonly string[];
-    // Warning: (ae-forgotten-export) The symbol "Purpose" needs to be exported by the entry point index.d.ts
-    readonly purpose: Purpose;
-}
 
 // @public
 export function exitCode(decision: Decision, policy: Plan["policy"]): number;
@@ -197,6 +158,8 @@ export class FileStore {
     readonly root: string;
     runs(): Promise<string[]>;
     writeDecision(decision: Decision, suite: string): Promise<void>;
+    // Warning: (ae-forgotten-export) The symbol "Recalculation" needs to be exported by the entry point index.d.ts
+    writeRecalculation(run: string, record: Recalculation): Promise<void>;
 }
 
 // @public
@@ -219,48 +182,11 @@ export type GateIdsOf<Plugins extends readonly Plugin[]> = Plugins[number] exten
 } ? Id : never : never;
 
 // @public
-export const HOOK_MODES: {
-    readonly [K in keyof Hooks]: "sequential" | "parallel";
-};
-
-// @public
-export interface HookContext {
-    readonly log: (message: string) => void;
-}
-
-// @public
-export interface HookRunner {
-    beforeEgress(request: EgressRequest): Promise<{
-        allow: boolean;
-        reasons: string[];
-    }>;
-    configResolved(): Promise<void>;
-    decisionMade(decision: Decision): Promise<void>;
-    planCreated(plan: Plan): Promise<Plan>;
-    reportRendered(files: readonly string[]): Promise<void>;
-    runCompleted(run: Run): Promise<void>;
-    trialRecorded(trial: Trial): Promise<void>;
-}
-
-// @public
-export interface Hooks {
-    readonly beforeEgress: (ctx: HookContext, request: EgressRequest) => EgressAnswer | Promise<EgressAnswer>;
-    readonly configResolved: (ctx: HookContext) => void | Promise<void>;
-    readonly decisionMade: (ctx: HookContext, decision: Decision) => void | Promise<void>;
-    readonly planCreated: (ctx: HookContext, plan: Plan) => PlanAdditions | void | Promise<PlanAdditions | void>;
-    readonly reportRendered: (ctx: HookContext, files: readonly string[]) => void | Promise<void>;
-    readonly runCompleted: (ctx: HookContext, run: Run) => void | Promise<void>;
-    readonly trialRecorded: (ctx: HookContext, trial: Trial) => void | Promise<void>;
-}
-
-// @public
-export interface Host extends HookRunner {
-    readonly commands: ReadonlyMap<string, CommandDefinition>;
+export interface Host {
     readonly gates: ReadonlyMap<string, GateDefinition>;
     readonly importers: ReadonlyMap<string, Importer>;
     readonly measures: ReadonlyMap<string, MeasureDefinition>;
     readonly plugins: readonly Plugin[];
-    readonly warnings: readonly string[];
 }
 
 // @public
@@ -291,6 +217,7 @@ export class ImportError extends Error {
 export interface ImportInput {
     readonly files: readonly string[];
     readonly options: Readonly<Record<string, unknown>>;
+    readonly plan?: Plan;
 }
 
 // @public
@@ -307,29 +234,13 @@ export function importRun(input: ImportRunInput): Promise<{
     values: number;
 }>;
 
+// Warning: (ae-forgotten-export) The symbol "ImportRunOptions" needs to be exported by the entry point index.d.ts
+// Warning: (ae-forgotten-export) The symbol "LegacyInputs" needs to be exported by the entry point index.d.ts
+//
 // @public
-export interface ImportRunInput {
-    readonly aa?: readonly string[];
-    readonly arms: ReadonlyArray<{
-        readonly name: string;
-        readonly role: "base" | "candidate" | "reference";
-        readonly configuration: string;
-    }>;
-    readonly cases: string;
-    readonly caseSet: string;
-    readonly files: readonly string[];
-    readonly host: Host;
-    readonly ichnaea: string;
-    readonly importer: string;
-    readonly now: string;
-    readonly run: string;
-    readonly schedule?: Plan["schedule"];
-    readonly seed: number;
-    readonly store: string;
-    readonly suite: string;
-    readonly trigger: Plan["trigger"];
-    readonly varies?: readonly string[];
-}
+export type ImportRunInput = ImportRunOptions & ({
+    readonly locked: LockedImport;
+} | LegacyInputs);
 
 // @public
 export interface LedgerBooking {
@@ -344,13 +255,10 @@ export class LedgerError extends Error {
 }
 
 // @public
-export function lintReport(text: string): string[];
-
-// @public
 export function loadConfig(path: string, load?: ModuleLoader): Promise<Config>;
 
 // @public
-export function main(argv: readonly string[], out?: (text: string) => void, load?: ModuleLoader): Promise<number>;
+export function main(argv: readonly string[], out?: (text: string) => void, load?: ModuleLoader, err?: (text: string) => void): Promise<number>;
 
 // @public
 export interface MeasureDefinition<Id extends string = string> {
@@ -389,12 +297,30 @@ export interface MeasureRow {
         readonly interval: string;
         readonly n: string;
         readonly missing: number;
+        readonly denominators: {
+            readonly observedCases: number | null;
+            readonly plannedCases: number | null;
+            readonly observedTrials: number;
+            readonly plannedTrials: number;
+            readonly caseCountsReason?: string;
+        };
+        readonly estimand: "equal-weight observed cases";
+        readonly method: string;
+        readonly level: number;
+        readonly sidedness: string;
+        readonly validity: {
+            readonly validated: boolean;
+            readonly limitations: readonly string[];
+        };
     }>;
+    readonly blocks?: Decision["measures"][number]["blocks"];
     readonly difference?: {
         readonly estimate: string;
         readonly bound: string;
         readonly margin: string;
         readonly method: string;
+        readonly sidedness: string;
+        readonly level: number;
         readonly negativeFlips: number;
         readonly positiveFlips: number;
         readonly validated: boolean;
@@ -405,7 +331,14 @@ export interface MeasureRow {
             readonly validated: boolean;
         };
     };
+    readonly estimand: string;
     readonly measure: string;
+    // Warning: (ae-forgotten-export) The symbol "DecisionNoise" needs to be exported by the entry point index.d.ts
+    readonly noise?: Omit<DecisionNoise, "arms"> & {
+        readonly arms: ReadonlyArray<Omit<DecisionNoise["arms"][number], "arm"> & {
+            readonly arm: string;
+        }>;
+    };
     readonly notes: readonly string[];
     readonly tier: string;
     readonly verdict: string;
@@ -423,92 +356,64 @@ export class MonthlyCapError extends Error {
 }
 
 // @public
-export const NO_BOUND = "no bound";
-
-// @public
-export function noBoundReason(difference: Decision["measures"][number]["comparisons"][number]["difference"]): string;
-
-// @public
 export const NOT_CAPTURED = "not-captured";
 
 // @public
-export const NOT_VALIDATED = "(not validated)";
-
-// @public
 export function packageVersion(from: string): string;
-
-// Warning: (ae-forgotten-export) The symbol "Real" needs to be exported by the entry point index.d.ts
-//
-// @public
-export function percent(value: Real | number): string;
-
-// @public
-export type PlanAdditions = Partial<Pick<Plan, "power" | "modeReasons">> & {
-    readonly mode?: "estimate-only";
-    readonly refuse?: string;
-};
 
 // @public
 export class PlanError extends Error {
     readonly name = "PlanError";
 }
 
+// Warning: (ae-forgotten-export) The symbol "PreparedPlanInput" needs to be exported by the entry point index.d.ts
+//
 // @public
-export interface PlanInput {
-    readonly aa?: Plan["aa"];
-    readonly arms: ReadonlyArray<{
-        readonly name?: string;
-        readonly role: "base" | "candidate" | "reference";
-        readonly configuration: Configuration;
-    }>;
-    readonly armsToRun?: readonly string[];
-    readonly cases: readonly Case[];
-    // Warning: (ae-forgotten-export) The symbol "CaseSet" needs to be exported by the entry point index.d.ts
-    readonly caseSet: CaseSet;
+export interface PlanInput extends Omit<PreparedPlanInput, "measures" | "gates" | "tested"> {
     readonly gates: ReadonlyMap<string, GateDefinition>;
-    readonly ichnaea: string;
     readonly measures: ReadonlyMap<string, MeasureDefinition>;
-    readonly monthlyRemaining?: number;
-    readonly now: string;
-    readonly schedule?: Plan["schedule"];
-    readonly seed: number;
-    // Warning: (ae-forgotten-export) The symbol "Suite" needs to be exported by the entry point index.d.ts
-    readonly suite: Suite;
-    readonly trigger: Plan["trigger"];
-    readonly varies?: readonly string[];
+}
+
+// @public
+export interface PlannedSuite {
+    // Warning: (ae-forgotten-export) The symbol "AnalysisLock" needs to be exported by the entry point index.d.ts
+    readonly lock: AnalysisLock;
+    // Warning: (ae-forgotten-export) The symbol "AnalysisPlan" needs to be exported by the entry point index.d.ts
+    readonly plan: AnalysisPlan;
 }
 
 // @public
 export function plannedTrialsPerCase(plan: Plan, arm: string): Map<string, number>;
 
+// Warning: (ae-forgotten-export) The symbol "PlanPowerStatement" needs to be exported by the entry point index.d.ts
+//
 // @public
-export function planningPower(plan: Plan): PlanAdditions;
+export function planningPower(plan: Plan): PlanPowerStatement;
+
+// @public
+export function planSuite(input: PlanSuiteInput): Promise<PlannedSuite>;
+
+// @public
+export interface PlanSuiteInput {
+    readonly directory: string;
+    readonly host: Host;
+    readonly ichnaea: string;
+    readonly pilot?: RunRecords;
+    readonly suite: SuiteDefinition;
+}
 
 // @public
 export interface Plugin<Id extends string = string> {
-    readonly commands?: readonly CommandDefinition[];
-    readonly deprecated?: {
-        readonly since: string;
-        readonly removeIn: string;
-        readonly replacement: string;
-        readonly url: string;
-    };
     readonly gates?: readonly GateDefinition<`${Id}/${string}`>[];
-    readonly hooks?: Partial<Hooks>;
     readonly id: Id;
     readonly importers?: readonly Importer<`${Id}/${string}`>[];
     readonly measures?: readonly MeasureDefinition<`${Id}/${string}`>[];
-    readonly placement?: "pre" | "post";
     readonly requires?: {
         readonly contracts?: string;
         readonly core?: string;
     };
-    readonly stability: Stability;
     readonly version: string;
 }
-
-// @public
-export function points(value: Real | number): string;
 
 // @public
 export interface PowerRow {
@@ -554,19 +459,7 @@ export interface PrimaryVerdict {
 }
 
 // @public
-export function recompute(records: {
-    readonly plan: Plan;
-    readonly run: Run;
-    readonly trials: readonly Trial[];
-    readonly values: readonly MeasureValue[];
-    readonly gates: readonly GateResult[];
-    readonly decision: Decision;
-    readonly aa?: readonly {
-        decision: Decision;
-        plan: Plan;
-        run: Run;
-    }[];
-}): RecomputeResult;
+export function recompute(records: DecisionRecords): RecomputeResult;
 
 // @public
 export interface RecomputeResult {
@@ -578,13 +471,7 @@ export interface RecomputeResult {
 export function recordProblems(records: Omit<RunRecords, "plan" | "run">): string[];
 
 // @public
-export function renderHtml(view: DecisionView): string;
-
-// @public
-export function renderMarkdown(view: DecisionView): string;
-
-// @public
-export function report(decision: Decision, options: ReportOptions): string;
+export function report(records: ReportRecords, options: ReportOptions): string;
 
 // @public
 export class ReportError extends Error {
@@ -599,7 +486,10 @@ export interface ReportOptions {
 }
 
 // @public
-export function reportPlugin(): Plugin<"report">;
+export interface ReportRecords extends DecisionRecords {
+    // Warning: (ae-forgotten-export) The symbol "RunManifest" needs to be exported by the entry point index.d.ts
+    readonly manifest?: RunManifest;
+}
 
 // @public
 export interface RunIndexEntry {
@@ -623,7 +513,7 @@ export interface RunRecords {
 export function satisfies(version: string, range: string): boolean;
 
 // @public
-export function scoreTrials(measures: readonly MeasureDefinition[], trials: readonly Trial[], cases: ReadonlyMap<string, Case>): MeasureValue[];
+export function scoreTrials(measures: readonly MeasureDefinition[], trials: readonly Trial[], cases: ReadonlyMap<string, Case>, masks?: Readonly<Record<string, readonly string[]>>): MeasureValue[];
 
 // @public
 export interface SensitivityRow {
@@ -642,20 +532,363 @@ export function serveWorker(handler: (trial: WorkerTrial) => WorkerReply | Promi
 }): Promise<void>;
 
 // @public
-export type Stability = "development" | "alpha" | "beta" | "stable";
-
-// @public
 export const STALE_LOCK_MS = 30000;
 
 // @public
 export interface StoredRun extends RunRecords {
     readonly decision?: Decision;
+    readonly manifest?: RunManifest;
 }
 
 // @public
 export class StoreError extends Error {
     readonly name = "StoreError";
 }
+
+// @public
+export const SuiteDefinition: z.ZodObject<{
+    id: z.core.$ZodBranded<z.ZodString, "SuiteId", "out">;
+    version: z.ZodOptional<z.ZodString>;
+    cases: z.ZodString;
+    caseSet: z.ZodOptional<z.ZodString>;
+    caseDefaults: z.ZodOptional<z.ZodObject<{
+        unit: z.ZodOptional<z.ZodEnum<{
+            episode: "episode";
+            session: "session";
+            trace: "trace";
+            turn: "turn";
+        }>>;
+        dataClass: z.ZodOptional<z.ZodEnum<{
+            none: "none";
+            personal: "personal";
+            pseudonymous: "pseudonymous";
+            special: "special";
+        }>>;
+        provenance: z.ZodOptional<z.ZodDiscriminatedUnion<[z.ZodObject<{
+            selection: z.ZodEnum<{
+                curated: "curated";
+                generated: "generated";
+                promoted: "promoted";
+                random: "random";
+            }>;
+            author: z.ZodOptional<z.ZodString>;
+            created: z.ZodISODate;
+            collected: z.ZodOptional<z.ZodISODate>;
+            licence: z.ZodString;
+            exposure: z.ZodEnum<{
+                private: "private";
+                public: "public";
+                sealed: "sealed";
+            }>;
+            source: z.ZodLiteral<"authored">;
+        }, z.core.$strict>, z.ZodObject<{
+            selection: z.ZodEnum<{
+                curated: "curated";
+                generated: "generated";
+                promoted: "promoted";
+                random: "random";
+            }>;
+            author: z.ZodOptional<z.ZodString>;
+            created: z.ZodISODate;
+            collected: z.ZodOptional<z.ZodISODate>;
+            licence: z.ZodString;
+            exposure: z.ZodEnum<{
+                private: "private";
+                public: "public";
+                sealed: "sealed";
+            }>;
+            source: z.ZodLiteral<"generated">;
+            generator: z.ZodObject<{
+                method: z.ZodString;
+                model: z.ZodOptional<z.ZodString>;
+                seedSource: z.ZodOptional<z.ZodString>;
+            }, z.core.$strict>;
+        }, z.core.$strict>, z.ZodObject<{
+            selection: z.ZodEnum<{
+                curated: "curated";
+                generated: "generated";
+                promoted: "promoted";
+                random: "random";
+            }>;
+            author: z.ZodOptional<z.ZodString>;
+            created: z.ZodISODate;
+            collected: z.ZodOptional<z.ZodISODate>;
+            licence: z.ZodString;
+            exposure: z.ZodEnum<{
+                private: "private";
+                public: "public";
+                sealed: "sealed";
+            }>;
+            source: z.ZodLiteral<"reused">;
+            reusedDataset: z.ZodObject<{
+                name: z.ZodString;
+                version: z.ZodOptional<z.ZodString>;
+                limits: z.ZodString;
+            }, z.core.$strict>;
+        }, z.core.$strict>, z.ZodObject<{
+            selection: z.ZodEnum<{
+                curated: "curated";
+                generated: "generated";
+                promoted: "promoted";
+                random: "random";
+            }>;
+            author: z.ZodOptional<z.ZodString>;
+            created: z.ZodISODate;
+            licence: z.ZodString;
+            exposure: z.ZodEnum<{
+                private: "private";
+                public: "public";
+                sealed: "sealed";
+            }>;
+            source: z.ZodLiteral<"collected">;
+            collected: z.ZodISODate;
+        }, z.core.$strict>, z.ZodObject<{
+            selection: z.ZodEnum<{
+                curated: "curated";
+                generated: "generated";
+                promoted: "promoted";
+                random: "random";
+            }>;
+            author: z.ZodOptional<z.ZodString>;
+            created: z.ZodISODate;
+            collected: z.ZodOptional<z.ZodISODate>;
+            licence: z.ZodString;
+            exposure: z.ZodEnum<{
+                private: "private";
+                public: "public";
+                sealed: "sealed";
+            }>;
+            source: z.ZodLiteral<"promoted">;
+            finding: z.core.$ZodBranded<z.ZodString, "FindingId", "out">;
+        }, z.core.$strict>], "source">>;
+        pool: z.ZodOptional<z.ZodEnum<{
+            development: "development";
+            promoted: "promoted";
+            sealed: "sealed";
+            validation: "validation";
+        }>>;
+    }, z.core.$strict>>;
+    arms: z.ZodObject<{
+        base: z.ZodUnion<readonly [z.ZodObject<{
+            schema: z.ZodLiteral<"ichnaea.configuration/1">;
+            description: z.ZodString;
+            models: z.ZodArray<z.ZodObject<{
+                role: z.ZodString;
+                provider: z.ZodObject<{
+                    value: z.ZodString;
+                    status: z.ZodEnum<{
+                        declared: "declared";
+                        pinned: "pinned";
+                    }>;
+                }, z.core.$strict>;
+                id: z.ZodObject<{
+                    value: z.ZodString;
+                    status: z.ZodEnum<{
+                        declared: "declared";
+                        pinned: "pinned";
+                    }>;
+                }, z.core.$strict>;
+                version: z.ZodOptional<z.ZodObject<{
+                    value: z.ZodString;
+                    status: z.ZodEnum<{
+                        declared: "declared";
+                        pinned: "pinned";
+                    }>;
+                }, z.core.$strict>>;
+                route: z.ZodOptional<z.ZodObject<{
+                    value: z.ZodString;
+                    status: z.ZodEnum<{
+                        declared: "declared";
+                        pinned: "pinned";
+                    }>;
+                }, z.core.$strict>>;
+            }, z.core.$strict>>;
+            parameters: z.ZodArray<z.ZodObject<{
+                name: z.ZodString;
+                value: z.ZodJSONSchema;
+                status: z.ZodEnum<{
+                    declared: "declared";
+                    pinned: "pinned";
+                    uncontrollable: "uncontrollable";
+                }>;
+                origin: z.ZodEnum<{
+                    default: "default";
+                    explicit: "explicit";
+                }>;
+            }, z.core.$strict>>;
+            prompts: z.ZodArray<z.ZodObject<{
+                name: z.ZodString;
+                digest: z.ZodString;
+                status: z.ZodEnum<{
+                    declared: "declared";
+                    observed: "observed";
+                    pinned: "pinned";
+                    uncontrollable: "uncontrollable";
+                }>;
+                template: z.ZodOptional<z.ZodString>;
+                uri: z.ZodOptional<z.ZodString>;
+            }, z.core.$strict>>;
+            factors: z.ZodRecord<z.ZodString, z.ZodObject<{
+                value: z.ZodJSONSchema;
+                status: z.ZodEnum<{
+                    declared: "declared";
+                    observed: "observed";
+                    pinned: "pinned";
+                    uncontrollable: "uncontrollable";
+                }>;
+                part: z.ZodEnum<{
+                    code: "code";
+                    data: "data";
+                    model: "model";
+                    other: "other";
+                    parameter: "parameter";
+                    prompt: "prompt";
+                    runtime: "runtime";
+                    setting: "setting";
+                    tool: "tool";
+                }>;
+            }, z.core.$strict>>;
+            label: z.ZodOptional<z.ZodString>;
+            informational: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodJSONSchema>>;
+        }, z.core.$strict>, z.ZodString, z.ZodObject<{
+            model: z.ZodString;
+            provider: z.ZodOptional<z.ZodString>;
+            prompt: z.ZodOptional<z.ZodString>;
+            parameters: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodJSONSchema>>;
+        }, z.core.$strict>]>;
+        candidate: z.ZodOptional<z.ZodUnion<readonly [z.ZodObject<{
+            schema: z.ZodLiteral<"ichnaea.configuration/1">;
+            description: z.ZodString;
+            models: z.ZodArray<z.ZodObject<{
+                role: z.ZodString;
+                provider: z.ZodObject<{
+                    value: z.ZodString;
+                    status: z.ZodEnum<{
+                        declared: "declared";
+                        pinned: "pinned";
+                    }>;
+                }, z.core.$strict>;
+                id: z.ZodObject<{
+                    value: z.ZodString;
+                    status: z.ZodEnum<{
+                        declared: "declared";
+                        pinned: "pinned";
+                    }>;
+                }, z.core.$strict>;
+                version: z.ZodOptional<z.ZodObject<{
+                    value: z.ZodString;
+                    status: z.ZodEnum<{
+                        declared: "declared";
+                        pinned: "pinned";
+                    }>;
+                }, z.core.$strict>>;
+                route: z.ZodOptional<z.ZodObject<{
+                    value: z.ZodString;
+                    status: z.ZodEnum<{
+                        declared: "declared";
+                        pinned: "pinned";
+                    }>;
+                }, z.core.$strict>>;
+            }, z.core.$strict>>;
+            parameters: z.ZodArray<z.ZodObject<{
+                name: z.ZodString;
+                value: z.ZodJSONSchema;
+                status: z.ZodEnum<{
+                    declared: "declared";
+                    pinned: "pinned";
+                    uncontrollable: "uncontrollable";
+                }>;
+                origin: z.ZodEnum<{
+                    default: "default";
+                    explicit: "explicit";
+                }>;
+            }, z.core.$strict>>;
+            prompts: z.ZodArray<z.ZodObject<{
+                name: z.ZodString;
+                digest: z.ZodString;
+                status: z.ZodEnum<{
+                    declared: "declared";
+                    observed: "observed";
+                    pinned: "pinned";
+                    uncontrollable: "uncontrollable";
+                }>;
+                template: z.ZodOptional<z.ZodString>;
+                uri: z.ZodOptional<z.ZodString>;
+            }, z.core.$strict>>;
+            factors: z.ZodRecord<z.ZodString, z.ZodObject<{
+                value: z.ZodJSONSchema;
+                status: z.ZodEnum<{
+                    declared: "declared";
+                    observed: "observed";
+                    pinned: "pinned";
+                    uncontrollable: "uncontrollable";
+                }>;
+                part: z.ZodEnum<{
+                    code: "code";
+                    data: "data";
+                    model: "model";
+                    other: "other";
+                    parameter: "parameter";
+                    prompt: "prompt";
+                    runtime: "runtime";
+                    setting: "setting";
+                    tool: "tool";
+                }>;
+            }, z.core.$strict>>;
+            label: z.ZodOptional<z.ZodString>;
+            informational: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodJSONSchema>>;
+        }, z.core.$strict>, z.ZodString, z.ZodObject<{
+            model: z.ZodString;
+            provider: z.ZodOptional<z.ZodString>;
+            prompt: z.ZodOptional<z.ZodString>;
+            parameters: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodJSONSchema>>;
+        }, z.core.$strict>]>>;
+    }, z.core.$strict>;
+    objective: z.ZodString;
+    construct: z.ZodString;
+    decision: z.ZodString;
+    scope: z.ZodString;
+    nonCoverage: z.ZodUnion<readonly [z.ZodString, z.ZodArray<z.ZodString>]>;
+    estimand: z.ZodOptional<z.ZodEnum<{
+        "fixed-cases": "fixed-cases";
+        "sampled-cases": "sampled-cases";
+    }>>;
+    alpha: z.ZodOptional<z.ZodNumber>;
+    blocks: z.ZodOptional<z.ZodInt>;
+    replicates: z.ZodOptional<z.ZodInt>;
+    primary: z.ZodOptional<z.ZodArray<z.ZodUnion<readonly [z.core.$ZodBranded<z.ZodString, "MeasureId", "out">, z.ZodObject<{
+        measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+        margin: z.ZodOptional<z.ZodNumber>;
+        safetyMargin: z.ZodOptional<z.ZodNumber>;
+        targetDrop: z.ZodOptional<z.ZodNumber>;
+        coverageFloor: z.ZodOptional<z.ZodNumber>;
+    }, z.core.$strict>]>>>;
+    secondary: z.ZodOptional<z.ZodArray<z.core.$ZodBranded<z.ZodString, "MeasureId", "out">>>;
+    hardGates: z.ZodOptional<z.ZodArray<z.core.$ZodBranded<z.ZodString, "GateId", "out">>>;
+    trialReduction: z.ZodOptional<z.ZodObject<{
+        measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+        k: z.ZodInt;
+        cases: z.ZodArray<z.core.$ZodBranded<z.ZodString, "CaseId", "out">>;
+    }, z.core.$strict>>;
+    maxCalls: z.ZodOptional<z.ZodInt>;
+    policy: z.ZodOptional<z.ZodObject<{
+        onRegression: z.ZodEnum<{
+            block: "block";
+            report: "report";
+        }>;
+        onInconclusive: z.ZodEnum<{
+            block: "block";
+            report: "report";
+        }>;
+        onEstimateOnly: z.ZodEnum<{
+            block: "block";
+            report: "report";
+        }>;
+    }, z.core.$strict>>;
+}, z.core.$strict>;
+
+// @public
+export type SuiteDefinition = z.input<typeof SuiteDefinition>;
 
 // @public
 export interface TesterResult {
@@ -666,13 +899,6 @@ export interface TesterResult {
 
 // @public
 export function testMeasure(measure: MeasureDefinition): Promise<TesterResult>;
-
-// Warning: (ae-forgotten-export) The symbol "FactorPart" needs to be exported by the entry point index.d.ts
-//
-// @public
-export const TRIGGER_VARIES: {
-    readonly [K in Plan["trigger"]]: readonly FactorPart[] | null;
-};
 
 // Warning: (ae-forgotten-export) The symbol "TrialResult" needs to be exported by the entry point index.d.ts
 //
@@ -697,8 +923,8 @@ export interface WorkerTrial {
 
 // Warnings were encountered during analysis:
 //
-// src/core/planner.ts:35:5 - (ae-forgotten-export) The symbol "Configuration" needs to be exported by the entry point index.d.ts
-// src/core/plugin.ts:60:5 - (ae-forgotten-export) The symbol "Case" needs to be exported by the entry point index.d.ts
+// src/core/import.ts:55:52 - (ae-forgotten-export) The symbol "LockedImport" needs to be exported by the entry point index.d.ts
+// src/core/plugin.ts:57:5 - (ae-forgotten-export) The symbol "Case" needs to be exported by the entry point index.d.ts
 // src/core/serve-worker.ts:30:19 - (ae-forgotten-export) The symbol "Json" needs to be exported by the entry point index.d.ts
 // src/core/serve-worker.ts:44:3 - (ae-forgotten-export) The symbol "ObservedConfiguration" needs to be exported by the entry point index.d.ts
 

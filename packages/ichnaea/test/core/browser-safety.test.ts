@@ -32,7 +32,7 @@ describe("the pure modules", () => {
       ]),
     );
     // The Node-only modules stay outside it.
-    for (const node of ["core/store.ts", "core/import.ts", "core/cli.ts", "core/version.ts"])
+    for (const node of ["core/store.ts", "core/import.ts", "cli.ts", "core/version.ts"])
       expect(relative).not.toContain(node);
   });
 });

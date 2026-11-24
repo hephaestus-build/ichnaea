@@ -22,10 +22,13 @@ export function scoreTrials(
   measures: readonly MeasureDefinition[],
   trials: readonly Trial[],
   cases: ReadonlyMap<string, Case>,
+  masks?: Readonly<Record<string, readonly string[]>>,
 ): MeasureValue[] {
   const values: MeasureValue[] = [];
   for (const measure of measures) {
     if (measure.card.computedBy !== "ichnaea" || !measure.score) continue;
+    const locked = masks?.[measure.card.id];
+    const mask = locked === undefined ? undefined : new Set(locked);
     for (const trial of trials) {
       const c = trial.case === null ? undefined : cases.get(trial.case);
       if (!c) continue;
@@ -37,7 +40,7 @@ export function scoreTrials(
         source: "ichnaea" as const,
         dataClass: trial.dataClass,
       };
-      if (measure.appliesTo && !measure.appliesTo(c)) {
+      if (mask ? !mask.has(c.id) : measure.appliesTo && !measure.appliesTo(c)) {
         values.push({ ...base, applicable: false } as MeasureValue);
         continue;
       }
