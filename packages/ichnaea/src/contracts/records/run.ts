@@ -1,7 +1,16 @@
 import * as z from "zod";
 
 import { CLOSED_KEY, none } from "../data-class.ts";
-import { PlanDigest, RunId, SemVer, Text, Timestamp, TrialId } from "../primitives.ts";
+import {
+  Digest,
+  MeasureId,
+  PlanDigest,
+  RunId,
+  SemVer,
+  Text,
+  Timestamp,
+  TrialId,
+} from "../primitives.ts";
 import { Arm, LineageItem } from "./plan.ts";
 import { Outcome } from "./trial.ts";
 
@@ -22,6 +31,16 @@ export const LedgerEntry = z.strictObject({
   outcome: none(Outcome, { [CLOSED_KEY]: true }).optional(),
 });
 
+/** The arm-order draw and final state of one physical block. */
+export const ExecutedBlock = z.strictObject({
+  block: none(z.int().nonnegative()),
+  plannedBlock: none(z.int().nonnegative()),
+  first: none(z.enum(["base", "candidate"])),
+  status: none(z.enum(["complete", "abandoned"])),
+});
+/** A recorded arm-order draw and final block state. */
+export type ExecutedBlock = z.infer<typeof ExecutedBlock>;
+
 /**
  * A run: the ledger of a plan's trials, the configurations it ran (with their identities, so a
  * run without a model identity or a generation parameter does not validate), and the lineage of
@@ -32,6 +51,16 @@ export const Run = z.strictObject({
   id: none(RunId),
   plan: none(PlanDigest),
   exploratory: none(z.boolean()),
+  /** The origin of the evidence bound to a locked analysis plan. */
+  execution: z
+    .strictObject({
+      source: none(z.enum(["runner", "import", "re-score"])),
+      analysisPlan: none(Digest),
+      blocks: z.array(ExecutedBlock).optional(),
+    })
+    .optional(),
+  /** Counts of supplied applicable values that the writer dropped outside the locked mask. */
+  valuesOutsideMask: none(z.record(MeasureId, z.int().positive())).optional(),
   environment: z.strictObject({
     node: none(Text),
     platform: none(Text),

@@ -1,5 +1,6 @@
 import type { MeasuredValue } from "../contracts/primitives.ts";
 import type { Case } from "../contracts/records/case.ts";
+import type { Judge } from "../contracts/records/judge.ts";
 import type { GateResult } from "../contracts/records/decision.ts";
 import type { MeasureCard, MeasureValue } from "../contracts/records/measure.ts";
 import type { Plan } from "../contracts/records/plan.ts";
@@ -79,6 +80,8 @@ export interface ImportResult {
   readonly values: readonly MeasureValue[];
   /** The results of the hard gates that have no check; absent means none. */
   readonly gates?: readonly GateResult[];
+  /** The versioned instruments that produced any judge-sourced values. */
+  readonly judges?: readonly Judge[];
 }
 
 /**

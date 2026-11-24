@@ -63,6 +63,14 @@ The core of Ichnaea: the plugin host, the planner, import mode, the record store
 The runtime export inventory is in [api/exports.json](../../api/exports.json).
 API Extractor checks the TypeScript declarations. Both run in `pnpm run check:api`.
 
+## Evidence admission
+
+Import and runner capture use `recordRun`. It binds each trial to the locked analysis digest,
+checks the value's card and source, and records the judge's version and digest for judge values.
+It drops values outside the applicability mask and keeps their counts. A value marked
+not applicable inside the mask counts as missing. For runner evidence, a missing block,
+context or timestamp gives `EXECUTION_UNRECORDED` and estimate-only output.
+
 ## Locked analysis plans
 
 Use `defineSuite` to declare a case source, primary measures, and the base and candidate arms.
