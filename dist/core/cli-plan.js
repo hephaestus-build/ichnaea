@@ -16,17 +16,25 @@ export const planCommand = {
         store: STORE_OPTION,
         frozen: { type: "boolean", description: "Check the plan and lock without changing them" },
         pilot: { type: "string", description: "A stored noise run to use for the resolution estimate" },
+        "migrate-lock": {
+            type: "string",
+            description: "Verify the local cases pinned by a legacy suite lock",
+        },
     },
     async run(args, load) {
         const { host, store, config, directory } = await hostAndStore(args, load);
         if (!config.suite)
             throw new CliError("CONFIGURATION", "plan: the configuration must define a suite");
         const frozen = args.values["frozen"] === true;
+        const legacyLock = text(args, "migrate-lock");
+        if (frozen && legacyLock !== undefined)
+            throw new CliError("USAGE", "plan: --migrate-lock requires an unfrozen plan");
         const prior = frozen ? await readLockedPlan(join(directory, "plan.json")) : undefined;
         const pilotId = text(args, "pilot") ?? prior?.pilot?.run;
         const pilot = pilotId === undefined ? undefined : await new FileStore(store).read(pilotId);
         const planned = await planSuite({
             ...(pilot === undefined ? {} : { pilot }),
+            ...(legacyLock === undefined ? {} : { legacyLock }),
             suite: config.suite,
             host,
             directory,

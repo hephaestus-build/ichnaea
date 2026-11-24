@@ -2,10 +2,9 @@ import * as z from "zod";
 import { digest as rawDigest, NonJsonValueError, sha256 } from "./canonical.js";
 import { Case, CaseSetEntry } from "./records/case.js";
 import { Configuration } from "./records/configuration.js";
-import { InstrumentPin, LockedSource } from "./records/lock.js";
-import { MeasureIdentity } from "./records/measure-identity.js";
+import { InstrumentPin } from "./records/lock.js";
 import { ProjectConfig } from "./records/project.js";
-import { MeasureDefinition, SuiteV2 } from "./records/suite-v2.js";
+import { MeasureDefinition } from "./records/lock-vocabulary.js";
 /** Thrown when a record cannot have a well-defined identity. */
 export class IdentityError extends Error {
     /** The error's name, for `instanceof`-free checks. */
@@ -229,14 +228,6 @@ function withoutSchemaPointer(record) {
     return Object.fromEntries(Object.entries(record).filter(([key]) => key !== "$schema"));
 }
 /**
- * The digest of a suite (`ichnaea.suite/2`): SHA-256 over the RFC 8785 canonical JSON of the
- * record without its `$schema` member, so the TypeScript and JSONC forms of one suite share a
- * digest. Comments and layout of a JSONC file never reach the record.
- */
-export function suiteDigest(input) {
-    return digest(withoutSchemaPointer(SuiteV2.parse(input)));
-}
-/**
  * The digest of a project config (`ichnaea.project/1`): SHA-256 over the RFC 8785 canonical JSON
  * of the record without its `$schema` member, as for a suite.
  */
@@ -245,7 +236,7 @@ export function projectDigest(input) {
 }
 /**
  * The digest of a measure's definition: SHA-256 over the RFC 8785 canonical JSON of the measure's
- * entry in a suite (`ichnaea.suite/2`), which holds its value type, what computes it and the cases
+ * definition pinned by the legacy lock, which holds its value type, what computes it and the cases
  * it applies to. It is the first part of a measure's identity; `implementation` is the second.
  */
 export function measureDefinitionDigest(definition) {
@@ -258,81 +249,5 @@ export function measureDefinitionDigest(definition) {
  */
 export function instrumentImplementation(pin) {
     return digest(InstrumentPin.parse(pin));
-}
-/**
- * The members of a suite that the measurement digest hashes: the parts that change what is
- * measured. `measures` enters as each measure's identity, which covers its definition and its
- * code. Every member of `ichnaea.suite/2` is either hashed or excluded with its reason, and a test
- * holds that.
- */
-export const MEASUREMENT_RULE = {
-    members: [
-        "cases",
-        "instruments",
-        "measures",
-        "limits",
-        "stages",
-        "entry",
-        "stopReasons",
-        "profiles",
-    ],
-    excluded: {
-        $schema: "Editor metadata. The TypeScript and JSONC forms of one suite measure the same thing.",
-        schema: "The major version, a one-value literal.",
-        id: "The suite's name. Renaming a suite changes nothing that it measures.",
-        version: "A label for people. The digest is the suite's identity.",
-        about: "Prose for people. It decides nothing.",
-        worker: "What runs the system. A trial's key carries the system's identity, so the measurement stays apart from the system it measures.",
-        import: "The other runner whose results the suite imports: the system side, as for the worker.",
-        configuration: "What the arm configuration record keeps: the system side, as for the worker.",
-        environment: "What the system reads. A trial's key carries each factor's identity, as for the worker.",
-        policy: "Which measures decide and their limits. They turn values into a verdict and change no value; the lock carries a copy of the limits.",
-        budget: "How many calls a run may make. A run that reaches it records its missing trials.",
-        baselines: "Which stored baselines a run may use. It changes no value.",
-        attribute: "The fidelity margins of attribute. They decide its verdict and change no value.",
-        deterministic: "A declaration about the system, which the records check. It changes no value.",
-    },
-};
-/**
- * Whether two sorted name lists are the same, name by name. Joining them would not do: no names and
- * one empty name would both join to "".
- */
-const sameNames = (a, b) => a.length === b.length && a.every((name, i) => name === b[i]);
-/**
- * The measurement digest of a suite: the digest of the parts that change what is measured
- * (`MEASUREMENT_RULE`), with the lock's pins: each source, each instrument's pin and each measure's
- * identity. A change to a measure's code changes its implementation digest and so this digest,
- * which keys the noise setup. Throws when the identities do not name exactly the suite's measures,
- * or the pins exactly its instruments; when an identity's definition is not the digest of the
- * suite's definition of that measure; or when a measure that reads an instrument's dimension has
- * another implementation than the digest of that instrument's pin.
- */
-export function measurementDigest(suite, pins) {
-    const parsed = SuiteV2.parse(suite);
-    const measures = z.record(z.string(), MeasureIdentity).parse(pins.measures);
-    const named = Object.keys(parsed.measures).toSorted(compare);
-    const identified = Object.keys(measures).toSorted(compare);
-    if (!sameNames(named, identified))
-        throw new IdentityError(`the identities name the measures ${identified.join(", ")}, the suite ${named.join(", ")}`);
-    const instruments = z.record(z.string(), InstrumentPin).parse(pins.instruments);
-    const declared = Object.keys(parsed.instruments ?? {}).toSorted(compare);
-    const pinned = Object.keys(instruments).toSorted(compare);
-    if (!sameNames(declared, pinned))
-        throw new IdentityError(`the pins name the instruments ${pinned.join(", ")}, the suite ${declared.join(", ")}`);
-    for (const [id, definition] of Object.entries(parsed.measures)) {
-        if (measures[id]?.definition !== measureDefinitionDigest(definition))
-            throw new IdentityError(`the identity of measure '${id}' has another definition digest`);
-        const { scorer } = definition;
-        if (scorer === undefined || !("dimension" in scorer))
-            continue;
-        const pin = instruments[scorer.instrument];
-        if (pin === undefined || measures[id]?.implementation !== instrumentImplementation(pin))
-            throw new IdentityError(`the implementation of measure '${id}' is not the pin of instrument '${scorer.instrument}'`);
-    }
-    return digest({
-        suite: { ...pick(parsed, MEASUREMENT_RULE.members), measures },
-        sources: z.array(LockedSource).parse(pins.sources),
-        instruments,
-    });
 }
 //# sourceMappingURL=identity.js.map

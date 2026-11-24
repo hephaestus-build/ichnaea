@@ -18,7 +18,7 @@ import * as z from "zod";
 import { digest } from "../contracts/canonical.ts";
 import { instrumentImplementation } from "../contracts/identity.ts";
 import type { Digest } from "../contracts/primitives.ts";
-import type { SuiteV2 } from "../contracts/records/suite-v2.ts";
+import type { MeasureDefinition } from "../contracts/records/lock-vocabulary.ts";
 
 import { type PinnedLoads, readPackage } from "./load-record.ts";
 
@@ -210,11 +210,10 @@ export interface ImplementationContext {
  * The implementation digest of a measure of a suite, by what computes it: a built-in scorer or a
  * stage status from the build; a module from the modules it loads and the pin of the instrument
  * that holds it; an instrument's dimension from the instrument's pin. Rejects when the instrument
- * has no pin, or when the measure names neither a scorer nor a stage status, which `suiteProblems`
- * refuses first (`MEASURE_NOT_COMPUTED`).
+ * has no pin, or when the measure names neither a scorer nor a stage status.
  */
 export async function measureImplementation(
-  measure: SuiteV2["measures"][string],
+  measure: z.infer<typeof MeasureDefinition>,
   context: ImplementationContext,
 ): Promise<Digest> {
   const { scorer } = measure;

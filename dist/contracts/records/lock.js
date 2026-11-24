@@ -3,7 +3,7 @@ import { none } from "../data-class.js";
 import { Digest, SuiteId, Text } from "../primitives.js";
 import { Pool } from "./case.js";
 import { MeasureIdentity } from "./measure-identity.js";
-import { PrimaryRegistration } from "./suite-v2.js";
+import { PrimaryRegistration } from "./lock-vocabulary.js";
 import { Command, CommitSha, ConfigName, Exposure, GitRepo, HttpsPath, JsonScalar, } from "./setup.js";
 /**
  * Where a locked source came from. An HTTPS source whose URL the environment holds is recorded by

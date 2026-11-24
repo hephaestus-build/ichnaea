@@ -6,6 +6,7 @@ import { caseDigest, caseSetDigest, configurationIdentity } from "../contracts/i
 import { AnalysisLock, AnalysisPlan, AnalysisPrimary } from "../contracts/records/analysis-plan.js";
 import { Case, CaseSet } from "../contracts/records/case.js";
 import { Plan } from "../contracts/records/plan.js";
+import { SuiteLock } from "../contracts/records/lock.js";
 import { Configuration } from "../contracts/records/configuration.js";
 import { sha256Hex } from "../contracts/sha256.js";
 import { checkCases, DEFAULT_TRIAL_DEADLINE_MS, lockFor, resolveAnalysis, } from "../plan/analysis.js";
@@ -24,9 +25,9 @@ async function jsonFile(path) {
         throw new PlanError(`${path}: invalid JSON`);
     }
 }
-export async function suiteCases(suite, directory) {
+export async function suiteCases(suite, directory, bytes) {
     const path = resolve(directory, suite.cases);
-    const lines = (await readFile(path, "utf8")).split("\n");
+    const lines = (bytes ? Buffer.from(bytes).toString("utf8") : await readFile(path, "utf8")).split("\n");
     const cases = lines.flatMap((line, index) => {
         if (!line.trim())
             return [];
@@ -105,10 +106,31 @@ async function measurePins(host, ids, directory) {
         });
     }));
 }
+async function verifyLegacyLock(path, suite, directory) {
+    if (resolve(path) === resolve(directory, "ichnaea.lock"))
+        throw new PlanError("give the legacy lock a separate path before migrating it");
+    const legacy = SuiteLock.parse(await jsonFile(path));
+    const [source] = legacy.sources;
+    if (legacy.suite !== suite.id)
+        throw new PlanError("the legacy lock belongs to another suite");
+    const casesPath = resolve(directory, suite.cases);
+    if (legacy.sources.length !== 1 ||
+        !source ||
+        !("file" in source.origin) ||
+        resolve(dirname(resolve(path)), source.origin.file) !== casesPath)
+        throw new PlanError("the legacy lock must pin the suite's local case file");
+    const bytes = await readFile(casesPath);
+    if (source.bytes !== bytes.length || source.digest !== `sha256:${sha256Hex(bytes)}`)
+        throw new PlanError("the case file differs from the legacy lock");
+    return bytes;
+}
 /** Resolves the case and measure pins without reading or binding a candidate. */
 export async function planSuite(input) {
     const suite = SuiteDefinition.parse(input.suite);
-    const { cases, caseSet } = await suiteCases(suite, input.directory);
+    const legacyBytes = input.legacyLock === undefined
+        ? undefined
+        : await verifyLegacyLock(input.legacyLock, suite, input.directory);
+    const { cases, caseSet } = await suiteCases(suite, input.directory, legacyBytes);
     const { arms, ...rules } = suite;
     const primary = (suite.primary ?? []).map((entry) => AnalysisPrimary.parse(typeof entry === "string" ? { measure: entry } : entry));
     const secondary = suite.secondary ?? [];

@@ -2,7 +2,6 @@ import { AnalysisLock, AnalysisPlan } from "./records/analysis-plan.js";
 import { CliDoctor, CliErrorRecord, CliHelp, ReportView } from "./records/cli.js";
 import { Case, CaseSet } from "./records/case.js";
 import { Configuration } from "./records/configuration.js";
-import { ConfigurationV2 } from "./records/configuration-v2.js";
 import { Decision } from "./records/decision.js";
 import { Calibration, Judge, Label } from "./records/judge.js";
 import { MeasureCard, MeasureValue } from "./records/measure.js";
@@ -13,7 +12,6 @@ import { ProjectConfig } from "./records/project.js";
 import { Run } from "./records/run.js";
 import { ScoreRequest, ScoreResult } from "./records/scorer.js";
 import { Suite } from "./records/suite.js";
-import { SuiteV2 } from "./records/suite-v2.js";
 import { Trial } from "./records/trial.js";
 import { Cancel, TrialRequest, TrialResult, WorkerError, WorkerEvent, WorkerReady, } from "./records/worker.js";
 /** Every record contract, by name. The generated JSON Schema files follow this list. */
@@ -73,20 +71,6 @@ export const RECORD_CONTRACTS = [
         schema: Suite,
         stability: "alpha",
         description: "What an application evaluates, without naming a system.",
-    },
-    {
-        name: "suite.2",
-        id: "ichnaea.suite/2",
-        schema: SuiteV2,
-        stability: "alpha",
-        description: "One thing you evaluate, as plain data: its cases, how to run them, what to measure and the limits.",
-    },
-    {
-        name: "configuration.2",
-        id: "ichnaea.configuration/2",
-        schema: ConfigurationV2,
-        stability: "alpha",
-        description: "An arm's configuration: the digest of its configuration file and the fields the suite keeps.",
     },
     {
         name: "project",

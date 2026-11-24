@@ -4,7 +4,6 @@ import { AnalysisLock, AnalysisPlan } from "./records/analysis-plan.ts";
 import { CliDoctor, CliErrorRecord, CliHelp, ReportView } from "./records/cli.ts";
 import { Case, CaseSet } from "./records/case.ts";
 import { Configuration } from "./records/configuration.ts";
-import { ConfigurationV2 } from "./records/configuration-v2.ts";
 import { Decision } from "./records/decision.ts";
 import { Calibration, Judge, Label } from "./records/judge.ts";
 import { MeasureCard, MeasureValue } from "./records/measure.ts";
@@ -15,7 +14,6 @@ import { ProjectConfig } from "./records/project.ts";
 import { Run } from "./records/run.ts";
 import { ScoreRequest, ScoreResult } from "./records/scorer.ts";
 import { Suite } from "./records/suite.ts";
-import { SuiteV2 } from "./records/suite-v2.ts";
 import { Trial } from "./records/trial.ts";
 import {
   Cancel,
@@ -112,22 +110,6 @@ export const RECORD_CONTRACTS: readonly RecordContract[] = [
     schema: Suite,
     stability: "alpha",
     description: "What an application evaluates, without naming a system.",
-  },
-  {
-    name: "suite.2",
-    id: "ichnaea.suite/2",
-    schema: SuiteV2,
-    stability: "alpha",
-    description:
-      "One thing you evaluate, as plain data: its cases, how to run them, what to measure and the limits.",
-  },
-  {
-    name: "configuration.2",
-    id: "ichnaea.configuration/2",
-    schema: ConfigurationV2,
-    stability: "alpha",
-    description:
-      "An arm's configuration: the digest of its configuration file and the fields the suite keeps.",
   },
   {
     name: "project",

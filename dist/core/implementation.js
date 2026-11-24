@@ -159,8 +159,7 @@ const STAGE_STATUS = "stage-status";
  * The implementation digest of a measure of a suite, by what computes it: a built-in scorer or a
  * stage status from the build; a module from the modules it loads and the pin of the instrument
  * that holds it; an instrument's dimension from the instrument's pin. Rejects when the instrument
- * has no pin, or when the measure names neither a scorer nor a stage status, which `suiteProblems`
- * refuses first (`MEASURE_NOT_COMPUTED`).
+ * has no pin, or when the measure names neither a scorer nor a stage status.
  */
 export async function measureImplementation(measure, context) {
     const { scorer } = measure;

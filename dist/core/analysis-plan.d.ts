@@ -19,6 +19,8 @@ export interface PlanSuiteInput {
     readonly pilot?: RunRecords;
     /** Book two base arms for a noise pilot. */
     readonly noise?: boolean;
+    /** A legacy suite lock whose local case source to verify before pinning the new plan. */
+    readonly legacyLock?: string;
 }
 /** The two records that the plan command writes. */
 export interface PlannedSuite {
@@ -27,7 +29,7 @@ export interface PlannedSuite {
     /** The case and instrument pins. */
     readonly lock: AnalysisLock;
 }
-export declare function suiteCases(suite: SuiteDefinition, directory: string): Promise<{
+export declare function suiteCases(suite: SuiteDefinition, directory: string, bytes?: Uint8Array): Promise<{
     readonly cases: readonly Case[];
     readonly caseSet: CaseSet;
 }>;
