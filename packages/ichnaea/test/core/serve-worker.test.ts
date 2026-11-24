@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { setTimeout } from "node:timers/promises";
 
 import { expect, it } from "vitest";
 
@@ -89,4 +90,42 @@ it.each([
       dataClass: "none",
       kind: "bad-json",
     });
+});
+
+it("answers an aborted callback and serves the next trial in the same context", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "ichnaea-cancel-worker-"));
+  const started = Promise.withResolvers<void>();
+  const wait = new AbortController();
+  const worker = await CommandWorker.start([process.execPath, fixture], 3_000, (line) => {
+    if (line === "callback started") started.resolve();
+  });
+  try {
+    const path = join(directory, "settings.json");
+    await writeFile(path, '{"answer":"Paris"}');
+    const bound = { ...request, configuration: { path }, limits: { calls: 2 } };
+    const paused = { ...bound, case: { ...bound.case, input: { wait: true } } };
+    worker.send(paused);
+    await Promise.race([
+      started.promise,
+      setTimeout(1_000, undefined, { signal: wait.signal }).then(() => {
+        throw new Error("the paused callback did not start");
+      }),
+    ]);
+    worker.send({ schema: "ichnaea.cancel/1", trial: paused.trial });
+    const line = await worker.next(performance.now() + 1_000);
+    if (line.kind !== "line") throw new Error(`expected a cancellation result, got ${line.kind}`);
+    const cancelled = TrialResult.parse(JSON.parse(line.text));
+    expect(cancelled).toMatchObject({
+      trial: paused.trial,
+      failure: { class: "system", kind: "cancelled" },
+      usage: { calls: 2 },
+    });
+    const next = await result(worker, { ...bound, trial: { ...bound.trial, attempt: 2 } });
+    expect(next.output).toBe("Paris");
+    expect(next.context).toBe(cancelled.context);
+  } finally {
+    wait.abort();
+    await worker.close();
+    await rm(directory, { recursive: true, force: true });
+  }
 });
