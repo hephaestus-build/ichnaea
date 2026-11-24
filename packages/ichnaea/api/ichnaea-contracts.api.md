@@ -1742,6 +1742,23 @@ export const Estimate: z.ZodObject<{
 }, z.core.$strict>;
 
 // @public
+export const ExecutedBlock: z.ZodObject<{
+    block: z.ZodInt;
+    plannedBlock: z.ZodInt;
+    first: z.ZodEnum<{
+        base: "base";
+        candidate: "candidate";
+    }>;
+    status: z.ZodEnum<{
+        abandoned: "abandoned";
+        complete: "complete";
+    }>;
+}, z.core.$strict>;
+
+// @public
+export type ExecutedBlock = z.infer<typeof ExecutedBlock>;
+
+// @public
 export const Exposure: z.ZodEnum<{
     private: "private";
     public: "public";
@@ -4089,6 +4106,27 @@ export const Run: z.ZodObject<{
     id: z.core.$ZodBranded<z.ZodString, "RunId", "out">;
     plan: z.core.$ZodBranded<z.ZodString, "PlanDigest", "out">;
     exploratory: z.ZodBoolean;
+    execution: z.ZodOptional<z.ZodObject<{
+        source: z.ZodEnum<{
+            import: "import";
+            "re-score": "re-score";
+            runner: "runner";
+        }>;
+        analysisPlan: z.ZodString;
+        blocks: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            block: z.ZodInt;
+            plannedBlock: z.ZodInt;
+            first: z.ZodEnum<{
+                base: "base";
+                candidate: "candidate";
+            }>;
+            status: z.ZodEnum<{
+                abandoned: "abandoned";
+                complete: "complete";
+            }>;
+        }, z.core.$strict>>>;
+    }, z.core.$strict>>;
+    valuesOutsideMask: z.ZodOptional<z.ZodRecord<z.core.$ZodBranded<z.ZodString, "MeasureId", "out">, z.ZodInt>>;
     environment: z.ZodObject<{
         node: z.ZodString;
         platform: z.ZodString;
@@ -5548,6 +5586,9 @@ export const Trial: z.ZodObject<{
     configuration: z.core.$ZodBranded<z.ZodString, "ConfigurationIdentity", "out">;
     arm: z.ZodOptional<z.core.$ZodBranded<z.ZodString, "ArmName", "out">>;
     replicate: z.ZodInt;
+    analysisPlan: z.ZodOptional<z.ZodString>;
+    block: z.ZodOptional<z.ZodInt>;
+    context: z.ZodOptional<z.ZodString>;
     outcome: z.ZodEnum<{
         abstained: "abstained";
         budget_exceeded: "budget_exceeded";

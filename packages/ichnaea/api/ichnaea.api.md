@@ -223,6 +223,8 @@ export interface ImportInput {
 // @public
 export interface ImportResult {
     readonly gates?: readonly GateResult[];
+    // Warning: (ae-forgotten-export) The symbol "Judge" needs to be exported by the entry point index.d.ts
+    readonly judges?: readonly Judge[];
     readonly trials: readonly Trial[];
     readonly values: readonly MeasureValue[];
 }
@@ -897,8 +899,8 @@ export function testMeasure(measure: MeasureDefinition): Promise<TesterResult>;
 
 // Warnings were encountered during analysis:
 //
-// src/core/import.ts:55:52 - (ae-forgotten-export) The symbol "LockedImport" needs to be exported by the entry point index.d.ts
-// src/core/plugin.ts:57:5 - (ae-forgotten-export) The symbol "Case" needs to be exported by the entry point index.d.ts
+// src/core/import.ts:52:52 - (ae-forgotten-export) The symbol "LockedImport" needs to be exported by the entry point index.d.ts
+// src/core/plugin.ts:58:5 - (ae-forgotten-export) The symbol "Case" needs to be exported by the entry point index.d.ts
 
 // (No @packageDocumentation comment for this package)
 
