@@ -157,7 +157,7 @@ export function readmeInstall(readme: string): Install {
 export function installCommands(install: Install, spec: string): string[] {
   const add = install.add
     .split(" ")
-    .map((arg) => (arg === PACKAGE_NAME ? `'${spec}'` : arg))
+    .map((arg) => (arg === PACKAGE_NAME || arg.startsWith(`${PACKAGE_NAME}@`) ? `'${spec}'` : arg))
     .join(" ");
   if (add === install.add) throw new Error(`the README's pnpm add does not add ${PACKAGE_NAME}`);
   return install.commands.map((c) => (c === install.add ? add : c));

@@ -16,10 +16,8 @@ describe("framework purity check", () => {
     expect(findViolations([{ path: "packages/x/src/a.ts", text: line }])).toHaveLength(1);
   });
 
-  it.each([
-    ["a pin of the build branch", "github:hephaestus-build/ichnaea#<build-commit>"],
-    ["the organisation in a URL", "https://github.com/hephaestus-build/ichnaea"],
-  ])("allows %s", (_, line) => {
+  it("allows the organisation in a URL", () => {
+    const line = "https://github.com/hephaestus-build/ichnaea";
     expect(findViolations([{ path: "p.json", text: line }])).toEqual([]);
   });
 
@@ -172,7 +170,7 @@ describe("the purity command", () => {
     expect(stderr).toContain(".changeset/größe ändern.md: a changeset");
   });
 
-  it("fails on a changeset, which Ichnaea does not keep (decision 0019)", () => {
+  it("fails on a changeset, which Ichnaea does not keep (decision 0021)", () => {
     const { status, stderr } = run({ ".changeset/a-change.md": "---\n---\nA change.\n" }, true);
     expect(status).toBe(1);
     expect(stderr).toContain(".changeset/a-change.md: a changeset");
@@ -208,8 +206,8 @@ describe("the changeset check", () => {
         "a/.changeset/x.md",
       ]),
     ).toEqual([
-      ".changeset/a.md: a changeset, but the titles on main are the change log (decision 0019)",
-      ".changeset/config.json: a changeset, but the titles on main are the change log (decision 0019)",
+      ".changeset/a.md: a changeset, but the titles on main are the change log (decision 0021)",
+      ".changeset/config.json: a changeset, but the titles on main are the change log (decision 0021)",
     ]);
   });
 });

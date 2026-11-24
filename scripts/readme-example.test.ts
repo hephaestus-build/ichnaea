@@ -58,7 +58,7 @@ describe("the README's install", () => {
   const install = readmeInstall(readme);
 
   it("adds the package from npm with the tested zod, then checks the signatures and provenance", () => {
-    const add = `pnpm add ${PACKAGE_NAME} zod@${workspaceZod()}`;
+    const add = `pnpm add ${PACKAGE_NAME}@next zod@${workspaceZod()}`;
     expect(install.commands).toEqual(["pnpm pkg set type=module", add, AUDIT]);
     expect(install.add).toBe(add);
     expect(install.added).toEqual([PACKAGE_NAME, "zod"]);
@@ -82,6 +82,13 @@ describe("the README's install", () => {
       `pnpm add 'file:/tmp/tumaet-ichnaea-0.0.0.tgz' zod@${workspaceZod()}`,
       AUDIT,
     ]);
+  });
+
+  it("replays an older release's README with an unqualified package name", () => {
+    const olderInstall = readmeInstall(readme.replace(`${PACKAGE_NAME}@next`, PACKAGE_NAME));
+    expect(installCommands(olderInstall, `${PACKAGE_NAME}@0.1.0-rc.1`)).toContain(
+      `pnpm add '${PACKAGE_NAME}@0.1.0-rc.1' zod@${workspaceZod()}`,
+    );
   });
 
   it("is the install block of the documentation site's install page, byte for byte", () => {
@@ -109,7 +116,7 @@ describe("the README's install", () => {
   });
 
   it("fails when its pnpm add leaves out a package that the example imports", () => {
-    const broken = readme.replace(`pnpm add ${PACKAGE_NAME} `, "pnpm add ");
+    const broken = readme.replace(`pnpm add ${PACKAGE_NAME}@next `, "pnpm add ");
     expect(broken).not.toBe(readme);
     expect(missingFromInstall(broken, exampleFile)).toEqual([
       "ichnaea.config.ts imports @tumaet/ichnaea, which the README's pnpm add leaves out",

@@ -9,8 +9,7 @@ its parameters or the application's settings. It gives each change a clear verdi
 statistics, and says plainly when the cases cannot decide.
 
 > **Status: early development.** Ichnaea is 0.x on npm as `@tumaet/ichnaea`, and interfaces can
-> change in any minor version. The first release, 0.1.0, is not published yet: until then, pin a
-> commit of the `build` branch, as [below](#before-the-first-npm-release).
+> change in any minor version. Release candidates are available under the `next` tag.
 
 ## What it is built to do
 
@@ -55,14 +54,14 @@ loads `ichnaea.config.ts` as an ES module:
 
 ```sh
 pnpm pkg set type=module
-pnpm add @tumaet/ichnaea zod@4.6.7
+pnpm add @tumaet/ichnaea@next zod@4.6.7
 npm audit signatures
 ```
 
 zod 4.6.7 is the version that each release is tested with, and the copy at the root is the one
 that Ichnaea uses. Run the CLI with Node 24.3 or later: `pnpm exec ichnaea <command>`. Installing
 the package runs no script: its `package.json` has none. A pre-release has the dist-tag `next`, so
-you add it by its version, for example `pnpm add @tumaet/ichnaea@0.2.0-rc.1`.
+you can also add it by its exact version, for example `pnpm add @tumaet/ichnaea@0.1.0-rc.1`.
 
 ### Check what you installed
 
@@ -81,33 +80,7 @@ provenance, which the version's page on npmjs.com links, and run
 `git merge-base --is-ancestor <commit> origin/main` in a clone.
 [Decision 0021](docs/decisions/0021-npm-staged-publishing.md) gives the chain.
 
-Run `npm audit signatures` again after each update: `pnpm update @tumaet/ichnaea`.
-
-### Before the first npm release
-
-Until 0.1.0 is on npm, pin a commit of the `build` branch. Each commit there holds the built package
-of one commit on `main`, and its message names that commit in a `Source-Commit:` trailer. Pick the
-newest build commit, then add it with zod:
-
-```sh
-gh api repos/hephaestus-build/ichnaea/commits/build --jq .sha
-pnpm add zod@4.6.7 'github:hephaestus-build/ichnaea#<build-commit>'
-```
-
-A build commit is not signed: anyone can build its source commit again and get the same bytes.
-Before you pin or update, rebuild it in an Ichnaea checkout, with the Node version that its
-`build.json` records:
-
-```sh
-git clone https://github.com/hephaestus-build/ichnaea && cd ichnaea
-pnpm install --frozen-lockfile
-node scripts/verify-build.ts <build-commit>
-```
-
-`verify-build.ts` checks that the source commit is on `main` and signed, builds it in a temporary
-worktree, and refuses the first path whose bytes or mode differ.
-[Decision 0019](docs/decisions/0019-built-package-on-a-build-branch.md) describes the build branch.
-It stays until the consumers that pin it move to npm.
+Run `npm audit signatures` again after each update: `pnpm add @tumaet/ichnaea@next`.
 
 ### Develop Ichnaea and your project together
 
@@ -197,7 +170,7 @@ sources. The CLI and the example run the build.
 pnpm install
 pnpm check                                    # format, lint, type check, tests, generated files current
 pnpm --filter @tumaet/ichnaea build           # dist/, for the CLI and the example
-node scripts/build-package.ts <directory>     # the tree that a release packs, and the build branch holds
+node scripts/build-package.ts <directory>     # the tree that a release packs
 node scripts/build-consumer.ts                # that tree, built twice, installed and run as the README says
 ```
 

@@ -7,7 +7,7 @@ sidebar:
 
 Ichnaea is on npm as `@tumaet/ichnaea`.
 Each version is staged by the release workflow, and a package owner approves it on npm.
-The first version, 0.1.0, is not published yet. Until then, [pin a commit of the build branch](#before-the-first-npm-release).
+Release candidates are available under the `next` tag.
 
 ## You need
 
@@ -21,7 +21,7 @@ At the root of your project, run:
 
 ```sh
 pnpm pkg set type=module
-pnpm add @tumaet/ichnaea zod@4.6.7
+pnpm add @tumaet/ichnaea@next zod@4.6.7
 npm audit signatures
 ```
 
@@ -38,7 +38,7 @@ Check that the command line tool runs:
 pnpm exec ichnaea --version
 ```
 
-A pre-release has the dist-tag `next`, so you add it by its version, for example `pnpm add @tumaet/ichnaea@0.2.0-rc.1`.
+A pre-release has the dist-tag `next`, so you can also add it by its exact version, for example `pnpm add @tumaet/ichnaea@0.1.0-rc.1`.
 
 ## Check what you installed
 
@@ -64,39 +64,9 @@ git merge-base --is-ancestor <commit> origin/main && echo "on main"
 ## Update
 
 ```sh
-pnpm update @tumaet/ichnaea
+pnpm add @tumaet/ichnaea@next
 npm audit signatures
 ```
-
-## Before the first npm release
-
-Until 0.1.0 is on npm, pin a commit of the `build` branch.
-Each build commit holds the built package of one signed commit on `main`.
-
-1. Find the newest build commit:
-
-   ```sh
-   gh api repos/hephaestus-build/ichnaea/commits/build --jq .sha
-   ```
-
-2. Add it with zod. Replace `<build-commit>` with the commit from step 1:
-
-   ```sh
-   pnpm add zod@4.6.7 'github:hephaestus-build/ichnaea#<build-commit>'
-   ```
-
-3. A build commit is not signed. Its trust comes from a rebuild.
-   Before you pin or update, rebuild the commit in a checkout of Ichnaea.
-   Use the Node version that the commit's `build.json` names:
-
-   ```sh
-   git clone https://github.com/hephaestus-build/ichnaea && cd ichnaea
-   pnpm install --frozen-lockfile
-   node scripts/verify-build.ts <build-commit>
-   ```
-
-The script checks that the source commit is on `main` and signed, builds it again, and names the first path whose bytes or mode differ.
-[Decision 0019](https://github.com/hephaestus-build/ichnaea/blob/main/docs/decisions/0019-built-package-on-a-build-branch.md) describes the build branch.
 
 ## Work on Ichnaea and your project together
 
