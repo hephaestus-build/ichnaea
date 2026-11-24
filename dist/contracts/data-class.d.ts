@@ -58,8 +58,8 @@ export interface DataPolicy {
 export declare const CLOSED_KEY: "x-ichnaea-closed";
 /** A field without personal data. It may leave for any purpose. */
 export declare function none<T extends z.ZodType>(schema: T, extra?: Record<string, unknown>): T;
-/** Content whose class the enclosing record declares in `dataClass`. */
-export declare function content<T extends z.ZodType>(schema: T): T;
+/** Content classified explicitly or by the enclosing record's `dataClass`. */
+export declare function content<T extends z.ZodType>(schema: T, classification?: DataClass | "inherit"): T;
 /**
  * A quasi-identifying attribute whose class the record declares in `dataClass`, such as a slice
  * value: harmless on a synthetic case, identifying in combination on collected data.

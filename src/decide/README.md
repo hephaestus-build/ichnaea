@@ -1,6 +1,6 @@
 # Decision rule: `@tumaet/ichnaea`
 
-The decision rule of Ichnaea, as the `decide` plugin and the `decide()` function.
+The `ichnaea decide` command and the `decide()` function apply this rule.
 `compare(plan, records, { decidedAt })` decides a plan's run from its records. Like `decide`, it is
 synchronous and pure: the same records and `decidedAt` give the same decision, byte for byte.
 
@@ -43,13 +43,11 @@ schedule, and it must cite at least two clean A/A decisions of the same suite, m
 `ichnaea decide` and `ichnaea report` load the cited decisions from the store. Each check that fails
 is a limitation of the regression result. VALIDATION.md in the statistics lists the checks.
 
-The plugin refuses a plan whose margin, less its safety margin, lies outside the validated
-margins of the statistics (decision 0012). It adds the planning power statement to every
-plan, an estimate-only plan too. Without the plugin, a plan has no power statement, and
-`ichnaea import` says so.
+`ichnaea import` adds the planning power statement before reading results. It refuses a plan whose
+effective margin lies outside the validated margins of the statistics (decision 0012).
 Each decision carries that statement unchanged, and a run-time statement that never changes the
 verdict (decision 0017). When a library caller decides a plan that has no statement, `decide()`
-computes it from the plan with `planningPower`, the plugin's own function. It does not switch the
+computes it from the plan with `planningPower`, the same function that import uses. It does not switch the
 plan to estimate-only. When `planningPower` refuses the margin, each entry says "the plan carries
 no planning statement, and its margin is refused", and carries the refusal text as `refusal`. When
 it computes nothing and refuses nothing, each entry says "the plan carries no planning statement,

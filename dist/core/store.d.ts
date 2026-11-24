@@ -1,7 +1,9 @@
 import { type Decision as DecisionRecord } from "../contracts/records/decision.ts";
 import { type Plan as PlanRecord } from "../contracts/records/plan.ts";
 import { type Run as RunRecord } from "../contracts/records/run.ts";
-import { type RunRecords } from "./records.ts";
+import { type RunRecords } from "../contracts/run-records.ts";
+import { RunManifest } from "../contracts/run-manifest.ts";
+import { type Recalculation } from "../report/manifest.ts";
 export { StoreError } from "./store-path.ts";
 /** Thrown when a write would change a record that already exists. */
 export declare class AppendOnlyError extends Error {
@@ -25,6 +27,8 @@ export interface RunIndexEntry {
 export interface StoredRun extends RunRecords {
     /** The run's decision; absent until the run is decided. */
     readonly decision?: DecisionRecord;
+    /** Replay digests, present on runs decided with a manifest-aware engine. */
+    readonly manifest?: RunManifest;
 }
 /** Write validated primary records and publish the run in one rename. */
 export declare function sealRun(root: string, directory: string, records: RunRecords, beforePublish?: () => Promise<void>): Promise<void>;
@@ -50,6 +54,8 @@ export declare class FileStore {
     createRun(records: RunRecords): Promise<void>;
     /** Stores the decision once and adds the run to the index. */
     writeDecision(decision: DecisionRecord, suite: string): Promise<void>;
+    /** Appends a later engine calculation without changing the original files. */
+    writeRecalculation(run: string, record: Recalculation): Promise<void>;
     /** Reads everything stored for a run. Missing primary records are an error, never an empty run. */
     read(run: string): Promise<StoredRun>;
     /**

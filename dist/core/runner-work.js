@@ -8,7 +8,7 @@ import { Json } from "../contracts/primitives.js";
 import { TrialIdentity, WorkerReady } from "../contracts/records/worker.js";
 import { CallLedger } from "./ledger.js";
 import { publishRecord } from "./publish-record.js";
-import {} from "./records.js";
+import {} from "../contracts/run-records.js";
 import { RegistrationReceiptSchema } from "./registration.js";
 import { sealRun } from "./store.js";
 import { runDirectory } from "./store-path.js";

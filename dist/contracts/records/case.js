@@ -1,6 +1,6 @@
 import * as z from "zod";
 import { attribute, content, none, personal } from "../data-class.js";
-import { CalendarDate, CaseId, CaseSetId, Digest, DigestRef, FindingId, Json, RecordDataClass, Text, Unit, } from "../primitives.js";
+import { CalendarDate, CaseId, CaseSetId, Digest, DigestRef, FindingId, MeasureId, Json, RecordDataClass, Text, Unit, } from "../primitives.js";
 /** How a case entered its case set. Decides which estimand it supports. */
 export const CaseSelection = z.enum(["curated", "random", "promoted", "generated"]);
 /** A pool: a part of a case set with an exposure rule. */
@@ -106,5 +106,6 @@ export const CaseSet = z.strictObject({
     description: none(z.string().describe("What the case set covers.")).optional(),
     digest: none(Digest.describe("The digest of the case entries. It identifies the case set, so a change to any case changes it.")),
     cases: z.array(CaseSetEntry).min(1).describe("One entry for each case."),
+    applicability: none(z.record(MeasureId, z.array(CaseId))).optional(),
 });
 //# sourceMappingURL=case.js.map

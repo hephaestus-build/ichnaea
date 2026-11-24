@@ -35,10 +35,10 @@ export const CLOSED_KEY = "x-ichnaea-closed";
 export function none(schema, extra = {}) {
     return withPolicy(schema, { class: "none", identifier: "none", egress: [ANY_PURPOSE], retention: "record" }, extra);
 }
-/** Content whose class the enclosing record declares in `dataClass`. */
-export function content(schema) {
+/** Content classified explicitly or by the enclosing record's `dataClass`. */
+export function content(schema, classification = "inherit") {
     return withPolicy(schema, {
-        class: "inherit",
+        class: classification,
         identifier: "content",
         egress: [ANY_PURPOSE],
         retention: "subject",

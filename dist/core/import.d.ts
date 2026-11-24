@@ -1,7 +1,8 @@
-import type { Plan } from "../contracts/records/plan.ts";
+import { Plan } from "../contracts/records/plan.ts";
+import { type LockedImport } from "./analysis-plan.ts";
 import type { Host } from "./host.ts";
 /** What `ichnaea import` needs. */
-export interface ImportRunInput {
+interface ImportRunOptions {
     /** The loaded configuration that provides the importer, measures and gates. */
     readonly host: Host;
     /** The directory of the file store that the run is written to. */
@@ -10,18 +11,6 @@ export interface ImportRunInput {
     readonly run: string;
     /** The ID of the importer that reads the result files. */
     readonly importer: string;
-    /** The path of the suite's JSON file. */
-    readonly suite: string;
-    /** The path of the case set's JSON file. */
-    readonly caseSet: string;
-    /** The path of the cases' JSON Lines file, one case per line; blank lines are skipped. */
-    readonly cases: string;
-    /** The arms, each with its name, role and the path of its configuration's JSON file. */
-    readonly arms: ReadonlyArray<{
-        readonly name: string;
-        readonly role: "base" | "candidate" | "reference";
-        readonly configuration: string;
-    }>;
     /** The other runner's result files that the importer reads. */
     readonly files: readonly string[];
     /** The kind of change that the run evaluates. */
@@ -41,6 +30,24 @@ export interface ImportRunInput {
      * lineage.
      */
     readonly ichnaea: string;
+}
+/** Resolve inputs from the locked analysis or from the original inline flags. */
+export type ImportRunInput = ImportRunOptions & ({
+    readonly locked: LockedImport;
+} | LegacyInputs);
+interface LegacyInputs {
+    /** The path of the suite's JSON file. */
+    readonly suite: string;
+    /** The path of the case set's JSON file. */
+    readonly caseSet: string;
+    /** The path of the cases' JSON Lines file, one case per line; blank lines are skipped. */
+    readonly cases: string;
+    /** The arms, each with its name, role and the path of its configuration's JSON file. */
+    readonly arms: ReadonlyArray<{
+        readonly name: string;
+        readonly role: "base" | "candidate" | "reference";
+        readonly configuration: string;
+    }>;
 }
 /**
  * The error kind of a trial whose output was not captured. Such a trial is an infrastructure
@@ -63,4 +70,5 @@ export declare function importRun(input: ImportRunInput): Promise<{
     trials: number;
     values: number;
 }>;
+export {};
 //# sourceMappingURL=import.d.ts.map

@@ -10,6 +10,7 @@ export * from "./plain-data.js";
 export * from "./primitives.js";
 export * from "./reader.js";
 export * from "./reasons.js";
+export * from "./records/analysis-plan.js";
 export * from "./records/case.js";
 export * from "./records/configuration.js";
 export * from "./records/configuration-v2.js";

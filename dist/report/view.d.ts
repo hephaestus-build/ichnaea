@@ -5,6 +5,7 @@ import type { Run } from "../contracts/records/run.ts";
 export declare function percent(value: Real | number): string;
 /** A difference in percentage points with its sign. */
 export declare function points(value: Real | number): string;
+type DecisionNoise = NonNullable<Decision["measures"][number]["noise"]>;
 /** One row of the per-measure table. */
 export interface MeasureRow {
     /** The measure's ID. */
@@ -13,6 +14,8 @@ export interface MeasureRow {
     readonly tier: string;
     /** The measure's verdict. */
     readonly verdict: string;
+    /** The quantity the measure estimates. */
+    readonly estimand: string;
     /** One entry for each arm: its rate, interval, available of planned trials and missing trials. */
     readonly arms: ReadonlyArray<{
         readonly arm: string;
@@ -20,6 +23,21 @@ export interface MeasureRow {
         readonly interval: string;
         readonly n: string;
         readonly missing: number;
+        readonly denominators: {
+            readonly observedCases: number | null;
+            readonly plannedCases: number | null;
+            readonly observedTrials: number;
+            readonly plannedTrials: number;
+            readonly caseCountsReason?: string;
+        };
+        readonly estimand: "equal-weight observed cases";
+        readonly method: string;
+        readonly level: number;
+        readonly sidedness: string;
+        readonly validity: {
+            readonly validated: boolean;
+            readonly limitations: readonly string[];
+        };
     }>;
     /**
      * The first comparison's difference with its bound, margin and flips; absent when the measure has
@@ -30,6 +48,8 @@ export interface MeasureRow {
         readonly bound: string;
         readonly margin: string;
         readonly method: string;
+        readonly sidedness: string;
+        readonly level: number;
         readonly negativeFlips: number;
         readonly positiveFlips: number;
         /**
@@ -44,6 +64,14 @@ export interface MeasureRow {
             readonly margin: number;
             readonly validated: boolean;
         };
+    };
+    /** Block counts and descriptive variance from the decision. */
+    readonly blocks?: Decision["measures"][number]["blocks"];
+    /** Within-case, between-block and across-case variance. */
+    readonly noise?: Omit<DecisionNoise, "arms"> & {
+        readonly arms: ReadonlyArray<Omit<DecisionNoise["arms"][number], "arm"> & {
+            readonly arm: string;
+        }>;
     };
     /** The measure's notes from the decision. */
     readonly notes: readonly string[];
@@ -103,6 +131,12 @@ export interface DecisionView {
     readonly method: string;
     /** One row for each measure. */
     readonly measures: readonly MeasureRow[];
+    /** Registered case reductions. The entries are point estimates without intervals. */
+    readonly trialReduction?: {
+        readonly measure: string;
+        readonly k: number;
+        readonly rows: ReadonlyArray<readonly [string, string, string, string, string]>;
+    };
     /** Each hard gate with its result: `passed`, or `failed` with the number of failures. */
     readonly gates: ReadonlyArray<{
         readonly gate: string;
@@ -120,6 +154,8 @@ export interface DecisionView {
     }>;
     /** The planning power rows, then the run-time ones. */
     readonly power: readonly PowerRow[];
+    /** The block-resolution estimates, with the model and any unavailability reason. */
+    readonly resolution: readonly string[];
     /** The rows of the sensitivity analysis for missing trials. */
     readonly sensitivity: readonly SensitivityRow[];
     /** The missing trials of each arm and the outcome of the sensitivity analysis, in words. */
@@ -154,4 +190,5 @@ export interface DecisionViewOptions {
  * from the record (REQ-82, REQ-128).
  */
 export declare function decisionView(decision: Decision, suite: string, lineage?: Run["lineage"], options?: DecisionViewOptions): DecisionView;
+export {};
 //# sourceMappingURL=view.d.ts.map

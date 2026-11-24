@@ -9,8 +9,11 @@ import { type Plan, REFUSED_MARGIN } from "../contracts/records/plan.ts";
 import type { Run } from "../contracts/records/run.ts";
 import type { Trial } from "../contracts/records/trial.ts";
 import { proportionProblem } from "../contracts/values.ts";
-import { TRIGGER_VARIES } from "../core/planner.ts";
-import { recordProblems } from "../core/records.ts";
+import { FAILED_TRIAL_OUTCOMES as FAILED } from "../plan/trial-counting.ts";
+import { runReduction } from "./trial-reduction.ts";
+import { runResolution } from "../plan/resolution.ts";
+import { TRIGGER_VARIES } from "../plan/rules.ts";
+import { recordProblems } from "../contracts/run-records.ts";
 import {
   type CaseCounts,
   type Comparison,
@@ -24,10 +27,12 @@ import {
 import { holm } from "../stats/multiplicity.ts";
 import { fixedCasesMde, sampledCasesFloor } from "../stats/power.ts";
 import { createRng } from "../stats/rng.ts";
-import { wilson } from "../stats/wilson.ts";
+import { estimate } from "../stats/estimate.ts";
 import type * as z from "zod";
 
-import { describeCounts, plannedTrialsPerCase, planningPower } from "./planning.ts";
+import { describeCounts, plannedTrialsPerCase, planningPower } from "../plan/power.ts";
+
+import { noiseSummary } from "./noise.ts";
 
 /** Everything a decision is computed from. Reports never compute anything new. */
 export interface DecideInput {
@@ -85,11 +90,6 @@ const MISSING = new Set([
   // The run is INVALID; the trial gives no value, and it is never a failure or a pass.
   "protocol_failure",
 ]);
-/**
- * Outcomes that score as a failed trial on a binary measure whatever value a record carries
- * (REQ-20): the system failed, so the trial cannot pass.
- */
-const FAILED = new Set(["system_failure", "budget_exceeded"]);
 const DEFAULT_COVERAGE_FLOOR = 0.9;
 
 /**
@@ -122,10 +122,20 @@ interface Availability {
   trials: number;
 }
 
+interface ArmCase {
+  planned: number;
+  trials: number;
+  successes: number;
+}
+
 /** One measure's binary counts per case for the compared arms, and availability per arm. */
 interface Tally {
   readonly cases: Map<string, CaseCounts>;
   readonly arms: Map<string, Availability>;
+  readonly byArmCase: ReadonlyMap<string, ReadonlyMap<string, ArmCase>>;
+  readonly byBlock: ReadonlyMap<number, ReadonlyMap<string, ReadonlyMap<string, ArmCase>>>;
+  readonly applicabilityContradictions: number;
+  readonly valuesOutsideMask: number;
   /** A value whose type the decision rule cannot use, if any. */
   readonly unsupported?: string;
   /** The type of the measure's values in these records; binary when it has none. */
@@ -407,17 +417,33 @@ function tally(
 ): Tally {
   const cases = new Map<string, CaseCounts>();
   const availability = new Map<string, Availability>();
+  const byArmCase = new Map<string, Map<string, ArmCase>>();
+  const byBlock = new Map<number, Map<string, Map<string, ArmCase>>>();
+  const masks: Readonly<Record<string, readonly string[]>> | undefined =
+    plan.analysis?.applicability;
+  const locked = masks?.[measure];
+  const mask = locked === undefined ? undefined : new Set<string>(locked);
+  let applicabilityContradictions = 0;
+  let valuesOutsideMask = 0;
   let unsupported: string | undefined;
   let valueType: MeasuredValue["type"] = "binary";
   for (const planned of plan.trials) {
     const av = availability.get(planned.arm) ?? emptyAvailability();
     availability.set(planned.arm, av);
     const value = values.get(`${measure}\u0000${planned.id}`);
-    if (value && !value.applicable) {
+    if (mask ? !mask.has(planned.case) : value?.applicable === false) {
       av.notApplicable++;
+      if (mask && value?.applicable) valuesOutsideMask++;
       continue;
     }
     av.planned++;
+    const armCases = byArmCase.get(planned.arm) ?? new Map<string, ArmCase>();
+    byArmCase.set(planned.arm, armCases);
+    const armCase = armCases.get(planned.case) ?? { planned: 0, trials: 0, successes: 0 };
+    armCases.set(planned.case, armCase);
+    armCase.planned++;
+    const contradictsPlan = mask !== undefined && value?.applicable === false;
+    if (contradictsPlan) applicabilityContradictions++;
     const outcome = trials.get(planned.id)?.outcome ?? "not_run";
     const side =
       planned.arm === arms?.base
@@ -425,7 +451,7 @@ function tally(
         : planned.arm === arms?.candidate
           ? "candidate"
           : undefined;
-    const v = value?.value;
+    const v = contradictsPlan ? undefined : value?.value;
     if (!MISSING.has(outcome) && v !== undefined && v.type !== "binary") {
       valueType = v.type;
       unsupported = `measure '${measure}' has a ${v.type} value; the decision rule decides binary values only (decision 0008)`;
@@ -433,7 +459,7 @@ function tally(
       continue;
     }
     let pass: boolean;
-    if (FAILED.has(outcome)) {
+    if (FAILED.has(outcome) && !contradictsPlan) {
       pass = false;
       av.available++;
     } else if (
@@ -452,6 +478,18 @@ function tally(
     }
     av.successes += pass ? 1 : 0;
     av.trials += 1;
+    armCase.trials++;
+    if (pass) armCase.successes++;
+    if (planned.block !== undefined && imputation === undefined) {
+      const block = byBlock.get(planned.block) ?? new Map<string, Map<string, ArmCase>>();
+      byBlock.set(planned.block, block);
+      const blockArm = block.get(planned.arm) ?? new Map<string, ArmCase>();
+      block.set(planned.arm, blockArm);
+      const cell = blockArm.get(planned.case) ?? { planned: 0, trials: 0, successes: 0 };
+      blockArm.set(planned.case, cell);
+      cell.trials++;
+      if (pass) cell.successes++;
+    }
     if (side === undefined) continue;
     const entry = cases.get(planned.case) ?? {
       id: planned.case,
@@ -467,6 +505,10 @@ function tally(
   return {
     cases,
     arms: availability,
+    byArmCase,
+    byBlock,
+    applicabilityContradictions,
+    valuesOutsideMask,
     valueType,
     ...(unsupported === undefined ? {} : { unsupported }),
   };
@@ -1366,12 +1408,13 @@ export function decideWith(input: DecideInput, compare: Compare): Decision {
         ]
       : [];
   // An exploratory run (REQ-16) reports like an estimate-only plan: no confirmatory verdict.
-  const modeReasons = run.exploratory
-    ? [
-        "the run is exploratory: its plan changed after the first trial, so it gives no confirmatory verdict",
-        ...plan.modeReasons,
-      ]
-    : plan.modeReasons;
+  const modeReasons =
+    run.exploratory && plan.analysis === undefined
+      ? [
+          "the run is exploratory: its plan changed after the first trial, so it gives no confirmatory verdict",
+          ...plan.modeReasons,
+        ]
+      : plan.modeReasons;
   const decision = plan.mode === "decision" && !run.exploratory;
 
   const ids = [
@@ -1451,17 +1494,39 @@ export function decideWith(input: DecideInput, compare: Compare): Decision {
     const p = plan.primary.find((x) => x.measure === id);
     const armsOut = plan.arms.map((a) => {
       const av = t.arms.get(a.name) ?? emptyAvailability();
-      const rate = wilson({ successes: av.successes, trials: av.trials }, 0.95, "two");
+      const cases = [...(t.byArmCase.get(a.name) ?? [])].map(([caseId, counts]) => ({
+        id: caseId,
+        planned: counts.planned,
+        values: Array.from({ length: counts.trials }, (_, index) =>
+          Number(index < counts.successes),
+        ),
+      }));
+      const summary = cases.length === 0 ? undefined : estimate({ valueType: "binary", cases });
+      const interval = summary?.interval;
+      const intervalValidity: ValidityResult =
+        interval?.coverage === "conservative"
+          ? { validated: true, limitations: [] }
+          : {
+              validated: false,
+              limitations: [
+                interval
+                  ? "coverage has not been validated"
+                  : "no interval from the available trials",
+              ],
+            };
+      const mean = summary?.estimate;
       return {
         arm: a.name,
         rate: {
-          estimate: Number.isFinite(rate.estimate) ? rate.estimate : NAN,
-          lower: rate.lower,
-          upper: rate.upper,
+          estimate: mean === undefined || !Number.isFinite(mean) ? NAN : mean,
+          lower: interval?.lower ?? NAN,
+          upper: interval?.upper ?? NAN,
           level: 0.95,
           sided: "two" as const,
-          method: "wilson",
+          method: interval?.method ?? "equal case weights",
         },
+        intervalValidity,
+        caseAvailability: { planned: cases.length, observed: summary?.cases ?? 0 },
         availability: {
           planned: av.planned,
           available: av.available,
@@ -1470,7 +1535,30 @@ export function decideWith(input: DecideInput, compare: Compare): Decision {
         },
       };
     });
+    const analysis = plan.analysis;
+    const masks: Readonly<Record<string, readonly string[]>> | undefined = analysis?.applicability;
+    const mask = masks?.[id] ?? [
+      ...new Set([...t.byArmCase.values()].flatMap((cases) => [...cases.keys()])),
+    ];
+    const blockNotes = analysis
+      ? {
+          blocks: {
+            planned: analysis.blocks,
+            observed: t.byBlock.size,
+            effective: null,
+            reason: "recorded execution contexts are required",
+          },
+          noise: noiseSummary(
+            plan.arms.map((arm) => arm.name),
+            t.byArmCase,
+            t.byBlock,
+            mask,
+            pair,
+          ),
+        }
+      : {};
     const outcome = {
+      ...blockNotes,
       measure: id,
       version: plan.measures.find((m) => m.id === id)?.version ?? "0.0.0",
       tier,
@@ -1479,13 +1567,22 @@ export function decideWith(input: DecideInput, compare: Compare): Decision {
       coverage: coverageOf(t),
       sensitivity: imputed.get(id) ?? [],
     };
+    const maskNotes: string[] = [];
+    if (t.applicabilityContradictions > 0)
+      maskNotes.push(
+        `APPLICABILITY_CONTRADICTS_PLAN: ${t.applicabilityContradictions} planned trial value(s) were marked not applicable and count as missing`,
+      );
+    if (t.valuesOutsideMask > 0)
+      maskNotes.push(
+        `ignored ${t.valuesOutsideMask} value(s) outside the planned applicability mask`,
+      );
     const result = tier === "primary" ? tested?.get(id) : undefined;
     if (!pair)
       return {
         ...outcome,
         comparisons: [],
         verdict: "ESTIMATE-ONLY",
-        notes: t.unsupported ? [t.unsupported] : [],
+        notes: [...maskNotes, ...(t.unsupported ? [t.unsupported] : [])],
       };
     const margin = p?.margin ?? 0;
     const safetyMargin = p?.safetyMargin ?? 0;
@@ -1504,6 +1601,7 @@ export function decideWith(input: DecideInput, compare: Compare): Decision {
         comparisons: [described.comparison],
         verdict: "ESTIMATE-ONLY",
         notes: [
+          ...maskNotes,
           ...(t.unsupported ? [t.unsupported] : []),
           ...(tier === "primary" && !decision ? modeReasons : []),
           ...pairNote,
@@ -1512,7 +1610,7 @@ export function decideWith(input: DecideInput, compare: Compare): Decision {
       };
     }
     const c = result.comparison;
-    const notes = [...pairNote, ...result.notes];
+    const notes = [...maskNotes, ...pairNote, ...result.notes];
     if (c && c.excludedCases > 0)
       notes.push(
         `${c.excludedCases} case(s) have no completed trial in an arm and count as missing`,
@@ -1625,6 +1723,21 @@ export function decideWith(input: DecideInput, compare: Compare): Decision {
     ...invalid.slice(1).map((m) => `Also invalid: ${m}`),
   ];
 
+  const resolution = plan.analysis
+    ? runResolution(
+        plan.analysis,
+        (measure) => {
+          const caseCounts = tallies.get(measure)?.cases.values() ?? [];
+          const rates = new Map<string, number>();
+          for (const c of caseCounts)
+            if (c.base.trials > 0) rates.set(c.id, c.base.successes / c.base.trials);
+          return rates;
+        },
+        verdict === "INVALID",
+      )
+    : undefined;
+
+  const trialReduction = runReduction(plan, input.trials, input.values);
   return Decision.parse({
     schema: "ichnaea.decision/1",
     mode: decision ? "decision" : "estimate-only",
@@ -1643,6 +1756,8 @@ export function decideWith(input: DecideInput, compare: Compare): Decision {
       planning: planningOf(plan),
       run: runPower(plan, tallies, pair?.base, verdict === "INVALID"),
     },
+    ...(resolution === undefined ? {} : { resolution }),
+    ...(trialReduction === undefined ? {} : { trialReduction }),
     missingness: { byArm, differs: new Set(byArm.map((a) => a.missing)).size > 1, sensitivity },
     invalidReasons: invalid,
     limitations,

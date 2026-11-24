@@ -10,7 +10,7 @@ import type { MeasureDefinition } from "./plugin.ts";
  * completed record without captured output an infrastructure failure first (`NOT_CAPTURED`), so a
  * measure only ever scores output that was captured.
  */
-export declare function scoreTrials(measures: readonly MeasureDefinition[], trials: readonly Trial[], cases: ReadonlyMap<string, Case>): MeasureValue[];
+export declare function scoreTrials(measures: readonly MeasureDefinition[], trials: readonly Trial[], cases: ReadonlyMap<string, Case>, masks?: Readonly<Record<string, readonly string[]>>): MeasureValue[];
 /** The result of running a measure's known-good and known-bad examples. */
 export interface TesterResult {
     /**

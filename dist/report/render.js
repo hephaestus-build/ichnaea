@@ -10,17 +10,55 @@ const md = (text) => String(text)
     .replaceAll(">", "&gt;")
     .replaceAll(/[\\`*_[\]{}()#+!|~]/g, (c) => `\\${c}`);
 const cell = md;
+const variance = (value) => (value === null ? "unavailable" : String(value));
+function measureDetails(view) {
+    return view.measures.flatMap((m) => [
+        ...m.arms.map((a) => {
+            const d = a.denominators;
+            const cases = d.observedCases === null
+                ? `Case counts unavailable (${d.caseCountsReason ?? "missing denominator"})`
+                : `${d.observedCases} of ${d.plannedCases} cases`;
+            const limits = a.validity.limitations.length > 0 ? ` (${a.validity.limitations.join(", ")})` : "";
+            return `${m.measure}, ${a.arm}. ${cases}, ${a.n} trials. ${a.estimand}. ${a.method}, ${a.sidedness === "two" ? "two-sided" : "one-sided"} ${a.level * 100}% interval${limits}.`;
+        }),
+        ...(m.difference
+            ? [
+                `${m.measure} difference. ${m.difference.method}, ${m.difference.sidedness === "two" ? "two-sided" : "one-sided"} ${m.difference.level * 100}%.`,
+            ]
+            : []),
+        ...(m.blocks
+            ? [
+                `${m.measure}. Blocks ${m.blocks.observed} observed of ${m.blocks.planned} planned. Effective blocks ${m.blocks.effective ?? `unavailable (${m.blocks.reason ?? "missing denominator"})`}.`,
+            ]
+            : []),
+        ...(m.noise
+            ? [
+                ...m.noise.arms.map((a) => `${m.measure}, ${a.arm}. Within-case variance ${variance(a.withinCaseVariance)} over ${a.replicatedCells} replicated case-block cells. Case dispersion ${variance(a.caseDispersion)} describes this suite.`),
+                `${m.measure}. Between planned-block variance ${variance(m.noise.betweenBlockVariance)} over ${m.noise.contrastBlocks} contrasts. These use planned block labels.`,
+            ]
+            : []),
+    ]);
+}
+function reductionNote(reduction) {
+    return `${reduction.measure} defines success. k = ${reduction.k}. Each case has equal weight. The policy assumes fresh trials from the same distribution within each case. Uncertainty unavailable.`;
+}
 /** Renders the CI summary in Markdown (a GitHub job summary or a merge-request note). */
 export function renderMarkdown(view) {
     const lines = [];
     lines.push(`## ${md(view.title)}`, "", `**${view.verdict}** ${md(view.claim)}: ${md(view.reason)}`, "", md(view.method), "");
-    lines.push("| Measure | Verdict | Arm | Rate | 95% interval | n | Missing | Difference | Bound | Margin |", "|---|---|---|---|---|---|---|---|---|---|");
+    if (view.measures.length > 0)
+        lines.push("| Measure | Verdict | Arm | Rate | Interval | n | Missing | Difference | Bound | Margin |", "|---|---|---|---|---|---|---|---|---|---|");
     for (const m of view.measures) {
         m.arms.forEach((a, i) => {
             const first = i === 0;
             lines.push(`| ${first ? cell(`${m.measure}${m.tier === "secondary" ? " (secondary)" : ""}`) : ""} | ${first ? m.verdict : ""} | ${cell(a.arm)} | ${a.rate} | ${a.interval} | ${a.n} | ${a.missing} | ${first && m.difference ? m.difference.estimate : ""} | ${first && m.difference ? m.difference.bound : ""} | ${first && m.difference ? m.difference.margin : ""} |`);
         });
     }
+    const details = measureDetails(view);
+    if (details.length > 0)
+        lines.push("", "**Measure details**", "", ...details.map((d) => `- ${md(d)}`));
+    if (view.trialReduction)
+        lines.push("", "**Trial reductions**", "", md(reductionNote(view.trialReduction)), "", "| Case | Valid trials | pass^k | pass@k | Result |", "|---|---|---|---|---|", ...view.trialReduction.rows.map((row) => `| ${row.map(cell).join(" | ")} |`));
     const notes = view.measures.flatMap((m) => m.notes.map((n) => `- ${md(m.measure)}: ${md(n)}`));
     if (notes.length > 0)
         lines.push("", ...notes);
@@ -31,6 +69,8 @@ export function renderMarkdown(view) {
     if (view.flips.length > 0) {
         lines.push("", "| Measure | Case | Direction | Base | Candidate |", "|---|---|---|---|---|", ...view.flips.map((f) => `| ${cell(f.measure)} | ${cell(f.case)} | ${f.direction} | ${f.base} | ${f.candidate} |`));
     }
+    if (view.resolution.length > 0)
+        lines.push("", "**Resolution**", "", ...view.resolution.map((line) => `- ${md(line)}`));
     if (view.power.length > 0) {
         lines.push("", "**Power statement**", "", "| Statement | Measure | Cases | Replicates | Zero-noise floor | MDE | Margin | Margin within reach | Assumption |", "|---|---|---|---|---|---|---|---|---|");
         lines.push(...view.power.map((p) => `| ${p.statement} | ${cell(p.measure)} | ${p.cases} | ${p.replicates} | ${p.floor} | ${p.mde} | ${p.margin} | ${p.reach} | ${cell(p.assumption)} |`));
@@ -126,18 +166,27 @@ figure { margin: .5rem 0 1rem; } svg text { fill: var(--muted); font-size: 10px;
 <h1>${escape(view.title)}</h1>
 <p class="verdict">${badge(view.verdict)} <strong>${escape(view.claim)}</strong>: ${escape(view.reason)}</p>
 <p class="muted">${escape(view.method)}</p>
-<table>
+${view.measures.length > 0
+        ? `<table>
 <caption>Primary and secondary measures</caption>
-<thead><tr><th scope="col">Measure</th><th scope="col">Verdict</th><th scope="col">Arm</th><th scope="col">Rate</th><th scope="col">95% interval</th><th scope="col">n</th><th scope="col">Missing</th><th scope="col">Difference</th><th scope="col">Bound</th><th scope="col">Margin</th></tr></thead>
+<thead><tr><th scope="col">Measure</th><th scope="col">Verdict</th><th scope="col">Arm</th><th scope="col">Rate</th><th scope="col">Interval</th><th scope="col">n</th><th scope="col">Missing</th><th scope="col">Difference</th><th scope="col">Bound</th><th scope="col">Margin</th></tr></thead>
 <tbody>
 ${rows}
 </tbody>
-</table>
+</table>`
+        : ""}
+${view.measures.length > 0 ? `<h2>Measure details</h2>${list(measureDetails(view))}` : ""}
+${view.trialReduction
+        ? `<h2>Trial reductions</h2><p>${escape(reductionNote(view.trialReduction))}</p><table><thead><tr><th scope="col">Case</th><th scope="col">Valid trials</th><th scope="col">pass^k</th><th scope="col">pass@k</th><th scope="col">Result</th></tr></thead><tbody>
+${view.trialReduction.rows.map((row) => `<tr>${row.map((value) => `<td>${escape(value)}</td>`).join("")}</tr>`).join("\n")}
+</tbody></table>`
+        : ""}
 ${view.measures.some((m) => m.difference?.axis) ? `<h2>Differences</h2>${view.measures.flatMap((m) => (m.difference?.axis ? [axisFigure(m.measure, m.difference.axis)] : [])).join("\n")}` : ""}
 ${view.measures.some((m) => m.notes.length > 0) ? `<h2>Notes</h2>${list(view.measures.flatMap((m) => m.notes.map((n) => `${m.measure}: ${n}`)))}` : ""}
 ${view.gates.length > 0 ? `<h2>Hard gates</h2>${list(view.gates.map((g) => `${g.gate}: ${g.result}`))}` : ""}
 <h2>Flips</h2>
 ${view.flips.length === 0 ? "<p>No case changed its majority outcome.</p>" : `<table><thead><tr><th scope="col">Measure</th><th scope="col">Case</th><th scope="col">Direction</th><th scope="col">Base</th><th scope="col">Candidate</th></tr></thead><tbody>\n${flipRows}\n</tbody></table>`}
+${view.resolution.length > 0 ? `<h2>Resolution</h2>${list(view.resolution)}` : ""}
 ${view.power.length > 0 ? `<h2>Power statement</h2><table><thead><tr><th scope="col">Statement</th><th scope="col">Measure</th><th scope="col">Cases</th><th scope="col">Replicates</th><th scope="col">Zero-noise floor</th><th scope="col">MDE</th><th scope="col">Margin</th><th scope="col">Margin within reach</th><th scope="col">Assumption</th></tr></thead><tbody>\n${powerRows}\n</tbody></table>` : ""}
 <h2>Missing data</h2>
 <p>${escape(view.missingness)}</p>
@@ -153,7 +202,7 @@ ${list(view.limitations)}
 /** A shown rate, a difference in points, and the cells that state their intervals. */
 const RATE = /^\d+\.\d%$/;
 const DIFFERENCE = /^[+−]?\d+\.\d pts$/;
-const INTERVAL = /^\d+\.\d% to \d+\.\d%$/;
+const INTERVAL = /^(?:\d+\.\d% to \d+\.\d%(?: \(not validated\))?|No interval yet: .+)$/;
 const BOUND = /^≥ [+−]?\d+\.\d pts( \(not validated\))?$/;
 const NO_BOUND_CELL = new RegExp(`^${NO_BOUND} \\(.+\\)$`);
 /** The problem of one table row whose estimates lack their intervals, if any. */

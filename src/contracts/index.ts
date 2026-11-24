@@ -10,6 +10,7 @@ export * from "./plain-data.ts";
 export * from "./primitives.ts";
 export * from "./reader.ts";
 export * from "./reasons.ts";
+export * from "./records/analysis-plan.ts";
 export * from "./records/case.ts";
 export * from "./records/configuration.ts";
 export * from "./records/configuration-v2.ts";

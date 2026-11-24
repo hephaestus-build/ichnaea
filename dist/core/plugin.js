@@ -1,13 +1,3 @@
-/** Execution mode of each hook. */
-export const HOOK_MODES = {
-    configResolved: "sequential",
-    planCreated: "sequential",
-    trialRecorded: "parallel",
-    runCompleted: "sequential",
-    decisionMade: "parallel",
-    reportRendered: "parallel",
-    beforeEgress: "sequential",
-};
 /**
  * Defines a plugin, keeping its literal ID and the literal IDs of its parts. The ID is inferred from
  * `id` alone, so a part outside the plugin's namespace is a type error.

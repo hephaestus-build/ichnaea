@@ -1,3 +1,4 @@
+import { resolutionLine } from "../plan/resolution.js";
 import { notComputedReason } from "../contracts/records/plan.js";
 /** A number as reports show it: a percentage with one decimal, or a dash when undefined. */
 export function percent(value) {
@@ -14,6 +15,20 @@ export function points(value) {
     const magnitude = Math.abs(rounded).toFixed(1);
     // A true minus sign, as in the margin column.
     return `${rounded > 0 ? "+" : rounded < 0 ? "−" : ""}${magnitude} pts`;
+}
+function reductionView(reduction, id) {
+    const cells = (row) => row.status === "missing"
+        ? ["Missing", "Missing", "missing"]
+        : [percent(row.passAll), percent(row.passAny), row.status];
+    const observed = reduction.cases.filter((row) => row.status !== "missing").length;
+    return {
+        measure: id(reduction.measure),
+        k: reduction.k,
+        rows: [
+            ...reduction.cases.map((row) => [id(row.case), `${row.validTrials} of ${row.plannedTrials}`, ...cells(row)]),
+            ["Overall", `${observed} of ${reduction.cases.length} cases`, ...cells(reduction.overall)],
+        ],
+    };
 }
 /** The label of a bound that its comparison's non-inferiority result does not vouch for. */
 export const NOT_VALIDATED = "(not validated)";
@@ -114,7 +129,7 @@ export function decisionView(decision, suite, lineage = [], options = {}) {
         claim: prose(decision.scope),
         reason: prose(decision.reason),
         method: decision.mode === "estimate-only"
-            ? `Estimate-only (${decision.measures[0]?.estimand ?? "fixed-cases"}): no statistical verdict. Rates carry 95% Wilson intervals; differences carry one-sided ${level}% lower bounds and are descriptive.`
+            ? `Estimate-only (${decision.measures[0]?.estimand ?? "fixed-cases"}): no statistical verdict. Rates give cases equal weight; differences carry one-sided ${level}% lower bounds and are descriptive.`
             : `Estimand ${decision.measures[0]?.estimand ?? "fixed-cases"}; one-sided ${level}% lower bounds for differences (candidate minus base); intersection-union over primary measures; Holm across regression tests.`,
         measures: decision.measures.map((m) => {
             const comparison = m.comparisons[0];
@@ -122,12 +137,32 @@ export function decisionView(decision, suite, lineage = [], options = {}) {
                 measure: id(m.measure),
                 tier: m.tier,
                 verdict: m.verdict,
+                estimand: m.estimand,
                 arms: m.arms.map((a) => ({
                     arm: armLabel(a.arm),
                     rate: percent(a.rate.estimate),
-                    interval: `${percent(a.rate.lower)} to ${percent(a.rate.upper)}`,
+                    interval: typeof a.rate.lower === "number" && typeof a.rate.upper === "number"
+                        ? `${percent(a.rate.lower)} to ${percent(a.rate.upper)}${a.intervalValidity?.validated === false ? ` ${NOT_VALIDATED}` : ""}`
+                        : "No interval yet: the available trials do not give one.",
                     n: `${a.availability.available} of ${a.availability.planned}`,
                     missing: a.availability.missing,
+                    denominators: {
+                        observedCases: a.caseAvailability?.observed ?? null,
+                        plannedCases: a.caseAvailability?.planned ?? null,
+                        observedTrials: a.availability.available,
+                        plannedTrials: a.availability.planned,
+                        ...(a.caseAvailability
+                            ? {}
+                            : { caseCountsReason: "the decision predates case counts" }),
+                    },
+                    estimand: "equal-weight observed cases",
+                    method: a.rate.method,
+                    level: a.rate.level,
+                    sidedness: a.rate.sided,
+                    validity: a.intervalValidity ?? {
+                        validated: false,
+                        limitations: ["the decision records no interval validity"],
+                    },
                 })),
                 ...(comparison
                     ? {
@@ -138,6 +173,8 @@ export function decisionView(decision, suite, lineage = [], options = {}) {
                                 ? "–"
                                 : `−${(comparison.margin * 100).toFixed(1)} pts${comparison.safetyMargin > 0 ? ` (safety ${(comparison.safetyMargin * 100).toFixed(1)})` : ""}`,
                             method: comparison.difference.method,
+                            sidedness: comparison.difference.sided,
+                            level: comparison.difference.level,
                             negativeFlips: comparison.flips.filter((f) => f.direction === "negative").length,
                             positiveFlips: comparison.flips.filter((f) => f.direction === "positive").length,
                             validated: comparison.nonInferiority.validated,
@@ -155,9 +192,21 @@ export function decisionView(decision, suite, lineage = [], options = {}) {
                         },
                     }
                     : {}),
+                ...(m.blocks ? { blocks: m.blocks } : {}),
+                ...(m.noise
+                    ? {
+                        noise: {
+                            ...m.noise,
+                            arms: m.noise.arms.map((a) => ({ ...a, arm: armLabel(a.arm) })),
+                        },
+                    }
+                    : {}),
                 notes: m.notes.map(prose),
             };
         }),
+        ...(decision.trialReduction
+            ? { trialReduction: reductionView(decision.trialReduction, id) }
+            : {}),
         gates: decision.gates.map((g) => ({
             gate: id(g.gate),
             result: g.passed ? "passed" : `failed (${g.failures})`,
@@ -169,10 +218,13 @@ export function decisionView(decision, suite, lineage = [], options = {}) {
             base: percent(f.base),
             candidate: percent(f.candidate),
         }))),
-        power: [
-            ...decision.power.planning.map((p) => powerRow("planning", p, id, prose)),
-            ...decision.power.run.map((p) => powerRow("this run", p, id, prose)),
-        ],
+        power: decision.resolution === undefined
+            ? [
+                ...decision.power.planning.map((p) => powerRow("planning", p, id, prose)),
+                ...decision.power.run.map((p) => powerRow("this run", p, id, prose)),
+            ]
+            : [],
+        resolution: (decision.resolution ?? []).map((entry) => prose(resolutionLine(entry, id(entry.measure)))),
         sensitivity: decision.measures
             .flatMap((m) => m.sensitivity.map((s) => ({
             measure: id(m.measure),

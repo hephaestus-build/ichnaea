@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { appendFile, mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { appendFile, link, mkdir, readdir, readFile, rename, rm, writeFile, } from "node:fs/promises";
 import { join } from "node:path";
 import { canonicalize } from "../contracts/canonical.js";
 import { Decision, GateResult, } from "../contracts/records/decision.js";
@@ -8,7 +8,9 @@ import { Plan } from "../contracts/records/plan.js";
 import { Run } from "../contracts/records/run.js";
 import { Trial } from "../contracts/records/trial.js";
 import * as z from "zod";
-import { recordProblems } from "./records.js";
+import { recordProblems } from "../contracts/run-records.js";
+import { RunManifest } from "../contracts/run-manifest.js";
+import { runManifest } from "../report/manifest.js";
 import { runDirectory, StoreError } from "./store-path.js";
 export { StoreError } from "./store-path.js";
 /** Thrown when a write would change a record that already exists. */
@@ -57,6 +59,24 @@ async function readOptional(path) {
     }
 }
 const lines = (records, schema) => records.map((r) => `${canonicalize(schema.parse(r))}\n`).join("");
+/** Publish a complete file once. Retrying an identical write is safe. */
+async function publishCanonical(path, value) {
+    const temporary = `${path}.${randomUUID()}.tmp`;
+    const data = `${canonicalize(value)}\n`;
+    try {
+        await writeFile(temporary, data, { flag: "wx" });
+        await link(temporary, path);
+    }
+    catch (error) {
+        if (error.code !== "EEXIST")
+            throw error;
+        if ((await readOptional(path)) !== data)
+            throw new AppendOnlyError(`record already exists: ${path}`);
+    }
+    finally {
+        await rm(temporary, { force: true });
+    }
+}
 function indexEntry(decision, suite) {
     return IndexLine.parse({
         run: decision.run,
@@ -130,6 +150,10 @@ export class FileStore {
     /** Stores the decision once and adds the run to the index. */
     async writeDecision(decision, suite) {
         const parsed = Decision.parse(decision);
+        const stored = await this.read(parsed.run);
+        if (stored.decision)
+            throw new AppendOnlyError(`run '${parsed.run}' already has a decision`);
+        const manifest = runManifest(stored, parsed, await this.aaEvidence(stored.plan));
         try {
             await writeFile(join(this.dir(parsed.run), "decision.json"), `${canonicalize(parsed)}\n`, {
                 flag: "wx",
@@ -140,7 +164,17 @@ export class FileStore {
                 throw new AppendOnlyError(`run '${parsed.run}' already has a decision`);
             throw error;
         }
+        await publishCanonical(join(this.dir(parsed.run), "manifest.json"), manifest);
         await appendFile(join(this.root, "index.jsonl"), `${canonicalize(indexEntry(parsed, suite))}\n`);
+    }
+    /** Appends a later engine calculation without changing the original files. */
+    async writeRecalculation(run, record) {
+        const id = record.identity;
+        if (record.decision.run !== run || !/^sha256:[0-9a-f]{64}$/.test(id))
+            throw new StoreError(`run '${run}': invalid recalculation identity`);
+        const directory = join(this.dir(run), "recalculations");
+        await mkdir(directory, { recursive: true });
+        await publishCanonical(join(directory, `${id.slice("sha256:".length)}.json`), record);
     }
     /** Reads everything stored for a run. Missing primary records are an error, never an empty run. */
     async read(run) {
@@ -158,12 +192,16 @@ export class FileStore {
         if (plan === undefined || runText === undefined)
             throw new StoreError(`run '${run}' has no plan or run record in ${dir}`);
         const decision = await readOptional(join(dir, "decision.json"));
+        const manifest = await readOptional(join(dir, "manifest.json"));
         const stored = {
             plan: parseOne(plan, Plan, `${run}/plan.json`),
             run: parseOne(runText, Run, `${run}/run.json`),
             trials: parseLines(await text("trials.jsonl"), Trial, `${run}/trials.jsonl`),
             values: parseLines(await text("values.jsonl"), MeasureValue, `${run}/values.jsonl`),
             gates: parseLines(await text("gates.jsonl"), GateResult, `${run}/gates.jsonl`),
+            ...(manifest === undefined
+                ? {}
+                : { manifest: parseOne(manifest, RunManifest, `${run}/manifest.json`) }),
             ...(decision === undefined
                 ? {}
                 : { decision: parseOne(decision, Decision, `${run}/decision.json`) }),

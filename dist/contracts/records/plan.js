@@ -1,6 +1,7 @@
 import * as z from "zod";
 import { none } from "../data-class.js";
 import { ArmName, GateId, CaseId, CaseSetId, ConfigurationIdentity, Digest, MeasureId, RunId, Seed, SemVer, SuiteId, Text, Timestamp, TrialId, } from "../primitives.js";
+import { AnalysisPlan } from "./analysis-plan.js";
 import { Configuration } from "./configuration.js";
 import { CiPolicy, Estimand, PrimaryMeasure } from "./suite.js";
 /** A versioned part that can change a verdict, with its hash (REQ-17). */
@@ -89,6 +90,8 @@ export const PlannedTrial = z.strictObject({
     family: none(Text).optional(),
     arm: none(ArmName),
     replicate: none(z.int().min(0)),
+    /** Planned block, starting at zero. */
+    block: none(z.int().min(0)).optional(),
     /**
      * The trial's batch (REQ-25). At two or more trials per case and arm, replicate r runs every case
      * under every arm before r + 1. A case's arms run in an order for each replicate: the base and
@@ -131,6 +134,8 @@ export const TriggerKind = z.enum([
 /** The resolved, locked form of a suite for one run (REQ-16). */
 export const Plan = z.strictObject({
     schema: none(z.literal("ichnaea.plan/1")),
+    /** Locked analysis when the run binds an analysis plan. */
+    analysis: AnalysisPlan.optional(),
     suite: none(SuiteId),
     suiteVersion: none(Text),
     suiteDigest: none(Digest),

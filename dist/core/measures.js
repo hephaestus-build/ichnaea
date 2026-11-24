@@ -11,11 +11,13 @@ const FAILED = new Set(["system_failure", "budget_exceeded"]);
  * completed record without captured output an infrastructure failure first (`NOT_CAPTURED`), so a
  * measure only ever scores output that was captured.
  */
-export function scoreTrials(measures, trials, cases) {
+export function scoreTrials(measures, trials, cases, masks) {
     const values = [];
     for (const measure of measures) {
         if (measure.card.computedBy !== "ichnaea" || !measure.score)
             continue;
+        const locked = masks?.[measure.card.id];
+        const mask = locked === undefined ? undefined : new Set(locked);
         for (const trial of trials) {
             const c = trial.case === null ? undefined : cases.get(trial.case);
             if (!c)
@@ -28,7 +30,7 @@ export function scoreTrials(measures, trials, cases) {
                 source: "ichnaea",
                 dataClass: trial.dataClass,
             };
-            if (measure.appliesTo && !measure.appliesTo(c)) {
+            if (mask ? !mask.has(c.id) : measure.appliesTo && !measure.appliesTo(c)) {
                 values.push({ ...base, applicable: false });
                 continue;
             }

@@ -2,6 +2,7 @@ import * as z from "zod";
 import { content, none } from "../data-class.js";
 import { ArmName, CaseId, ConfigurationIdentity, Digest, GateId, MeasureId, PlanDigest, Real, RecordDataClass, RunId, Seed, SemVer, Text, Timestamp, } from "../primitives.js";
 import { PowerEntry } from "./plan.js";
+import { Resolution } from "./resolution.js";
 import { Estimand } from "./suite.js";
 /** A run verdict (REQ-53). */
 export const Verdict = z.enum(["PASS", "REGRESSION", "INCONCLUSIVE", "INVALID"]);
@@ -35,12 +36,6 @@ export const Flip = z.strictObject({
     base: none(z.number().min(0).max(1)),
     candidate: none(z.number().min(0).max(1)),
 });
-/** One arm's estimate for a measure. */
-export const ArmEstimate = z.strictObject({
-    arm: none(ArmName),
-    rate: Estimate,
-    availability: Availability,
-});
 /**
  * Whether one result of a comparison lies inside the validated domain of its method, and why not
  * (decision 0015). A result that is not validated names at least one reason.
@@ -49,6 +44,19 @@ export const Validity = z.discriminatedUnion("validated", [
     z.strictObject({ validated: none(z.literal(true)), limitations: none(z.array(Text).max(0)) }),
     z.strictObject({ validated: none(z.literal(false)), limitations: none(z.array(Text).min(1)) }),
 ]);
+/** One arm's estimate for a measure. */
+export const ArmEstimate = z.strictObject({
+    arm: none(ArmName),
+    rate: Estimate,
+    availability: Availability,
+    caseAvailability: z
+        .strictObject({
+        planned: none(z.int().min(0)),
+        observed: none(z.int().min(0)),
+    })
+        .optional(),
+    intervalValidity: Validity.optional(),
+});
 /** The comparison of one candidate with the base for one measure. None in estimate-only mode. */
 export const Comparison = z.strictObject({
     base: none(ArmName),
@@ -90,6 +98,24 @@ export const SensitivityResult = z.strictObject({
     /** Whether this imputation changes the measure's verdict, which then becomes INCONCLUSIVE. */
     changesVerdict: none(z.boolean()),
 });
+const Count = none(z.int().min(0));
+const Variance = none(z.number().min(0).nullable());
+const BlockDenominators = z.strictObject({
+    planned: Count,
+    observed: Count,
+    effective: none(Count.nullable()),
+    reason: none(Text).optional(),
+});
+const Noise = z.strictObject({
+    arms: z.array(z.strictObject({
+        arm: none(ArmName),
+        withinCaseVariance: Variance,
+        replicatedCells: Count,
+        caseDispersion: Variance,
+    })),
+    betweenBlockVariance: Variance,
+    contrastBlocks: Count,
+});
 /** The result for one primary or secondary measure. */
 export const MeasureOutcome = z.strictObject({
     measure: none(MeasureId),
@@ -100,6 +126,8 @@ export const MeasureOutcome = z.strictObject({
     comparisons: z.array(Comparison),
     verdict: none(MeasureVerdict),
     coverage: none(z.number().min(0).max(1)),
+    blocks: BlockDenominators.optional(),
+    noise: Noise.optional(),
     /** Both imputations of a primary measure when the analysis ran; empty otherwise. */
     sensitivity: z.array(SensitivityResult),
     notes: none(z.array(Text)),
@@ -109,7 +137,7 @@ export const GateResult = z.strictObject({
     gate: none(GateId),
     passed: none(z.boolean()),
     failures: none(z.int().min(0)),
-    detail: content(z.string()).optional(),
+    detail: content(z.string(), "special").optional(),
 });
 /** The comparison of missing trials between arms (REQ-56). */
 export const Missingness = z.strictObject({
@@ -124,6 +152,27 @@ export const Missingness = z.strictObject({
      * sensitivity analysis changes a verdict.
      */
     sensitivity: none(z.enum(["unchanged", "changes-verdict", "not-needed"])),
+});
+const ReductionMissing = z.strictObject({ status: none(z.literal("missing")) });
+const ReductionEstimate = z.strictObject({
+    status: none(z.enum(["observed", "estimate-only"])),
+    passAll: none(z.number().min(0).max(1)),
+    passAny: none(z.number().min(0).max(1)),
+});
+const ReductionCounts = {
+    case: none(CaseId),
+    plannedTrials: none(z.int().min(0)),
+    validTrials: none(z.int().min(0)),
+};
+/** Descriptive pass^k and pass@k estimates from the registered cases. */
+const TrialReduction = z.strictObject({
+    measure: none(MeasureId),
+    k: none(z.int().min(1)),
+    cases: z.array(z.discriminatedUnion("status", [
+        ReductionMissing.extend(ReductionCounts),
+        ReductionEstimate.extend(ReductionCounts),
+    ])),
+    overall: z.discriminatedUnion("status", [ReductionMissing, ReductionEstimate]),
 });
 /** The verdict of one run with estimates, intervals, flips and lineage (REQ-49 to REQ-56). */
 export const Decision = z.strictObject({
@@ -158,6 +207,8 @@ export const Decision = z.strictObject({
      * so no later plan can take its noise as an assumption.
      */
     power: z.strictObject({ planning: z.array(PowerEntry), run: z.array(PowerEntry) }),
+    resolution: z.array(Resolution).optional(),
+    trialReduction: TrialReduction.optional(),
     missingness: Missingness,
     invalidReasons: none(z.array(Text)),
     limitations: none(z.array(Text)),

@@ -313,6 +313,7 @@ export declare const CaseSet: z.ZodObject<{
         }>;
         family: z.ZodOptional<z.ZodString>;
     }, z.core.$strict>>;
+    applicability: z.ZodOptional<z.ZodRecord<z.core.$ZodBranded<z.ZodString, "MeasureId", "out">, z.ZodArray<z.core.$ZodBranded<z.ZodString, "CaseId", "out">>>>;
 }, z.core.$strict>;
 /** A case set. */
 export type CaseSet = z.infer<typeof CaseSet>;

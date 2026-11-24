@@ -1,7 +1,7 @@
 import * as z from "zod";
 import { Json } from "../contracts/primitives.ts";
 import { TrialIdentity, WorkerReady } from "../contracts/records/worker.ts";
-import { type RunRecords } from "./records.ts";
+import { type RunRecords } from "../contracts/run-records.ts";
 import { type RegistrationReceipt } from "./registration.ts";
 type Owner = {
     host: string;

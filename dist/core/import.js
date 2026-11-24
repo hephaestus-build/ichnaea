@@ -2,12 +2,15 @@ import { readFile } from "node:fs/promises";
 import { canonicalize, digest } from "../contracts/canonical.js";
 import { Case, CaseSet } from "../contracts/records/case.js";
 import { Configuration } from "../contracts/records/configuration.js";
+import { Plan } from "../contracts/records/plan.js";
 import { Run } from "../contracts/records/run.js";
 import { Suite } from "../contracts/records/suite.js";
 import { proportionProblem } from "../contracts/values.js";
+import { planningPower } from "../plan/power.js";
+import { bindImportedPlan } from "./analysis-plan.js";
 import { scoreTrials } from "./measures.js";
 import { createPlan } from "./planner.js";
-import { recordProblems } from "./records.js";
+import { recordProblems } from "../contracts/run-records.js";
 import { FileStore, StoreError } from "./store.js";
 /**
  * The error kind of a trial whose output was not captured. Such a trial is an infrastructure
@@ -93,17 +96,8 @@ async function citations(store, runs) {
     }
     return { decisions };
 }
-/**
- * Import mode (REQ-22): resolves the plan, runs an importer over another runner's result files,
- * scores the measures Ichnaea computes, runs the hard gates that have a check, and stores plan,
- * trials, values, gates and the run with its ledger in one atomic write. Every record is checked
- * before anything is written. Import mode makes no model call, so its worst-case calls are zero.
- */
-export async function importRun(input) {
+async function prepareLegacyImport(input, store) {
     const { host } = input;
-    const importer = host.importers.get(input.importer);
-    if (!importer)
-        throw new ImportError(`no importer '${input.importer}'; the plugins provide: ${[...host.importers.keys()].join(", ") || "none"}`);
     const suite = Suite.parse(await json(input.suite));
     const caseSet = CaseSet.parse(await json(input.caseSet));
     const cases = (await readFile(input.cases, "utf8")).split("\n").flatMap((line, i) => {
@@ -126,9 +120,8 @@ export async function importRun(input) {
         role: a.role,
         configuration: Configuration.parse(await json(a.configuration)),
     })));
-    const store = new FileStore(input.store);
     const aa = await citations(store, input.aa ?? []);
-    const plan = await host.planCreated(await createPlan({
+    const draft = await createPlan({
         suite,
         caseSet,
         cases,
@@ -143,9 +136,37 @@ export async function importRun(input) {
         seed: input.seed,
         now: input.now,
         ichnaea: input.ichnaea,
-    }));
+    });
+    const { refuse, ...power } = planningPower(draft);
+    if (refuse !== undefined)
+        throw new ImportError(refuse);
+    const plan = Plan.parse({ ...draft, ...power });
+    return { plan, cases };
+}
+/**
+ * Import mode (REQ-22): resolves the plan, runs an importer over another runner's result files,
+ * scores the measures Ichnaea computes, runs the hard gates that have a check, and stores plan,
+ * trials, values, gates and the run with its ledger in one atomic write. Every record is checked
+ * before anything is written. Import mode makes no model call, so its worst-case calls are zero.
+ */
+export async function importRun(input) {
+    const { host } = input;
+    const importer = host.importers.get(input.importer);
+    if (!importer)
+        throw new ImportError(`no importer '${input.importer}'; the plugins provide: ${[...host.importers.keys()].join(", ") || "none"}`);
+    const store = new FileStore(input.store);
+    const { plan, cases } = "locked" in input
+        ? await bindImportedPlan(input.locked, host, {
+            trigger: input.trigger,
+            varies: [...(input.varies ?? [])],
+            seed: input.seed,
+            createdAt: input.now,
+            ichnaea: input.ichnaea,
+        })
+        : await prepareLegacyImport(input, store);
     const result = await importer.run({
         files: input.files,
+        plan,
         options: {
             arms: plan.arms.map((a) => ({ name: a.name, identity: a.identity })),
             run: input.run,
@@ -193,7 +214,7 @@ export async function importRun(input) {
     const valid = new Set(trials.filter((t) => t.outcome !== "invalid_configuration").map((t) => t.id));
     const values = [
         ...result.values,
-        ...scoreTrials([...host.measures.values()].filter((m) => planMeasures.has(m.card.id)), trials, byCase),
+        ...scoreTrials([...host.measures.values()].filter((m) => planMeasures.has(m.card.id)), trials, byCase, plan.analysis?.applicability),
     ].filter((v) => valid.has(v.trial));
     // Gates: a gate with a check is computed here; the importer reports only gates without one.
     const gates = [];
@@ -232,7 +253,7 @@ export async function importRun(input) {
         schema: "ichnaea.run/1",
         id: input.run,
         plan: await digest(plan),
-        exploratory: false,
+        exploratory: plan.analysis !== undefined,
         environment: {
             node: process.versions.node,
             platform: `${process.platform}-${process.arch}`,
@@ -258,9 +279,6 @@ export async function importRun(input) {
         completedAt: input.now,
     });
     await store.createRun({ plan, run, trials, values, gates });
-    for (const t of trials)
-        await host.trialRecorded(t);
-    await host.runCompleted(run);
     return { plan, trials: trials.length, values: values.length };
 }
 //# sourceMappingURL=import.js.map

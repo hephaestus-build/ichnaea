@@ -1,3 +1,4 @@
+import { AnalysisLock, AnalysisPlan } from "./records/analysis-plan.js";
 import { Case, CaseSet } from "./records/case.js";
 import { Configuration } from "./records/configuration.js";
 import { ConfigurationV2 } from "./records/configuration-v2.js";
@@ -72,6 +73,20 @@ export const RECORD_CONTRACTS = [
         schema: SuiteLock,
         stability: "alpha",
         description: "The lock of a suite: the digests of its sources, instruments and measures, written by lock.",
+    },
+    {
+        name: "analysisPlan",
+        id: "ichnaea.analysisPlan/1",
+        schema: AnalysisPlan,
+        stability: "alpha",
+        description: "Locked methods, case masks, measures and horizon before a candidate is bound.",
+    },
+    {
+        name: "analysisLock",
+        id: "ichnaea.lock/1",
+        schema: AnalysisLock,
+        stability: "alpha",
+        description: "The case and instrument pins for the analysis plan.",
     },
     {
         name: "plan",
