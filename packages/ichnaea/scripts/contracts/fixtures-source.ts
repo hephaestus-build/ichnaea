@@ -1396,6 +1396,16 @@ export const VALID_EXTRA: Record<string, Record<string, Mutation>> = {
       r["failure"] = { class: "protocol", kind: "bad-request" };
       r["usage"] = { calls: 0, responseIds: [] };
     },
+    "bad-request-before-settings": (r) => {
+      withoutDelivery(r);
+      r["failure"] = { class: "protocol", kind: "bad-request" };
+      r["usage"] = { calls: 0, responseIds: [] };
+      r["observed"] = { kind: "unavailable" };
+    },
+    "settings-and-context": (r) => {
+      r["context"] = "process-instance-7";
+      r["observed"] = { kind: "settings", configuration: d("c3") };
+    },
     // A trial that delivers a directory instead of an inline output.
     "artifacts-only": (r) => {
       delete r["output"];

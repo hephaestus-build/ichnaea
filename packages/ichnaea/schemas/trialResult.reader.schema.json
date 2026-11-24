@@ -618,188 +618,257 @@
       ]
     },
     "observed": {
-      "type": "object",
-      "properties": {
-        "code": {
-          "anyOf": [
-            {
-              "type": "object",
-              "properties": {
-                "commit": {
-                  "type": "string",
-                  "pattern": "^[0-9a-f]{40}$",
-                  "x-ichnaea-data": {
-                    "class": "none",
-                    "identifier": "none",
-                    "egress": [
-                      "*"
-                    ],
-                    "retention": "record"
-                  }
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "commit": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{40}$",
+                      "x-ichnaea-data": {
+                        "class": "none",
+                        "identifier": "none",
+                        "egress": [
+                          "*"
+                        ],
+                        "retention": "record"
+                      }
+                    },
+                    "image": {
+                      "type": "string",
+                      "pattern": "^sha256:[0-9a-f]{64}$",
+                      "x-ichnaea-data": {
+                        "class": "none",
+                        "identifier": "none",
+                        "egress": [
+                          "*"
+                        ],
+                        "retention": "record"
+                      }
+                    }
+                  },
+                  "required": [
+                    "commit"
+                  ]
                 },
-                "image": {
-                  "type": "string",
-                  "pattern": "^sha256:[0-9a-f]{64}$",
-                  "x-ichnaea-data": {
-                    "class": "none",
-                    "identifier": "none",
-                    "egress": [
-                      "*"
-                    ],
-                    "retention": "record"
-                  }
+                {
+                  "type": "object",
+                  "properties": {
+                    "image": {
+                      "type": "string",
+                      "pattern": "^sha256:[0-9a-f]{64}$",
+                      "x-ichnaea-data": {
+                        "class": "none",
+                        "identifier": "none",
+                        "egress": [
+                          "*"
+                        ],
+                        "retention": "record"
+                      }
+                    },
+                    "commit": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{40}$",
+                      "x-ichnaea-data": {
+                        "class": "none",
+                        "identifier": "none",
+                        "egress": [
+                          "*"
+                        ],
+                        "retention": "record"
+                      }
+                    }
+                  },
+                  "required": [
+                    "image"
+                  ]
                 }
-              },
-              "required": [
-                "commit"
               ]
             },
-            {
+            "model": {
+              "type": "string",
+              "minLength": 1,
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "route": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "parameters": {
               "type": "object",
-              "properties": {
-                "image": {
-                  "type": "string",
-                  "pattern": "^sha256:[0-9a-f]{64}$",
-                  "x-ichnaea-data": {
-                    "class": "none",
-                    "identifier": "none",
-                    "egress": [
-                      "*"
-                    ],
-                    "retention": "record"
-                  }
-                },
-                "commit": {
-                  "type": "string",
-                  "pattern": "^[0-9a-f]{40}$",
-                  "x-ichnaea-data": {
-                    "class": "none",
-                    "identifier": "none",
-                    "egress": [
-                      "*"
-                    ],
-                    "retention": "record"
-                  }
-                }
+              "propertyNames": {
+                "type": "string"
               },
-              "required": [
-                "image"
-              ]
+              "additionalProperties": {
+                "$ref": "#/$defs/JsonValue"
+              },
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "configuration": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "configurationRead": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "environment": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "minLength": 1
+              },
+              "additionalProperties": {
+                "type": "string",
+                "minLength": 1
+              },
+              "x-ichnaea-data": {
+                "class": "inherit",
+                "identifier": "quasi",
+                "egress": [
+                  "*"
+                ],
+                "retention": "subject"
+              }
+            },
+            "modules": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "x-ichnaea-data": {
+                "class": "inherit",
+                "identifier": "quasi",
+                "egress": [
+                  "*"
+                ],
+                "retention": "subject"
+              }
             }
+          },
+          "required": [
+            "code",
+            "model",
+            "route",
+            "parameters",
+            "configuration",
+            "configurationRead",
+            "environment"
           ]
         },
-        "model": {
-          "type": "string",
-          "minLength": 1,
-          "x-ichnaea-data": {
-            "class": "none",
-            "identifier": "none",
-            "egress": [
-              "*"
-            ],
-            "retention": "record"
-          }
-        },
-        "route": {
-          "type": "string",
-          "pattern": "^sha256:[0-9a-f]{64}$",
-          "x-ichnaea-data": {
-            "class": "none",
-            "identifier": "none",
-            "egress": [
-              "*"
-            ],
-            "retention": "record"
-          }
-        },
-        "parameters": {
+        {
           "type": "object",
-          "propertyNames": {
-            "type": "string"
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "settings",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "configuration": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            }
           },
-          "additionalProperties": {
-            "$ref": "#/$defs/JsonValue"
-          },
-          "x-ichnaea-data": {
-            "class": "none",
-            "identifier": "none",
-            "egress": [
-              "*"
-            ],
-            "retention": "record"
-          }
+          "required": [
+            "kind",
+            "configuration"
+          ]
         },
-        "configuration": {
-          "type": "string",
-          "pattern": "^sha256:[0-9a-f]{64}$",
-          "x-ichnaea-data": {
-            "class": "none",
-            "identifier": "none",
-            "egress": [
-              "*"
-            ],
-            "retention": "record"
-          }
-        },
-        "configurationRead": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          },
-          "x-ichnaea-data": {
-            "class": "none",
-            "identifier": "none",
-            "egress": [
-              "*"
-            ],
-            "retention": "record"
-          }
-        },
-        "environment": {
+        {
           "type": "object",
-          "propertyNames": {
-            "type": "string",
-            "minLength": 1
+          "properties": {
+            "kind": {
+              "type": "string",
+              "const": "unavailable",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            }
           },
-          "additionalProperties": {
-            "type": "string",
-            "minLength": 1
-          },
-          "x-ichnaea-data": {
-            "class": "inherit",
-            "identifier": "quasi",
-            "egress": [
-              "*"
-            ],
-            "retention": "subject"
-          }
-        },
-        "modules": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          },
-          "x-ichnaea-data": {
-            "class": "inherit",
-            "identifier": "quasi",
-            "egress": [
-              "*"
-            ],
-            "retention": "subject"
-          }
+          "required": [
+            "kind"
+          ]
         }
-      },
-      "required": [
-        "code",
-        "model",
-        "route",
-        "parameters",
-        "configuration",
-        "configurationRead",
-        "environment"
       ]
+    },
+    "context": {
+      "type": "string",
+      "minLength": 1,
+      "x-ichnaea-data": {
+        "class": "none",
+        "identifier": "none",
+        "egress": [
+          "*"
+        ],
+        "retention": "record"
+      }
     },
     "trace": {
       "type": "object",
