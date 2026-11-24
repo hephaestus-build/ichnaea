@@ -21,3 +21,18 @@ Both library functions are synchronous and read no files.
   claim are not allowed, and a lineage footer is required.
 - The HTML report has no JavaScript and no external resource. Every verdict is written out, so its
   meaning never rests on colour. The colours come from the Okabe–Ito palette.
+
+## Inter-rater agreement
+
+Pass `--ratings ratings.json` to `ichnaea report --run <id>` to include an agreement section in
+Markdown, HTML, and `--json` output. The input is a JSON object with `metric` (`nominal`, `ordinal`,
+or `interval`) and a `units` array. Each unit has an `item`, a `stratum`, and `raters`, an array of
+numbers or nulls. Keep the same rater columns for every unit. Several units may share an item,
+such as the answers from both arms for one case. Each item belongs to one stratum.
+
+The section gives Krippendorff’s alpha, the number of available and paired ratings, and a
+descriptive 95% percentile interval. Each bootstrap draw resamples whole items within their
+strata and keeps all the ratings for each selected item. The interval uses the plan seed and
+leaves out draws with undefined alpha. An unavailable estimate or bound is null in JSON. The
+agreement numbers do not affect the decision. The report shows aggregate counts and does not
+include item identifiers, stratum names, or individual ratings.

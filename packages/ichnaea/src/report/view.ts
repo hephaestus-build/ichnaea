@@ -1,3 +1,4 @@
+import type { RatingAgreement } from "../calibration/ratings-agreement.ts";
 import { resolutionLine } from "../plan/resolution.ts";
 import type { Real } from "../contracts/primitives.ts";
 import type { Decision } from "../contracts/records/decision.ts";
@@ -136,6 +137,8 @@ export interface SensitivityRow {
 
 /** The view model of a decision. Every output renders from it, so they show the same numbers. */
 export interface DecisionView {
+  /** Descriptive agreement across imported ratings. */
+  readonly agreement?: RatingAgreement;
   /** The report's title, which names the suite. */
   readonly title: string;
   /** The run's verdict, or `ESTIMATE-ONLY` when the decision gives none. */

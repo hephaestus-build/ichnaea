@@ -206,9 +206,10 @@
                   "!../contracts/**",
                   "!../decide/*.ts",
                   "!../plan/resolution.ts",
+                  "!../calibration/ratings-agreement.ts",
                   "**/index.ts"
                 ],
-                "message": "src/report imports only its own modules, src/contracts, src/decide and the resolution formatter. A module imports the file that defines what it uses, never an index.ts barrel."
+                "message": "src/report imports only its own modules, src/contracts, src/decide, the resolution formatter and rating agreement. A module imports the file that defines what it uses, never an index.ts barrel."
               }
             ]
           }
