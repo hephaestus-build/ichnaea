@@ -50,6 +50,7 @@ export default defineConfig({
           items: [
             { label: "Record schemas", link: "/reference/schemas/" },
             { label: "Reason codes", link: "/reference/reason-codes/" },
+            { label: "Requirement status", slug: "reference/requirements-status" },
             {
               label: "Records",
               collapsed: true,

@@ -1,10 +1,9 @@
 # @tumaet/ichnaea
 
-Ichnaea evaluates GenAI features whenever their configuration changes, and gives each change a
-verdict from paired statistics. This package holds all of it: the record contracts, the statistics,
-the plugin host and CLI, the decision rule and the reports. The
-[repository README](https://github.com/hephaestus-build/ichnaea#readme) shows how to install it
-and runs a five-minute example.
+Ichnaea compares GenAI configurations on the same cases. This package holds the record contracts,
+statistics, plugin host, CLI, decision rule and reports. The
+[repository README](https://github.com/hephaestus-build/ichnaea#readme) shows how to install it,
+gives a five-minute example and [states what the results can show](https://github.com/hephaestus-build/ichnaea#what-the-results-can-show).
 
 ## Subpaths
 
