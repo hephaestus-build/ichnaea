@@ -373,7 +373,7 @@ export declare const TrialResult: z.ZodObject<{
         firstChunkAt: z.ZodOptional<z.ZodISODateTime>;
         endedAt: z.ZodISODateTime;
     }, z.core.$strict>>;
-    observed: z.ZodObject<{
+    observed: z.ZodUnion<readonly [z.ZodObject<{
         code: z.ZodUnion<readonly [z.ZodObject<{
             commit: z.ZodString;
             image: z.ZodOptional<z.ZodString>;
@@ -388,7 +388,13 @@ export declare const TrialResult: z.ZodObject<{
         configurationRead: z.ZodArray<z.ZodString>;
         environment: z.ZodRecord<z.ZodString, z.ZodString>;
         modules: z.ZodOptional<z.ZodArray<z.ZodString>>;
-    }, z.core.$strict>;
+    }, z.core.$strict>, z.ZodObject<{
+        kind: z.ZodLiteral<"settings">;
+        configuration: z.ZodString;
+    }, z.core.$strict>, z.ZodObject<{
+        kind: z.ZodLiteral<"unavailable">;
+    }, z.core.$strict>]>;
+    context: z.ZodOptional<z.ZodString>;
     trace: z.ZodOptional<z.ZodObject<{
         ids: z.ZodArray<z.ZodString>;
         spans: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodInt>>;

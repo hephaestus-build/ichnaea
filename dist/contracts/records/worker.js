@@ -400,8 +400,21 @@ export const TrialResult = z.strictObject({
     usage: TrialUsage,
     /** The times that the worker reports. Absent means unknown, never zero. */
     timing: Timing.optional(),
-    /** The configuration the worker ran with. */
-    observed: ObservedConfiguration,
+    /** The evidence the worker has about the configuration it used. */
+    observed: z.union([
+        ObservedConfiguration,
+        z.strictObject({
+            kind: none(z.literal("settings")),
+            /** Digest of the bytes that supplied the callback's settings. */
+            configuration: none(Digest),
+        }),
+        z.strictObject({
+            /** A protocol failure that happened before the configuration could be read. */
+            kind: none(z.literal("unavailable")),
+        }),
+    ]),
+    /** The process or long-lived server instance that produced the result. */
+    context: none(Text).optional(),
     /** The traces that the trial produced. */
     trace: TrialTrace.optional(),
 });

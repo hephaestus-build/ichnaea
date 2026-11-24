@@ -7,6 +7,7 @@ export * from "./planner.js";
 export * from "./plugin.js";
 export * from "./records.js";
 export * from "./semver.js";
+export { serveWorker } from "./serve-worker.js";
 export { AppendOnlyError, FileStore, StoreError, } from "./store.js";
 export * from "./version.js";
 //# sourceMappingURL=index.js.map

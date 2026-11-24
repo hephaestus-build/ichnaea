@@ -7,6 +7,7 @@ export * from "./planner.ts";
 export * from "./plugin.ts";
 export * from "./records.ts";
 export * from "./semver.ts";
+export { serveWorker, type WorkerReply, type WorkerTrial } from "./serve-worker.ts";
 export {
   AppendOnlyError,
   FileStore,
