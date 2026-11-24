@@ -133,6 +133,130 @@ To undo it, run `pnpm unlink @tumaet/ichnaea` and then `pnpm install`, so that y
 lockfile's version is installed again. Stop the watch with Ctrl-C. Never commit the link: it
 changes your `package.json` and lockfile to a path on your machine.
 
+## Run a small suite
+
+In a project with Ichnaea installed, create these three files. The example checks whether
+the worker names the right city.
+
+<!-- The packed consumer test writes ichnaea.config.ts. -->
+
+```ts
+import { defineConfig, defineMeasure, defineSuite } from "@tumaet/ichnaea";
+import { Case, Trial } from "@tumaet/ichnaea/contracts";
+
+const defaults = {
+  unit: "turn",
+  dataClass: "none",
+  pool: "development",
+  provenance: {
+    source: "authored",
+    selection: "curated",
+    created: "2026-11-24",
+    exposure: "public",
+    licence: "CC0-1.0",
+  },
+};
+const example = Case.parse({
+  ...defaults,
+  schema: "ichnaea.case/1",
+  id: "capital-fr",
+  input: { question: "What is the capital of France?" },
+  references: { answer: "Paris" },
+});
+function fixture(name: string, output?: string) {
+  const trial = Trial.parse({
+    schema: "ichnaea.trial/1",
+    id: name,
+    source: "offline",
+    case: example.id,
+    unit: "turn",
+    configuration: `sha256:${"0".repeat(64)}`,
+    replicate: 0,
+    outcome: "completed",
+    dataClass: "none",
+    output,
+  });
+  const expected =
+    output === undefined
+      ? ("missing" as const)
+      : { type: "binary" as const, pass: output === "Paris" };
+  return { name, case: example, trial, expected };
+}
+const correct = defineMeasure({
+  card: {
+    id: "app/correct",
+    version: "1.0.0",
+    valueType: "binary",
+    unit: "proportion",
+    direction: "higher",
+    computedBy: "ichnaea",
+    tier: "primary",
+    unitOfEvaluation: "turn",
+    construct: "The answer names the right city.",
+    operationalDefinition: "The answer equals the reference.",
+    justification: "The user needs a correct answer.",
+    errorModel: "A paraphrase can fail.",
+    applicability: "Cases with a reference answer.",
+    establishes: "Literal agreement.",
+  },
+  appliesTo: (c) => c.references?.["answer"] !== undefined,
+  score: (trial, c) => ({ type: "binary", pass: trial.output === c.references?.["answer"] }),
+  examples: {
+    good: [fixture("correct", "Paris")],
+    bad: [fixture("wrong-city", "Lyon")],
+    nothing: [fixture("empty", "")],
+    incomplete: [fixture("missing")],
+  },
+});
+export default defineConfig({
+  plugins: [{ id: "app", version: "1.0.0", measures: [correct] }],
+  suite: defineSuite({
+    id: "answers",
+    cases: "cases.jsonl",
+    caseDefaults: Case.pick({
+      unit: true,
+      dataClass: true,
+      pool: true,
+      provenance: true,
+    }).parse(defaults),
+    primary: ["app/correct"],
+    arms: { base: { model: "original" }, candidate: { model: "candidate" } },
+    objective: "Compare answers",
+    construct: "Accuracy",
+    decision: "Review the candidate",
+    scope: "Short capital-city questions",
+    nonCoverage: ["Long answers"],
+  }),
+});
+```
+
+<!-- The packed consumer test writes cases.jsonl. -->
+
+```jsonl
+{"id":"capital-fr","input":{"question":"What is the capital of France?"},"references":{"answer":"Paris"}}
+```
+
+<!-- The packed consumer test writes worker.ts. -->
+
+```ts
+import { serveWorker } from "@tumaet/ichnaea";
+
+await serveWorker(({ case: c }) => ({
+  output: c.input["question"] === "What is the capital of France?" ? "Paris" : "",
+  usage: { calls: 0, responseIds: [] },
+}));
+```
+
+Run the candidate against the base.
+
+```sh
+pnpm exec ichnaea run -- node worker.ts
+```
+
+The command prints a plan line and an `unregistered` verdict line. It stores the decision
+and reports in `.ichnaea/runs/`. To measure variation with the same configuration on both
+arms, add `--noise` before `--`. This prints the plan line after the noise report.
+
 ## Five-minute example
 
 [`examples/support-assistant`](examples/support-assistant/README.md) is a synthetic support

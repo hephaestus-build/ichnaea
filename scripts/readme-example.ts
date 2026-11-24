@@ -208,3 +208,19 @@ export function missingFromInstall(readme: string, source: (file: string) => str
     .filter(({ name }) => !added.includes(name))
     .map(({ file, name }) => `${file} imports ${name}, which the README's pnpm add leaves out`);
 }
+
+/** The three authored files used by the packed newcomer check. */
+export function readmeNewcomer(readme: string): Readonly<Record<string, string>> {
+  const lines = readme.split("\n");
+  return Object.fromEntries(
+    [
+      ["ichnaea.config.ts", "ts"],
+      ["cases.jsonl", "jsonl"],
+      ["worker.ts", "ts"],
+    ].map(([file, language]) => {
+      if (!file || !language) throw new Error("invalid newcomer file");
+      const marker = `<!-- The packed consumer test writes ${file}. -->`;
+      return [file, `${blockAfter(lines, marker, language).join("\n")}\n`];
+    }),
+  );
+}
