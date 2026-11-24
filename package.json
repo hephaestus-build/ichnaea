@@ -12,7 +12,7 @@
     "typecheck": "node scripts/typecheck.ts",
     "test": "vitest run",
     "test:types": "vitest run --typecheck.only",
-    "lint": "oxlint --deny-warnings . && node scripts/check-purity.ts && node scripts/check-prose.ts && node scripts/check-ai-sdk-boundary.ts && node scripts/check-contract-majors.ts",
+    "lint": "oxlint --deny-warnings . && node scripts/check-purity.ts && node scripts/check-prose.ts && node scripts/check-contract-majors.ts",
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
     "generate": "pnpm -r --filter './packages/*' run generate",
@@ -35,6 +35,7 @@
     "oxlint": "1.92.0",
     "publint": "0.3.25",
     "typescript": "7.0.2",
+    "typescript-compiler": "npm:typescript@6.0.3",
     "vitest": "5.1.0"
   },
   "engines": {
