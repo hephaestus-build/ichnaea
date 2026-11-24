@@ -1,4 +1,4 @@
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -115,10 +115,12 @@ describe("a breaking change since the last tag", () => {
     expect(breakingProblem("v0.2.5", ["v0.2.4"], ["fix: one"])).toBeUndefined();
   });
 
-  it("counts from the last release, so the pre-releases of a new minor may break", () => {
-    expect(breakingProblem("v0.3.0-rc.2", ["v0.2.4", "v0.3.0-rc.1"], breaking)).toBeUndefined();
-    expect(breakingProblem("v0.3.0", ["v0.2.4", "v0.3.0-rc.1"], breaking)).toBeUndefined();
-    expect(breakingProblem("v0.2.5-rc.1", ["v0.2.4"], breaking)).toMatch(/must raise the minor/);
+  it("requires a new minor after a breaking change to a pre-release", () => {
+    const others = ["v0.2.4", "v0.3.0-rc.1"];
+    expect(breakingProblem("v0.3.0-rc.2", others, breaking)).toMatch(/must raise the minor/);
+    expect(breakingProblem("v0.3.1-rc.1", others, breaking)).toMatch(/must raise the minor/);
+    expect(breakingProblem("v0.4.0-rc.1", others, breaking)).toBeUndefined();
+    expect(breakingProblem("v0.3.0-rc.2", others, ["fix: one"])).toBeUndefined();
   });
 
   it("ignores a stray release outside the 0.x line", () => {
@@ -127,7 +129,6 @@ describe("a breaking change since the last tag", () => {
 
   it("needs nothing before the first release", () => {
     expect(breakingProblem("v0.1.0", [], breaking)).toBeUndefined();
-    expect(breakingProblem("v0.1.0-rc.2", ["v0.1.0-rc.1"], breaking)).toBeUndefined();
   });
 });
 
@@ -150,6 +151,11 @@ describe("the v* tags and the commits of a repository", () => {
       ],
       { cwd: repo, encoding: "utf8" },
     );
+  const check = (tag: string) =>
+    spawnSync(process.execPath, [join(import.meta.dirname, "check-release-tag.ts"), tag], {
+      cwd: repo,
+      encoding: "utf8",
+    });
 
   it("reads the v* tags with git tag, and leaves other tags out", () => {
     git("init", "--quiet", "--initial-branch=main");
@@ -167,5 +173,32 @@ describe("the v* tags and the commits of a repository", () => {
       "fix: second\n\nBREAKING CHANGE: y",
     ]);
     expect(commitMessages(undefined, "HEAD", repo)).toHaveLength(3);
+  });
+
+  it("the workflow check emits a version for pre-releases and refuses stable or malformed tags", () => {
+    for (const [tag, error] of [
+      ["v0.11.0", "must be a 0.x pre-release"],
+      ["v0.11.0-rc.", "is not v0.<minor>.<patch>"],
+    ] as const) {
+      const result = check(tag);
+      expect(result.status).toBe(1);
+      expect(result.stdout).toBe("");
+      expect(result.stderr).toContain(error);
+    }
+    const rc = check("v0.11.0-rc.1");
+    expect(rc.status, rc.stderr).toBe(0);
+    expect(rc.stdout).toBe("version=0.11.0-rc.1\n");
+  });
+
+  it("the workflow check refuses a breaking change on the same minor as a prior pre-release", () => {
+    git("tag", "v0.11.0-rc.1");
+    git("commit", "--quiet", "--allow-empty", "-m", "feat!: a breaking change");
+    const tooLow = check("v0.11.1-rc.1");
+    expect(tooLow.status).toBe(1);
+    expect(tooLow.stdout).toBe("");
+    expect(tooLow.stderr).toContain("must raise the minor version");
+    const nextMinor = check("v0.12.0-rc.1");
+    expect(nextMinor.status, nextMinor.stderr).toBe(0);
+    expect(nextMinor.stdout).toBe("version=0.12.0-rc.1\n");
   });
 });

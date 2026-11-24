@@ -200,9 +200,10 @@ describe("release.yml", () => {
     expect(npm).toBeLessThan(publish);
     expect(publishStep).toContain(
       'npm stage publish "./release/assets/$TARBALL" --provenance --access public \\\n' +
-        '            --tag "$DIST_TAG" --ignore-scripts',
+        "            --tag next --ignore-scripts",
     );
-    expect(publishStep).toContain("DIST_TAG: ${{ needs.check.outputs.dist-tag }}");
+    const [, releaseTag] = release.step("pack", "The dist-tag of the GitHub release");
+    expect(releaseTag).toContain("DIST_TAG: next");
     expect(release.steps("stage").at(-1)).toBe(publishStep);
   });
 });

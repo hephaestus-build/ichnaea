@@ -37,7 +37,7 @@ comes from reproducibility. The verify job of the same workflow rebuilds the new
 ## Releases
 
 A release is a version of `@tumaet/ichnaea` on npm, and a GitHub release with the same tarball.
-[Decision 0021](docs/decisions/0021-npm-staged-publishing.md) gives the chain. No workflow
+[Decision 0022](docs/decisions/0022-release-candidates-on-next.md) gives the release rules. No workflow
 publishes: `.github/workflows/release.yml` stages each version, and a package owner approves it on
 npmjs.com with two-factor authentication. Versions are 0.x semver, and the release notes are the
 one change log.
@@ -45,41 +45,44 @@ one change log.
 ### Set up once
 
 1. Apply the repository settings of [Repository settings](#repository-settings), steps 8 and 10.
-2. Bootstrap the package and its trusted publisher, as step 15 says. A trusted publisher needs a
-   package that exists, so a scope owner publishes `0.0.0-bootstrap` by hand once.
-3. The first real version, 0.1.0, waits until the record contracts are set, so that no record
-   shape is frozen by accident.
+2. Bootstrap the package as step 15 says. A trusted publisher needs a package that exists, so a
+   scope owner publishes `0.0.0-bootstrap` by hand once.
+3. Configure the trusted publisher as step 15 says when the `0.1.0-rc.1` build is ready to run.
+   Approve the candidate within the
+   [two-day window for the first successful publish](https://docs.npmjs.com/trusted-publishers/#trusted-publisher-configuration-expiry).
 
 ### Cut a release
 
-1. Choose the version. In 0.x, a breaking change since the last tag (`type!:` or a
-   `BREAKING CHANGE:` footer) needs a new minor version; anything else may be a patch. A
-   pre-release, `v0.<minor>.<patch>-rc.<n>`, goes to the dist-tag `next`, everything else to
-   `latest`. `main` keeps `0.0.0`: the workflow stamps the tag's version.
+1. Choose a 0.x pre-release such as `v0.<minor>.<patch>-rc.<n>`. The workflow stages it with
+   the dist-tag `next`. Stable tags fail the release check. In 0.x, a breaking change since
+   the previous version tag, including a pre-release (`type!:` or a `BREAKING CHANGE:` footer),
+   needs a new minor version.
+   `main` keeps `0.0.0`. The workflow stamps the tag's version.
 2. Tag the commit on `main` and push the tag. Only the `maintainer` team may create a `v*` tag:
 
    ```sh
    git fetch origin main
-   git tag -s v0.1.0 origin/main -m v0.1.0
-   git push origin refs/tags/v0.1.0
+   git tag -s v0.1.0-rc.1 origin/main -m v0.1.0-rc.1
+   git push origin refs/tags/v0.1.0-rc.1
    ```
 
-3. `release.yml` checks that the commit is on `main`, that the tag is greater than every other
-   `v*` tag and bumps the minor version on a breaking change, and runs `pnpm run check`. It packs
+3. `release.yml` checks that the commit is on `main`, that the tag is a pre-release above every
+   other 0.x tag and bumps the minor version on a breaking change, and runs `pnpm run check`. It packs
    the tarball once, runs the consumer test on it on Node 24.3.0 and 26, and stages it. A failed
    run stages nothing. Fix the cause on `main` and push the next version's tag: a `v*` tag never
    moves.
 4. Approve the staged version on npmjs.com with two-factor authentication, or with
    `npm stage list @tumaet/ichnaea` and `npm stage approve <stage-id>`.
-   Before you approve, check four facts:
+   Before you approve, check these facts:
    - the version is the tag's version;
+   - the dist-tag is `next`;
    - the integrity is the `sha512-…` that the stage job prints;
    - the provenance links to the run of `release.yml` for the tag;
    - the commit that the provenance names is the tag's commit and is reachable from `main`:
 
      ```sh
      git fetch origin main --tags
-     test "$(git rev-parse 'refs/tags/v0.1.0^{commit}')" = <commit in the provenance>
+     test "$(git rev-parse 'refs/tags/v0.1.0-rc.1^{commit}')" = <commit in the provenance>
      git merge-base --is-ancestor <commit in the provenance> origin/main && echo on main
      ```
 
@@ -93,7 +96,7 @@ one change log.
    finish one at once, run it by hand:
 
    ```sh
-   gh workflow run release-finish.yml --ref main -f tag=v0.1.0
+   gh workflow run release-finish.yml --ref main -f tag=v0.1.0-rc.1
    ```
 
    It runs only `main`'s code, never the tag's. It picks the tag's release run by the tag's commit.
@@ -126,9 +129,10 @@ Nobody may move or delete a `v*` tag, so a wrong one stays.
 - **A tag outside the 0.x line,** a typo such as `vnext` or a version such as `v1.0.0`: the tag
   check ignores it and names it in its log, so it blocks nothing. Its own release run fails at the
   tag check and stages nothing.
-- **A 0.x version that is too high,** such as `v0.10.0` for `v0.1.0`: its run stages that version,
-  so reject it on npm. The tag then blocks every lower version. Either release above it, or remove
-  it. To remove it, an admin sets the ruleset `release tags: nobody moves or deletes them` to
+- **A 0.x pre-release that is too high,** such as `v0.10.0-rc.1` for `v0.1.0-rc.1`: its run stages that version,
+  so reject it on npm. **A stable 0.x tag**, such as `v0.1.0`, fails the release check.
+  Both tags block every lower version. Either release above the tag or remove it.
+  To remove it, an admin sets the ruleset `release tags: nobody moves or deletes them` to
   disabled, deletes the tag, and sets the ruleset to active again. Then read it back, as step 10
   of the repository settings shows:
 
@@ -136,7 +140,7 @@ Nobody may move or delete a `v*` tag, so a wrong one stays.
   id="$(gh api repos/hephaestus-build/ichnaea/rulesets \
     --jq '.[] | select(.name == "release tags: nobody moves or deletes them") | .id')"
   gh api --method PUT "repos/hephaestus-build/ichnaea/rulesets/$id" -f enforcement=disabled
-  git push origin :refs/tags/v0.10.0
+  git push origin :refs/tags/v0.10.0-rc.1
   gh api --method PUT "repos/hephaestus-build/ichnaea/rulesets/$id" \
     --input .github/rulesets/release-tags-fixed.json
   ```
@@ -496,15 +500,16 @@ commands from a checkout of `main`.
     ```sh
     node scripts/build-package.ts "$PWD/bootstrap" --version 0.0.0-bootstrap
     (cd bootstrap && npm publish --access public --tag bootstrap)
-    npm trust github @tumaet/ichnaea --repository hephaestus-build/ichnaea \
-      --file release.yml --environment npm --allow-stage-publish
     npm deprecate @tumaet/ichnaea@0.0.0-bootstrap "Bootstrap version, not for use."
     rm -r bootstrap
     ```
 
-    Never pass `--allow-publish`: the trusted publisher may stage, and only an owner publishes. Then
-    open the package's settings on npmjs.com, and under "Publishing access" choose "Require
-    two-factor authentication and disallow tokens". Read it back:
+    On npmjs.com, set up the trusted publisher under **Packages → @tumaet/ichnaea →
+    Settings → Trusted publishing → Add trusted publisher → GitHub Actions**. Enter organization
+    `hephaestus-build`, repository `ichnaea`, workflow filename `release.yml`, and environment
+    `npm`. Keep direct publishing and dist-tag management disabled. Save it. Under
+    **Publishing access**, select **Require two-factor authentication and disallow tokens** and
+    save. Read it back:
 
     ```sh
     npm trust list @tumaet/ichnaea # one GitHub publisher: release.yml, environment npm, stage only

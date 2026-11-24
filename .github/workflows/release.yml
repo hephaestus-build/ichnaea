@@ -3,11 +3,12 @@ name: Release
 # A release is a version of `@tumaet/ichnaea` on npm (decision 0021). Pushing a `v*` tag starts
 # it, and only the release team may create one (the `v*` tag rulesets). This workflow never
 # publishes: it stages the exact tarball that it checked, with provenance, and a package owner
-# approves the staged version on npmjs.com with two-factor authentication. Then
+# approves the staged version on npmjs.com with two-factor authentication. Only 0.x
+# pre-releases can stage, under the `next` dist-tag. Then
 # release-finish.yml verifies the published version and creates the GitHub release.
 #
 # - The check job has read access only. It checks that the tagged commit is on main, that the tag
-#   is a version above every other v* tag, and that a breaking change bumps the minor version.
+#   is a pre-release above every other 0.x tag, and that a breaking change bumps the minor version.
 #   Then it runs `pnpm run check`.
 # - The pack job assembles the build tree with the tag's version, runs publint and attw on it,
 #   packs it once, records the tarball's SHA-512 as npm writes it, and writes the SBOM, SHA256SUMS
@@ -40,7 +41,6 @@ jobs:
       contents: read
     outputs:
       version: ${{ steps.tag.outputs.version }}
-      dist-tag: ${{ steps.tag.outputs.dist-tag }}
     steps:
       # Every tag and the whole history: the tag check reads them with git.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -55,7 +55,7 @@ jobs:
           package-manager-cache: false
       - name: The tagged commit is on main
         run: node scripts/check-on-main.ts "$GITHUB_REF" "$GITHUB_SHA"
-      - name: The tag is a version above every other v* tag, and bumps minor on a breaking change
+      - name: The tag is a pre-release above every other 0.x tag and bumps minor on a breaking change
         id: tag
         env:
           TAG: ${{ github.ref_name }}
@@ -123,7 +123,7 @@ jobs:
         run: node scripts/release-notes.ts "$TAG" "$GITHUB_SHA" > release/release-notes.md
       - name: The dist-tag of the GitHub release
         env:
-          DIST_TAG: ${{ needs.check.outputs.dist-tag }}
+          DIST_TAG: next
         run: printf '%s\n' "$DIST_TAG" > release/dist-tag
       # Kept until a package owner approved the version and release-finish.yml read it.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -225,7 +225,6 @@ jobs:
       - name: Stage the tarball on npm, with provenance, for a package owner to approve
         env:
           TARBALL: ${{ needs.pack.outputs.tarball }}
-          DIST_TAG: ${{ needs.check.outputs.dist-tag }}
         run: |
           npm stage publish "./release/assets/$TARBALL" --provenance --access public \
-            --tag "$DIST_TAG" --ignore-scripts
+            --tag next --ignore-scripts

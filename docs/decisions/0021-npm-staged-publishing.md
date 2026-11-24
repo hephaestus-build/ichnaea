@@ -1,6 +1,6 @@
 # 0021. Releases are staged on npm, and an owner approves each version
 
-Status: Accepted
+Status: Superseded by 0022
 Date: 2026-11-16
 
 ## Context
