@@ -13,11 +13,10 @@ estimate-only. At one trial per case and arm, the regression result is validated
 caller states that its checks of the records passed (`oneTrial`), and the non-inferiority result
 never is (decision 0020).
 
-**No non-inferiority result is validated yet.** The validated margin floor is not set. Exact
-searches found coverage below the bar at margins from 0.05 to 0.185, with 5 to 8 cases and 3 trials
-in a first search, and at 9 and 10 cases with mixed trial counts in a second (see
-[VALIDATION.md](VALIDATION.md)). The change that sets the floor lists each point. Until the floor is
-set, a comparison can show a regression, but it cannot show non-inferiority.
+The case-only non-inferiority bound from `compareCounts` is descriptive. Its validation searches
+found coverage below the bar at several margins and case counts. The locked decision rule uses
+a separate [randomized block analysis](VALIDATION.md#randomized-block-decisions) with two bounds
+for Pass.
 
 The statistics import nothing outside `src/stats`, and need no Python or R at runtime. Its methods
 are checked against an independent implementation and by simulation: see

@@ -169,12 +169,13 @@ describe("REASONS", () => {
     }
   });
 
-  it("defines a detected drop as Inconclusive and reserves Regression for a randomized block result", () => {
-    expect(REASONS.DROP_IN_THESE_RUNS_ONLY.labels).toEqual(["Inconclusive"]);
-    expect(REASONS.DROP_IN_THESE_RUNS_ONLY.sentences[0]?.text).toBe(
-      "A drop was detected in these runs.",
+  it("reports a harmful direction and leaves the size of the decrease uncertain", () => {
+    const regression = REASONS.REGRESSION_DETECTED.sentences;
+    expect(regression.find((s) => s.key === "block")?.text).toContain("harmful direction");
+    expect(regression.find((s) => s.key === "magnitude")?.text).toBe(
+      "The size of the decrease remains uncertain.",
     );
-    expect(REASONS.REGRESSION_DETECTED.meaning).toContain("Reserved");
+    expect(REASONS.REGRESSION_DETECTED.meaning).toContain("rejects the sharp null");
   });
 
   it("calls a missing trial missing, never a failure", () => {

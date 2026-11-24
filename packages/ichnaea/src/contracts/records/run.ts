@@ -1,11 +1,13 @@
 import * as z from "zod";
 
+import { PairDrawRecord } from "../block-order.ts";
 import { CLOSED_KEY, none } from "../data-class.ts";
 import {
   Digest,
   MeasureId,
   PlanDigest,
   RunId,
+  Seed,
   SemVer,
   Text,
   Timestamp,
@@ -35,7 +37,8 @@ export const LedgerEntry = z.strictObject({
 export const ExecutedBlock = z.strictObject({
   block: none(z.int().nonnegative()),
   plannedBlock: none(z.int().nonnegative()),
-  first: none(z.enum(["base", "candidate"])),
+  first: none(z.enum(["base", "candidate"])).optional(),
+  draws: z.array(PairDrawRecord).optional(),
   status: none(z.enum(["complete", "abandoned"])),
 });
 /** A recorded arm-order draw and final block state. */
@@ -51,11 +54,12 @@ export const Run = z.strictObject({
   id: none(RunId),
   plan: none(PlanDigest),
   exploratory: none(z.boolean()),
-  /** The origin of the evidence bound to a locked analysis plan. */
+  /** The execution receipt: the source, locked seed and draws of physical blocks. */
   execution: z
     .strictObject({
       source: none(z.enum(["runner", "import", "re-score"])),
       analysisPlan: none(Digest),
+      seed: Seed.optional(),
       blocks: z.array(ExecutedBlock).optional(),
     })
     .optional(),

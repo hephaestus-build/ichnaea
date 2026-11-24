@@ -1,6 +1,5 @@
 // The planning explorer's numbers. Every statistic comes from `@tumaet/ichnaea/stats`,
-// the same functions a real comparison calls. This module only draws simulated trials and counts
-// outcomes, so the page teaches the library's behaviour, not a copy of it.
+// for illustrative case-only comparisons. The runner's locked block tests are separate.
 import {
   compareCounts,
   createRng,
@@ -36,7 +35,7 @@ function binomial(rng: Rng, trials: number, rate: number): number {
   return successes;
 }
 
-/** A within-run drop: the test rejects and is validated for this design. */
+/** Whether the case-only test would reject on this design. */
 const isRegression = (comparison: ReturnType<typeof compareCounts>): boolean =>
   comparison.regression.validated && comparison.regressionP < ALPHA;
 
@@ -57,27 +56,24 @@ function simulate(design: Design, rates: readonly number[], decrease: number, rn
     margin: design.margin,
     valueType: "binary",
     rng,
-    // At one trial per case, the regression test is validated only when the caller's checks of the
-    // records passed: the pair order, the adjacency of the two trials and two clean A/A decisions
-    // (decision 0020). Simulated trials have no records, so the explorer assumes they pass and the
-    // page says so.
-    ...(design.trials === 1 ? { oneTrial: { checksPassed: true, limitations: [] } } : {}),
   });
 }
 
 /** What the regression test's validated domain says about this design, in the library's words. */
 export function regressionLimitations(design: Design): readonly string[] {
+  if (design.trials === 1)
+    return ["The explorer needs at least two trials per case for its case-only test"];
   return simulate(design, caseRates(design), 0, createRng(1)).regression.limitations;
 }
 
 /** Runs with no change between the arms, and how often each rule raises an alarm. */
 export interface NoChangeRuns {
   readonly runs: number;
-  /** Runs with a detected drop: the validated test rejects at α = 0.05. */
+  /** Runs in which the case-only test rejects at α = 0.05. */
   readonly regressionAlarms: number;
   /** Runs in which the candidate's mean fell by the threshold or more. */
   readonly thresholdAlarms: number;
-  /** Runs in which the lower bound clears the margin: a PASS once non-inferiority is validated. */
+  /** Runs in which the descriptive lower bound clears the margin. */
   readonly boundClearsMargin: number;
 }
 
@@ -96,7 +92,7 @@ export function simulateNoChange(design: Design, runs: number, seed: number): No
   return { runs, regressionAlarms, thresholdAlarms, boundClearsMargin };
 }
 
-/** The share of runs that detect a decrease of the given size. */
+/** The share of runs in which the case-only test rejects for a given decrease. */
 export function detectionRate(
   design: Design,
   decrease: number,

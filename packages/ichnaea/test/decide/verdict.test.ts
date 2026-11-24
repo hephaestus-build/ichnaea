@@ -3,7 +3,6 @@ import { type Decision, type GateResult } from "../../src/contracts/index.ts";
 import { describe, expect, it } from "vitest";
 
 import { decide, exitCode, planningPower } from "../../src/decide/index.ts";
-import { decideFloorSet, FLOOR_REASON } from "./support/floor-set.ts";
 import { type Scenario, scenario } from "./support/scenario.ts";
 
 const run = (s: Scenario): Decision =>
@@ -51,56 +50,11 @@ describe("verdict order: INVALID, a failed hard gate, estimate-only, statistics"
     const d = await run({ ...s, run: { ...s.run, exploratory: true } });
     expect(d.mode).toBe("estimate-only");
     expect(d.verdict).toBeNull();
-    expect(d.reason).toMatch(
-      /^Estimate-only: the run is exploratory: its plan changed after the first trial/,
-    );
+    expect(d.reason).toMatch(/the run is exploratory: its plan changed after the first trial/);
   });
 });
 
 describe("scope sentences come from the records", () => {
-  it("the scope stays on the compared cases with or without missing trials", async () => {
-    const complete = await run(
-      await scenario({ cases: 60, replicates: 3, base: () => 0.97, candidate: () => 0.97 }),
-    );
-    expect(complete.scope).toBe("on these 60 cases");
-    // One case keeps a single candidate trial.
-    const thin = await run(
-      await scenario({
-        cases: 60,
-        replicates: 3,
-        base: () => 0.97,
-        candidate: () => 0.97,
-        outcome: (t) =>
-          t.arm === "candidate" && t.case === "case-001" && t.replicate > 0
-            ? "infrastructure_failure"
-            : undefined,
-      }),
-    );
-    expect(thin.verdict).not.toBe("INVALID");
-    expect(thin.scope).toBe("on these 60 cases");
-  });
-
-  it("a detected drop has the same scope with or without missing trials", async () => {
-    const drop = { cases: 60, replicates: 3, base: () => 0.95, candidate: () => 0.8, margin: 0.05 };
-    const replicated = await run(await scenario(drop));
-    expect(replicated.reasonCode).toBe("DROP_IN_THESE_RUNS_ONLY");
-    expect(replicated.scope).toBe("on these 60 cases");
-    expect(replicated.reason).toBe("Measure app/correct dropped in these runs.");
-    // case-003 loses 2 of its 3 candidate trials: neither text may claim run-to-run noise.
-    const thin = await run(
-      await scenario({
-        ...drop,
-        outcome: (t) =>
-          t.arm === "candidate" && t.case === "case-003" && t.replicate > 0
-            ? "infrastructure_failure"
-            : undefined,
-      }),
-    );
-    expect(thin.reasonCode).toBe("DROP_IN_THESE_RUNS_ONLY");
-    expect(thin.scope).toBe("on these 60 cases");
-    expect(thin.reason).toBe("Measure app/correct dropped in these runs.");
-  });
-
   it("estimate-only and INVALID decisions make no claim beyond run-to-run noise", async () => {
     const estimate = await run(
       await scenario({
@@ -130,201 +84,9 @@ describe("scope sentences come from the records", () => {
         applies: (_m, i) => i < 17,
       }),
     );
-    expect(d.scope).toBe("on these 17 cases");
+    expect(d.scope).toBe("estimates on these 17 cases, without a verdict");
     expect(d.limitations[0]).toBe(
       "The result is about these 17 cases. It makes no claim about new inputs.",
-    );
-  });
-});
-
-describe("the INCONCLUSIVE reason names its cause", () => {
-  it("a comparison outside the validated domain", async () => {
-    const d = await run(
-      await scenario({
-        cases: 60,
-        replicates: 2,
-        base: () => 1,
-        candidate: () => 1,
-        coverageFloor: 0.8,
-        outcome: (t) =>
-          t.arm === "candidate" && t.replicate === 1 && Number(t.case.slice(5)) < 15
-            ? "infrastructure_failure"
-            : undefined,
-      }),
-    );
-    expect(d.reason).toBe(
-      "Measure app/correct could not be shown non-inferior: its comparison is outside the validated domain. This is not a pass.",
-    );
-  });
-
-  it("a non-inferiority result that is not validated: the margin floor is not set yet", async () => {
-    const d = await run(
-      await scenario({ cases: 60, replicates: 3, base: () => 0.97, candidate: () => 0.97 }),
-    );
-    // In plain words, so a first run of an unchanged candidate does not read as a broken setup.
-    expect(d.reason).toBe(
-      "No drop was detected in these runs. A statistical pass needs randomized blocks and a validated margin floor.",
-    );
-    expect(d.reason).toBe(FLOOR_REASON);
-  });
-
-  it("a non-inferiority result that is not validated for more than the floor names each reason", async () => {
-    // The planner refuses this margin; the rule still says why if a plan reaches it.
-    const d = await run(
-      await scenario({
-        cases: 60,
-        replicates: 3,
-        base: () => 0.97,
-        candidate: () => 0.97,
-        margin: 0.35,
-      }),
-    );
-    expect(d.reason).toBe(
-      "Measure app/correct could not be shown non-inferior: its non-inferiority result is not validated, because the validated margin floor is not set yet; margin 0.35 is above the validated margin ceiling 0.3. This is not a pass.",
-    );
-  });
-
-  it("cases that cannot tell", async () => {
-    const d = await decideFloorSet(
-      await scenario({
-        cases: 10,
-        replicates: 2,
-        base: () => 0.8,
-        candidate: () => 0.8,
-        margin: 0.2,
-      }),
-    );
-    expect(d.reason).toBe(
-      "Measure app/correct could not be shown non-inferior: the cases cannot tell yet. This is not a pass.",
-    );
-  });
-
-  it("cases that cannot tell while the floor is not set: the floor is named, not blamed alone", async () => {
-    // 12 cases, 2 trials; the base passes every trial and the candidate fails one trial in 2
-    // cases. The lower bound is about −25.6 points against a 5-point margin.
-    const d = await run(
-      await scenario({
-        cases: 12,
-        replicates: 2,
-        base: () => 1,
-        candidate: () => 1,
-        margin: 0.05,
-        value: (t) =>
-          t.arm === "candidate" && ["case-000", "case-001"].includes(t.case)
-            ? t.replicate !== 0
-            : undefined,
-      }),
-    );
-    const c = d.measures[0]?.comparisons[0];
-    expect(c?.difference.lower).toBeCloseTo(-0.256, 3);
-    expect(c?.regressionPAdjusted as number).toBeGreaterThan(0.05);
-    expect(d.verdict).toBe("INCONCLUSIVE");
-    expect(d.reason).not.toBe(FLOOR_REASON);
-    expect(d.reason).toBe(
-      "Measure app/correct could not be shown non-inferior: the cases cannot tell yet, and the validated margin floor is not set. This is not a pass.",
-    );
-  });
-
-  it("names each cause when the measures have different ones", async () => {
-    // app/b applies to 6 cases only, too few to clear the margin; app/a and app/c clear it.
-    const d = await run(
-      await scenario({
-        cases: 60,
-        replicates: 3,
-        base: () => 1,
-        candidate: () => 1,
-        measures: ["app/a", "app/b", "app/c"],
-        applies: (m, i) => m !== "app/b" || i < 6,
-      }),
-    );
-    expect(d.verdict).toBe("INCONCLUSIVE");
-    expect(d.reason).toBe(
-      "Not every primary measure was shown non-inferior. Measures app/a and app/c: no PASS yet, because the validated margin floor is not set. Measure app/b: the cases cannot tell yet, and the validated margin floor is not set. This is not a pass.",
-    );
-  });
-
-  it("keeps the plan's Holm family when three comparisons lose coverage (REQ-51)", async () => {
-    // app/a fails one trial in 5 cases, enough for a REGRESSION if it were the only primary.
-    const s = await scenario({
-      cases: 60,
-      replicates: 3,
-      base: () => 1,
-      candidate: () => 1,
-      margin: 0.05,
-      measures: ["app/a", "app/b", "app/c", "app/d"],
-    });
-    const trials = new Map(s.trials.map((t) => [t.id as string, t]));
-    const complete = s.values.map((v) => {
-      const t = trials.get(v.trial);
-      if (t?.arm !== "candidate" || v.measure !== "app/a") return v;
-      const index = Number(t.case?.slice(5));
-      return index >= 1 && index <= 5 && t.replicate === 0
-        ? { ...v, value: { type: "binary" as const, pass: false } }
-        : v;
-    });
-    const values = complete.filter((v) => {
-      const t = trials.get(v.trial);
-      return v.measure === "app/a" || t?.arm !== "candidate" || t.case !== "case-000";
-    });
-    const baseline = await run({ ...s, values: complete });
-    const d = await run({ ...s, values });
-    expect(baseline.verdict).toBe("INCONCLUSIVE");
-    expect(d.verdict).toBe("INCONCLUSIVE");
-    expect(d.measures[0]?.comparisons[0]?.regression.validated).toBe(true);
-    expect(d.measures[0]?.comparisons[0]?.regressionP).toBeCloseTo(0.03125);
-    expect(d.measures[0]?.comparisons[0]?.regressionPAdjusted).toBeCloseTo(0.125);
-    expect(d.measures[0]?.comparisons[0]).toEqual(baseline.measures[0]?.comparisons[0]);
-    expect(d.measures.map((m) => m.verdict)).toEqual(Array(4).fill("INCONCLUSIVE"));
-    for (const measure of d.measures.slice(1)) {
-      expect(measure.comparisons[0]?.regression.validated).toBe(false);
-    }
-    expect(d.missingness.sensitivity).toBe("unchanged");
-  });
-
-  it("names missing trials in other primaries when their imputation changes a verdict", async () => {
-    const s = await scenario({
-      cases: 60,
-      replicates: 3,
-      base: () => 1,
-      candidate: () => 1,
-      margin: 0.05,
-      measures: ["app/a", "app/b"],
-    });
-    const trials = new Map(s.trials.map((t) => [t.id as string, t]));
-    const values = s.values.flatMap((v) => {
-      const t = trials.get(v.trial);
-      if (t === undefined) throw new Error("expected a trial for each value");
-      // The missing candidate value in a case where both arms failed can favor app/b on imputation.
-      if (v.measure === "app/b" && t.case === "case-000") {
-        if (t.arm === "candidate" && t.replicate === 0) return [];
-        return [{ ...v, value: { type: "binary" as const, pass: false } }];
-      }
-      // app/b rejects at α/2 and app/a at α. After imputation, app/a's p is the smallest.
-      const index = Number(t.case?.slice(5));
-      return t.arm === "candidate" &&
-        t.replicate === 0 &&
-        index >= 1 &&
-        index <= (v.measure === "app/a" ? 5 : 6)
-        ? [{ ...v, value: { type: "binary" as const, pass: false } }]
-        : [v];
-    });
-    const d = run({ ...s, values });
-    const a = d.measures[0];
-    expect(d.verdict).toBe("INCONCLUSIVE");
-    expect(a?.coverage).toBe(1);
-    expect(a?.comparisons[0]?.regressionPAdjusted).toBeLessThan(s.plan.alpha);
-    expect(a?.sensitivity).toContainEqual(
-      expect.objectContaining({
-        imputation: "against-regression",
-        changesVerdict: true,
-        verdict: "INCONCLUSIVE",
-      }),
-    );
-    expect(d.reason).toContain(
-      "Measure app/a: imputing the missing trials of other primary measures against the verdict changes it",
-    );
-    expect(a?.notes).toContain(
-      "imputing the missing trials of other primary measures against this verdict changes it, so it is INCONCLUSIVE (see the sensitivity analysis)",
     );
   });
 });
@@ -348,7 +110,7 @@ describe("margins (decision 0012)", () => {
     const d = await run(s);
     expect(d.verdict).toBeNull();
     expect(d.reason).toMatch(
-      /^Estimate-only: margins not registered: primary measure 'app\/correct' has a placeholder margin/,
+      /margins not registered: primary measure 'app\/correct' has a placeholder margin/,
     );
   });
 

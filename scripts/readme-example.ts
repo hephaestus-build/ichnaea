@@ -41,7 +41,7 @@ export interface Scenario {
   readonly run: string;
   /** The line that `decide` prints, and the verdict at its start. */
   readonly line: string;
-  readonly verdict: string;
+  readonly verdict: string | null;
   readonly exit: number;
 }
 
@@ -104,10 +104,17 @@ export function readmeExample(readme: string): Example {
     if (!run) throw new Error(`no import command of the example reads ${results}`);
     if (!commands.some((c) => decides(c, run)))
       throw new Error(`no decide command of the example decides run ${run}`);
-    const verdict = /^([A-Z]+): /.exec(line)?.[1];
-    if (!verdict) throw new Error(`"${line}" does not start with a verdict`);
+    const label = /^([A-Z]+(?:-[A-Z]+)*): /.exec(line)?.[1];
+    if (!label) throw new Error(`"${line}" does not start with a verdict`);
     if (!/^\d+$/.test(exit)) throw new Error(`"${exit}" is not an exit code`);
-    return { scenario, results, run, line, verdict, exit: Number(exit) };
+    return {
+      scenario,
+      results,
+      run,
+      line,
+      verdict: label === "ESTIMATE-ONLY" ? null : label,
+      exit: Number(exit),
+    };
   });
   if (scenarios.length === 0) throw new Error("the example table has no scenario");
   return { commands, scenarios };

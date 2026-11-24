@@ -9,10 +9,8 @@ const page = readFileSync(
 );
 
 describe("noise checks page", () => {
-  // decide.ts waives the noise-check precondition for a plan whose two arms are one configuration,
-  // and nothing else. Without the exception on the page, the first noise check looks impossible.
-  it("states that a noise check's own plan cites no earlier noise checks", () => {
-    expect(page).toContain("A noise check's own plan is the exception");
-    expect(page).toContain("Its records must still pass the other checks of one trial per case.");
+  it("describes an optional noise check and pilot", () => {
+    expect(page).toContain("A noise check is optional.");
+    expect(page).toContain("base-against-base run to the planner as a pilot");
   });
 });

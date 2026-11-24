@@ -26,7 +26,7 @@ export function detectableSentence(
   runs: number,
   validated: boolean,
 ): string {
-  if (!validated) return "Unavailable for this design.";
+  if (!validated) return "Unavailable for the case-only test at this setting.";
   if (detectable === undefined)
     return `Not reached: even the largest decrease is detected in fewer than 80% of runs (${runs} simulated runs per step).`;
   return `About ${points(detectable)}: each case's pass rate falls by that much, or to zero if it is lower. The search stops within 1 point. Each step simulates ${runs} runs, so another seed can give a different number.`;

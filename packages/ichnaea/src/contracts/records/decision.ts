@@ -1,7 +1,6 @@
 import * as z from "zod";
 
-import type { ReasonCode } from "../reasons.ts";
-
+import { REASON_CODES } from "../reasons.ts";
 import { content, none } from "../data-class.ts";
 import {
   ArmName,
@@ -109,6 +108,17 @@ export const Comparison = z.strictObject({
    * 0015).
    */
   nonInferiority: Validity,
+  /** The paired sharp-null test and the two separate PASS bounds. */
+  randomized: z
+    .strictObject({
+      withinP: none(z.number().min(0).max(1)),
+      withinPAdjusted: none(z.number().min(0).max(1)),
+      blockLower: none(z.number().min(-1).max(1)),
+      withinLower: none(z.number().min(-1).max(1)),
+      pairs: none(z.int().nonnegative()),
+      imputedTrials: none(z.int().nonnegative()),
+    })
+    .optional(),
   flips: z.array(Flip),
 });
 
@@ -188,11 +198,8 @@ export const Missingness = z.strictObject({
     }),
   ),
   differs: none(z.boolean()),
-  /**
-   * `not-needed` when no primary measure has a missing trial in either arm; otherwise whether the
-   * sensitivity analysis changes a verdict.
-   */
-  sensitivity: none(z.enum(["unchanged", "changes-verdict", "not-needed"])),
+  /** Claim-adverse completion for randomized evidence, with earlier values kept for replay. */
+  sensitivity: none(z.enum(["unchanged", "changes-verdict", "not-needed", "adverse-completion"])),
 });
 
 const ReductionMissing = z.strictObject({ status: none(z.literal("missing")) });
@@ -226,13 +233,14 @@ export const Decision = z.strictObject({
   mode: none(z.enum(["decision", "estimate-only"])),
   verdict: none(Verdict.nullable()),
   reason: none(Text),
-  /** Identifies a drop supported by the within-run test. */
-  reasonCode: none(z.literal("DROP_IN_THESE_RUNS_ONLY" satisfies ReasonCode)).optional(),
-  /** A failed hard gate caused the regression verdict. */
-  cause: none(z.literal("gate")).optional(),
+  reasonCode: none(z.enum(REASON_CODES)).optional(),
+  /** The paired test rejected even when the block horizon was insufficient. */
+  withinRunDrop: none(z.boolean()).optional(),
+  cause: none(z.enum(["gate", "statistical"])).optional(),
   /**
    * What the verdict is about, stated next to it in every output and built from the records: the
-   * cases the primary measures compare. A failed hard gate says that a
+   * cases the primary measures compare, "beyond run-to-run noise" only when each of them has at
+   * least 2 trials per arm, never a claim about new inputs. A failed hard gate says that a
    * deterministic check failed; an INVALID decision makes no claim.
    */
   scope: none(Text),

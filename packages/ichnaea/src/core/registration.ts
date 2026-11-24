@@ -4,6 +4,8 @@ import { isAbsolute, relative, resolve, sep } from "node:path";
 
 import * as z from "zod";
 
+import { type PairDraw, PairDrawRecord, pairFirst } from "../contracts/block-order.ts";
+import { AnalysisPlan } from "../contracts/records/analysis-plan.ts";
 import { Digest, RunId, Seed, Timestamp } from "../contracts/primitives.ts";
 
 import { git, gitBytes } from "./git.ts";
@@ -29,6 +31,9 @@ export interface RegistrationReceipt {
   readonly remote: string;
   readonly ref: string;
   readonly remoteSha: string;
+  readonly draws?:
+    | readonly { readonly block: number; readonly pairs: readonly PairDraw[] }[]
+    | undefined;
 }
 
 /** The receipt written before dispatch, bound to the arms and seed at run start. */
@@ -40,6 +45,14 @@ export const RegistrationReceiptSchema: z.ZodType<RegistrationReceipt> = z.stric
   remote: z.string().min(1),
   ref: z.string().startsWith("refs/"),
   remoteSha: commitId,
+  draws: z
+    .array(
+      z.strictObject({
+        block: z.int().nonnegative(),
+        pairs: z.array(PairDrawRecord),
+      }),
+    )
+    .optional(),
 });
 
 export type RegistrationLabel = "registered" | "unregistered" | "exploratory";
@@ -61,6 +74,30 @@ async function hasVisibleChange(root: string, revision: string): Promise<boolean
   const raw = await git(root, ["cat-file", "commit", revision]);
   const header = raw.stdout.split("\n\n", 1)[0] ?? "";
   return raw.status === 0 && !/^parent /m.test(header);
+}
+
+function plannedDraws(
+  bytes: Buffer,
+  seed: RegistrationReceipt["seed"],
+): RegistrationReceipt["draws"] {
+  let input: unknown;
+  try {
+    input = JSON.parse(bytes.toString("utf8"));
+  } catch {
+    return undefined;
+  }
+  const parsed = AnalysisPlan.safeParse(input);
+  if (!parsed.success) return undefined;
+  const { blocks, cases, replicates } = parsed.data;
+  return Array.from({ length: blocks }, (_, block) => ({
+    block,
+    pairs: cases.flatMap(({ id }) =>
+      Array.from({ length: replicates }, (_replicate, offset) => {
+        const pair = { case: id, replicate: block * replicates + offset };
+        return { ...pair, first: pairFirst(seed, block, pair) };
+      }),
+    ),
+  }));
 }
 
 export async function anchorAnalysisPlan(
@@ -107,9 +144,11 @@ export async function anchorAnalysisPlan(
     return undefined;
 
   const { candidate, ...required } = arms;
+  const draws = candidate === undefined ? undefined : plannedDraws(committed.stdout, arms.seed);
   return RegistrationReceiptSchema.parse({
     ...required,
     ...(candidate === undefined ? {} : { candidate }),
+    ...(draws === undefined ? {} : { draws }),
     planPath,
     planCommit: planCommit.data,
     planFileDigest: `sha256:${createHash("sha256").update(committed.stdout).digest("hex")}`,

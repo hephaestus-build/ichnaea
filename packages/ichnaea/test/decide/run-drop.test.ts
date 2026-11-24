@@ -9,7 +9,7 @@ const decideRun = (s: Scenario) =>
   decide({ ...s, decidedAt: "2026-11-24T12:00:00Z", ichnaea: "0.0.0" });
 
 describe("claims from a single run", () => {
-  it("reports the adverse face of a run-wide coin shock as a drop in these runs", async () => {
+  it("keeps a run without recorded draws estimate-only even after an adverse shock", async () => {
     const adverseCoin = await scenario({
       cases: 60,
       replicates: 3,
@@ -18,26 +18,18 @@ describe("claims from a single run", () => {
       measures: ["app/a", "app/b"],
     });
     const decision = decideRun(adverseCoin);
-    expect(decision).toMatchObject({
-      verdict: "INCONCLUSIVE",
-      reasonCode: "DROP_IN_THESE_RUNS_ONLY",
-    });
-    expect(decision.reason).toBe("Measures app/a and app/b dropped in these runs.");
+    expect(decision).toMatchObject({ mode: "estimate-only", verdict: null });
     expect(decision.measures.map((measure) => measure.verdict)).toEqual([
-      "INCONCLUSIVE",
-      "INCONCLUSIVE",
+      "ESTIMATE-ONLY",
+      "ESTIMATE-ONLY",
     ]);
-    for (const measure of decision.measures)
-      expect(measure.notes).toContain("A drop was detected in these runs.");
 
     const policy = adverseCoin.plan.policy;
-    expect(exitCode(decision, { ...policy, onInconclusive: "report", onRunDrop: "block" })).toBe(1);
-    expect(exitCode(decision, { ...policy, onInconclusive: "block", onRunDrop: "report" })).toBe(0);
+    expect(exitCode(decision, { ...policy, onEstimateOnly: "report", onRunDrop: "block" })).toBe(0);
 
     for (const format of ["markdown", "html"] as const) {
       const rendered = report({ ...adverseCoin, decision }, { format, suite: "synthetic" });
-      expect(rendered).toContain("Ichnaea can show that a change failed a hard gate");
-      expect(rendered).not.toContain("run-to-run noise");
+      expect(rendered).toContain("the run has no locked randomized assignments");
     }
   });
 

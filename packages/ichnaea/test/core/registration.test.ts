@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -8,6 +8,8 @@ import { pathToFileURL } from "node:url";
 import fc from "fast-check";
 import { afterEach, beforeEach, expect, it } from "vitest";
 
+import { pairFirst } from "../../src/contracts/block-order.ts";
+import { AnalysisPlan } from "../../src/contracts/records/analysis-plan.ts";
 import { anchorAnalysisPlan, registrationLabel } from "../../src/core/registration.ts";
 import { RecordsRepository, reserveCaseReads } from "../../src/core/records-repository.ts";
 
@@ -61,6 +63,40 @@ function commit(working: string): string {
   git(working, "commit", "-m", "fixture");
   return git(working, "rev-parse", "HEAD");
 }
+
+it("records every planned pair's draw and its seed in the opening receipt", async () => {
+  const { checkout: working } = await checkout("planned-pairs");
+  const fixture = await readFile(
+    new URL("../../fixtures/valid/analysisPlan.json", import.meta.url),
+    "utf8",
+  );
+  const analysis = AnalysisPlan.parse({ ...JSON.parse(fixture), blocks: 2, replicates: 2 });
+  const path = "analysis-plan.json";
+  await writeFile(join(working, path), JSON.stringify(analysis));
+  commit(working);
+  git(working, "push", "origin", "main");
+
+  const receipt = await anchorAnalysisPlan(working, path, "origin/main", binding);
+  const work = await RunWork.open(join(scratch, "planned-store"), binding.run, receipt);
+  try {
+    expect(work.receipt()).toMatchObject({
+      seed: binding.seed,
+      draws: [0, 1].map((block) => ({
+        block,
+        pairs: analysis.cases.flatMap(({ id }) =>
+          [0, 1].map((offset) => {
+            const replicate = block * 2 + offset;
+            const pair = { case: id, replicate };
+            return { ...pair, first: pairFirst(binding.seed, block, pair) };
+          }),
+        ),
+      })),
+    });
+    expect((await work.entries())[0]).toEqual({ kind: "receipt", receipt });
+  } finally {
+    await work.close();
+  }
+});
 
 it("registers an unchanged anchored analysis plan and leaves local changes unregistered", async () => {
   const { checkout: working, bare } = await checkout("suite");

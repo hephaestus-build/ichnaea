@@ -7,8 +7,7 @@ Ichnaea makes no model call.
 The example shows the whole path from the command line:
 
 1. `import` checks another runner's results and stores them as records.
-2. `decide` checks the records and tests for a drop within these runs. A failed hard gate gives
-   REGRESSION. A statistical comparison gives INCONCLUSIVE.
+2. `decide` computes the estimates and checks the hard gates on the stored records.
 3. `report` renders the stored decision as a Markdown summary and an HTML report.
 
 The change under test is a new model with a new prompt. The base arm uses `example-model-2026-10`.
@@ -55,21 +54,20 @@ pnpm exec ichnaea report --run same # exit 0
 
 `decide` prints this line and exits with 0:
 
-`INCONCLUSIVE: No drop was detected in these runs. A statistical pass needs randomized blocks and a validated margin floor.`
+`ESTIMATE-ONLY: Estimate-only: the run has no locked randomized assignments. It reports estimates, intervals, differences and flips without a verdict.`
 
-The suite reports this result and continues. The report repeats the reason and labels the lower
-bound of the difference "not validated".
+These results came from an import. The report gives the arm rates and case flips and describes
+the available evidence.
 
 ### A candidate that answers worse
 
 ```sh
 pnpm exec ichnaea import --importer support/results --suite data/suite.json --case-set data/case-set.json --cases data/cases.jsonl --arm base:base:configurations/base.json --arm candidate:candidate:configurations/candidate.json --file results/base.json --file results/candidate-regressed.json --run regressed --trigger new-model --vary prompt.answer --now 2026-11-15T10:00:00Z
-pnpm exec ichnaea decide --run regressed --now 2026-11-15T11:00:00Z # exit 1
+pnpm exec ichnaea decide --run regressed --now 2026-11-15T11:00:00Z # exit 0
 pnpm exec ichnaea report --run regressed # exit 0
 ```
 
-`decide` prints `INCONCLUSIVE: Measure support/facts-stated dropped in these runs.` and exits
-with 1 because the suite sets `onRunDrop: "block"`. The report names the broken cases, for example `support-03`.
+`decide` prints the same estimate-only line. The report names cases with a flipped outcome, such as `support-03`.
 
 ## What the flags mean
 
@@ -84,10 +82,9 @@ with 1 because the suite sets `onRunDrop: "block"`. The report names the broken 
   `decide` returns INVALID.
 - `--now` fixes the time of the record, so a run repeats byte for byte. Leave it out for a real run.
 
-A suite at one trial per case and arm also needs the time of each trial. Each run in a result file
-may carry `startedAt` and `endedAt`, and the importer passes them on. Then `--concurrency` and
-`--endpoint` state the schedule, and `--aa <run>` cites a decided A/A run, a run whose arms are both
-`configurations/base.json`. `test/one-trial.test.ts` shows the whole flow.
+A result file may include `startedAt` and `endedAt` for each trial. The importer preserves
+those times for inspection. Imported runs give estimates. Statistical verdicts use the
+runner's recorded per-pair assignments.
 
 ## Where the output is written
 

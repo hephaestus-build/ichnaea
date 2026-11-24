@@ -3,7 +3,6 @@ import type { Decision } from "../../src/contracts/index.ts";
 import { describe, expect, it } from "vitest";
 
 import { decide } from "../../src/decide/index.ts";
-import { decideFloorSet } from "./support/floor-set.ts";
 import { type Scenario, type ScenarioOptions, scenario } from "./support/scenario.ts";
 
 const run = (s: Scenario): Decision =>
@@ -76,7 +75,7 @@ describe("trigger factors (REQ-15)", () => {
     const same = await run(
       await scenario({ ...stable, observed: () => [{ name: "model.digest", value: "sha-a" }] }),
     );
-    expect(same.verdict).toBe("INCONCLUSIVE");
+    expect(same.verdict).toBeNull();
     expect(same.invalidReasons).toEqual([]);
   });
 
@@ -122,6 +121,6 @@ describe("trigger factors (REQ-15)", () => {
       candidateConfig: prompt,
       varies: ["prompt.answer", "factor.code.commit"],
     });
-    expect((await decideFloorSet(declared)).verdict).toBe("INCONCLUSIVE");
+    expect(run(declared).verdict).toBeNull();
   });
 });

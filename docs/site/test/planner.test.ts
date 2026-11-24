@@ -54,7 +54,7 @@ describe("planning explorer model", () => {
       "utf8",
     );
     expect(landing).toContain(`blocks ${percent(thresholds)} of the runs`);
-    expect(landing).toContain(`a drop in ${percent(regressions)} of the runs`);
+    expect(landing).toContain(`case-only test rejects in ${percent(regressions)} of the runs`);
   });
 
   it("repeats its numbers for the same seed", () => {
@@ -75,8 +75,8 @@ describe("planning explorer model", () => {
     expect(regressionLimitations({ ...support, cases: 4, trials: 1 })).not.toEqual([]);
   });
 
-  it("validates the regression test at one trial per case, assuming the record checks pass", () => {
-    expect(regressionLimitations({ ...support, trials: 1 })).toEqual([]);
+  it("keeps the case-only test descriptive at one trial per case", () => {
+    expect(regressionLimitations({ ...support, trials: 1 })).not.toEqual([]);
   });
 
   it("takes a seed from the address only when the generator accepts it and its successor", () => {

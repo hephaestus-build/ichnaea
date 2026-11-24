@@ -6,7 +6,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import { join } from "node:path";
 
-import { FLOOR_NOT_SET_REASON, main } from "@tumaet/ichnaea";
+import { main } from "@tumaet/ichnaea";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const here = join(import.meta.dirname, "..");
@@ -61,24 +61,23 @@ describe("the example's README", () => {
       "decide",
       "report",
     ]);
-    expect(commands.map((c) => c.exit)).toEqual([0, 0, 0, 0, 1, 0]);
+    expect(commands.map((c) => c.exit)).toEqual([0, 0, 0, 0, 0, 0]);
   });
 
-  it("runs as written: reports both candidates and blocks only the one with a drop", async () => {
+  it("runs as written and produces estimates for both imported candidates", async () => {
     const out: string[] = [];
     for (const { argv, exit } of commands) {
       const code = await main(argv, (t) => void out.push(t));
       expect(code, `${argv.join(" ")}\n${out.join("\n")}`).toBe(exit);
     }
-    expect(verdictOf("same")).toBe("INCONCLUSIVE");
-    expect(verdictOf("regressed")).toBe("INCONCLUSIVE");
+    expect(verdictOf("same")).toBeNull();
+    expect(verdictOf("regressed")).toBeNull();
     // The README quotes the line decide prints for the same candidate, word for word.
-    const printed = `INCONCLUSIVE: ${FLOOR_NOT_SET_REASON}`;
+    const printed =
+      "ESTIMATE-ONLY: Estimate-only: the run has no locked randomized assignments. It reports estimates, intervals, differences and flips without a verdict.";
     expect(out).toContain(printed);
     expect(readme.replaceAll(/\s+/g, " ")).toContain(`\`${printed}\``);
-    expect(out.join("\n")).toMatch(
-      /^INCONCLUSIVE: Measure support\/facts-stated dropped in these runs\./m,
-    );
+    expect(out.filter((entry) => entry.startsWith("ESTIMATE-ONLY:"))).toHaveLength(2);
     // Each file the README says a run writes exists for both runs.
     for (const file of [
       "decision.json",

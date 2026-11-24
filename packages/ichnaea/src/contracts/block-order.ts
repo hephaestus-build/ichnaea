@@ -1,4 +1,8 @@
+import * as z from "zod";
+
 import { canonicalize } from "./canonical.ts";
+import { none } from "./data-class.ts";
+import { CaseId } from "./primitives.ts";
 import { candidateRunsFirst } from "./pair-order.ts";
 
 type ArmRole = "base" | "candidate";
@@ -21,3 +25,10 @@ export function pairFirst(
   const identity = canonicalize(["randomized-pair", block, pair.case]);
   return candidateRunsFirst(seed, identity, pair.replicate) ? "candidate" : "base";
 }
+
+/** The recorded first arm of one independently assigned case pair. */
+export const PairDrawRecord: z.ZodType<PairDraw> = z.strictObject({
+  case: none(CaseId),
+  replicate: none(z.int().nonnegative()),
+  first: none(z.enum(["base", "candidate"])),
+});
