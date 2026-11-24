@@ -133,6 +133,16 @@ it("counts hits once, charges missing cases, and reports context and scope witho
     for (const command of ["decide", "report"]) {
       expect(await main([command, "--store", directory, "--run", "counted"], () => {})).toBe(0);
     }
+    const documents: string[] = [];
+    expect(
+      await main(["report", "--store", directory, "--run", "counted", "--json"], (line) =>
+        documents.push(line),
+      ),
+    ).toBe(0);
+    expect(documents).toHaveLength(1);
+    expect(JSON.parse(documents[0] ?? "")).toMatchObject({
+      mustNever: [{ counts: [3, 1, 1, 1] }],
+    });
     const out = join(directory, "runs", "counted", "report");
     const markdown = await readFile(join(out, "summary.md"), "utf8");
     const html = await readFile(join(out, "report.html"), "utf8");

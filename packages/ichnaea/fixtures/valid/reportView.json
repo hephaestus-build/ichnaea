@@ -1,0 +1,22 @@
+{
+  "schema": "ichnaea.reportView/1",
+  "title": "An example decision",
+  "verdict": "ESTIMATE-ONLY",
+  "claim": "on this case set",
+  "reason": "estimate-only",
+  "method": "descriptive",
+  "measures": [],
+  "gates": [],
+  "flips": [],
+  "power": [],
+  "sensitivity": [],
+  "missingness": "no missing trials",
+  "differingFactors": [],
+  "limitations": [],
+  "lineage": [
+    {
+      "label": "Run",
+      "value": "example"
+    }
+  ]
+}

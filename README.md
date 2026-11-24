@@ -179,6 +179,26 @@ INCONCLUSIVE and does not block, so `decide` exits with 0.
 `report` writes `summary.md` and a self-contained `report.html` to
 `.ichnaea/runs/<run>/report/`. The store, `.ichnaea/`, keeps every record of the run.
 
+## CLI output and stores
+
+Use `ichnaea help` to list commands, or `ichnaea <command> --help` for its arguments. Add `--json`
+to get one document on stdout. Exit 0 means success. Exit 1 means the plan's policy blocks a
+decision or `doctor` found tester problems. Both return the command's result. Exit 2 returns a
+`cli.error/1` object on stdout and stderr. In JSON mode, logs from the configuration and its plugins
+go to stderr with a `[plugin]` prefix.
+
+`report --json` writes `ichnaea.reportView/1`. Its lineage entries have `label` and `value` fields.
+Scripts that used `lineage[i][0]` and `lineage[i][1]` now read `lineage[i].label` and
+`lineage[i].value`.
+
+For the machine-readable formats, use `ichnaea schema help`, `ichnaea schema doctor`,
+`ichnaea schema cli.error`, and `ichnaea schema reportView`. A JSON decision includes gate IDs,
+results and failure counts. Descriptions from gate inputs are kept in the stored records.
+
+A command that uses the store looks first at `--store`, then at `store` in the configuration,
+then at `.ichnaea` in the working directory. A relative store path in the configuration is
+relative to the configuration file.
+
 ## Contracts for any language
 
 Records cross every boundary as JSON. The JSON Schema files in

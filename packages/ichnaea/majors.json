@@ -1,6 +1,18 @@
 {
   "description": "Every major version of every record contract, by the record name in its schema ID. A major beyond 1 names the migration module that reads the previous major (REQ-07), unless the previous major is still registered beside it. scripts/check-contract-majors.ts enforces it.",
   "records": {
+    "cli.error": {
+      "1": null
+    },
+    "help": {
+      "1": null
+    },
+    "doctor": {
+      "1": null
+    },
+    "reportView": {
+      "1": null
+    },
     "case": {
       "1": null
     },

@@ -4,46 +4,49 @@ import { join } from "node:path";
 import * as z from "zod";
 
 import type { RatingSet } from "../calibration/ratings-agreement.ts";
-import { projectForEgress } from "../contracts/egress.ts";
-import { Decision } from "../contracts/records/decision.ts";
 import { canonicalize } from "../contracts/canonical.ts";
+import { projectForEgress } from "../contracts/egress.ts";
+import { ReportView } from "../contracts/records/cli.ts";
+import { Decision } from "../contracts/records/decision.ts";
 import { exitCode } from "../decide/ci-policy.ts";
 import { decide } from "../decide/decide.ts";
+import { resolutionLine } from "../plan/resolution.ts";
 import { renderReport, ReportError, verifiedReport } from "../report/report.ts";
 
-import { resolutionLine } from "../plan/resolution.ts";
-
+import { storeFor } from "./cli-config.ts";
+import {
+  CliError,
+  type Command,
+  CONFIG_OPTION,
+  required,
+  STORE_OPTION,
+  text,
+} from "./command-grammar.ts";
 import { runDirectory } from "./store-path.ts";
-import { FileStore } from "./store.ts";
+import { FileStore, type StoredRun } from "./store.ts";
 import { CORE_VERSION } from "./version.ts";
 
-/** A built-in command with options described by its help text. */
-export interface CommandDefinition {
-  readonly name: string;
-  readonly description: string;
-  readonly options: Readonly<
-    Record<
-      string,
-      {
-        readonly type: "string" | "boolean";
-        readonly description: string;
-      }
-    >
-  >;
-  readonly run: (
-    values: Readonly<Record<string, unknown>>,
-    io: { readonly out: (text: string) => void; readonly err: (text: string) => void },
-  ) => Promise<number>;
+const RUN_OPTION = { type: "string", description: "The run ID", required: true } as const;
+
+async function readRun(store: FileStore, run: string): Promise<StoredRun> {
+  const directory = runDirectory(store.root, "runs", run);
+  try {
+    return await store.read(run);
+  } catch (cause) {
+    throw new CliError("RECORDS", cause instanceof Error ? cause.message : String(cause), {
+      cause,
+      publicMessage: `Could not read the stored run in ${directory}.`,
+    });
+  }
 }
 
-export const decideCommand: CommandDefinition = {
+export const decideCommand: Command = {
   name: "decide",
-  description:
-    "Decide a stored run: write decision.json and a verdict file, exit by the plan's CI policy",
+  description: "Decide a stored run and write its verdict",
   options: {
-    store: { type: "string", description: "The record store (default .ichnaea)" },
-    run: { type: "string", description: "The run ID" },
-    json: { type: "boolean", description: "Print the class-none record as JSON" },
+    config: CONFIG_OPTION,
+    store: STORE_OPTION,
+    run: RUN_OPTION,
     "verdict-file": {
       type: "string",
       description:
@@ -55,15 +58,10 @@ export const decideCommand: CommandDefinition = {
         "The decision time (default: now). Fix it to reproduce a decision byte for byte.",
     },
   },
-  async run(values, { out, err }) {
-    const storePath = (values["store"] as string | undefined) ?? ".ichnaea";
-    const runId = values["run"] as string | undefined;
-    if (!runId) {
-      err("decide: --run is required");
-      return 2;
-    }
-    const store = new FileStore(storePath);
-    const stored = await store.read(runId);
+  async run(args, load) {
+    const store = new FileStore(await storeFor(args, load));
+    const run = required(args, "run");
+    const stored = await readRun(store, run);
     let decision = stored.decision;
     if (decision === undefined) {
       decision = await decide({
@@ -73,26 +71,25 @@ export const decideCommand: CommandDefinition = {
         values: stored.values,
         gates: stored.gates,
         aa: await store.aaEvidence(stored.plan),
-        decidedAt: (values["now"] as string | undefined) ?? new Date().toISOString(),
+        decidedAt: text(args, "now") ?? new Date().toISOString(),
         ichnaea: CORE_VERSION,
       });
       await store.writeDecision(decision, stored.plan.suite);
     }
     const verdictFile =
-      (values["verdict-file"] as string | undefined) ??
-      join(runDirectory(storePath, "runs", runId), "verdict.json");
+      text(args, "verdict-file") ?? join(runDirectory(store.root, "runs", run), "verdict.json");
     await writeFile(
       verdictFile,
       `${canonicalize({ run: decision.run, mode: decision.mode, verdict: decision.verdict, reason: decision.reason })}\n`,
     );
-    if (values["json"] === true) {
-      const projected = projectForEgress(Decision, decision, { purpose: "PU-1", maxClass: "none" });
-      out(canonicalize(projected.value));
-    } else {
-      out(`${decision.verdict ?? "ESTIMATE-ONLY"}: ${decision.reason}`);
-      for (const entry of decision.resolution ?? []) out(resolutionLine(entry));
-    }
-    return exitCode(decision, stored.plan.policy);
+    return {
+      code: exitCode(decision, stored.plan.policy) === 1 ? 1 : 0,
+      text: [
+        `${decision.verdict ?? "ESTIMATE-ONLY"}: ${decision.reason}`,
+        ...(decision.resolution ?? []).map((entry) => resolutionLine(entry)),
+      ],
+      json: projectForEgress(Decision, decision, { maxClass: "none", purpose: "PU-1" }).value,
+    };
   },
 };
 
@@ -113,70 +110,77 @@ async function readRatings(path: string): Promise<RatingSet> {
   let value: unknown;
   try {
     value = JSON.parse(await readFile(path, "utf8"));
-  } catch {
-    throw new Error("cannot read the ratings JSON file");
+  } catch (cause) {
+    const message = "Cannot read the ratings JSON file.";
+    throw new CliError("RECORDS", message, { cause, publicMessage: message });
   }
   const parsed = ratingSet.safeParse(value);
-  if (!parsed.success) throw new Error("the ratings file needs a metric and valid rating units");
+  if (!parsed.success) {
+    const message = "The ratings file needs a metric and valid rating units.";
+    throw new CliError("RECORDS", message, { publicMessage: message });
+  }
   return parsed.data;
 }
 
-export const reportCommand: CommandDefinition = {
+export const reportCommand: Command = {
   name: "report",
-  description: "Render a stored decision as summary.md and report.html, after the recompute check",
+  description: "Recompute and report a stored decision",
   options: {
-    store: { type: "string", description: "The record store (default .ichnaea)" },
-    run: { type: "string", description: "The run ID" },
-    json: { type: "boolean", description: "Print the class-none record as JSON" },
+    config: CONFIG_OPTION,
+    store: STORE_OPTION,
+    run: RUN_OPTION,
     ratings: {
       type: "string",
       description: "Read a canonical JSON ratings set for the agreement section",
     },
     out: { type: "string", description: "Output directory (default <store>/runs/<run>/report)" },
+    format: {
+      type: "string",
+      choices: ["md", "html", "json"],
+      description: "Report file format (default: md and html)",
+    },
   },
-  async run(values, { out: print, err }) {
-    const storePath = (values["store"] as string | undefined) ?? ".ichnaea";
-    const runId = values["run"] as string | undefined;
-    if (!runId) {
-      err("report: --run is required");
-      return 2;
-    }
-    const store = new FileStore(storePath);
-    const stored = await store.read(runId);
+  async run(args, load) {
+    const store = new FileStore(await storeFor(args, load));
+    const run = required(args, "run");
+    const stored = await readRun(store, run);
     if (!stored.decision) {
-      err(`report: run '${runId}' has no decision; run 'ichnaea decide' first`);
-      return 2;
+      const file = join(runDirectory(store.root, "runs", run), "decision.json");
+      const message = `report: no decision at ${file}; run 'ichnaea decide' first`;
+      throw new CliError("RECORDS", message, { publicMessage: message });
     }
-    let markdown: string;
-    let html: string;
+    const ratingsPath = text(args, "ratings");
+    const ratings = ratingsPath === undefined ? undefined : await readRatings(ratingsPath);
+    let verified: ReturnType<typeof verifiedReport>;
     try {
-      const ratings =
-        typeof values["ratings"] === "string" ? await readRatings(values["ratings"]) : undefined;
-      const result = verifiedReport(
+      verified = verifiedReport(
         { ...stored, decision: stored.decision, aa: await store.aaEvidence(stored.plan) },
         { suite: stored.plan.suite, ...(ratings ? { ratings } : {}) },
         CORE_VERSION,
       );
-      if (result.recalculation) await store.writeRecalculation(runId, result.recalculation);
-      if (values["json"] === true) {
-        print(canonicalize(result.view));
-        return 0;
-      }
-      markdown = renderReport(result, "markdown");
-      html = renderReport(result, "html");
-    } catch (error) {
-      if (!(error instanceof ReportError)) throw error;
-      err(`report: ${error.message}`);
-      return 1;
+    } catch (cause) {
+      if (!(cause instanceof ReportError)) throw cause;
+      throw new CliError("RECOMPUTE_MISMATCH", `report: ${cause.message}`, { cause });
     }
-    const out =
-      (values["out"] as string | undefined) ??
-      join(runDirectory(storePath, "runs", runId), "report");
-    await mkdir(out, { recursive: true });
-    const files = [join(out, "summary.md"), join(out, "report.html")];
-    await writeFile(files[0] as string, markdown);
-    await writeFile(files[1] as string, html);
-    print(`report: ${files.join(", ")}`);
-    return 0;
+    if (verified.recalculation) await store.writeRecalculation(run, verified.recalculation);
+    const { view } = verified;
+    const json = ReportView.parse({
+      schema: "ichnaea.reportView/1",
+      ...view,
+      lineage: view.lineage.map(([label, value]) => ({ label, value })),
+    });
+    const format = text(args, "format");
+    if (format === undefined && args.values["json"] === true) return { code: 0, text: [], json };
+    const directory = text(args, "out") ?? join(runDirectory(store.root, "runs", run), "report");
+    const files = new Map<string, string>();
+    if (format === "json")
+      files.set(join(directory, "report.json"), `${JSON.stringify(json, null, 2)}\n`);
+    if (format === "md" || format === undefined)
+      files.set(join(directory, "summary.md"), renderReport(verified, "markdown"));
+    if (format === "html" || format === undefined)
+      files.set(join(directory, "report.html"), renderReport(verified, "html"));
+    await mkdir(directory, { recursive: true });
+    for (const [file, contents] of files) await writeFile(file, contents);
+    return { code: 0, text: [`report: ${[...files.keys()].join(", ")}`], json };
   },
 };
