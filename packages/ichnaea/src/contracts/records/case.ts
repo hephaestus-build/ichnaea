@@ -8,6 +8,7 @@ import {
   Digest,
   DigestRef,
   FindingId,
+  MeasureId,
   Json,
   RecordDataClass,
   Text,
@@ -169,6 +170,7 @@ export const CaseSet = z.strictObject({
     ),
   ),
   cases: z.array(CaseSetEntry).min(1).describe("One entry for each case."),
+  applicability: none(z.record(MeasureId, z.array(CaseId))).optional(),
 });
 /** A case set. */
 export type CaseSet = z.infer<typeof CaseSet>;

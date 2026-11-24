@@ -40,7 +40,11 @@ function register<T>(map: Map<string, T>, id: string, value: T, owner: Plugin, k
   map.set(id, value);
 }
 
-const CONFIG_KEYS: ReadonlySet<string> = new Set(["plugins", "store"] satisfies (keyof Config)[]);
+const CONFIG_KEYS: ReadonlySet<string> = new Set([
+  "plugins",
+  "store",
+  "suite",
+] satisfies (keyof Config)[]);
 const PLUGIN_KEYS: ReadonlySet<string> = new Set([
   "id",
   "version",
