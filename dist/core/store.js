@@ -9,15 +9,12 @@ import { Run } from "../contracts/records/run.js";
 import { Trial } from "../contracts/records/trial.js";
 import * as z from "zod";
 import { recordProblems } from "./records.js";
+import { runDirectory, StoreError } from "./store-path.js";
+export { StoreError } from "./store-path.js";
 /** Thrown when a write would change a record that already exists. */
 export class AppendOnlyError extends Error {
     /** The error's name, for `instanceof`-free checks. */
     name = "AppendOnlyError";
-}
-/** Thrown when stored or offered records break the store's rules. The message names the record. */
-export class StoreError extends Error {
-    /** The error's name, for `instanceof`-free checks. */
-    name = "StoreError";
 }
 const IndexLine = z.strictObject({
     run: z.string().min(1),
@@ -60,6 +57,42 @@ async function readOptional(path) {
     }
 }
 const lines = (records, schema) => records.map((r) => `${canonicalize(schema.parse(r))}\n`).join("");
+function indexEntry(decision, suite) {
+    return IndexLine.parse({
+        run: decision.run,
+        suite,
+        plan: decision.plan,
+        verdict: decision.verdict,
+        decidedAt: decision.decidedAt,
+    });
+}
+/** Write validated primary records and publish the run in one rename. */
+export async function sealRun(root, directory, records, beforePublish) {
+    const problems = recordProblems(records);
+    if (problems.length > 0)
+        throw new StoreError(`run '${records.run.id}': ${problems.join("; ")}`);
+    const files = [
+        ["plan.json", lines([records.plan], Plan)],
+        ["run.json", lines([records.run], Run)],
+        ["trials.jsonl", lines(records.trials, Trial)],
+        ["values.jsonl", lines(records.values, MeasureValue)],
+        ["gates.jsonl", lines(records.gates, GateResult)],
+    ];
+    const final = runDirectory(root, "runs", records.run.id);
+    await mkdir(join(root, "runs"), { recursive: true });
+    for (const [name, text] of files)
+        await writeFile(join(directory, name), text);
+    await beforePublish?.();
+    try {
+        await rename(directory, final);
+    }
+    catch (error) {
+        const code = error.code;
+        if (code === "ENOTEMPTY" || code === "EEXIST" || code === "EISDIR")
+            throw new AppendOnlyError(`run '${records.run.id}' already exists; runs are never overwritten`);
+        throw error;
+    }
+}
 /**
  * The default store: plain files in an open format (REQ-28). Every record is one RFC 8785
  * canonical JSON line, so files diff cleanly and hash stably. The store is append-only: a run's
@@ -77,39 +110,20 @@ export class FileStore {
         this.root = root;
     }
     dir(run) {
-        const name = encodeURIComponent(run);
-        if (name === "" || name === "." || name === "..")
-            throw new StoreError(`run ID '${run}' cannot name a directory`);
-        return join(this.root, "runs", name);
+        return runDirectory(this.root, "runs", run);
     }
     /**
      * Writes a run's primary records. They are validated and checked first, then written to a
      * temporary directory that is renamed into place, so a failure leaves no partial run behind.
      */
     async createRun(records) {
-        const problems = recordProblems(records);
-        if (problems.length > 0)
-            throw new StoreError(`run '${records.run.id}': ${problems.join("; ")}`);
-        const files = [
-            ["plan.json", lines([records.plan], Plan)],
-            ["run.json", lines([records.run], Run)],
-            ["trials.jsonl", lines(records.trials, Trial)],
-            ["values.jsonl", lines(records.values, MeasureValue)],
-            ["gates.jsonl", lines(records.gates, GateResult)],
-        ];
-        const final = this.dir(records.run.id);
         const temporary = join(this.root, "runs", `.incomplete-${randomUUID()}`);
         await mkdir(temporary, { recursive: true });
         try {
-            for (const [name, text] of files)
-                await writeFile(join(temporary, name), text);
-            await rename(temporary, final);
+            await sealRun(this.root, temporary, records);
         }
         catch (error) {
             await rm(temporary, { recursive: true, force: true });
-            const code = error.code;
-            if (code === "ENOTEMPTY" || code === "EEXIST" || code === "EISDIR")
-                throw new AppendOnlyError(`run '${records.run.id}' already exists; runs are never overwritten`);
             throw error;
         }
     }
@@ -126,14 +140,7 @@ export class FileStore {
                 throw new AppendOnlyError(`run '${parsed.run}' already has a decision`);
             throw error;
         }
-        const entry = IndexLine.parse({
-            run: parsed.run,
-            suite,
-            plan: parsed.plan,
-            verdict: parsed.verdict,
-            decidedAt: parsed.decidedAt,
-        });
-        await appendFile(join(this.root, "index.jsonl"), `${canonicalize(entry)}\n`);
+        await appendFile(join(this.root, "index.jsonl"), `${canonicalize(indexEntry(parsed, suite))}\n`);
     }
     /** Reads everything stored for a run. Missing primary records are an error, never an empty run. */
     async read(run) {
@@ -190,7 +197,19 @@ export class FileStore {
     }
     /** The run index, oldest first. */
     async index() {
-        return parseLines((await readOptional(join(this.root, "index.jsonl"))) ?? "", IndexLine, "index.jsonl");
+        const entries = parseLines((await readOptional(join(this.root, "index.jsonl"))) ?? "", IndexLine, "index.jsonl");
+        const indexed = new Set(entries.map((entry) => entry.run));
+        for (const run of await this.runs()) {
+            if (indexed.has(run))
+                continue;
+            const dir = this.dir(run);
+            const decision = await readOptional(join(dir, "decision.json"));
+            if (decision === undefined)
+                continue;
+            const plan = parseOne(await readFile(join(dir, "plan.json"), "utf8"), Plan, `${run}/plan.json`);
+            entries.push(indexEntry(parseOne(decision, Decision, `${run}/decision.json`), plan.suite));
+        }
+        return entries.toSorted((a, b) => Date.parse(a.decidedAt) - Date.parse(b.decidedAt));
     }
     /** The IDs of stored runs. */
     async runs() {

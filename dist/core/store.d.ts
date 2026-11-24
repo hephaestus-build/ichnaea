@@ -2,15 +2,11 @@ import { type Decision as DecisionRecord } from "../contracts/records/decision.t
 import { type Plan as PlanRecord } from "../contracts/records/plan.ts";
 import { type Run as RunRecord } from "../contracts/records/run.ts";
 import { type RunRecords } from "./records.ts";
+export { StoreError } from "./store-path.ts";
 /** Thrown when a write would change a record that already exists. */
 export declare class AppendOnlyError extends Error {
     /** The error's name, for `instanceof`-free checks. */
     readonly name = "AppendOnlyError";
-}
-/** Thrown when stored or offered records break the store's rules. The message names the record. */
-export declare class StoreError extends Error {
-    /** The error's name, for `instanceof`-free checks. */
-    readonly name = "StoreError";
 }
 /** One line of the run index (REQ-28). */
 export interface RunIndexEntry {
@@ -30,6 +26,8 @@ export interface StoredRun extends RunRecords {
     /** The run's decision; absent until the run is decided. */
     readonly decision?: DecisionRecord;
 }
+/** Write validated primary records and publish the run in one rename. */
+export declare function sealRun(root: string, directory: string, records: RunRecords, beforePublish?: () => Promise<void>): Promise<void>;
 /**
  * The default store: plain files in an open format (REQ-28). Every record is one RFC 8785
  * canonical JSON line, so files diff cleanly and hash stably. The store is append-only: a run's
