@@ -41,16 +41,15 @@ describe("the power statement (REQ-54)", () => {
   });
 
   it("an INVALID run whose base arm is the broken part leaves no noise estimate to reuse", async () => {
-    // The base loses a third of its trials, below the coverage floor: its rates are not trusted.
+    // A run with no base outcomes cannot supply a base rate for resolution.
     const d = await run(
       await scenario({
         ...stable,
-        outcome: (t) =>
-          t.arm === "base" && t.replicate === 0 ? "infrastructure_failure" : undefined,
+        outcome: (t) => (t.arm === "base" ? "infrastructure_failure" : undefined),
       }),
     );
     expect(d.verdict).toBe("INVALID");
-    expect(d.reason).toMatch(/coverage 66\.7% is below its floor/);
+    expect(d.reason).toMatch(/base arm has no trial/);
     expect(d.power.run.filter((e) => e.computed)).toEqual([]);
   });
 
@@ -66,8 +65,8 @@ describe("the power statement (REQ-54)", () => {
       }),
     );
     expect(d.power.run[0]).toMatchObject({ computed: true, decidable: false });
-    expect(d.mode).toBe("decision");
-    expect(d.reasonCode).toBe("DROP_IN_THESE_RUNS_ONLY");
+    expect(d.mode).toBe("estimate-only");
+    expect(d.verdict).toBeNull();
   });
 
   it("an entry that was not computed says why, never a bare NaN", async () => {
@@ -190,7 +189,7 @@ describe("the power statement (REQ-54)", () => {
       expect.objectContaining({ computed: true, decidable: false }),
     ]);
     expect(planningPower(narrow.plan).mode).toBe("estimate-only");
-    expect(floored.mode).toBe("decision");
+    expect(floored.mode).toBe("estimate-only");
   });
 
   it("a plan without a statement whose margin is refused carries the refusal", async () => {
@@ -294,7 +293,7 @@ describe("the power statement (REQ-54)", () => {
         margin: 0.2,
       }),
     );
-    expect(inconclusive.verdict).toBe("INCONCLUSIVE");
+    expect(inconclusive.verdict).toBeNull();
     expect(inconclusive.power.run[0]).toMatchObject({ computed: true, applicableCases: 10 });
   });
 });

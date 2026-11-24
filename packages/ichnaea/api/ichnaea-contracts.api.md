@@ -995,6 +995,14 @@ export const Comparison: z.ZodObject<{
         validated: z.ZodLiteral<false>;
         limitations: z.ZodArray<z.ZodString>;
     }, z.core.$strict>], "validated">;
+    randomized: z.ZodOptional<z.ZodObject<{
+        withinP: z.ZodNumber;
+        withinPAdjusted: z.ZodNumber;
+        blockLower: z.ZodNumber;
+        withinLower: z.ZodNumber;
+        pairs: z.ZodInt;
+        imputedTrials: z.ZodInt;
+    }, z.core.$strict>>;
     flips: z.ZodArray<z.ZodObject<{
         case: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
         direction: z.ZodEnum<{
@@ -1195,8 +1203,64 @@ export const Decision: z.ZodObject<{
         REGRESSION: "REGRESSION";
     }>>;
     reason: z.ZodString;
-    reasonCode: z.ZodOptional<z.ZodLiteral<"DROP_IN_THESE_RUNS_ONLY">>;
-    cause: z.ZodOptional<z.ZodLiteral<"gate">>;
+    reasonCode: z.ZodOptional<z.ZodEnum<{
+        AGE_EXPIRED: "AGE_EXPIRED";
+        ANSWER_LENGTH_OUTSIDE: "ANSWER_LENGTH_OUTSIDE";
+        ARMS_NOT_INTERLEAVED: "ARMS_NOT_INTERLEAVED";
+        ARM_BIAS_NOT_SHOWN_SMALL: "ARM_BIAS_NOT_SHOWN_SMALL";
+        ATTENTION_FAILED: "ATTENTION_FAILED";
+        DROP_IN_THESE_RUNS_ONLY: "DROP_IN_THESE_RUNS_ONLY";
+        ESTIMATE_ONLY_CACHED_ARM: "ESTIMATE_ONLY_CACHED_ARM";
+        ESTIMATE_ONLY_EXPLORATORY: "ESTIMATE_ONLY_EXPLORATORY";
+        ESTIMATE_ONLY_FEW_CASES: "ESTIMATE_ONLY_FEW_CASES";
+        ESTIMATE_ONLY_NO_COMPARISON: "ESTIMATE_ONLY_NO_COMPARISON";
+        ESTIMATE_ONLY_NO_METHOD: "ESTIMATE_ONLY_NO_METHOD";
+        ESTIMATE_ONLY_NO_PRIMARY: "ESTIMATE_ONLY_NO_PRIMARY";
+        ESTIMATE_ONLY_PLACEHOLDER_MARGIN: "ESTIMATE_ONLY_PLACEHOLDER_MARGIN";
+        ESTIMATE_ONLY_SAMPLED_CASES: "ESTIMATE_ONLY_SAMPLED_CASES";
+        ESTIMATE_ONLY_SINGLE_TRIAL: "ESTIMATE_ONLY_SINGLE_TRIAL";
+        EXECUTION_UNRECORDED: "EXECUTION_UNRECORDED";
+        HARD_CHECK_FAILED: "HARD_CHECK_FAILED";
+        INPUTS_CHANGED: "INPUTS_CHANGED";
+        INTERVAL_UNAVAILABLE_DESCRIPTIVE: "INTERVAL_UNAVAILABLE_DESCRIPTIVE";
+        INTERVAL_UNAVAILABLE_METHOD: "INTERVAL_UNAVAILABLE_METHOD";
+        INTERVAL_UNAVAILABLE_NO_METHOD: "INTERVAL_UNAVAILABLE_NO_METHOD";
+        INTERVAL_UNAVAILABLE_NO_VALUE: "INTERVAL_UNAVAILABLE_NO_VALUE";
+        INVALID_BUDGET: "INVALID_BUDGET";
+        INVALID_COVERAGE: "INVALID_COVERAGE";
+        INVALID_HARD_CHECK_MISSING: "INVALID_HARD_CHECK_MISSING";
+        INVALID_NO_BASE_RESULTS: "INVALID_NO_BASE_RESULTS";
+        INVALID_RECORDS_CONTRADICT: "INVALID_RECORDS_CONTRADICT";
+        INVALID_RECORDS_MISMATCH: "INVALID_RECORDS_MISMATCH";
+        INVALID_SUITE_SETUP: "INVALID_SUITE_SETUP";
+        INVALID_UNDECLARED_CHANGE: "INVALID_UNDECLARED_CHANGE";
+        JUDGE_ARM_BIAS_WITHIN_BOUND: "JUDGE_ARM_BIAS_WITHIN_BOUND";
+        JUDGE_BELOW_RATERS: "JUDGE_BELOW_RATERS";
+        JUDGE_CALIBRATION_EXPIRED: "JUDGE_CALIBRATION_EXPIRED";
+        JUDGE_CHANGED: "JUDGE_CHANGED";
+        JUDGE_DIAGNOSTIC: "JUDGE_DIAGNOSTIC";
+        JUDGE_MODEL_NOT_COVERED: "JUDGE_MODEL_NOT_COVERED";
+        JUDGE_NOT_COVERED: "JUDGE_NOT_COVERED";
+        MARGIN_NOT_CLEARED: "MARGIN_NOT_CLEARED";
+        MARGIN_UNREACHABLE: "MARGIN_UNREACHABLE";
+        MISSING_TRIALS_CHANGE_VERDICT: "MISSING_TRIALS_CHANGE_VERDICT";
+        NON_INFERIORITY_UNVALIDATED: "NON_INFERIORITY_UNVALIDATED";
+        NO_DECREASE_DETECTED: "NO_DECREASE_DETECTED";
+        PASS: "PASS";
+        POPULATION_NOT_COVERED: "POPULATION_NOT_COVERED";
+        PROBE_FAILED: "PROBE_FAILED";
+        RATERS_BELOW_FLOOR: "RATERS_BELOW_FLOOR";
+        REGRESSION_DETECTED: "REGRESSION_DETECTED";
+        REGRESSION_TEST_UNVALIDATED: "REGRESSION_TEST_UNVALIDATED";
+        RUBRIC_CHANGED: "RUBRIC_CHANGED";
+        SYSTEM_MODEL_NOT_COVERED: "SYSTEM_MODEL_NOT_COVERED";
+        TOO_FEW_BLOCKS: "TOO_FEW_BLOCKS";
+    }>>;
+    withinRunDrop: z.ZodOptional<z.ZodBoolean>;
+    cause: z.ZodOptional<z.ZodEnum<{
+        gate: "gate";
+        statistical: "statistical";
+    }>>;
     scope: z.ZodString;
     plan: z.core.$ZodBranded<z.ZodString, "PlanDigest", "out">;
     run: z.core.$ZodBranded<z.ZodString, "RunId", "out">;
@@ -1344,6 +1408,14 @@ export const Decision: z.ZodObject<{
                 validated: z.ZodLiteral<false>;
                 limitations: z.ZodArray<z.ZodString>;
             }, z.core.$strict>], "validated">;
+            randomized: z.ZodOptional<z.ZodObject<{
+                withinP: z.ZodNumber;
+                withinPAdjusted: z.ZodNumber;
+                blockLower: z.ZodNumber;
+                withinLower: z.ZodNumber;
+                pairs: z.ZodInt;
+                imputedTrials: z.ZodInt;
+            }, z.core.$strict>>;
             flips: z.ZodArray<z.ZodObject<{
                 case: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
                 direction: z.ZodEnum<{
@@ -1619,6 +1691,7 @@ export const Decision: z.ZodObject<{
         }, z.core.$strict>>;
         differs: z.ZodBoolean;
         sensitivity: z.ZodEnum<{
+            "adverse-completion": "adverse-completion";
             "changes-verdict": "changes-verdict";
             "not-needed": "not-needed";
             unchanged: "unchanged";
@@ -1806,10 +1879,11 @@ export const Estimate: z.ZodObject<{
 export const ExecutedBlock: z.ZodObject<{
     block: z.ZodInt;
     plannedBlock: z.ZodInt;
-    first: z.ZodEnum<{
+    first: z.ZodOptional<z.ZodEnum<{
         base: "base";
         candidate: "candidate";
-    }>;
+    }>>;
+    draws: z.ZodOptional<z.ZodArray<z.ZodType<PairDraw, unknown, z.core.$ZodTypeInternals<PairDraw, unknown>>>>;
     status: z.ZodEnum<{
         abandoned: "abandoned";
         complete: "complete";
@@ -2877,6 +2951,14 @@ export const MeasureOutcome: z.ZodObject<{
             validated: z.ZodLiteral<false>;
             limitations: z.ZodArray<z.ZodString>;
         }, z.core.$strict>], "validated">;
+        randomized: z.ZodOptional<z.ZodObject<{
+            withinP: z.ZodNumber;
+            withinPAdjusted: z.ZodNumber;
+            blockLower: z.ZodNumber;
+            withinLower: z.ZodNumber;
+            pairs: z.ZodInt;
+            imputedTrials: z.ZodInt;
+        }, z.core.$strict>>;
         flips: z.ZodArray<z.ZodObject<{
             case: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
             direction: z.ZodEnum<{
@@ -3057,6 +3139,7 @@ export const Missingness: z.ZodObject<{
     }, z.core.$strict>>;
     differs: z.ZodBoolean;
     sensitivity: z.ZodEnum<{
+        "adverse-completion": "adverse-completion";
         "changes-verdict": "changes-verdict";
         "not-needed": "not-needed";
         unchanged: "unchanged";
@@ -3972,7 +4055,7 @@ export interface Reason {
 }
 
 // @public
-export const REASON_CODES: readonly ["REGRESSION_DETECTED", "HARD_CHECK_FAILED", "DROP_IN_THESE_RUNS_ONLY", "PASS", "NO_DECREASE_DETECTED", "NON_INFERIORITY_UNVALIDATED", "MARGIN_NOT_CLEARED", "MARGIN_UNREACHABLE", "MISSING_TRIALS_CHANGE_VERDICT", "REGRESSION_TEST_UNVALIDATED", "INVALID_COVERAGE", "INVALID_BUDGET", "INVALID_NO_BASE_RESULTS", "INVALID_UNDECLARED_CHANGE", "INVALID_RECORDS_MISMATCH", "INVALID_RECORDS_CONTRADICT", "INVALID_HARD_CHECK_MISSING", "INVALID_SUITE_SETUP", "ESTIMATE_ONLY_SINGLE_TRIAL", "ESTIMATE_ONLY_FEW_CASES", "ESTIMATE_ONLY_NO_COMPARISON", "ESTIMATE_ONLY_NO_PRIMARY", "ESTIMATE_ONLY_SAMPLED_CASES", "ESTIMATE_ONLY_EXPLORATORY", "ESTIMATE_ONLY_CACHED_ARM", "ESTIMATE_ONLY_PLACEHOLDER_MARGIN", "ESTIMATE_ONLY_NO_METHOD", "INTERVAL_UNAVAILABLE_NO_METHOD", "INTERVAL_UNAVAILABLE_NO_VALUE", "INTERVAL_UNAVAILABLE_DESCRIPTIVE", "INTERVAL_UNAVAILABLE_METHOD", "JUDGE_ARM_BIAS_WITHIN_BOUND", "JUDGE_DIAGNOSTIC", "RATERS_BELOW_FLOOR", "JUDGE_BELOW_RATERS", "ARM_BIAS_NOT_SHOWN_SMALL", "ATTENTION_FAILED", "PROBE_FAILED", "JUDGE_NOT_COVERED", "JUDGE_MODEL_NOT_COVERED", "SYSTEM_MODEL_NOT_COVERED", "ANSWER_LENGTH_OUTSIDE", "POPULATION_NOT_COVERED", "JUDGE_CALIBRATION_EXPIRED", "JUDGE_CHANGED", "RUBRIC_CHANGED", "INPUTS_CHANGED", "AGE_EXPIRED"];
+export const REASON_CODES: readonly ["REGRESSION_DETECTED", "DROP_IN_THESE_RUNS_ONLY", "TOO_FEW_BLOCKS", "EXECUTION_UNRECORDED", "ARMS_NOT_INTERLEAVED", "HARD_CHECK_FAILED", "PASS", "NO_DECREASE_DETECTED", "NON_INFERIORITY_UNVALIDATED", "MARGIN_NOT_CLEARED", "MARGIN_UNREACHABLE", "MISSING_TRIALS_CHANGE_VERDICT", "REGRESSION_TEST_UNVALIDATED", "INVALID_COVERAGE", "INVALID_BUDGET", "INVALID_NO_BASE_RESULTS", "INVALID_UNDECLARED_CHANGE", "INVALID_RECORDS_MISMATCH", "INVALID_RECORDS_CONTRADICT", "INVALID_HARD_CHECK_MISSING", "INVALID_SUITE_SETUP", "ESTIMATE_ONLY_SINGLE_TRIAL", "ESTIMATE_ONLY_FEW_CASES", "ESTIMATE_ONLY_NO_COMPARISON", "ESTIMATE_ONLY_NO_PRIMARY", "ESTIMATE_ONLY_SAMPLED_CASES", "ESTIMATE_ONLY_EXPLORATORY", "ESTIMATE_ONLY_CACHED_ARM", "ESTIMATE_ONLY_PLACEHOLDER_MARGIN", "ESTIMATE_ONLY_NO_METHOD", "INTERVAL_UNAVAILABLE_NO_METHOD", "INTERVAL_UNAVAILABLE_NO_VALUE", "INTERVAL_UNAVAILABLE_DESCRIPTIVE", "INTERVAL_UNAVAILABLE_METHOD", "JUDGE_ARM_BIAS_WITHIN_BOUND", "JUDGE_DIAGNOSTIC", "RATERS_BELOW_FLOOR", "JUDGE_BELOW_RATERS", "ARM_BIAS_NOT_SHOWN_SMALL", "ATTENTION_FAILED", "PROBE_FAILED", "JUDGE_NOT_COVERED", "JUDGE_MODEL_NOT_COVERED", "SYSTEM_MODEL_NOT_COVERED", "ANSWER_LENGTH_OUTSIDE", "POPULATION_NOT_COVERED", "JUDGE_CALIBRATION_EXPIRED", "JUDGE_CHANGED", "RUBRIC_CHANGED", "INPUTS_CHANGED", "AGE_EXPIRED"];
 
 // @public
 export const REASON_PARAMS: {
@@ -4008,6 +4091,7 @@ export interface ReasonParams {
         readonly limit: number;
         readonly casesNeeded: number | "not reachable";
     };
+    ARMS_NOT_INTERLEAVED: NoParams;
     ATTENTION_FAILED: {
         readonly pseudonym: string;
     };
@@ -4023,6 +4107,7 @@ export interface ReasonParams {
     ESTIMATE_ONLY_PLACEHOLDER_MARGIN: NoParams;
     ESTIMATE_ONLY_SAMPLED_CASES: NoParams;
     ESTIMATE_ONLY_SINGLE_TRIAL: NoParams;
+    EXECUTION_UNRECORDED: NoParams;
     HARD_CHECK_FAILED: {
         readonly check: string;
         readonly failures: number;
@@ -4112,6 +4197,7 @@ export interface ReasonParams {
         readonly calibrationCases: number;
         readonly hours: number;
     };
+    TOO_FEW_BLOCKS: NoParams;
 }
 
 // @public
@@ -4198,13 +4284,18 @@ export const Run: z.ZodObject<{
             runner: "runner";
         }>;
         analysisPlan: z.ZodString;
+        seed: z.ZodOptional<z.ZodObject<{
+            algorithm: z.ZodString;
+            value: z.ZodString;
+        }, z.core.$strict>>;
         blocks: z.ZodOptional<z.ZodArray<z.ZodObject<{
             block: z.ZodInt;
             plannedBlock: z.ZodInt;
-            first: z.ZodEnum<{
+            first: z.ZodOptional<z.ZodEnum<{
                 base: "base";
                 candidate: "candidate";
-            }>;
+            }>>;
+            draws: z.ZodOptional<z.ZodArray<z.ZodType<PairDraw, unknown, z.core.$ZodTypeInternals<PairDraw, unknown>>>>;
             status: z.ZodEnum<{
                 abandoned: "abandoned";
                 complete: "complete";
@@ -5677,6 +5768,15 @@ export const Trial: z.ZodObject<{
     replicate: z.ZodInt;
     analysisPlan: z.ZodOptional<z.ZodString>;
     block: z.ZodOptional<z.ZodInt>;
+    first: z.ZodOptional<z.ZodEnum<{
+        base: "base";
+        candidate: "candidate";
+    }>>;
+    armOrderSeed: z.ZodOptional<z.ZodObject<{
+        algorithm: z.ZodString;
+        value: z.ZodString;
+    }, z.core.$strict>>;
+    responseIds: z.ZodOptional<z.ZodArray<z.ZodString>>;
     context: z.ZodOptional<z.ZodString>;
     outcome: z.ZodEnum<{
         abstained: "abstained";
@@ -6252,6 +6352,10 @@ export const WorkerSettings: z.ZodObject<{
 
 // @public
 export type WorkerSettings = z.infer<typeof WorkerSettings>;
+
+// Warnings were encountered during analysis:
+//
+// src/contracts/records/run.ts:37:27 - (ae-forgotten-export) The symbol "PairDraw" needs to be exported by the entry point index.d.ts
 
 // (No @packageDocumentation comment for this package)
 

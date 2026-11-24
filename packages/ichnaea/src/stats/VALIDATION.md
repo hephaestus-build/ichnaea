@@ -111,8 +111,7 @@ failing candidate trials turned a −0.10 drop (regression p = 1.6e-8) into a pa
 
 A validated result assumes that missingness within a case does not depend on the outcome. When the
 failing trials of a case go missing, the estimate moves towards a pass: 6 of 60 cases that lose their
-2 failing candidate trials of 3 give an estimate of 0.000 instead of −0.067. The decision layer
-therefore runs a sensitivity analysis whenever a trial is missing.
+2 failing candidate trials of 3 give an estimate of 0.000 instead of −0.067. The randomized decision rule fills each missing score against the claim under test.
 
 Proportion measures (several items in one output), score and ordinal measures have no validated
 method yet (decision 0008). `compareCounts` takes the measure's value type and refuses anything but
@@ -290,57 +289,9 @@ output").
 
 - **Claim:** no failure found in this space, which is a search, not a proof. A structure outside it
   may still fail.
-- **Conditions for a validated result at one trial per case.** `compareCounts` validates the
-  regression result at exactly one completed trial in every case-arm cell of at least 5 cases only
-  when its caller states, as `oneTrial`, that its checks of the records passed. Without it, the
-  result names "one trial per case needs decide's checks of the trial order, the timestamps and the
-  A/A runs". `decide` runs these checks for a plan that runs exactly one trial per case in its base
-  and candidate arms. Each check that fails is a limitation of the regression result, which then
-  gives no REGRESSION:
-  - **The order within each pair is random.** A fair coin per case chooses which arm runs first:
-    SHA-256 over the canonical JSON of `{ seed, case }`, with the plan's seed record and the case
-    ID; the candidate runs first when the lowest bit of the first byte is 1 (`candidateRunsFirst`).
-    The plan lists the trials case by case in that order, so its order is the run order, and
-    `batch` numbers the pairs. `decide` recomputes the coin: a case whose trials ran in the other
-    order (by `startedAt`; a tie is not the other order) is unpaired. The stated assumption is that
-    a run-level shock is shared by both arms of a case. With one trial per arm, a shock between the
-    arms cannot be told apart from an effect, and a random order keeps a drift over the run from
-    favouring one arm. This study has no shocks, so it sets no shock bound.
-  - **Both arms of a case ran adjacent in time.** Every trial that ran records `startedAt` and
-    `endedAt`; otherwise the result is not validated, because "the records do not show when the arms
-    ran". c is the largest number of trials whose half-open [startedAt, endedAt) intervals overlap, computed
-    from the records. The trials are ranked by `startedAt`, ties broken by trial ID, and a case whose
-    two trials' ranks differ by more than 2c − 1 is unpaired. There is no fixed time window.
-  - **Unpaired cases and missing trials.** A case without its pair, unpaired or with a missing
-    trial, is excluded from the comparison and counts against coverage, exactly as a missing trial
-    does. The coverage floor decides whether too many were lost, so one retry never invalidates a
-    whole run. The sensitivity analysis covers them.
-  - **The schedule.** The plan states `schedule`: the concurrency and the endpoint the run uses.
-  - **A/A runs.** The plan cites, in `aa`, at least two distinct A/A decisions by run and decision
-    digest (`ichnaea import --aa <run>`), and the caller gives each with its plan and run. Each
-    one must:
-    1. match its cited digest, and name the given plan and run by their digests;
-    2. compare one configuration with itself: both arms have the same identity;
-    3. run one trial per case and arm;
-    4. run this plan's suite (the same `suiteDigest`);
-    5. meet these conditions itself: it is a decision, not INVALID, and every primary measure's
-       regression result is validated. An A/A plan waives only its own A/A precondition;
-    6. give no REGRESSION for any primary measure, after Holm;
-    7. be one of at least two distinct such decisions;
-    8. match this plan's base model (the configuration's `models`, compared as the identity
-       projection does) and its schedule. The base configuration's own identity need not match.
-  - **Non-inferiority** at one trial per case needs its own floor sweep: with one trial per arm
-    most pairs agree, the zero-variance mechanism that sets the margin floor. Until then, its
-    result names "non-inferiority is not validated at one trial per case", and one trial per case
-    can give REGRESSION but never PASS.
-- **Limitations `decide` cannot check.** It trusts the timestamps as recorded; an importer that
-  merges the records of several hosts states its clock source. Every decision at one trial per
-  case says so. A provider-side change behind the same model ID is not detected, so A/A runs on
-  the same model ID can hide it.
-- **The owner rule, which `decide` cannot see.** An A/A REGRESSION is never discarded. It blocks
-  validation at one trial per case for that suite, model and schedule until its cause is found and
-  two later, consecutive A/A decisions are clean. The cited records must be the two most recent A/A
-  decisions.
+  This study characterizes the case-only test still available through `compareCounts`.
+  The decision rule uses the [recorded pair assignments](#randomized-block-decisions).
+  Earlier releases used these study results with the checks in decision 0020.
 
 ## Results of the CI gate
 
@@ -351,7 +302,7 @@ Two workflows run the studies with `pnpm --filter @tumaet/ichnaea run test:sim:s
 - The `Nightly` workflow (`.github/workflows/nightly.yml`), job `simulation`: every day at 02:17
   UTC and on demand, with `ICHNAEA_SIM_REPS=10000` and a limit of 120 minutes.
 
-`test:sim` runs nine study files in parallel: `test/stats/coverage.sim.test.ts`,
+`test:sim` runs ten study files in parallel: `test/stats/coverage.sim.test.ts`,
 `test/stats/checks-coverage.sim.test.ts`, `test/stats/type-i-exact.sim.test.ts`,
 `test/stats/type-i-permutation-17.sim.test.ts`, `test/stats/type-i-permutation-60.sim.test.ts`,
 `test/stats/score-permutation-work.sim.test.ts`, which times the score permutation test at its work
@@ -359,8 +310,9 @@ limit and judges no grid, `test/stats/score-ni-equivalence.sim.test.ts`, which c
 non-inferiority study's decision against the root-finder and judges no grid,
 `test/stats/score-ni-points.sim.test.ts`, which checks the roles, the reported points and the seeds
 of that study's points and judges no grid, and `test/stats/sentinel.sim.test.ts`, which checks the
-drift guard's simulated power against its exact power and judges no grid. Candidates are confirmed
-in the same run.
+drift guard's simulated power against its exact power and judges no grid. The sharp-null and
+joint PASS studies run in `test/stats/blocks.sim.test.ts`. Candidates are confirmed in the same
+run.
 
 The results at 6,000 repetitions, by the grid title that the CI log prints. Each study compares its
 result with its row here and fails if they differ, so a change to a grid or to its results changes
@@ -379,6 +331,9 @@ check: its study requires it to fail.
 | `exact stratified test, type-I error`                  | 45     | 28    | 0         | maximum 0.0395 ± 0.0025 (screen), k=60 r=3 0.7                                               | 0.0222 |
 | `within-case permutation test, 17 cases, type-I error` | 6      | 0     | 1         | maximum 0.0414 ± 0.0004 (confirmed), k=17 r=2..3 0.7                                         | 0.0287 |
 | `within-case permutation test, 60 cases, type-I error` | 6      | 0     | 1         | maximum 0.0454 ± 0.0005 (confirmed), k=60 r=2..3 0.7                                         | 0.0392 |
+| `randomized blocks and pairs under the sharp null`     | 26     | 8     | 4         | maximum 0.0487 ± 0.0005 (confirmed), linear drift R=8 within                                 | 0.0218 |
+| `joint PASS boundary and margin search`                | 72     | 0     | 0         | maximum 0.0262 ± 0.0021 (screen), heterogeneous n=72 R=8 m=0.1                               | 0.0105 |
+| `block shocks outside PASS model (must fail)`          | 2      | 2     | 0         | maximum 0.5734 (exact), skewed shocks                                                        | 0.5520 |
 
 The coverage grid has exact points for 5 to 9, 12 and 13 cases at r = 2 and for 5 to 8 cases at
 r = 3, at rates 0.05 to 0.99 and shifts +0.1 to −0.3. It has exact points with one-trial cells (5, 9
@@ -1320,3 +1275,56 @@ per-measure level of 0.05 divided by the family size. The percentages are planni
 | 72    | 9 points, 864 calls    | 10, 1,008      | 11, 1,008        | 11, 1,152       |
 
 The resolution estimates do not set the validated domain of the decision tests.
+
+## Randomized block decisions
+
+Both sharp-null tests use the independently randomized order of each case pair in a physical
+block. The opening receipt records the plan seed and its planned draws. The execution receipt
+records the draws actually used, including replacements, and each trial carries its draw and
+seed. A replicated case has one assignment per replicate. Given the sharp null and fixed outcomes for the two dispatch
+positions, swapping the arms changes the sign of the pair difference. That null rules out direct
+effects of assignment and assignment effects through interference or carryover.
+
+The block test flips all the pairs in each effective block together. That transformation is a
+subgroup of the pair assignments. Blocks with a shared execution context are merged. Each
+planned pair contributes one integer candidate-minus-base score. Group weights retain the
+planned number of pairs. A zero block stays in the sign set. Ties enter the tail, including the
+identity assignment. See Canay, Romano and Shaikh, _Econometrica_ 85(3), 2017, §2.1,
+[doi:10.3982/ECTA13081](https://doi.org/10.3982/ECTA13081). Remark 2.3, equation (9),
+gives the nonrandomized tail fraction under group invariance. Remark 2.4 gives its finite-sample
+level control. Their Theorem 2.1 concerns a randomized decision at the cutoff. A rejection here
+shows a departure from interchangeability in the harmful direction. It gives no mean-drop
+magnitude or test of a mean-zero null.
+
+The within-run test counts discordant pairs, conditional on their observed unordered outcomes.
+The number whose candidate score is higher has a Binomial(discordant pairs, 1/2) reference
+distribution. Its lower tail retains ties. This equals an exact stratified test with one stratum
+for each case × block × replicate pair. Pooling replicates into a single arm-label permutation
+stratum would change the assignment distribution. Under linear time drift, separate pair
+assignments balance order in expectation. A single draw shared by 20 discordant pairs can give a
+within-run rejection in half the runs if the test treats the pairs as independently assigned.
+
+The two PASS bounds answer a different question. The block lower bound inverts the sign-flip
+test at a common additive shift. The within-run lower bound is a stratified Miettinen–Nurminen
+bound with equal case × block weights. Both must strictly clear the same effective margin.
+Randomization gives exact sharp-null tests. It does not validate the common-shift model or the
+within-run bound under a nonzero margin.
+
+The boundary study searches the tested margins 0.06, 0.10 and 0.15 for 20, 60 and 72 cases,
+5 through 8 complete blocks in distinct contexts, and one trial per arm per case per block.
+It checks an all-passing base with the candidate at the margin, and heterogeneous base rates
+from 0.6 to 0.9 with centered heterogeneous candidate changes. This evidence applies to
+independent binary outcomes in the stated models and grid. Smaller case counts, other block
+horizons, merged contexts and missing trials remain outside the PASS domain.
+
+An exact negative control holds the marginal average difference at −0.10 across five blocks
+of 20 cases. Each block shares a rare adverse shock. The rate of false Pass is 57.34% in the
+skewed structure and 53.06% when the block centres differ. These structures fall outside the
+PASS model. The bounds can be optimistic when trials share a shock even if every observed
+execution context is distinct. The recorded contexts cannot establish statistical independence.
+
+Missing trials are completed against the claim. For a drop, missing candidate trials pass and
+missing base trials fail. Each missing score then moves the lower-tail statistic away from
+rejection. The block denominator remains the planned pair count. For PASS, the completion is
+reversed and any missing trial keeps the result outside the validated domain. An abandoned
+physical block is excluded without shortening the planned horizon.

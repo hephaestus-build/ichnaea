@@ -31,7 +31,7 @@ describe("report", () => {
   it("renders Markdown with the verdict, the measures and the lineage", () => {
     const text = report({ ...s, decision }, { format: "markdown", suite: "support" });
     expect(text).toContain("Ichnaea decision: support");
-    expect(text).toContain("INCONCLUSIVE");
+    expect(text).toContain("ESTIMATE-ONLY");
     expect(text).toContain("app/correct");
     expect(text).toContain("Lineage");
   });
@@ -44,7 +44,7 @@ describe("report", () => {
       string,
       unknown
     >;
-    expect(view).toMatchObject({ verdict: "INCONCLUSIVE", title: "Ichnaea decision: run run-1" });
+    expect(view).toMatchObject({ verdict: "ESTIMATE-ONLY", title: "Ichnaea decision: run run-1" });
   });
 
   it("is synchronous and the same for the same decision", () => {

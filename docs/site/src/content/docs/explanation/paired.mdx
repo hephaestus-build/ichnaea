@@ -20,15 +20,13 @@ The threshold looks objective, but it measures nothing about your cases.
 
 ## What Ichnaea does instead
 
-You run both configurations on the same cases, usually 2 or 3 times each.
-Ichnaea then compares them inside each case.
+Both configurations run on the same cases in each block. For every case pair, the runner draws
+which configuration runs first. It records the seed and the draw. This balances time drift in
+expectation.
 
-- A case that both configurations always pass, or always fail, says nothing about the change. It drops out of the test.
-- A case that passes in the base and fails in the candidate is evidence of a decrease.
-- With 2 or more trials per case in each version, Ichnaea sees how much each case varies between runs. It compares the decrease with that variation.
-
-The test is the exact stratified conditional test. Each case is one stratum.
-With unequal trial counts, Ichnaea uses a permutation test within each case instead.
+Ichnaea tests for a decrease by flipping the signs of whole blocks. Blocks that share an
+execution context count as one group. A second test uses the individual pair draws. It can flag a decrease within the current run
+even when the block test has too few blocks.
 
 ## What the numbers mean
 
@@ -42,10 +40,9 @@ To make a claim about new inputs, you need a sample of cases drawn from them, an
 ## What it does not cover
 
 - Only pass/fail measures have a validated test today. Measures with scores show an estimate and no verdict.
-- A test that detects a drop gives Inconclusive with the reason `DROP_IN_THESE_RUNS_ONLY`.
+- A statistical Regression means the configurations were not interchangeable and the observed difference points toward a decrease. The size of the decrease remains uncertain.
 
 ## Evidence
 
 - [Decision 0004](https://github.com/hephaestus-build/ichnaea/blob/main/docs/decisions/0004-fixed-cases-interval.md): the estimate, its interval and the equal case weights.
-- [Decision 0016](https://github.com/hephaestus-build/ichnaea/blob/main/docs/decisions/0016-regression-test-and-noise-claim.md): the test used for a within-run drop.
 - [Statistics validation](https://github.com/hephaestus-build/ichnaea/blob/main/packages/ichnaea/src/stats/VALIDATION.md): the type-I error of each test, measured.

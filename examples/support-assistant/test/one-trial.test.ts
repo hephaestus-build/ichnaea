@@ -134,7 +134,7 @@ describe("one trial per case and arm, from the CLI", async () => {
       log,
     );
 
-  it("decides two A/A runs, cites them, and reports the change's within-run drop", async () => {
+  it("keeps A/A citations for replay without admitting an imported verdict", async () => {
     for (const [run, seed] of [
       ["aa-1", 11],
       ["aa-2", 12],
@@ -158,10 +158,8 @@ describe("one trial per case and arm, from the CLI", async () => {
       out.join("\n"),
     ).toBe(0);
     expect(out.join("\n")).toContain("import: run run-1: 24 trials");
-    expect(await decideRun("run-1"), out.join("\n")).toBe(1);
-    expect(out.join("\n")).toMatch(
-      /^INCONCLUSIVE: Measure support\/facts-stated dropped in these runs\./m,
-    );
+    expect(await decideRun("run-1"), out.join("\n")).toBe(0);
+    expect(out.join("\n")).toMatch(/^ESTIMATE-ONLY: .*no locked randomized assignments/m);
 
     const read = async (run: string, name: string): Promise<Record<string, unknown>> =>
       JSON.parse(await readFile(join(store, "runs", run, name), "utf8")) as Record<string, unknown>;
@@ -178,8 +176,8 @@ describe("one trial per case and arm, from the CLI", async () => {
       measures: { comparisons: { regression: unknown }[] }[];
     };
     expect(decision.measures[0]?.comparisons[0]?.regression).toEqual({
-      validated: true,
-      limitations: [],
+      validated: false,
+      limitations: ["the comparison is descriptive"],
     });
     // The report recomputes the decision with the same A/A records.
     expect(

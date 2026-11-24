@@ -21,9 +21,10 @@ describe("reason-code reference", () => {
     const reasons = reasonSections().flatMap((section) => section.reasons);
     const hard = reasons.find((reason) => reason.code === "HARD_CHECK_FAILED");
     expect(hard?.params).toEqual(["check", "failures", "checked"]);
-    const pass = reasons.find((reason) => reason.code === "PASS");
-    expect(pass?.params).toEqual([]);
-    expect(pass?.context).toContain("cases");
+    const regression = reasons.find((reason) => reason.code === "REGRESSION_DETECTED");
+    expect(regression?.params).toEqual([]);
+    expect(regression?.context).toEqual([]);
+    expect(reasons.find((reason) => reason.code === "PASS")?.context).toContain("margin");
   });
 
   it("explains that {arm} is a name and {side} is base or candidate", () => {

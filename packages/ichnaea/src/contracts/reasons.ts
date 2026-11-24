@@ -69,8 +69,11 @@ const JUDGE_LABELS: readonly CardLabel[] = [];
  */
 export const REASON_CODES = [
   "REGRESSION_DETECTED",
-  "HARD_CHECK_FAILED",
   "DROP_IN_THESE_RUNS_ONLY",
+  "TOO_FEW_BLOCKS",
+  "EXECUTION_UNRECORDED",
+  "ARMS_NOT_INTERLEAVED",
+  "HARD_CHECK_FAILED",
   "PASS",
   "NO_DECREASE_DETECTED",
   "NON_INFERIORITY_UNVALIDATED",
@@ -130,8 +133,38 @@ export type ReasonCode = (typeof REASON_CODES)[number];
 export const REASONS: { readonly [C in ReasonCode]: Reason } = {
   REGRESSION_DETECTED: run(
     ["Regression"],
-    "Reserved for a harmful result from a randomized block comparison.",
-    [always("scope", "The configurations are not interchangeable on these cases.")],
+    "A randomized block test rejects the sharp null across the declared primary measures.",
+    [
+      always(
+        "block",
+        "The configurations were not interchangeable, and the difference was in the harmful direction.",
+      ),
+      always("magnitude", "The size of the decrease remains uncertain."),
+    ],
+  ),
+  DROP_IN_THESE_RUNS_ONLY: run(
+    ["Inconclusive"],
+    "A paired randomization test found a decrease in this run.",
+    [always("decrease", "A measure decreased in these runs.")],
+    'Set policy.onRunDrop to "block" to stop CI when the paired test detects a decrease.',
+  ),
+  TOO_FEW_BLOCKS: run(
+    ["Inconclusive"],
+    "The effective block horizon cannot support a statistical verdict.",
+    [always("blocks", "There are too few complete independent blocks to decide.")],
+  ),
+  EXECUTION_UNRECORDED: run(["Estimate only"], "The recorded execution is incomplete.", [
+    always("execution", "An execution block, context or timestamp is missing."),
+  ]),
+  ARMS_NOT_INTERLEAVED: run(
+    ["Estimate only"],
+    "The trials did not follow the recorded pair assignment or start ranks.",
+    [
+      always(
+        "interleaving",
+        "The base and candidate did not run in the planned interleaved order.",
+      ),
+    ],
   ),
   HARD_CHECK_FAILED: run(
     ["Regression"],
@@ -144,20 +177,30 @@ export const REASONS: { readonly [C in ReasonCode]: Reason } = {
     ],
     "Inspect the {failures} failing answers.",
   ),
-  DROP_IN_THESE_RUNS_ONLY: run(
-    ["Inconclusive"],
-    "The within-run test detected a drop after adjustment across the primary measures.",
-    [always("detected", "A drop was detected in these runs.")],
-    'Set policy.onRunDrop to "block" to stop CI on a detected drop.',
-  ),
   PASS: run(
     ["Pass"],
-    "Reserved for a comparison whose block bound and within-run bound both clear the limit.",
-    [always("scope", "This holds for these {cases} cases.")],
+    "Both lower bounds clear the limit for every primary measure in the validated domain.",
+    [
+      {
+        key: "one-measure",
+        when: "the plan has one primary measure",
+        text: "Both bounds place the decrease on these cases within the {margin}-point limit.",
+      },
+      {
+        key: "measures",
+        when: "the plan has more than one primary measure",
+        text: "Both bounds clear the limit for each primary measure on these cases.",
+      },
+      always(
+        "model",
+        "Pass assumes a common shift across blocks and independent pass or fail trials.",
+      ),
+      always("scope", "The result applies to these {cases} cases."),
+    ],
   ),
   NO_DECREASE_DETECTED: run(
     ["Inconclusive"],
-    "The within-run test did not detect a drop. A statistical pass needs randomized blocks and a validated limit.",
+    "No primary measure’s validated regression test finds a decrease beyond run-to-run noise, but that is not evidence that no larger decrease exists. The verdict is Inconclusive, and the codes beside it say why it is not a Pass.",
     [
       always(
         "both-halves",
@@ -167,12 +210,12 @@ export const REASONS: { readonly [C in ReasonCode]: Reason } = {
   ),
   NON_INFERIORITY_UNVALIDATED: run(
     ["Inconclusive"],
-    "A bound clears its limit, but the non-inferiority result is not validated, so no Pass is possible yet.",
+    "The evidence is outside the validated domain or fails to clear the limit with both bounds.",
     [
       {
         key: "floor",
-        when: "the smallest validated limit is not set yet",
-        text: "This is not a statistical Pass: this Ichnaea version cannot establish non-inferiority yet.",
+        when: "the registered limit is outside the validated domain",
+        text: "This comparison is outside the validated range of limits.",
       },
       {
         key: "single-trial",
@@ -212,7 +255,7 @@ export const REASONS: { readonly [C in ReasonCode]: Reason } = {
     [
       always(
         "sensitivity",
-        "The recorded trials show a drop ({test}, {p}). If the {missing} missing trials of the {side} ({arm}) had {imputed}, the test would no longer detect it ({imputedP}).",
+        "As recorded, the decrease is beyond run-to-run noise ({test}, {p}). If the {missing} missing trials of the {side} ({arm}) had {imputed}, it would not be ({imputedP}). No verdict holds.",
       ),
       always(
         "missing",
@@ -345,9 +388,14 @@ export const REASONS: { readonly [C in ReasonCode]: Reason } = {
   ),
   ESTIMATE_ONLY_EXPLORATORY: run(
     ["Estimate only"],
-    "The plan changed after the first trial, so the run is exploratory.",
-    [always("exploratory", "The plan changed after the run started, so the run cannot decide.")],
-    "Start a new run.",
+    "An import, a re-score or a missing assignment record makes the run exploratory.",
+    [
+      always(
+        "exploratory",
+        "This run gives estimates because it lacks verified randomized assignments.",
+      ),
+    ],
+    "Use the runner to record a randomized run.",
   ),
   ESTIMATE_ONLY_CACHED_ARM: run(
     ["Estimate only"],
@@ -624,14 +672,20 @@ export type NoParams = Readonly<Record<never, never>>;
 export interface ReasonParams {
   /** The parameters of `REGRESSION_DETECTED`. */
   REGRESSION_DETECTED: NoParams;
+  /** The observed order or start ranks violate the pair schedule. */
+  ARMS_NOT_INTERLEAVED: NoParams;
+  /** The recorded pair test found a drop within the run. */
+  DROP_IN_THESE_RUNS_ONLY: NoParams;
+  /** The execution timestamps, context or block are absent. */
+  EXECUTION_UNRECORDED: NoParams;
+  /** The effective block horizon cannot resolve the planned comparisons. */
+  TOO_FEW_BLOCKS: NoParams;
   /** The parameters of `HARD_CHECK_FAILED`. */
   HARD_CHECK_FAILED: {
     readonly check: string;
     readonly failures: number;
     readonly checked: number;
   };
-  /** The parameters of `DROP_IN_THESE_RUNS_ONLY`. */
-  DROP_IN_THESE_RUNS_ONLY: NoParams;
   /** The parameters of `PASS`. */
   PASS: NoParams;
   /** The parameters of `NO_DECREASE_DETECTED`. */
@@ -750,8 +804,11 @@ export const REASON_PARAMS: {
   readonly [C in ReasonCode]: ReadonlyArray<keyof ReasonParams[C] & string>;
 } = {
   REGRESSION_DETECTED: [],
-  HARD_CHECK_FAILED: ["check", "failures", "checked"],
+  ARMS_NOT_INTERLEAVED: [],
   DROP_IN_THESE_RUNS_ONLY: [],
+  EXECUTION_UNRECORDED: [],
+  TOO_FEW_BLOCKS: [],
+  HARD_CHECK_FAILED: ["check", "failures", "checked"],
   PASS: [],
   NO_DECREASE_DETECTED: [],
   NON_INFERIORITY_UNVALIDATED: [],

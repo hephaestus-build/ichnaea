@@ -44,22 +44,22 @@ With K cases and r trials per case, the smallest limit that can pass is about
 | 250   | 0.7 points          | 0.4 points          |
 
 If your limit is below the floor, your suite can never pass, even when nothing changes.
-The planner checks this before the first trial and says so.
+This calculation applies to the descriptive case-only bound. The randomized planner uses the chosen block horizon.
 
-## Why no candidate can pass yet
+## When a candidate can pass
 
-A non-inferiority result is validated only for limits from a smallest validated limit up to 30 points.
-That smallest limit is not set yet.
-The studies found case structures in which the lower bound is too optimistic.
-A statistical pass requires randomized blocks and a validated limit.
-The current test can detect a drop only within these runs.
+For each primary measure, the block lower bound and the bound from the case pairs must both
+clear the same registered limit. The block bound uses a common shift model. The bound from the
+case pairs helps guard against overconfidence when almost every answer passes.
 
-## How to read the bound
+The validation study covers 20, 60 or 72 cases, each with five to eight complete blocks in
+distinct execution contexts. It uses one trial per arm, case and block, with limits of 6, 10
+or 15 points.
+The estimates remain available outside that domain.
 
-Ichnaea computes a one-sided 95% lower bound for the change.
-If the bound crosses minus your limit, the trials leave open a larger drop.
-A test that detects a drop reports `DROP_IN_THESE_RUNS_ONLY` with an Inconclusive verdict.
-The suite can stop CI on this result with `onRunDrop: "block"`.
+If the evidence leaves a larger decrease possible, the decision remains Inconclusive unless
+a test or hard gate gives Regression. The block test indicates the direction of change.
+The size of that change remains uncertain.
 
 ## What it does not cover
 

@@ -39,14 +39,14 @@ needs evidence beyond this comparison. See the [design](docs/design.md) for the 
 
 Ichnaea is one package, `@tumaet/ichnaea`. Its subpaths:
 
-| Import                                         | Content                                                                                                                                | State     |
-| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| `@tumaet/ichnaea`                              | Plugin host, planner, import mode, file store, call ledger and CLI; the decision rule with its power statement; the reports            | available |
-| `@tumaet/ichnaea/contracts`                    | zod schemas, RFC 8785 canonical hashing, configuration identity, data classes                                                          | available |
-| `@tumaet/ichnaea/stats`                        | Intervals, paired and stratified tests, power. The regression test is validated; non-inferiority is not, until the margin floor is set | available |
-| `@tumaet/ichnaea/calibration`                  | Judge calibration against two human raters. A calibrated judge's measures are secondary: shown, never deciding                         | available |
-| `@tumaet/ichnaea/schemas/<record>.schema.json` | The normative JSON Schema 2020-12 file of each record                                                                                  | available |
-| Runner and conformance kits                    |                                                                                                                                        | planned   |
+| Import                                         | Content                                                                                                                     | State     |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | --------- |
+| `@tumaet/ichnaea`                              | Plugin host, planner, import mode, file store, call ledger and CLI; the decision rule with its power statement; the reports | available |
+| `@tumaet/ichnaea/contracts`                    | zod schemas, RFC 8785 canonical hashing, configuration identity, data classes                                               | available |
+| `@tumaet/ichnaea/stats`                        | Intervals, paired and stratified tests, and power. The decision rule uses a separate randomized block analysis              | available |
+| `@tumaet/ichnaea/calibration`                  | Judge calibration against two human raters. A calibrated judge's measures are secondary: shown, never deciding              | available |
+| `@tumaet/ichnaea/schemas/<record>.schema.json` | The normative JSON Schema 2020-12 file of each record                                                                       | available |
+| Runner and conformance kits                    |                                                                                                                             | planned   |
 
 The package ships JavaScript and declarations, built from its TypeScript sources, and the sources
 too. It needs Node 24.3 or later. zod 4 (4.6 or later) is a peer dependency. The package has no
@@ -156,7 +156,7 @@ pnpm exec ichnaea import --importer support/results \
   --trigger new-model --vary prompt.answer --run unchanged
 pnpm exec ichnaea decide --run unchanged
 pnpm exec ichnaea report --run unchanged
-# A candidate with a drop
+# A candidate with lower observed rates
 pnpm exec ichnaea import --importer support/results \
   --suite data/suite.json --case-set data/case-set.json --cases data/cases.jsonl \
   --arm base:base:configurations/base.json --arm candidate:candidate:configurations/candidate.json \
@@ -171,16 +171,14 @@ can act on it.
 
 <!-- The build consumer test checks these verdict lines and exit codes. -->
 
-| Scenario                | Results file                       | `decide` prints                                                                                                              | `decide` exits |
-| ----------------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | -------------- |
-| An unchanged candidate  | `results/candidate-same.json`      | `INCONCLUSIVE: No drop was detected in these runs. A statistical pass needs randomized blocks and a validated margin floor.` | 0              |
-| A candidate with a drop | `results/candidate-regressed.json` | `INCONCLUSIVE: Measure support/facts-stated dropped in these runs.`                                                          | 1              |
+| Scenario                              | Results file                       | `decide` prints                                                                                                                                         | `decide` exits |
+| ------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| An unchanged candidate                | `results/candidate-same.json`      | `ESTIMATE-ONLY: Estimate-only: the run has no locked randomized assignments. It reports estimates, intervals, differences and flips without a verdict.` | 0              |
+| A candidate with lower observed rates | `results/candidate-regressed.json` | `ESTIMATE-ONLY: Estimate-only: the run has no locked randomized assignments. It reports estimates, intervals, differences and flips without a verdict.` | 0              |
 
-Ichnaea can show that a change failed a hard gate, or dropped within these runs. It cannot yet
-show a regression across runs, or that a change is safe.
-
-The example's `onRunDrop: "block"` policy stops CI when it detects a drop within these runs.
-The unchanged candidate exits with 0 because the example reports other inconclusive decisions.
+The imports give estimates, differences, and case flips. A statistical verdict requires the
+runner's recorded randomized assignments. The plan's policy controls the exit code for these
+estimate-only runs.
 
 `report` writes `summary.md` and a self-contained `report.html` to
 `.ichnaea/runs/<run>/report/`. The store, `.ichnaea/`, keeps every record of the run.

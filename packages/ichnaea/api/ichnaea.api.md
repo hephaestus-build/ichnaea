@@ -7,16 +7,6 @@
 import * as z from 'zod';
 
 // @public
-export interface AaEvidence {
-    // Warning: (ae-forgotten-export) The symbol "Decision" needs to be exported by the entry point index.d.ts
-    readonly decision: Decision;
-    // Warning: (ae-forgotten-export) The symbol "Plan" needs to be exported by the entry point index.d.ts
-    readonly plan: Plan;
-    // Warning: (ae-forgotten-export) The symbol "Run" needs to be exported by the entry point index.d.ts
-    readonly run: Run;
-}
-
-// @public
 export class AppendOnlyError extends Error {
     readonly name = "AppendOnlyError";
 }
@@ -32,10 +22,12 @@ export class CallLedger {
     used(endpoint: string, at: string): Promise<number>;
 }
 
+// Warning: (ae-forgotten-export) The symbol "Plan" needs to be exported by the entry point index.d.ts
+// Warning: (ae-forgotten-export) The symbol "Decision" needs to be exported by the entry point index.d.ts
+//
 // @public
 export function compare(plan: Plan, records: Omit<RunRecords, "plan">, options: {
     readonly decidedAt: string;
-    readonly aa?: readonly AaEvidence[];
 }): Decision;
 
 // @public
@@ -59,21 +51,18 @@ export function decide(input: DecideInput): Decision;
 
 // @public
 export interface DecideInput {
-    readonly aa?: readonly AaEvidence[];
     readonly decidedAt: string;
     // Warning: (ae-forgotten-export) The symbol "GateResult" needs to be exported by the entry point index.d.ts
     readonly gates: readonly GateResult[];
     readonly ichnaea: string;
     readonly plan: Plan;
+    // Warning: (ae-forgotten-export) The symbol "Run" needs to be exported by the entry point index.d.ts
     readonly run: Run;
     // Warning: (ae-forgotten-export) The symbol "Trial" needs to be exported by the entry point index.d.ts
     readonly trials: readonly Trial[];
     // Warning: (ae-forgotten-export) The symbol "MeasureValue" needs to be exported by the entry point index.d.ts
     readonly values: readonly MeasureValue[];
 }
-
-// @public
-export function decidePrimaries(input: PrimariesInput): Map<string, PrimaryVerdict>;
 
 // @public
 export interface DecisionRecords extends RunRecords {
@@ -168,9 +157,6 @@ export class FileStore {
     // Warning: (ae-forgotten-export) The symbol "Recalculation" needs to be exported by the entry point index.d.ts
     writeRecalculation(run: string, record: Recalculation): Promise<void>;
 }
-
-// @public
-export const FLOOR_NOT_SET_REASON = "No drop was detected in these runs. A statistical pass needs randomized blocks and a validated margin floor.";
 
 // @public
 export interface GateDefinition<Id extends string = string> {
@@ -441,37 +427,6 @@ export interface PowerRow {
     readonly reach: string;
     readonly replicates: number;
     readonly statement: "planning" | "this run";
-}
-
-// @public
-export interface PrimariesInput {
-    readonly alpha: number;
-    readonly estimand: Plan["estimand"];
-    readonly measures: readonly PrimaryCounts[];
-    // Warning: (ae-forgotten-export) The symbol "OneTrialChecks" needs to be exported by the entry point index.d.ts
-    readonly oneTrial?: OneTrialChecks;
-    readonly seed: number;
-}
-
-// @public
-export interface PrimaryCounts {
-    // Warning: (ae-forgotten-export) The symbol "CaseCounts" needs to be exported by the entry point index.d.ts
-    readonly cases: readonly CaseCounts[];
-    readonly margin: number;
-    readonly measure: string;
-    readonly safetyMargin?: number;
-    readonly valueType: MeasuredValue["type"];
-}
-
-// @public
-export interface PrimaryVerdict {
-    readonly cause?: "cannot-tell" | "unvalidated" | "non-inferiority-unvalidated" | "no-comparison";
-    // Warning: (ae-forgotten-export) The symbol "Comparison" needs to be exported by the entry point index.d.ts
-    readonly comparison?: Comparison;
-    readonly notes: readonly string[];
-    readonly reasonCode?: Decision["reasonCode"];
-    readonly regressionPAdjusted?: number;
-    readonly verdict: "NON-INFERIOR" | "INCONCLUSIVE";
 }
 
 // @public

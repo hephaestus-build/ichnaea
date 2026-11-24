@@ -70,7 +70,6 @@ export const decideCommand: Command = {
         trials: stored.trials,
         values: stored.values,
         gates: stored.gates,
-        aa: await store.aaEvidence(stored.plan),
         decidedAt: text(args, "now") ?? new Date().toISOString(),
         ichnaea: CORE_VERSION,
       });
@@ -78,7 +77,7 @@ export const decideCommand: Command = {
     }
     const verdictFile =
       text(args, "verdict-file") ?? join(runDirectory(store.root, "runs", run), "verdict.json");
-    const { mode, verdict, reason, reasonCode, cause } = decision;
+    const { mode, verdict, reason, reasonCode, cause, withinRunDrop } = decision;
     await writeFile(
       verdictFile,
       `${canonicalize({
@@ -88,6 +87,7 @@ export const decideCommand: Command = {
         reason,
         ...(reasonCode === undefined ? {} : { reasonCode }),
         ...(cause === undefined ? {} : { cause }),
+        ...(withinRunDrop === undefined ? {} : { withinRunDrop }),
       })}\n`,
     );
     return {

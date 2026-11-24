@@ -1,7 +1,7 @@
 // REQ-82, REQ-83, REQ-128, REQ-129: reports from records only, byte-identical, recomputed, linted.
 import { describe, expect, it } from "vitest";
 
-import { decide, FLOOR_NOT_SET_REASON } from "../../src/decide/index.ts";
+import { decide } from "../../src/decide/index.ts";
 
 import { decideFloorSet } from "../decide/support/floor-set.ts";
 import { scenario } from "../decide/support/scenario.ts";
@@ -46,8 +46,12 @@ describe("reports", () => {
   it("state the scope next to the verdict, so it never reads as a claim about new inputs", async () => {
     const { decision } = await decided();
     const view = decisionView(decision, "synthetic");
-    expect(renderMarkdown(view)).toContain(`**${view.verdict}** on these 40 cases: `);
-    expect(renderHtml(view)).toContain("<strong>on these 40 cases</strong>: ");
+    expect(renderMarkdown(view)).toContain(
+      `**${view.verdict}** estimates on these 40 cases, without a verdict: `,
+    );
+    expect(renderHtml(view)).toContain(
+      "<strong>estimates on these 40 cases, without a verdict</strong>: ",
+    );
   });
 
   it("carry the verdict as text, a lineage footer, and no forbidden wording", async () => {
@@ -160,31 +164,6 @@ describe("reports", () => {
         /^an estimate without its interval: a difference \([+−]?\d+\.\d pts\) without its bound$/,
       ),
     ]);
-  });
-
-  it("states why the sensitivity analysis ran, what it imputes, and shows both results", async () => {
-    // Both arms miss one trial: equal counts, so the analysis still runs.
-    const { decision } = await decided({
-      outcome: (t) =>
-        t.case === "case-001" && t.replicate === 0 ? "infrastructure_failure" : undefined,
-    });
-    const view = decisionView(decision, "synthetic");
-    expect(view.missingness).toMatch(
-      /^base: 1 of 80 trials missing; candidate: 1 of 80 trials missing\. A primary measure misses trials, so each verdict was decided again with the missing trials imputed against it: for non-inferiority, missing candidate trials fail and missing base trials pass; for regression, the reverse\./,
-    );
-    expect(view.sensitivity.map((r) => r.imputation)).toEqual([
-      "missing candidate trials fail, missing base trials pass",
-      "missing candidate trials pass, missing base trials fail",
-    ]);
-    const md = renderMarkdown(view);
-    expect(md).toContain(
-      "| Measure | Imputation | Difference | Bound | Verdict | Changes the verdict |",
-    );
-    expect(lintReport(md)).toEqual([]);
-    const none = decisionView((await decided()).decision, "synthetic");
-    expect(none.missingness).toMatch(
-      /No primary measure misses a trial in either arm, so no sensitivity analysis ran\.$/,
-    );
   });
 
   it("the n column counts available trials of the planned ones", async () => {
@@ -305,8 +284,7 @@ describe("reports", () => {
     const stable = { cases: 60, replicates: 3, base: () => 0.97, candidate: () => 0.97 } as const;
     const s = await scenario(stable);
     const unset = await decide({ ...s, decidedAt: "2026-11-15T12:00:00Z", ichnaea: "0.0.0" });
-    // The regression result is validated, and never vouches for the interval.
-    expect(unset.measures[0]?.comparisons[0]?.regression.validated).toBe(true);
+    expect(unset.measures[0]?.comparisons[0]?.regression.validated).toBe(false);
     expect(unset.measures[0]?.comparisons[0]?.nonInferiority.validated).toBe(false);
     const view = decisionView(unset, "synthetic");
     expect(view.measures[0]?.difference?.bound).toMatch(/^≥ [+−]?\d+\.\d pts \(not validated\)$/);
@@ -318,22 +296,9 @@ describe("reports", () => {
     expect(lintReport(html)).toEqual([]);
     expect(lintReport(renderMarkdown(view))).toEqual([]);
     const set = decisionView(await decideFloorSet(s), "synthetic");
-    expect(set.verdict).toBe("INCONCLUSIVE");
+    expect(set.verdict).toBe("ESTIMATE-ONLY");
     expect(set.measures[0]?.difference?.bound).toMatch(/^≥ [+−]?\d+\.\d pts$/);
     expect(renderHtml(set)).not.toMatch(/data-col="bound"[^>]*>[^<]*not validated/);
-  });
-
-  it("labels each sensitivity bound by its own non-inferiority result", async () => {
-    const { decision } = await decided({
-      outcome: (t) =>
-        t.case === "case-001" && t.replicate === 0 ? "infrastructure_failure" : undefined,
-    });
-    const view = decisionView(decision, "synthetic");
-    expect(view.sensitivity).toHaveLength(2);
-    for (const row of view.sensitivity) {
-      expect(row.validated).toBe(false);
-      expect(row.bound).toMatch(/ \(not validated\)$/);
-    }
   });
 
   it("the lint finds an HTML bound marked not validated without its label", async () => {
@@ -368,7 +333,7 @@ describe("reports", () => {
       ...view.measures.map((m) => m.difference?.estimate),
       ...view.sensitivity.map((r) => r.difference),
     ];
-    expect(differences.length).toBeGreaterThan(3);
+    expect(differences.length).toBe(2);
     const noBounds = html.replaceAll(/(data-col="bound"[^>]*>)[^<]*</g, "$1<");
     expect(lintReport(noBounds)).toEqual(
       differences.map(
@@ -411,39 +376,6 @@ describe("reports", () => {
       expect(lintReport(`${input} Lineage`)).toEqual([]);
       expect(performance.now() - started).toBeLessThan(1000);
     }
-  });
-
-  it("says in plain words why an unchanged candidate is INCONCLUSIVE while the floor is not set", async () => {
-    const s = await scenario({ cases: 60, replicates: 3, base: () => 0.97, candidate: () => 0.97 });
-    const decision = await decide({ ...s, decidedAt: "2026-11-15T12:00:00Z", ichnaea: "0.0.0" });
-    const view = decisionView(decision, "synthetic");
-    expect(renderMarkdown(view)).toContain(
-      `**INCONCLUSIVE** on these 60 cases: ${FLOOR_NOT_SET_REASON}`,
-    );
-    expect(renderHtml(view)).toContain(FLOOR_NOT_SET_REASON);
-  });
-
-  it("a headline describes a drop only within these runs", async () => {
-    // case-003 loses 2 of its 3 candidate trials.
-    const { decision } = await decided({
-      cases: 60,
-      replicates: 3,
-      base: () => 0.95,
-      candidate: () => 0.8,
-      margin: 0.05,
-      outcome: (t) =>
-        t.arm === "candidate" && t.case === "case-003" && t.replicate > 0
-          ? "infrastructure_failure"
-          : undefined,
-    });
-    expect(decision.reasonCode).toBe("DROP_IN_THESE_RUNS_ONLY");
-    const view = decisionView(decision, "synthetic");
-    const md = renderMarkdown(view);
-    expect(md).toContain(
-      "**INCONCLUSIVE** on these 60 cases: Measure app/correct dropped in these runs.",
-    );
-    expect(md).not.toMatch(/beyond run-to-run noise/);
-    expect(renderHtml(view)).not.toMatch(/beyond run-to-run noise/);
   });
 
   it("shows no margin for a secondary measure, which is descriptive", async () => {

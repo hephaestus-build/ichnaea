@@ -12,7 +12,8 @@
 // applies a comment-only canary that must survive and a deliberate break that must be killed, and
 // a run with no mutant selected fails: scripts/mutation.ts.
 // Equivalent, so not listed: the example importer's own capture-failure class, because import makes
-// the same change (decision 0011).
+// the same change (decision 0011). Dropping a zero contrast inside the sign tail divides the
+// numerator and the denominator equally, so it also gives the same p-value.
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -203,90 +204,6 @@ export const MUTANTS: readonly Mutant[] = [
     projects: CORE,
   },
   {
-    id: "one trial: decide ignores the coin's order",
-    file: D,
-    from: "if (startOf(second) < startOf(first) || Math.abs(rb - rc) > 2 * c - 1) unpaired.add(id);",
-    to: "if (Math.abs(rb - rc) > 2 * c - 1) unpaired.add(id);",
-  },
-  {
-    id: "one trial: the rank rule off",
-    file: D,
-    from: "if (startOf(second) < startOf(first) || Math.abs(rb - rc) > 2 * c - 1) unpaired.add(id);",
-    to: "if (startOf(second) < startOf(first)) unpaired.add(id);",
-  },
-  {
-    id: "one trial: the rank rule one rank wider",
-    file: D,
-    from: "if (startOf(second) < startOf(first) || Math.abs(rb - rc) > 2 * c - 1) unpaired.add(id);",
-    to: "if (startOf(second) < startOf(first) || Math.abs(rb - rc) > 2 * c) unpaired.add(id);",
-  },
-  {
-    id: "one trial: the rank rule ignores the concurrency",
-    file: D,
-    from: "    const c = concurrencyOf(times.values());",
-    to: "    const c = 1;",
-  },
-  {
-    id: "one trial: a lost pair still counts",
-    file: D,
-    from: "      (side !== undefined && unpaired.has(planned.case))",
-    to: "      false",
-  },
-  {
-    id: "one trial: missing times allowed",
-    file: D,
-    from: "  if (times.size < ran.length) limitations.push(NO_TIMES);",
-    to: "  if (false) limitations.push(NO_TIMES);",
-  },
-  {
-    id: "one trial: the schedule is not needed",
-    file: D,
-    from: "  if (plan.schedule === undefined)\n    limitations.push(",
-    to: "  if (false)\n    limitations.push(",
-  },
-  {
-    id: "one trial: every plan waives the A/A precondition",
-    file: D,
-    from: "  if (identity(pair.base) !== identity(pair.candidate))",
-    to: "  if (false)",
-  },
-  {
-    id: "a/a: one decision is enough",
-    file: D,
-    from: "  if (cited.size < 2)",
-    to: "  if (cited.size < 1)",
-  },
-  {
-    id: "a/a: the cited digest unchecked",
-    file: D,
-    from: "    if (digest(e.decision) !== cite)",
-    to: "    if (false)",
-  },
-  {
-    id: "a/a: a detected drop allowed",
-    file: D,
-    from: 'e.decision.reasonCode === "DROP_IN_THESE_RUNS_ONLY"',
-    to: "false",
-  },
-  {
-    id: "a/a: another suite allowed",
-    file: D,
-    from: "    if (e.plan.suiteDigest !== plan.suiteDigest)",
-    to: "    if (false)",
-  },
-  {
-    id: "a/a: another model allowed",
-    file: D,
-    from: "    if (baseModels(e.plan) !== baseModels(plan))",
-    to: "    if (false)",
-  },
-  {
-    id: "a/a: another schedule allowed",
-    file: D,
-    from: "      canonicalize(e.plan.schedule ?? null) !== canonicalize(plan.schedule)",
-    to: "      false",
-  },
-  {
     id: "one trial: stats validates without the checks",
     file: "src/stats/compare.ts",
     from: "  if (checks === undefined) return [ONE_TRIAL_NEEDS_CHECKS];",
@@ -304,7 +221,7 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "system failure scored by its value",
     file: D,
-    from: "    if (FAILED.has(outcome) && !contradictsPlan) {",
+    from: "    if (FAILED.has(outcome) && !contradictsPlan && !excluded.has(planned.id)) {",
     to: "    if (false) {",
   },
   {
@@ -342,46 +259,9 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "import scores a lost capture",
     file: "src/core/record-run.ts",
-    from: "    return checkCaptured(analysisPlan ? Trial.parse({ ...observed, analysisPlan }) : observed);",
-    to: "    return analysisPlan ? Trial.parse({ ...observed, analysisPlan }) : observed;",
+    from: "    return checkCaptured(\n      analysisPlan",
+    to: "    return ((trial: Trial) => trial)(\n      analysisPlan",
     projects: CORE,
-  },
-  // The sensitivity analysis (decision 0010).
-  {
-    id: "sensitivity only when missing counts differ",
-    file: D,
-    from: "  const missesTrials = plan.primary.some((p) => missesOwnTrials(p.measure));",
-    to: "  const missesTrials =\n    pair !== undefined &&\n    plan.primary.some(\n      (p) =>\n        tallies.get(p.measure)?.arms.get(pair.base)?.missing !==\n        tallies.get(p.measure)?.arms.get(pair.candidate)?.missing,\n    );",
-  },
-  {
-    id: "sensitivity only when the candidate misses",
-    file: D,
-    from: "    [pair.base, pair.candidate].some(\n      (arm) => (tallies.get(measure)?.arms.get(arm)?.missing ?? 0) > 0,",
-    to: "    [pair.candidate].some(\n      (arm) => (tallies.get(measure)?.arms.get(arm)?.missing ?? 0) > 0,",
-  },
-  {
-    id: "sensitivity never changes a verdict",
-    file: D,
-    from: "      if (changesNi || changesReg) changed.add(id);",
-    to: "",
-  },
-  {
-    id: "sensitivity imputes nothing",
-    file: D,
-    from: "      if (imputed === undefined) continue;",
-    to: "      continue;",
-  },
-  {
-    id: "sensitivity does not test the within-run drop",
-    file: D,
-    from: "const changesReg = v.reasonCode !== undefined && reg.reasonCode === undefined;",
-    to: "const changesReg = false;",
-  },
-  {
-    id: "sensitivity imputes missing base trials as failures against non-inferiority",
-    file: D,
-    from: "const AGAINST_NON_INFERIORITY: Imputation = { base: true, candidate: false };",
-    to: "const AGAINST_NON_INFERIORITY: Imputation = { base: false, candidate: false };",
   },
   // Verdict order, scope and reasons (decision 0011).
   {
@@ -397,30 +277,6 @@ export const MUTANTS: readonly Mutant[] = [
     to: "  } else if (failedGate && decision) {",
   },
   {
-    id: "exploratory run decides",
-    file: D,
-    from: 'const decision = plan.analysis === undefined && plan.mode === "decision" && !run.exploratory;',
-    to: 'const decision = plan.analysis === undefined && plan.mode === "decision";',
-  },
-  {
-    id: "scope claims run-to-run noise",
-    file: D,
-    from: "return { scope: `on these ${cases} cases`, cases };",
-    to: "return { scope: `on these ${cases} cases, beyond run-to-run noise`, cases };",
-  },
-  {
-    id: "within-run drop ignores adverse completion",
-    file: D,
-    from: "(!missesTrials || againstRegression.get(id)?.reasonCode !== undefined)",
-    to: "true",
-  },
-  {
-    id: "CI ignores the within-run drop policy",
-    file: P,
-    from: "(policy.onRunDrop ?? policy.onInconclusive)",
-    to: "policy.onInconclusive",
-  },
-  {
     id: "INVALID claims a scope",
     file: D,
     from: '  if (verdict === "INVALID") return { scope: "no claim: the records fail a check", cases };',
@@ -433,92 +289,12 @@ export const MUTANTS: readonly Mutant[] = [
     to: "  const cases = new Set(plan.trials.map((t) => t.case)).size;",
   },
   {
-    id: "single-run comparison becomes a pass",
+    id: "PASS by falling through",
     file: D,
-    from: '  } else {\n    verdict = "INCONCLUSIVE";\n    const open',
-    to: '  } else {\n    verdict = "PASS";\n    const open',
-  },
-  // Per-measure verdicts and multiplicity (REQ-51).
-  {
-    id: "unvalidated comparison decides",
-    file: D,
-    from: "      if (!comparison.regression.validated) {",
-    to: "      if (false) {",
+    from: 'primaries.length > 0 && primaries.every((m) => m.verdict === "NON-INFERIOR")',
+    to: "true",
   },
   // Two validity results (decision 0015).
-  {
-    id: "validity: PASS from regression.validated alone",
-    file: D,
-    from: "      if (!comparison.nonInferiority.validated) {",
-    to: "      if (false) {",
-  },
-  {
-    id: "validity: REGRESSION gate reads nonInferiority.validated",
-    file: D,
-    from: "      if (!comparison.regression.validated) {",
-    to: "      if (!comparison.nonInferiority.validated) {",
-  },
-  {
-    id: "validity: Holm uses non-inferiority validity to select p-values",
-    file: D,
-    from: "comparison?.regression.validated ? comparison.regressionP : 1,",
-    to: "comparison?.nonInferiority.validated ? comparison.regressionP : 1,",
-  },
-  {
-    id: "validity: the record copies the regression result into nonInferiority",
-    file: D,
-    from: "  return { regression: recorded(c.regression), nonInferiority: recorded(c.nonInferiority) };",
-    to: "  return { regression: recorded(c.regression), nonInferiority: recorded(c.regression) };",
-  },
-  {
-    id: "validity: the floor's plain reason dropped",
-    file: D,
-    from: "open.every((o) => o.cause.onlyTheFloor)",
-    to: "      false",
-    projects: CORE,
-  },
-  {
-    id: "validity: the floor reason ignores the bound",
-    file: D,
-    from: "  if (!c?.regression.validated || !(c.difference.lower > -effective)) return false;",
-    to: "  if (!c?.regression.validated) return false;",
-  },
-  {
-    id: "validity: the floor reason ignores the imputation against non-inferiority",
-    file: D,
-    from: "    if (imputed === undefined || onlyTheFloor(imputed.comparison, effective))",
-    to: "    if (true)",
-  },
-  {
-    id: "validity: a bound that does not clear the margin hides the floor",
-    file: D,
-    from: '    return `the cases cannot tell yet${unvalidated ? `, and ${unvalidated}` : ""}`;',
-    to: "    return `the cases cannot tell yet`;",
-  },
-  {
-    id: "validity: the reason names one measure's cause only",
-    file: D,
-    from: "  if (parts.length === 1 && only)",
-    to: "  if (only)",
-  },
-  {
-    id: "missing trials are named for a measure that misses none",
-    file: D,
-    from: '      s.missesOwnTrials\n        ? `${many ? "their" : "its"} missing trials`',
-    to: '      true\n        ? `${many ? "their" : "its"} missing trials`',
-  },
-  {
-    id: "missing trials in the note are named for a measure that misses none",
-    file: D,
-    from: '`imputing ${missesOwnTrials(id) ? "its missing trials"',
-    to: '`imputing ${true ? "its missing trials"',
-  },
-  {
-    id: "validity: the floor's plain reason hides another limitation",
-    file: D,
-    from: "  return limitations.length === 1 && limitations[0] === MARGIN_FLOOR_NOT_SET;",
-    to: "  return limitations.length > 0;",
-  },
   {
     id: "validity: report does not label an interval that is not validated",
     file: "src/report/view.ts",
@@ -541,59 +317,84 @@ export const MUTANTS: readonly Mutant[] = [
     projects: CORE,
   },
   {
-    id: "NI at the bound",
-    file: D,
-    from: "const nonInferior = comparison.difference.lower > -effective;",
-    to: "const nonInferior = comparison.difference.lower >= -effective;",
-  },
-  {
     id: "safety margin ignored",
     file: D,
-    from: "    const effective = p.margin - (p.safetyMargin ?? 0);\n    if (!(effective >= 0 && p.margin < 1)) {",
-    to: "    const effective = p.margin;\n    if (!(effective >= 0 && p.margin < 1)) {",
+    from: "const margin = p.margin === undefined ? undefined : p.margin - (p.safetyMargin ?? 0);",
+    to: "const margin = p.margin;",
+  },
+  // The locked randomized decision path.
+  {
+    id: "randomization: missing seed admitted",
+    file: "src/decide/blocks.ts",
+    from: "if (!execution.seed || canonicalize(execution.seed) !== canonicalize(plan.seed))",
+    to: "if (false)",
   },
   {
-    id: "a non-inferior result hides a within-run drop",
-    file: D,
-    from: "pa <= input.alpha ?",
-    to: 'pa <= input.alpha && v.verdict !== "NON-INFERIOR" ?',
+    id: "randomization: unseeded pair draw admitted",
+    file: "src/decide/blocks.ts",
+    from: "draw.first !== pairFirst(plan.seed, execution.block, b)",
+    to: "false",
   },
   {
-    id: "Holm replaced by raw p-values",
-    file: D,
-    from: "const pAdjusted = holm(",
-    to: "const pAdjusted = ((x: number[]) => x)(",
+    id: "randomization: recorded start rank ignored",
+    file: "src/decide/blocks.ts",
+    from: "Math.abs(ranks.get(first.id)! - ranks.get(second.id)!) > limit",
+    to: "false",
   },
   {
-    id: "Holm drops unavailable and unvalidated comparisons",
-    file: D,
-    from: "const family = [...verdicts.entries()];",
-    to: "const family = [...verdicts.entries()].filter(([, v]) => v.comparison?.regression.validated);",
+    id: "randomization: missing start time admitted",
+    file: "src/decide/blocks.ts",
+    from: "trial.startedAt === undefined ||",
+    to: "false ||",
   },
   {
-    id: "Holm boundary",
-    file: D,
-    from: "pa <= input.alpha ?",
-    to: "pa < input.alpha ?",
+    id: "randomization: shared contexts kept separate",
+    file: "src/decide/blocks.ts",
+    from: "else roots.set(root(trial.block), root(earlier));",
+    to: "else void earlier;",
   },
   {
-    id: "non-inferiority at alpha over the number of measures",
-    file: D,
-    from: "        alpha: input.alpha,\n        margin: effective,",
-    to: "        alpha: input.alpha / input.measures.length,\n        margin: effective,",
+    id: "randomization: candidate missing assigned against the wrong claim",
+    file: "src/decide/block-comparison.ts",
+    from: 'const candidate = c ?? Number(against === "regression");',
+    to: 'const candidate = c ?? Number(against === "pass");',
   },
   {
-    id: "secondary measures tested",
+    id: "randomization: ties excluded from the block tail",
+    file: "src/stats/block-sign.ts",
+    from: "sums.filter((sum) => sum >= 0)",
+    to: "sums.filter((sum) => sum > 0)",
+  },
+  {
+    id: "randomization: within-run bound optional",
+    file: "src/stats/randomized-blocks.ts",
+    from: "block > -margin && within > -margin",
+    to: "block > -margin",
+  },
+  {
+    id: "randomization: PASS allows equality at the margin",
+    file: "src/stats/randomized-blocks.ts",
+    from: "block > -margin && within > -margin",
+    to: "block >= -margin && within >= -margin",
+  },
+  {
+    id: "randomization: block Holm replaced by raw p-values",
     file: D,
-    from: 'const result = tier === "primary" ? tested?.get(id) : undefined;',
-    to: "const result = tested?.get(id) ?? tested?.values().next().value;",
+    from: "const blockAdjusted = holm(",
+    to: "const blockAdjusted = ((values: number[]) => values)(",
+  },
+  {
+    id: "randomization: within-run policy ignored",
+    file: P,
+    from: "(policy.onRunDrop ?? policy.onInconclusive)",
+    to: "policy.onInconclusive",
   },
   // Intervals on every difference (REQ-129).
   {
     id: "descriptive difference without an interval",
     file: D,
-    from: "      comparison: { ...common, difference: estimateOf(c.difference), ...validityOf(c) },",
-    to: "      comparison: {\n        ...common,\n        difference: rateDifference(t, pair.base, pair.candidate, 1 - plan.alpha),\n        ...validityOf(c),\n      },",
+    from: "        difference: estimateOf(c.difference),",
+    to: "        difference: rateDifference(t, 1 - plan.alpha),",
   },
   {
     id: "report lint misses an estimate without its interval",
@@ -656,8 +457,8 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "power: the run-time MDE decides the mode",
     file: D,
-    from: "  } else if (!decision) {",
-    to: "  } else if (\n    !decision ||\n    runPower(plan, tallies, pair?.base, false).some((e) => e.computed && !e.decidable)\n  ) {",
+    from: "  } else if (!admitted) {",
+    to: "  } else if (\n    !admitted ||\n    runPower(plan, tallies, pair?.base, false).some((e) => e.computed && !e.decidable)\n  ) {",
   },
   {
     id: "power: an entry not computed names the wrong reason",
@@ -808,12 +609,15 @@ export const CANARY: Mutant = {
   projects: [...new Set(MUTANTS.flatMap((m) => m.projects ?? ["decide"]))],
 };
 
-/** A single-run drop is mislabeled as REGRESSION. The acceptance test must reject it. */
+/**
+ * The control: a release that every primary passes reads INCONCLUSIVE, which the decide tests
+ * assert. It runs second and must be killed; otherwise this run cannot show a kill.
+ */
 export const CONTROL: Mutant = {
-  id: "control: a within-run drop reads as REGRESSION",
+  id: "control: PASS read as INCONCLUSIVE",
   file: D,
-  from: '    verdict = "INCONCLUSIVE";\n    reasonCode = "DROP_IN_THESE_RUNS_ONLY";',
-  to: '    verdict = "REGRESSION";\n    reasonCode = "DROP_IN_THESE_RUNS_ONLY";',
+  from: '    verdict = "PASS";',
+  to: '    verdict = "INCONCLUSIVE";',
 };
 
 const selected = MUTANTS.filter(

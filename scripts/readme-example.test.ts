@@ -23,10 +23,10 @@ const exampleFile = (file: string): string =>
 describe("the README's five-minute example", () => {
   const example = readmeExample(readme);
 
-  it("states an unchanged and a regressed candidate, each with an import and a decide", () => {
+  it("states an unchanged candidate and one with lower observed rates, each with an import and a decide", () => {
     expect(example.scenarios.map((s) => [s.scenario, s.results, s.run])).toEqual([
       ["An unchanged candidate", "results/candidate-same.json", "unchanged"],
-      ["A candidate with a drop", "results/candidate-regressed.json", "regressed"],
+      ["A candidate with lower observed rates", "results/candidate-regressed.json", "regressed"],
     ]);
     for (const s of example.scenarios)
       expect(example.commands.filter((c) => decides(c, s.run))).toHaveLength(1);

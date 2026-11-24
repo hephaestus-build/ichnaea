@@ -188,7 +188,7 @@ it("requires the locked plan for runner evidence and distinguishes complete exec
     await recordRun({ ...input, result: { trials, values } });
     const stored = await store.read(input.id);
     const decision = decide({ ...stored, decidedAt: at, ichnaea: "0.0.0" });
-    expect(decision.reason).toContain("requires randomized block inference");
+    expect(decision).toMatchObject({ reasonCode: "ESTIMATE_ONLY_EXPLORATORY", verdict: null });
     expect(decision.reason).not.toContain("EXECUTION_UNRECORDED");
   } finally {
     await rm(directory, { recursive: true, force: true });

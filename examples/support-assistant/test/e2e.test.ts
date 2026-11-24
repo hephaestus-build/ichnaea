@@ -4,7 +4,7 @@ import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
-import { FLOOR_NOT_SET_REASON, main } from "@tumaet/ichnaea";
+import { main } from "@tumaet/ichnaea";
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
@@ -95,10 +95,11 @@ describe("example application, end to end", () => {
           const path = join(store, "runs", directory);
           expect(JSON.parse(await readFile(join(path, "verdict.json"), "utf8"))).toMatchObject({
             run,
-            verdict: "INCONCLUSIVE",
+            verdict: null,
+            reason: expect.stringContaining("no locked randomized assignments"),
           });
           expect(await readFile(join(path, "report", "summary.md"), "utf8")).toContain(
-            FLOOR_NOT_SET_REASON,
+            "**ESTIMATE-ONLY**",
           );
         } finally {
           await rm(store, { force: true, recursive: true });
@@ -139,19 +140,18 @@ describe("example application, end to end", () => {
       expect(await readFile(join(path, "manifest.json"), "utf8")).toBe(manifest);
       expect(JSON.parse(await readFile(join(path, "verdict.json"), "utf8"))).toMatchObject({
         run: "run-1",
-        verdict: "INCONCLUSIVE",
+        verdict: null,
+        reason: expect.stringContaining("no locked randomized assignments"),
       });
     } finally {
       await rm(store, { force: true, recursive: true });
     }
   });
 
-  it("an unchanged candidate is INCONCLUSIVE while the margin floor is not set, and says why", async () => {
+  it("the imported candidate gives estimates and says why", async () => {
     const { store, out, codes } = await flow("results/candidate-same.json");
-    // The suite reports an INCONCLUSIVE verdict without blocking.
     expect(codes).toEqual([0, 0, 0]);
-    // The line decide prints names the floor, so a first run does not read as a broken setup.
-    expect(out).toContain(`INCONCLUSIVE: ${FLOOR_NOT_SET_REASON}`);
+    expect(out.join("\n")).toMatch(/^ESTIMATE-ONLY: .*no locked randomized assignments/m);
     expect(out.join("\n")).not.toMatch(/^PASS/m);
     // The planner prints what a run of the plan can detect at best (REQ-54).
     expect(out.join("\n")).toMatch(
@@ -160,28 +160,22 @@ describe("example application, end to end", () => {
     const verdict = JSON.parse(
       await readFile(join(store, "runs", "run-1", "verdict.json"), "utf8"),
     ) as { verdict: string; reason: string };
-    expect(verdict).toMatchObject({ verdict: "INCONCLUSIVE", reason: FLOOR_NOT_SET_REASON });
+    expect(verdict).toMatchObject({
+      verdict: null,
+      reason: expect.stringContaining("no locked randomized assignments"),
+    });
     // The report gives the same reason next to the verdict, and labels the bound.
     const summary = await readFile(join(store, "runs", "run-1", "report", "summary.md"), "utf8");
-    expect(summary).toContain(`**INCONCLUSIVE** on these 12 cases: ${FLOOR_NOT_SET_REASON}`);
+    expect(summary).toContain("**ESTIMATE-ONLY** estimates on these 12 cases, without a verdict");
     expect(summary).toMatch(/≥ [+−]?\d+\.\d pts \(not validated\)/);
   });
 
-  it("blocks a within-run drop and names the broken cases in the report", async () => {
+  it("names cases whose observed outcomes flipped after import", async () => {
     const { store, codes, out } = await flow("results/candidate-regressed.json");
-    expect(codes[1]).toBe(1);
-    expect(out.join("\n")).toMatch(
-      /^INCONCLUSIVE: Measure support\/facts-stated dropped in these runs\./m,
-    );
-    const verdict: unknown = JSON.parse(
-      await readFile(join(store, "runs", "run-1", "verdict.json"), "utf8"),
-    );
-    expect(verdict).toMatchObject({
-      verdict: "INCONCLUSIVE",
-      reasonCode: "DROP_IN_THESE_RUNS_ONLY",
-    });
+    expect(codes[1]).toBe(0);
+    expect(out.join("\n")).toMatch(/^ESTIMATE-ONLY: /m);
     const summary = await readFile(join(store, "runs", "run-1", "report", "summary.md"), "utf8");
-    expect(summary).toContain("dropped in these runs.");
+    expect(summary).toMatch(/ESTIMATE-ONLY/);
     expect(summary).toContain("support-03");
     const html = await readFile(join(store, "runs", "run-1", "report", "report.html"), "utf8");
     expect(html).toContain("Lineage");

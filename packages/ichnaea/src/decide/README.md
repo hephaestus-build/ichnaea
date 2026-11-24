@@ -1,46 +1,37 @@
-# Decision rule: `@tumaet/ichnaea`
+# Decision rule for `@tumaet/ichnaea`
 
-The `ichnaea decide` command and the `decide()` function apply this rule.
-`compare(plan, records, { decidedAt })` decides a plan's run from its records. Like `decide`, it is
-synchronous and pure: the same records and `decidedAt` give the same decision, byte for byte.
+The `ichnaea decide` command and the `decide()` function apply the same rule.
+`compare(plan, records, { decidedAt })` uses that rule. The same records and decision time
+give the same decision.
 
-A run verdict is reached in this order (decision 0011):
+1. **INVALID** means a record check failed. Examples include conflicting records, a budget
+   overrun, and coverage below the registered floor.
+2. A failed hard gate gives **REGRESSION** with `cause: "gate"`.
+3. A run without verified randomized assignments gives estimates. This includes imported and
+   re-scored runs.
+4. A Holm-adjusted block test that rejects the sharp null in the harmful direction gives
+   **REGRESSION** with `cause: "statistical"`. The size of the decrease remains uncertain.
+5. **PASS** requires both lower bounds to clear the effective margin for every primary measure.
+   The comparison has to be inside the validated domain.
+6. Remaining randomized runs give **INCONCLUSIVE**. A within-run rejection can give
+   `DROP_IN_THESE_RUNS_ONLY`. The suite can block on it with `policy.onRunDrop`.
 
-1. **INVALID** when the records fail a check. Examples: a run of another plan, records that
-   contradict themselves, a budget overrun, or coverage below the floor. Arms that differ beyond
-   what the trigger varies and the plan declares are also INVALID. INVALID always blocks.
-2. **REGRESSION** when a hard gate failed, in either mode.
-3. **No verdict** when the plan is estimate-only or the run is exploratory. Each difference still
-   has the interval of the plan's estimand where the data supports a comparison; otherwise its notes
-   say why it has none.
-4. **INCONCLUSIVE** for statistical comparisons. A within-run test that rejects after Holm
-   adjustment gives `DROP_IN_THESE_RUNS_ONLY`. Unavailable or unvalidated tests contribute p = 1
-   to the Holm family. Set `policy.onRunDrop: "block"` to stop CI for this reason. If omitted,
-   `policy.onInconclusive` applies.
+The runner assigns the first arm independently for each case pair and replicate. The run
+records the plan seed and the draws. Each recorded trial carries its seed and pair draw.
+Both sharp-null tests use those assignments. The block test flips whole groups of cases.
+Blocks sharing an execution context form one group. The within-run test uses the signs of
+discordant pairs directly.
 
-A statistical pass needs randomized blocks and a validated margin floor. These comparisons still
-record their estimates, bounds and validity. When a primary measure misses a trial in either arm,
-Ichnaea checks the drop against a completion in which a missing candidate trial passes and a
-missing base trial fails.
+A missing score is filled against the claim, using the planned cases and trial counts. The block
+test keeps zero contrasts and counts all ties in the tail. An abandoned block uses a slot in the
+planned horizon until it has been replaced. The coverage floor and the validated PASS domain
+also apply.
 
-**One trial per case and arm** can give a drop within these runs if the checks of decision 0020 pass. `decide` checks the
-records first. A case whose two trials ran against the plan's order, or more than 2c − 1 start ranks
-apart (c is the largest number of trials the records show running at once), is unpaired: it counts
-as missing. Every trial that ran must record when it started and ended, the plan must state its
-schedule, and it must cite at least two clean A/A decisions of the same suite, model and schedule.
-`ichnaea decide` and `ichnaea report` load the cited decisions from the store. Each check that fails
-is a limitation of the regression result. VALIDATION.md in the statistics lists the checks.
+The block lower bound uses a common additive shift model. The within-run lower bound uses
+the Miettinen–Nurminen score with case × block strata. The margin is reduced by its safety
+margin before both comparisons. [Statistics validation](../stats/VALIDATION.md#randomized-block-decisions)
+records the domain and the simulation results.
 
-`ichnaea import` adds the planning power statement before reading results. It refuses a plan whose
-effective margin lies outside the validated margins of the statistics (decision 0012).
-Each decision carries that statement unchanged, and a run-time statement that never changes the
-verdict (decision 0017). When a library caller decides a plan that has no statement, `decide()`
-computes it from the plan with `planningPower`, the same function that import uses. It does not switch the
-plan to estimate-only. When `planningPower` refuses the margin, each entry says "the plan carries
-no planning statement, and its margin is refused", and carries the refusal text as `refusal`. When
-it computes nothing and refuses nothing, each entry says "the plan carries no planning statement,
-and none can be computed from it".
-
-`decidePrimaries` is the per-measure rule on counts alone. `test/decide/req51.sim.test.ts` uses it to
-check the type-I error of the within-run test under independent trials. Run it with
+Planning resolution and a base-against-base pilot can help choose the number of blocks.
+Neither enters the decision rule. Run the Holm-family study with
 `pnpm --filter @tumaet/ichnaea run test:sim:decide`.

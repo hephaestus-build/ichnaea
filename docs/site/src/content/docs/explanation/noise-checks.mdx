@@ -1,6 +1,6 @@
 ---
 title: Noise checks
-description: A noise check compares a version with itself. It shows that your own pipeline gives no false alarm before you trust its verdicts.
+description: A noise check compares a version with itself. It helps you find changes caused by the way your suite runs.
 sidebar:
   order: 5
 ---
@@ -29,19 +29,12 @@ If any of these differs between the base and the candidate, a noise check can sh
 
 ## When to run one
 
-Before you trust a suite's verdicts, run two noise checks. This is advice: Ichnaea does not check it.
-Run them again when you change the runner, the endpoint or how you score.
+Run a noise check when you change the runner, endpoint or scoring. You can also give a recorded
+base-against-base run to the planner as a pilot. Its observed rates help estimate the number of
+blocks needed to detect a decrease.
 
-At one trial per case, clean noise checks are a condition of the method itself.
-With one trial, a shock between the base trial and the candidate trial looks like an effect.
-So the plan must cite at least two separate noise checks, each at one trial per case on the same suite, model and schedule.
-Each must report no drop and pass Ichnaea's eight record checks.
-A noise check's own plan is the exception. Its base and candidate are one configuration, so it cites no earlier noise checks, and you can run the first two. Its records must still pass the other checks of one trial per case.
-If a noise check detects a drop, the owner pauses the one-trial comparison for that suite, model and schedule.
-Ichnaea's records cannot see this rule.
-The block stays until the cause is found and two later, consecutive noise checks are clean.
+Statistical verdicts use the runner's recorded randomization. A noise check is optional.
 
 ## Evidence
 
-- [Decision 0020](https://github.com/hephaestus-build/ichnaea/blob/main/docs/decisions/0020-binary-regression-at-one-trial.md): the noise-check precondition at one trial per case.
-- [Statistics validation, one trial per case](https://github.com/hephaestus-build/ichnaea/blob/main/packages/ichnaea/src/stats/VALIDATION.md#one-trial-per-case-the-binary-regression-test): the conditions for a validated result at one trial per case.
+- [Statistics validation](https://github.com/hephaestus-build/ichnaea/blob/main/packages/ichnaea/src/stats/VALIDATION.md#randomized-block-decisions) describes the randomized decision rule.

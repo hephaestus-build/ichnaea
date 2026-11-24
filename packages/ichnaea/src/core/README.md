@@ -18,7 +18,7 @@ The core of Ichnaea: the plugin host, the planner, import mode, the record store
   measure values. It makes no model call. A completed record without captured output becomes an
   infrastructure failure (`NOT_CAPTURED`). A failed trial that carries a passing value is refused.
   `--concurrency` and `--endpoint` state the schedule the trials ran on, and `--aa <run>` cites a
-  decided A/A run of the store, for a suite at one trial per case.
+  legacy A/A citation from the store. Randomized decisions use the recorded pair assignments.
 - **Triggers.** `TRIGGER_VARIES` says what each trigger may vary between the arms. Anything else a
   change varies is declared with `--vary <factor key>`.
 - **Store and ledger.** `FileStore` keeps every record as a canonical JSON line, append-only.
