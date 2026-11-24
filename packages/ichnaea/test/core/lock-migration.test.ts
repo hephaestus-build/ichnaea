@@ -7,7 +7,6 @@ import { expect, it } from "vitest";
 import { main } from "../../src/cli.ts";
 import { digest, sha256 } from "../../src/contracts/canonical.ts";
 import { FileStore } from "../../src/core/store.ts";
-import { CORE_VERSION } from "../../src/core/version.ts";
 import { verifiedReport } from "../../src/report/report.ts";
 
 it("verifies a legacy lock's case bytes and writes fresh v1 plan pins", async () => {
@@ -87,16 +86,20 @@ it("verifies a legacy lock's case bytes and writes fresh v1 plan pins", async ()
   }
 });
 
-it("replays the stored v1 example produced by the previous engine", async () => {
+it("verifies the archived v1 seal and replays its evidence under a newer engine", async () => {
   const store = new FileStore(join(import.meta.dirname, "..", "..", "fixtures", "v1-replay"));
   const saved = await store.read("v1-replay");
-  if (!saved.decision) throw new Error("the fixture needs its original decision");
+  if (!saved.decision || !saved.manifest) throw new Error("the fixture needs its original seal");
   const report = verifiedReport(
     { ...saved, decision: saved.decision, aa: await store.aaEvidence(saved.plan) },
     { suite: saved.plan.suite },
-    CORE_VERSION,
+    "0.0.1",
   );
   expect(saved.trials).toHaveLength(72);
-  expect(report.recalculation).toBeUndefined();
-  expect(report.view.verdict).toBe("INCONCLUSIVE");
+  expect(saved.decision.verdict).toBe("INCONCLUSIVE");
+  expect(report.recalculation).toMatchObject({
+    manifest: digest(saved.manifest),
+    decision: { ichnaea: "0.0.1", mode: "estimate-only", verdict: null },
+  });
+  expect(report.view.verdict).toBe("ESTIMATE-ONLY");
 });
