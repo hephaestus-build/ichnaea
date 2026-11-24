@@ -7,6 +7,8 @@ import { toJsonSchema } from "./contracts/json-schema.ts";
 import { notComputedReason, TriggerKind } from "./contracts/records/plan.ts";
 import { RECORD_CONTRACTS } from "./contracts/registry.ts";
 
+import { planSuite, writeAnalysis } from "./core/analysis-plan.ts";
+
 import { type CommandDefinition, decideCommand, reportCommand } from "./core/commands.ts";
 import { createHost, type Host } from "./core/host.ts";
 import { importRun } from "./core/import.ts";
@@ -45,8 +47,9 @@ export async function loadConfig(path: string, load: ModuleLoader = importModule
   return module.default;
 }
 
-const IMPORT_OPTIONS = `--importer <id> --suite <file> --case-set <file> --cases <file.jsonl>
---arm <name>:<role>:<configuration.json> (repeat) --file <path> (repeat)
+const IMPORT_OPTIONS = `--importer <id> --plan <plan.json>
+Or provide --suite <file> --case-set <file> --cases <file.jsonl> with --arm <name>:<role>:<configuration.json> (repeat)
+--file <path> (repeat)
 --run <id> [--store .ichnaea] [--trigger code] [--seed 1] [--now <ISO time>]
 [--vary <factor key>] (repeat: what the change varies beyond its trigger)
 [--concurrency <n> --endpoint <name>] (the schedule the trials ran on)
@@ -62,6 +65,7 @@ Commands from the core:
   schema <record>     Print the normative JSON Schema of a record (case, trial, decision, ...)
   import              Import another runner's results into the store (no model calls)
                       ${IMPORT_OPTIONS.replaceAll("\n", "\n                      ")}
+  plan                Write plan.json and ichnaea.lock beside the suite
   decide              Decide a stored run and write its verdict
   report              Recompute and report a stored decision
   doctor              Check the configuration and its measure testers
@@ -88,6 +92,10 @@ function triggerHelp(): string {
 const HELP = `${HELP_COMMANDS}\n\n${triggerHelp()}\n\nExit codes: 0 success, 1 a CI policy blocks, 2 an error (usage, configuration or records).`;
 
 const CORE_HELP: ReadonlyMap<string, string> = new Map([
+  [
+    "plan",
+    "Usage: ichnaea plan [--config <file>] [--frozen]\n\nResolve the suite's analysis plan and lock.",
+  ],
   ["schema", "Usage: ichnaea schema <record>\n\nPrint the normative JSON Schema of a record."],
   [
     "doctor",
@@ -177,7 +185,7 @@ async function dispatch(
     const { values } = parseArgs({ args: rest, options, strict: true });
     return recordCommand.run(values, { out, err });
   }
-  if (command !== "doctor" && command !== "import") {
+  if (command !== "doctor" && command !== "import" && command !== "plan") {
     err(`unknown command '${command}'. Use 'ichnaea help' to list the commands.`);
     return 2;
   }
@@ -197,17 +205,38 @@ async function dispatch(
     return 2;
   }
   let host: Host;
+  let config: Config;
   try {
-    host = createHost(await loadConfig(configPath, load), {
-      core: CORE_VERSION,
-      contracts: CORE_VERSION,
-    });
+    config = await loadConfig(configPath, load);
+    host = createHost(config, { core: CORE_VERSION, contracts: CORE_VERSION });
   } catch (error) {
     err(`configuration error: ${error instanceof Error ? error.message : String(error)}`);
     return 2;
   }
   if (command === "doctor") return doctor(host, out);
-  return importCommand(host, rest, out, err);
+  if (command === "plan") {
+    const { values } = parseArgs({
+      args: rest,
+      options: { config: CONFIG_OPTION, frozen: { type: "boolean" } },
+    });
+    if (!config.suite) {
+      err("plan: the configuration must define a suite");
+      return 2;
+    }
+    const directory = dirname(configFile);
+    const planned = await planSuite({
+      suite: config.suite,
+      host,
+      directory,
+      ichnaea: CORE_VERSION,
+    });
+    await writeAnalysis(directory, planned, values.frozen === true);
+    out(
+      `plan: ${planned.plan.cases.length} cases, ${planned.plan.blocks} blocks, ${planned.plan.maxCalls} calls budgeted`,
+    );
+    return 0;
+  }
+  return importCommand(host, config, dirname(configFile), rest, out, err);
 }
 
 async function doctor(host: Host, out: (text: string) => void): Promise<number> {
@@ -233,6 +262,8 @@ async function doctor(host: Host, out: (text: string) => void): Promise<number> 
 
 async function importCommand(
   host: Host,
+  config: Config,
+  directory: string,
   args: readonly string[],
   out: (text: string) => void,
   err: (text: string) => void,
@@ -243,6 +274,7 @@ async function importCommand(
     options: {
       config: CONFIG_OPTION,
       importer: { type: "string" },
+      plan: { type: "string" },
       suite: { type: "string" },
       "case-set": { type: "string" },
       cases: { type: "string" },
@@ -259,12 +291,34 @@ async function importCommand(
       now: { type: "string" },
     },
   });
-  const required = ["importer", "suite", "case-set", "cases", "run"] as const;
-  const missing = required.filter((k) => values[k] === undefined);
-  if (missing.length > 0 || !values.arm?.length) {
+  if (!values.importer || !values.run) {
+    err("import: --importer and --run are required");
+    return 2;
+  }
+  const locked = values.plan;
+  if (
+    locked &&
+    (values.suite || values["case-set"] || values.cases || values.arm?.length || values.aa?.length)
+  ) {
     err(
-      `import: missing ${[...missing.map((m) => `--${m}`), ...(values.arm?.length ? [] : ["--arm"])].join(", ")}`,
+      "import: --plan uses the configured suite and arms. Remove the inline suite, case, arm and A/A flags",
     );
+    return 2;
+  }
+  const legacy =
+    locked === undefined && values.suite && values["case-set"] && values.cases && values.arm?.length
+      ? { suite: values.suite, caseSet: values["case-set"], cases: values.cases }
+      : undefined;
+  if (!locked && !legacy) {
+    err("import: use --plan or provide --suite, --case-set, --cases and --arm");
+    return 2;
+  }
+  const lockedInputs =
+    locked && config.suite
+      ? { locked: { planPath: locked, definition: config.suite, directory } }
+      : undefined;
+  if (locked && !lockedInputs) {
+    err("import: the configuration must define the suite used by --plan");
     return 2;
   }
   const trigger = TriggerKind.safeParse(values.trigger ?? "code");
@@ -288,7 +342,7 @@ async function importCommand(
     return 2;
   }
   const arms = [];
-  for (const spec of values.arm) {
+  for (const spec of values.arm ?? []) {
     const [name, role, ...path] = spec.split(":");
     if (!name || !role || path.length === 0 || !["base", "candidate", "reference"].includes(role)) {
       err(`import: --arm '${spec}' is not <name>:<role>:<file>`);
@@ -300,15 +354,17 @@ async function importCommand(
       configuration: path.join(":"),
     });
   }
+  const inputs = lockedInputs ?? (legacy === undefined ? undefined : { ...legacy, arms });
+  if (!inputs) {
+    err("import: missing plan inputs");
+    return 2;
+  }
   const result = await importRun({
+    ...inputs,
     host,
     store: values.store ?? ".ichnaea",
-    run: values.run as string,
-    importer: values.importer as string,
-    suite: values.suite as string,
-    caseSet: values["case-set"] as string,
-    cases: values.cases as string,
-    arms,
+    run: values.run,
+    importer: values.importer,
     files: values.file ?? [],
     trigger: trigger.data,
     varies: values.vary ?? [],
@@ -321,7 +377,7 @@ async function importCommand(
     ichnaea: CORE_VERSION,
   });
   out(
-    `import: run ${values.run as string}: ${result.trials} trials, ${result.values} values, plan ${result.plan.mode}`,
+    `import: run ${values.run}: ${result.trials} trials, ${result.values} values, plan ${result.plan.mode}`,
   );
   for (const reason of result.plan.modeReasons) out(`  estimate-only: ${reason}`);
   // The planning power statement is resolved before import records are read.

@@ -6,6 +6,7 @@ import {
   caseDigest,
   caseSetDigest,
   configurationIdentity,
+  digest,
   DIGEST_RULES,
 } from "../../src/contracts/index.ts";
 import { CONFIGURATION_B, INVALID, READER_ONLY, VALID, VALID_EXTRA } from "./fixtures-source.ts";
@@ -46,6 +47,13 @@ caseSet.cases = [await entry(valid["case"] as Rec), await entry(english)];
 caseSet.digest = await caseSetDigest(caseSet.cases);
 plan.caseSetDigest = caseSet.digest;
 (valid["trial"] as Rec)["caseDigest"] = await caseDigest(valid["case"]);
+const analysisPlan = valid["analysisPlan"] as Rec;
+analysisPlan["base"] = { role: "base", identity: base };
+analysisPlan["caseSetDigest"] = caseSet.digest;
+analysisPlan["cases"] = caseSet.cases;
+const analysisLock = valid["analysisLock"] as Rec;
+analysisLock["plan"] = digest(analysisPlan);
+analysisLock["cases"] = analysisPlan["cases"];
 let count = 0;
 for (const [name, record] of Object.entries(VALID)) {
   write(join(root, "valid", `${name}.json`), record);

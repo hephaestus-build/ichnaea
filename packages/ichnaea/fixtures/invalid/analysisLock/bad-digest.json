@@ -1,0 +1,21 @@
+{
+  "schema": "ichnaea.lock/1",
+  "plan": "unlocked",
+  "cases": [
+    {
+      "id": "refund-window-de",
+      "digest": "sha256:16c10801970f1dc96e275b5349b2892834dee2c8c89d6b2087171edc3ffceaa0",
+      "pool": "development",
+      "family": "refund-window"
+    },
+    {
+      "id": "refund-window-en",
+      "digest": "sha256:7474e16141db70f99e284b7672222cd940b824917d06ed3df61ac10f2045987e",
+      "pool": "development",
+      "family": "refund-window"
+    }
+  ],
+  "instruments": {
+    "support/facts-correct": "sha256:1212121212121212121212121212121212121212121212121212121212121212"
+  }
+}

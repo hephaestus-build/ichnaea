@@ -304,7 +304,7 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "system failure scored by its value",
     file: D,
-    from: "    if (FAILED.has(outcome)) {",
+    from: "    if (FAILED.has(outcome) && !contradictsPlan) {",
     to: "    if (false) {",
   },
   {
@@ -322,8 +322,15 @@ export const MUTANTS: readonly Mutant[] = [
   {
     id: "not applicable counted as planned",
     file: D,
-    from: "      av.notApplicable++;\n      continue;",
-    to: "      av.notApplicable++;\n      av.planned++;\n      continue;",
+    from: "      av.notApplicable++;",
+    to: "      av.notApplicable++;\n      av.planned++;",
+  },
+  {
+    id: "late applicability overrides the sealed mask",
+    file: D,
+    from: "mask ? !mask.has(planned.case) : value?.applicable === false",
+    to: "value?.applicable === false",
+    projects: ["core"],
   },
   {
     id: "import keeps a passing system failure",

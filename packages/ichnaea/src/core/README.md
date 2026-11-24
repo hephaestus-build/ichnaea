@@ -46,3 +46,17 @@ The core of Ichnaea: the plugin host, the planner, import mode, the record store
 
 The runtime export inventory is in [api/exports.json](../../api/exports.json).
 API Extractor checks the TypeScript declarations. Both run in `pnpm run check:api`.
+
+## Locked analysis plans
+
+Use `defineSuite` to declare a case source, primary measures, and the base and candidate arms.
+`ichnaea plan` writes `plan.json` and `ichnaea.lock` beside the configuration. The analysis plan
+holds the base identity, case and instrument pins, the primary family, applicability and the block
+horizon. The candidate binds when the run starts. `ichnaea plan --frozen` refuses a changed plan.
+
+A suite can declare applicability in its case-set manifest. Otherwise the planner evaluates each
+primary measure's applicability once for each case. The mask applies to every trial in both arms.
+
+Use `ichnaea import --plan plan.json` to import results against the planned trial IDs. The store
+keeps the analysis and the resolved arms together. A value marked not applicable inside the mask
+counts as missing. Values from cases outside the mask do not enter the comparison.

@@ -8,3 +8,6 @@ export * from "../contracts/run-records.ts";
 export * from "./semver.ts";
 export * from "./store.ts";
 export * from "./version.ts";
+export { defineSuite, type SuiteDefinition } from "../contracts/records/suite-definition.ts";
+export { planSuite, type PlanSuiteInput, type PlannedSuite } from "./analysis-plan.ts";
+export { defaultBlocks } from "../plan/analysis.ts";
