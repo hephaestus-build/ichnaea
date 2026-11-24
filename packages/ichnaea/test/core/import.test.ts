@@ -262,8 +262,9 @@ describe("import mode", () => {
       trial: { ...(s.trials[0] as Trial), output: pass ? "yes" : "no" },
       expected: { type: "binary" as const, pass },
     });
+    const { validation: _importedTester, ...fixtureCard } = card("app/correct").card;
     const computed: MeasureDefinition<"app/correct"> = {
-      card: { ...card("app/correct").card, id: "app/correct", computedBy: "ichnaea" },
+      card: { ...fixtureCard, id: "app/correct", computedBy: "ichnaea" },
       score: (t) => ({ type: "binary", pass: t.output === "yes" }),
       examples: { good: [example(true)], bad: [example(false)] },
     };

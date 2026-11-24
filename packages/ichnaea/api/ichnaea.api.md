@@ -278,6 +278,11 @@ export interface MeasureDefinition<Id extends string = string> {
     readonly examples?: {
         readonly good: readonly MeasureExample[];
         readonly bad: readonly MeasureExample[];
+        readonly nothing?: readonly MeasureExample[];
+        readonly incomplete?: readonly MeasureExample[];
+    };
+    readonly instrument?: {
+        readonly files: readonly string[];
     };
     readonly items?: (c: Case) => number;
     // Warning: (ae-forgotten-export) The symbol "MeasuredValue" needs to be exported by the entry point index.d.ts
@@ -287,7 +292,7 @@ export interface MeasureDefinition<Id extends string = string> {
 // @public
 export interface MeasureExample {
     readonly case: Case;
-    readonly expected: MeasuredValue | "not-applicable";
+    readonly expected: MeasuredValue | "not-applicable" | "missing";
     readonly name: string;
     readonly trial: Trial;
 }
@@ -378,6 +383,7 @@ export class PlanError extends Error {
 //
 // @public
 export interface PlanInput extends Omit<PreparedPlanInput, "measures" | "gates" | "tested"> {
+    readonly directory?: string;
     readonly gates: ReadonlyMap<string, GateDefinition>;
     readonly measures: ReadonlyMap<string, MeasureDefinition>;
 }
@@ -916,11 +922,14 @@ export type SuiteDefinition = z.input<typeof SuiteDefinition>;
 export interface TesterResult {
     readonly digest: string;
     readonly failures: readonly string[];
+    readonly qualification?: "fixture-qualified";
     readonly status: "passed" | "failed";
 }
 
 // @public
-export function testMeasure(measure: MeasureDefinition): Promise<TesterResult>;
+export function testMeasure(measure: MeasureDefinition, options?: {
+    readonly directory?: string;
+}): Promise<TesterResult>;
 
 // Warning: (ae-forgotten-export) The symbol "TrialResult" needs to be exported by the entry point index.d.ts
 //
@@ -945,8 +954,8 @@ export interface WorkerTrial {
 
 // Warnings were encountered during analysis:
 //
-// src/core/import.ts:52:52 - (ae-forgotten-export) The symbol "LockedImport" needs to be exported by the entry point index.d.ts
-// src/core/plugin.ts:58:5 - (ae-forgotten-export) The symbol "Case" needs to be exported by the entry point index.d.ts
+// src/core/import.ts:54:52 - (ae-forgotten-export) The symbol "LockedImport" needs to be exported by the entry point index.d.ts
+// src/core/plugin.ts:62:5 - (ae-forgotten-export) The symbol "Case" needs to be exported by the entry point index.d.ts
 // src/core/serve-worker.ts:30:19 - (ae-forgotten-export) The symbol "Json" needs to be exported by the entry point index.d.ts
 // src/core/serve-worker.ts:44:3 - (ae-forgotten-export) The symbol "ObservedConfiguration" needs to be exported by the entry point index.d.ts
 

@@ -1,3 +1,4 @@
+import { checkCaptured } from "./capture.ts";
 import { canonicalize, digest } from "../contracts/canonical.ts";
 import type { Case } from "../contracts/records/case.ts";
 import { GateResult } from "../contracts/records/decision.ts";
@@ -13,11 +14,7 @@ import type { Host } from "./host.ts";
 import { scoreTrials } from "./measures.ts";
 import type { ImportResult } from "./plugin.ts";
 
-/**
- * The error kind of a trial whose output was not captured. Such a trial is an infrastructure
- * failure, never a completed trial: it counts as missing, never as a failure of the system.
- */
-export const NOT_CAPTURED = "not-captured";
+export { NOT_CAPTURED } from "./capture.ts";
 
 /** Outcomes that score as a failed trial, whatever value a record carries (REQ-20). */
 const FAILED_OUTCOMES: ReadonlySet<string> = new Set(["system_failure", "budget_exceeded"]);
@@ -75,21 +72,6 @@ function checkConfiguration(
     ...trial,
     outcome: "invalid_configuration",
     error: { kind: "configuration-mismatch", message: mismatch },
-  };
-}
-
-/**
- * A trial is scored only on output that was captured (REQ-20). A completed record with neither
- * an output nor a pointer to one is a capture failure: an infrastructure failure, so it counts as
- * missing. An output the system returned empty is present, and is scored.
- */
-function checkCaptured(trial: Trial): Trial {
-  if (trial.outcome !== "completed" || trial.output !== undefined || trial.pointer !== undefined)
-    return trial;
-  return {
-    ...trial,
-    outcome: "infrastructure_failure",
-    error: { kind: NOT_CAPTURED, message: "the record has no captured output" },
   };
 }
 
