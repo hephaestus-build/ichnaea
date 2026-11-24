@@ -160,6 +160,8 @@ export interface Config<Plugins extends readonly Plugin[] = readonly Plugin[]> {
   readonly suite?: SuiteDefinition;
   /** Where records are stored. */
   readonly store?: string;
+  /** The team's checkout for earlier decisions and held-out case reads. */
+  readonly records?: string;
 }
 
 /** Defines a configuration. The measures it can name are inferred from its plugins. */

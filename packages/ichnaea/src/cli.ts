@@ -15,8 +15,10 @@ import {
   jsonRequested,
 } from "./core/command-grammar.ts";
 import { decideCommand, reportCommand } from "./core/commands.ts";
+import { runCommand } from "./core/run-command.ts";
 import { testMeasure } from "./core/measures.ts";
 import { CORE_VERSION } from "./core/version.ts";
+import { workerCommand } from "./core/worker-check.ts";
 import { TRIGGER_VARIES } from "./plan/rules.ts";
 
 export { loadConfig, type ModuleLoader } from "./core/cli-config.ts";
@@ -102,6 +104,8 @@ const COMMANDS: readonly Command[] = [
   decideCommand,
   reportCommand,
   planCommand,
+  workerCommand,
+  runCommand,
   doctorCommand,
   helpCommand,
   versionCommand,
@@ -210,7 +214,7 @@ export async function main(
     const result =
       args.values["help"] === true
         ? help(command === helpCommand ? undefined : command)
-        : await command.run(args, load);
+        : await command.run(args, load, err);
     if (json) out(JSON.stringify(Json.parse(result.json)));
     else for (const line of result.text) out(line);
     return result.code;

@@ -1,3 +1,4 @@
+import { CandidateHistory, Registration, Verdict } from "./run-registration.ts";
 import * as z from "zod";
 
 import { REASON_CODES } from "../reasons.ts";
@@ -24,7 +25,7 @@ import { Resolution } from "./resolution.ts";
 import { Estimand } from "./suite.ts";
 
 /** A run verdict (REQ-53). */
-export const Verdict = z.enum(["PASS", "REGRESSION", "INCONCLUSIVE", "INVALID"]);
+export { Verdict } from "./run-registration.ts";
 /** A run verdict. */
 export type Verdict = z.infer<typeof Verdict>;
 
@@ -269,6 +270,8 @@ export const Decision = z.strictObject({
   resolution: z.array(Resolution).optional(),
   trialReduction: TrialReduction.optional(),
   mustNever: z.array(MustNeverCount).optional(),
+  registration: Registration.optional(),
+  history: CandidateHistory.optional(),
   missingness: Missingness,
   invalidReasons: none(z.array(Text)),
   limitations: none(z.array(Text)),

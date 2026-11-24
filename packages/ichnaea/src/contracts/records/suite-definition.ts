@@ -1,3 +1,4 @@
+import { RunPurpose } from "./run-registration.ts";
 import * as z from "zod";
 
 import { Case, CaseProvenance, Pool } from "./case.ts";
@@ -46,6 +47,9 @@ export const SuiteDefinition = z.strictObject({
   trialReduction: RegisteredTrialReduction.optional(),
   mustNever: z.array(MustNever).min(1).optional(),
   maxCalls: z.int().min(0).optional(),
+  purpose: RunPurpose.optional(),
+  callsPerTrial: z.int().positive().optional(),
+  deadlineMs: z.int().positive().max(2_147_483_647).optional(),
   policy: CiPolicy.optional(),
 });
 /** The authored suite configuration. */

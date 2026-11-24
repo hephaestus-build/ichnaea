@@ -142,6 +142,13 @@ export const AnalysisPlan: z.ZodObject<{
         identity: z.core.$ZodBranded<z.ZodString, "ConfigurationIdentity", "out">;
     }, z.core.$strict>;
     maxCalls: z.ZodInt;
+    callsPerTrial: z.ZodOptional<z.ZodInt>;
+    deadlineMs: z.ZodOptional<z.ZodInt>;
+    purpose: z.ZodOptional<z.ZodEnum<{
+        confirmation: "confirmation";
+        development: "development";
+        regression: "regression";
+    }>>;
     policy: z.ZodObject<{
         onRegression: z.ZodEnum<{
             block: "block";
@@ -1683,6 +1690,27 @@ export const Decision: z.ZodObject<{
             }>;
         }, z.core.$strict>>;
     }, z.core.$strict>>>;
+    registration: z.ZodOptional<z.ZodEnum<{
+        exploratory: "exploratory";
+        registered: "registered";
+        unregistered: "unregistered";
+    }>>;
+    history: z.ZodOptional<z.ZodObject<{
+        scope: z.ZodEnum<{
+            records: "records";
+            store: "store";
+        }>;
+        candidates: z.ZodArray<z.ZodObject<{
+            run: z.core.$ZodBranded<z.ZodString, "RunId", "out">;
+            candidate: z.core.$ZodBranded<z.ZodString, "ConfigurationIdentity", "out">;
+            verdict: z.ZodNullable<z.ZodEnum<{
+                INCONCLUSIVE: "INCONCLUSIVE";
+                INVALID: "INVALID";
+                PASS: "PASS";
+                REGRESSION: "REGRESSION";
+            }>>;
+        }, z.core.$strict>>;
+    }, z.core.$strict>>;
     missingness: z.ZodObject<{
         byArm: z.ZodArray<z.ZodObject<{
             arm: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
@@ -3427,6 +3455,13 @@ export const Plan: z.ZodObject<{
             identity: z.core.$ZodBranded<z.ZodString, "ConfigurationIdentity", "out">;
         }, z.core.$strict>;
         maxCalls: z.ZodInt;
+        callsPerTrial: z.ZodOptional<z.ZodInt>;
+        deadlineMs: z.ZodOptional<z.ZodInt>;
+        purpose: z.ZodOptional<z.ZodEnum<{
+            confirmation: "confirmation";
+            development: "development";
+            regression: "regression";
+        }>>;
         policy: z.ZodObject<{
             onRegression: z.ZodEnum<{
                 block: "block";
@@ -4301,6 +4336,33 @@ export const Run: z.ZodObject<{
                 complete: "complete";
             }>;
         }, z.core.$strict>>>;
+        registration: z.ZodOptional<z.ZodEnum<{
+            exploratory: "exploratory";
+            registered: "registered";
+            unregistered: "unregistered";
+        }>>;
+        history: z.ZodOptional<z.ZodObject<{
+            scope: z.ZodEnum<{
+                records: "records";
+                store: "store";
+            }>;
+            candidates: z.ZodArray<z.ZodObject<{
+                run: z.core.$ZodBranded<z.ZodString, "RunId", "out">;
+                candidate: z.core.$ZodBranded<z.ZodString, "ConfigurationIdentity", "out">;
+                verdict: z.ZodNullable<z.ZodEnum<{
+                    INCONCLUSIVE: "INCONCLUSIVE";
+                    INVALID: "INVALID";
+                    PASS: "PASS";
+                    REGRESSION: "REGRESSION";
+                }>>;
+            }, z.core.$strict>>;
+        }, z.core.$strict>>;
+        failure: z.ZodOptional<z.ZodEnum<{
+            "budget-exceeded": "budget-exceeded";
+            protocol: "protocol";
+            "worker-closed": "worker-closed";
+            "worker-unresponsive": "worker-unresponsive";
+        }>>;
     }, z.core.$strict>>;
     valuesOutsideMask: z.ZodOptional<z.ZodRecord<z.core.$ZodBranded<z.ZodString, "MeasureId", "out">, z.ZodInt>>;
     environment: z.ZodObject<{
@@ -6241,9 +6303,6 @@ export const Verdict: z.ZodEnum<{
 }>;
 
 // @public
-export type Verdict = z.infer<typeof Verdict>;
-
-// @public
 export function verifyArms(arms: ReadonlyArray<{
     identity: string;
     configuration: unknown;
@@ -6355,7 +6414,7 @@ export type WorkerSettings = z.infer<typeof WorkerSettings>;
 
 // Warnings were encountered during analysis:
 //
-// src/contracts/records/run.ts:37:27 - (ae-forgotten-export) The symbol "PairDraw" needs to be exported by the entry point index.d.ts
+// src/contracts/records/run.ts:38:27 - (ae-forgotten-export) The symbol "PairDraw" needs to be exported by the entry point index.d.ts
 
 // (No @packageDocumentation comment for this package)
 

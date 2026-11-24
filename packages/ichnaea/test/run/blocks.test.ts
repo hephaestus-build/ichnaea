@@ -48,6 +48,7 @@ const result = (
   kind?: "infrastructure" | "system" | "protocol",
 ) => ({
   trial: attempt.trial,
+  ...(kind === undefined ? { output: "answer" } : {}),
   usage: { calls, responseIds: [] },
   ...(kind === undefined ? {} : { failure: { class: kind, kind: "fixture" } }),
 });
@@ -250,4 +251,54 @@ it("refuses to dispatch a plan missing a trial and supports a base-only plan", a
   );
   expect(runner.startBlock()?.draws).toEqual([]);
   expect(next(runner, 0).trial.arm).toBe(baseName);
+});
+
+it("retries a missing capture but never retries a truncated result", async () => {
+  const locked = await plan();
+  const runner = new BlockRunner(locked, { ...options, capacity: 1 });
+  runner.startBlock();
+  const first = next(runner, 0);
+  const noCapture = { trial: first.trial, usage: { calls: 0, responseIds: [] } };
+  expect(runner.accept(0, noCapture, 1).disposition).toBe("retry");
+
+  const retry = next(runner, 2);
+  expect(retry.trial).toEqual({ ...first.trial, attempt: 2 });
+  expect(runner.accept(0, result(retry, 0), 3).disposition).toBe("record");
+
+  const truncated = next(runner, 4);
+  expect(runner.accept(0, { ...result(truncated, 0), truncated: true }, 5).disposition).toBe(
+    "record",
+  );
+  expect(next(runner, 6).trial.id).not.toBe(truncated.trial.id);
+});
+
+it("picks up at the next physical draw after a completed and an abandoned block", async () => {
+  const locked = await plan();
+  const extended = {
+    ...locked,
+    analysis: { ...locked.analysis, maxCalls: 100 },
+    budget: { ...locked.budget, maxCalls: 100 },
+  };
+  const draws = (physical: number, planned: number) =>
+    locked.trials
+      .filter(({ block, arm }) => block === planned && arm === "base")
+      .map(({ case: id, replicate }) => ({
+        case: id,
+        replicate,
+        first: pairFirst(locked.seed, physical, { case: id, replicate }),
+      }));
+  const history = [
+    { block: 0, plannedBlock: 0, draws: draws(0, 0), status: "complete", calls: 12 },
+    { block: 1, plannedBlock: 1, draws: draws(1, 1), status: "abandoned", calls: 2 },
+  ] as const;
+  const resumed = new BlockRunner(extended, options, history);
+  expect(resumed.calls).toBe(36);
+  expect(resumed.startBlock()).toEqual({
+    block: 2,
+    plannedBlock: 1,
+    draws: draws(2, 1),
+  });
+  expect(
+    () => new BlockRunner(extended, options, [history[0], { ...history[1], plannedBlock: 0 }]),
+  ).toThrow(/journal/);
 });

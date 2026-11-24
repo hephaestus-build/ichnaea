@@ -5,7 +5,12 @@ export const NOT_CAPTURED = "not-captured";
 
 /** A completed trial without captured output is missing evidence. */
 export function checkCaptured(trial: Trial): Trial {
-  if (trial.outcome !== "completed" || trial.output !== undefined || trial.pointer !== undefined)
+  if (
+    trial.outcome !== "completed" ||
+    trial.output !== undefined ||
+    trial.pointer !== undefined ||
+    trial.evidence?.length
+  )
     return trial;
   return {
     ...trial,

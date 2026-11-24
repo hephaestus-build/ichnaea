@@ -16,7 +16,13 @@ export function defaultBlocks(primaryComparisons: number, alpha: number): number
   return primaryComparisons === 0 ? 1 : Math.ceil(Math.log2(primaryComparisons / alpha)) + 1;
 }
 
-export function checkCases(caseSet: CaseSet, cases: readonly Case[]): void {
+export const DEFAULT_TRIAL_DEADLINE_MS = 60_000;
+
+export function checkCases(
+  caseSet: CaseSet,
+  cases: readonly Case[],
+  purpose?: AnalysisPlan["purpose"],
+): void {
   const byId = new Map(cases.map((entry) => [entry.id, entry]));
   if (
     byId.size !== cases.length ||
@@ -35,7 +41,8 @@ export function checkCases(caseSet: CaseSet, cases: readonly Case[]): void {
       record.family !== entry.family
     )
       throw new PlanError(`case '${entry.id}' does not match the case set`);
-    if (entry.pool === "sealed") throw new PlanError("a sealed pool needs a confirmation plan");
+    if (entry.pool === "sealed" && purpose !== "confirmation")
+      throw new PlanError("a sealed pool needs a confirmation plan");
   }
 }
 
@@ -51,8 +58,10 @@ export function blockCalls(
   comparisons: number,
   blocks: number,
   replicates: number,
+  callsPerTrial = 1,
+  arms: number = comparisons > 0 ? 2 : 1,
 ): number {
-  return cases * (comparisons > 0 ? 2 : 1) * blocks * replicates;
+  return cases * arms * blocks * replicates * callsPerTrial;
 }
 
 export interface AnalysisInput {
@@ -71,7 +80,10 @@ export interface AnalysisInput {
   readonly applicability: AnalysisPlan["applicability"];
   readonly trialReduction?: TrialReductionRegistration | undefined;
   readonly mustNever?: readonly MustNeverDeclaration[] | undefined;
+  readonly purpose?: AnalysisPlan["purpose"];
   readonly maxCalls?: number | undefined;
+  readonly callsPerTrial?: number | undefined;
+  readonly deadlineMs?: number | undefined;
   readonly policy?: AnalysisPlan["policy"] | undefined;
   readonly ichnaea: string;
 }
@@ -157,7 +169,11 @@ export function resolveAnalysis(input: AnalysisInput): AnalysisPlan {
     ...(input.mustNever === undefined ? {} : { mustNever: input.mustNever }),
     base: { role: "base", identity: configurationIdentity(input.base) },
     maxCalls:
-      input.maxCalls ?? blockCalls(input.caseSet.cases.length, holm.length, blocks, replicates),
+      input.maxCalls ??
+      blockCalls(input.caseSet.cases.length, holm.length, blocks, replicates, input.callsPerTrial),
+    ...(input.callsPerTrial === undefined ? {} : { callsPerTrial: input.callsPerTrial }),
+    ...(input.deadlineMs === undefined ? {} : { deadlineMs: input.deadlineMs }),
+    ...(input.purpose === undefined ? {} : { purpose: input.purpose }),
     policy: input.policy ?? DEFAULT_POLICY,
     ichnaea: input.ichnaea,
   });

@@ -1,3 +1,4 @@
+import type { PairDraw } from "../contracts/block-order.ts";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, readdir, stat, utimes, writeFile } from "node:fs/promises";
 import { hostname } from "node:os";
@@ -6,7 +7,8 @@ import { basename, join } from "node:path";
 import * as z from "zod";
 
 import { canonicalize } from "../contracts/canonical.ts";
-import { Json } from "../contracts/primitives.ts";
+import { CaseId, Json } from "../contracts/primitives.ts";
+import { RunFailure } from "../contracts/records/run-registration.ts";
 import { TrialIdentity, WorkerReady } from "../contracts/records/worker.ts";
 
 import { CallLedger } from "./ledger.ts";
@@ -18,7 +20,12 @@ import { runDirectory } from "./store-path.ts";
 
 const LEASE_MS = 10 * 60_000;
 type Owner = { host: string; pid: number };
-type BlockStart = { kind: "block-start"; block: number; first: "base" | "candidate" };
+type BlockOrder = {
+  first?: PairDraw["first"] | undefined;
+  plannedBlock?: number | undefined;
+  draws?: PairDraw[] | undefined;
+};
+type BlockStart = { kind: "block-start"; block: number } & BlockOrder;
 type Takeover = { kind: "owner-takeover"; previous: Owner; cause: "dead-pid" | "expired-lease" };
 type Entry =
   | { kind: "run-opened" }
@@ -26,8 +33,10 @@ type Entry =
   | Takeover
   | BlockStart
   | { kind: "block-abandoned" | "block-complete"; block: number }
+  | { kind: "run-failed"; reason: z.infer<typeof RunFailure> }
   | { kind: "handshake"; block: number; ready: WorkerReady }
   | { kind: "intent"; block: number; trial: TrialIdentity }
+  | { kind: "attempt-expired"; block: number; trial: TrialIdentity }
   | { kind: "outcome"; block: number; trial: TrialIdentity; result: Json };
 type BlockBooking = { readonly endpoint: string; readonly cap: number; readonly calls: number };
 
@@ -36,7 +45,17 @@ const block = z.int().nonnegative();
 const BlockStartSchema = z.strictObject({
   kind: z.literal("block-start"),
   block,
-  first: z.enum(["base", "candidate"]),
+  first: z.enum(["base", "candidate"]).optional(),
+  plannedBlock: block.optional(),
+  draws: z
+    .array(
+      z.strictObject({
+        case: CaseId,
+        replicate: z.int().nonnegative(),
+        first: z.enum(["base", "candidate"]),
+      }),
+    )
+    .optional(),
 });
 const TakeoverCause = z.enum(["dead-pid", "expired-lease"]);
 const EntrySchema: z.ZodType<Entry> = z.discriminatedUnion("kind", [
@@ -48,10 +67,15 @@ const EntrySchema: z.ZodType<Entry> = z.discriminatedUnion("kind", [
     cause: TakeoverCause,
   }),
   BlockStartSchema,
+  z.strictObject({
+    kind: z.literal("run-failed"),
+    reason: RunFailure,
+  }),
   z.strictObject({ kind: z.literal("block-abandoned"), block }),
   z.strictObject({ kind: z.literal("block-complete"), block }),
   z.strictObject({ kind: z.literal("handshake"), block, ready: WorkerReady }),
   z.strictObject({ kind: z.literal("intent"), block, trial: TrialIdentity }),
+  z.strictObject({ kind: z.literal("attempt-expired"), block, trial: TrialIdentity }),
   z.strictObject({ kind: z.literal("outcome"), block, trial: TrialIdentity, result: Json }),
 ]);
 
@@ -188,7 +212,12 @@ export class RunWork {
     }
   }
 
-  static async open(root: string, run: string, receipt?: RegistrationReceipt): Promise<RunWork> {
+  static async open(
+    root: string,
+    run: string,
+    receipt?: RegistrationReceipt,
+    mode?: "new" | "resume",
+  ): Promise<RunWork> {
     const directory = runDirectory(root, "work", run);
     const sealed = runDirectory(root, "runs", run);
     if (existsSync(sealed)) throw new Error(`run '${run}' is already sealed`);
@@ -198,6 +227,11 @@ export class RunWork {
       const journal = join(directory, "journal");
       await mkdir(journal, { recursive: true });
       const entries = await readEntries(journal);
+      const prepared = existsSync(join(directory, "prepared.json"));
+      if (mode === "new" && (prepared || entries.length > 0))
+        throw new Error(`run '${run}' already has a work area; use --resume`);
+      if (mode === "resume" && (!prepared || entries.length === 0))
+        throw new Error(`run '${run}' has no resumable plan`);
       const work = new RunWork(root, run, directory, lease, entries);
       if (receipt && receipt.run !== run) throw new Error("receipt belongs to another run");
       const opening = entries[0];
@@ -257,14 +291,15 @@ export class RunWork {
   /** Book the entire block before emitting any attempt intent. A dead runner cannot refund it. */
   async startBlock(
     booking: BlockBooking,
-    draw: (number: number) => BlockStart["first"],
+    draw: (number: number) => PairDraw["first"] | BlockOrder,
   ): Promise<BlockStart> {
     return this.#change(async () => {
       if (this.#block) throw new Error("a block is already open");
+      const order = draw(this.#draw);
       const entry = BlockStartSchema.parse({
+        ...(typeof order === "string" ? { first: order } : order),
         kind: "block-start",
         block: this.#draw,
-        first: draw(this.#draw),
       });
       await new CallLedger(this.#root).reserve(booking.endpoint, booking.cap, {
         run: this.#run,
@@ -294,6 +329,14 @@ export class RunWork {
     });
   }
 
+  async expire(trial: TrialIdentity): Promise<void> {
+    await this.#change(async () => {
+      if (!this.#pending.has(canonicalize(trial)))
+        throw new Error("expiry has no outstanding intent");
+      await this.#append({ kind: "attempt-expired", block: this.#openBlock(), trial });
+    });
+  }
+
   async outcome(trial: z.input<typeof TrialIdentity>, result: z.infer<typeof Json>): Promise<void> {
     const parsed = TrialIdentity.parse(trial);
     const key = canonicalize(parsed);
@@ -313,6 +356,21 @@ export class RunWork {
     await this.#change(async () => {
       if (this.#pending.size) throw new Error("block has attempts without outcomes");
       await this.#append({ kind: "block-complete", block: this.#openBlock() });
+      this.#block = undefined;
+    });
+  }
+
+  async fail(reason: z.infer<typeof RunFailure>): Promise<void> {
+    await this.#change(async () => {
+      await this.#append({ kind: "run-failed", reason });
+    });
+  }
+
+  async abandonBlock(reason?: z.infer<typeof RunFailure>): Promise<void> {
+    await this.#change(async () => {
+      if (reason) await this.#append({ kind: "run-failed", reason });
+      await this.#append({ kind: "block-abandoned", block: this.#openBlock() });
+      this.#pending.clear();
       this.#block = undefined;
     });
   }
