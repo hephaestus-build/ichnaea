@@ -1,5 +1,6 @@
 import type * as z from "zod";
 
+import { AnalysisLock, AnalysisPlan } from "./records/analysis-plan.ts";
 import { Case, CaseSet } from "./records/case.ts";
 import { Configuration } from "./records/configuration.ts";
 import { ConfigurationV2 } from "./records/configuration-v2.ts";
@@ -115,6 +116,20 @@ export const RECORD_CONTRACTS: readonly RecordContract[] = [
     stability: "alpha",
     description:
       "The lock of a suite: the digests of its sources, instruments and measures, written by lock.",
+  },
+  {
+    name: "analysisPlan",
+    id: "ichnaea.analysisPlan/1",
+    schema: AnalysisPlan,
+    stability: "alpha",
+    description: "Locked methods, case masks, measures and horizon before a candidate is bound.",
+  },
+  {
+    name: "analysisLock",
+    id: "ichnaea.lock/1",
+    schema: AnalysisLock,
+    stability: "alpha",
+    description: "The case and instrument pins for the analysis plan.",
   },
   {
     name: "plan",

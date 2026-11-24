@@ -1,3 +1,4 @@
+import { resolutionLine } from "../plan/resolution.ts";
 import type { Real } from "../contracts/primitives.ts";
 import type { Decision } from "../contracts/records/decision.ts";
 import { notComputedReason, type PowerEntry } from "../contracts/records/plan.ts";
@@ -138,6 +139,8 @@ export interface DecisionView {
   }>;
   /** The planning power rows, then the run-time ones. */
   readonly power: readonly PowerRow[];
+  /** The block-resolution estimates, with the model and any unavailability reason. */
+  readonly resolution: readonly string[];
   /** The rows of the sensitivity analysis for missing trials. */
   readonly sensitivity: readonly SensitivityRow[];
   /** The missing trials of each arm and the outcome of the sensitivity analysis, in words. */
@@ -344,10 +347,16 @@ export function decisionView(
         candidate: percent(f.candidate),
       })),
     ),
-    power: [
-      ...decision.power.planning.map((p) => powerRow("planning", p, id, prose)),
-      ...decision.power.run.map((p) => powerRow("this run", p, id, prose)),
-    ],
+    power:
+      decision.resolution === undefined
+        ? [
+            ...decision.power.planning.map((p) => powerRow("planning", p, id, prose)),
+            ...decision.power.run.map((p) => powerRow("this run", p, id, prose)),
+          ]
+        : [],
+    resolution: (decision.resolution ?? []).map((entry) =>
+      prose(resolutionLine(entry, id(entry.measure))),
+    ),
     sensitivity: decision.measures
       .flatMap((m) =>
         m.sensitivity.map((s) => ({

@@ -2,7 +2,10 @@ import type { MeasuredValue } from "../contracts/primitives.ts";
 import type { Case } from "../contracts/records/case.ts";
 import type { GateResult } from "../contracts/records/decision.ts";
 import type { MeasureCard, MeasureValue } from "../contracts/records/measure.ts";
+import type { Plan } from "../contracts/records/plan.ts";
 import type { Trial } from "../contracts/records/trial.ts";
+
+import type { SuiteDefinition } from "../contracts/records/suite-definition.ts";
 
 /** A known-good or known-bad example for a measure's tester (REQ-33). */
 export interface MeasureExample {
@@ -57,6 +60,8 @@ export interface GateDefinition<Id extends string = string> {
 
 /** What an importer reads and returns. */
 export interface ImportInput {
+  /** The resolved plan whose trial IDs the importer reads. */
+  readonly plan?: Plan;
   /** The paths of the other runner's result files. */
   readonly files: readonly string[];
   /**
@@ -144,6 +149,8 @@ export type GateIdsOf<Plugins extends readonly Plugin[]> = Plugins[number] exten
 export interface Config<Plugins extends readonly Plugin[] = readonly Plugin[]> {
   /** The plugins to load, listed explicitly. */
   readonly plugins: Plugins;
+  /** Suite run and plan commands use. */
+  readonly suite?: SuiteDefinition;
   /** Where records are stored. */
   readonly store?: string;
 }

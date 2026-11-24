@@ -184,8 +184,15 @@
           {
             "patterns": [
               {
-                "group": ["**", "!./**", "!../contracts/**", "!../decide/*.ts", "**/index.ts"],
-                "message": "src/report imports only its own modules, src/contracts and src/decide. A module imports the file that defines what it uses, never an index.ts barrel."
+                "group": [
+                  "**",
+                  "!./**",
+                  "!../contracts/**",
+                  "!../decide/*.ts",
+                  "!../plan/resolution.ts",
+                  "**/index.ts"
+                ],
+                "message": "src/report imports only its own modules, src/contracts, src/decide and the resolution formatter. A module imports the file that defines what it uses, never an index.ts barrel."
               }
             ]
           }
