@@ -18,6 +18,7 @@ import {
   Timestamp,
 } from "../primitives.ts";
 import { PowerEntry } from "./plan.ts";
+import { MustNeverCount } from "./must-never.ts";
 import { Resolution } from "./resolution.ts";
 import { Estimand } from "./suite.ts";
 
@@ -228,6 +229,7 @@ export const Decision = z.strictObject({
    */
   power: z.strictObject({ planning: z.array(PowerEntry), run: z.array(PowerEntry) }),
   resolution: z.array(Resolution).optional(),
+  mustNever: z.array(MustNeverCount).optional(),
   missingness: Missingness,
   invalidReasons: none(z.array(Text)),
   limitations: none(z.array(Text)),

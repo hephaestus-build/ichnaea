@@ -77,3 +77,9 @@ checks the value's card and source, and records the judge's version and digest f
 It drops values outside the applicability mask and keeps their counts. A value marked
 not applicable inside the mask counts as missing. For runner evidence, a missing block,
 context or timestamp gives `EXECUTION_UNRECORDED` and estimate-only output.
+
+A one-arm suite can declare `mustNever` counts from a binary detector whose lower values are
+better. Declare the case IDs and the detector's scope. For a deterministic detector, name the
+pattern variants and give each a planted positive-control case. Reports count a hit once per
+case, and count a partly observed case without a hit as missing. The report shows observed
+contexts and block windows so readers can assess shared execution conditions.

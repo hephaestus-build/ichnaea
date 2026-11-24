@@ -114,6 +114,20 @@ export const AnalysisPlan: z.ZodObject<{
             reason: z.ZodString;
         }, z.core.$strict>], "kind">;
     }, z.core.$strict>>>;
+    mustNever: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+        cases: z.ZodArray<z.core.$ZodBranded<z.ZodString, "CaseId", "out">>;
+        scope: z.ZodString;
+        detector: z.ZodDiscriminatedUnion<[z.ZodObject<{
+            kind: z.ZodLiteral<"deterministic">;
+            variants: z.ZodArray<z.ZodObject<{
+                pattern: z.ZodString;
+                positiveControl: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
+            }, z.core.$strict>>;
+        }, z.core.$strict>, z.ZodObject<{
+            kind: z.ZodLiteral<"model">;
+        }, z.core.$strict>], "kind">;
+    }, z.core.$strict>>>;
     pilot: z.ZodOptional<z.ZodObject<{
         run: z.core.$ZodBranded<z.ZodString, "RunId", "out">;
         digest: z.ZodString;
@@ -1514,6 +1528,43 @@ export const Decision: z.ZodObject<{
             kind: z.ZodLiteral<"unavailable">;
             reason: z.ZodString;
         }, z.core.$strict>], "kind">;
+    }, z.core.$strict>>>;
+    mustNever: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+        scope: z.ZodString;
+        detector: z.ZodEnum<{
+            deterministic: "deterministic";
+            model: "model";
+        }>;
+        planned: z.ZodInt;
+        clean: z.ZodInt;
+        hits: z.ZodInt;
+        missing: z.ZodInt;
+        cases: z.ZodArray<z.ZodObject<{
+            case: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
+            planned: z.ZodInt;
+            observed: z.ZodInt;
+            status: z.ZodEnum<{
+                clean: "clean";
+                hit: "hit";
+                missing: "missing";
+            }>;
+            contexts: z.ZodArray<z.ZodString>;
+        }, z.core.$strict>>;
+        windows: z.ZodArray<z.ZodObject<{
+            block: z.ZodInt;
+            startedAt: z.ZodISODateTime;
+            endedAt: z.ZodISODateTime;
+        }, z.core.$strict>>;
+        controls: z.ZodArray<z.ZodObject<{
+            pattern: z.ZodString;
+            case: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
+            status: z.ZodEnum<{
+                clean: "clean";
+                hit: "hit";
+                missing: "missing";
+            }>;
+        }, z.core.$strict>>;
     }, z.core.$strict>>>;
     missingness: z.ZodObject<{
         byArm: z.ZodArray<z.ZodObject<{
@@ -3217,6 +3268,20 @@ export const Plan: z.ZodObject<{
             }, z.core.$strict>, z.ZodObject<{
                 kind: z.ZodLiteral<"unavailable">;
                 reason: z.ZodString;
+            }, z.core.$strict>], "kind">;
+        }, z.core.$strict>>>;
+        mustNever: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+            cases: z.ZodArray<z.core.$ZodBranded<z.ZodString, "CaseId", "out">>;
+            scope: z.ZodString;
+            detector: z.ZodDiscriminatedUnion<[z.ZodObject<{
+                kind: z.ZodLiteral<"deterministic">;
+                variants: z.ZodArray<z.ZodObject<{
+                    pattern: z.ZodString;
+                    positiveControl: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
+                }, z.core.$strict>>;
+            }, z.core.$strict>, z.ZodObject<{
+                kind: z.ZodLiteral<"model">;
             }, z.core.$strict>], "kind">;
         }, z.core.$strict>>>;
         pilot: z.ZodOptional<z.ZodObject<{

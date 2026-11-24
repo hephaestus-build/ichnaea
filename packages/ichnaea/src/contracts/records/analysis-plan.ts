@@ -14,6 +14,7 @@ import {
 } from "../primitives.ts";
 
 import { CaseSetEntry } from "./case.ts";
+import { MustNever } from "./must-never.ts";
 import { Resolution } from "./resolution.ts";
 import { CiPolicy, Estimand } from "./suite.ts";
 
@@ -55,6 +56,7 @@ export const AnalysisPlan = z.strictObject({
   holm: none(z.array(MeasureId)),
   applicability: Applicability,
   resolution: z.array(Resolution).optional(),
+  mustNever: z.array(MustNever).min(1).optional(),
   pilot: z.strictObject({ run: none(RunId), digest: none(Digest) }).optional(),
   base: z.strictObject({
     role: none(z.literal("base")),

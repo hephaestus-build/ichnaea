@@ -145,7 +145,20 @@ export async function planSuite(input: PlanSuiteInput): Promise<PlannedSuite> {
   );
   const secondary = suite.secondary ?? [];
   const hardGates = suite.hardGates ?? [];
-  const measures = measurePins(input.host, [...primary.map((p) => p.measure), ...secondary]);
+  if (suite.mustNever && arms.candidate !== undefined)
+    throw new PlanError("must-never counting requires one arm");
+  const measureIds = new Set([...primary.map((p) => p.measure), ...secondary]);
+  for (const { measure, detector } of suite.mustNever ?? []) {
+    const card = input.host.measures.get(measure)?.card;
+    if (!card || card.valueType !== "binary" || card.composite || card.direction !== "lower")
+      throw new PlanError(
+        `must-never measure '${measure}' needs a binary measure with lower values better`,
+      );
+    if (card.computedBy === "judge" && detector.kind === "deterministic")
+      throw new PlanError(`must-never measure '${measure}' needs a model detector`);
+    measureIds.add(measure);
+  }
+  const measures = measurePins(input.host, [...measureIds]);
   for (const gate of hardGates)
     if (!input.host.gates.has(gate))
       throw new PlanError(`hard gate '${gate}' is not provided by a plugin`);
@@ -248,6 +261,8 @@ export async function bindImportedPlan(
   const analysis = await readLockedPlan(input.planPath);
   const suite = SuiteDefinition.parse(input.definition);
   const { arms: definitions, ...rules } = suite;
+  if (suite.mustNever && definitions.candidate !== undefined)
+    throw new PlanError("must-never counting requires one arm");
   const { cases, caseSet } = await suiteCases(suite, input.directory);
   if (analysis.suiteDigest !== digest(rules) || analysis.caseSetDigest !== caseSet.digest)
     throw new PlanError("the suite or case set differs from the locked plan");

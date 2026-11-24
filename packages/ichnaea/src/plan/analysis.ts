@@ -2,6 +2,7 @@ import { digest } from "../contracts/canonical.ts";
 import { caseDigest, caseSetDigest, configurationIdentity } from "../contracts/identity.ts";
 import { AnalysisLock, AnalysisPlan } from "../contracts/records/analysis-plan.ts";
 import type { Case, CaseSet } from "../contracts/records/case.ts";
+import type { MustNeverDeclaration } from "../contracts/records/must-never.ts";
 import type { Configuration } from "../contracts/records/configuration.ts";
 
 import { PlanError } from "./resolve.ts";
@@ -64,6 +65,7 @@ export interface AnalysisInput {
   readonly hardGates: AnalysisPlan["hardGates"];
   readonly measures: AnalysisPlan["measures"];
   readonly applicability: AnalysisPlan["applicability"];
+  readonly mustNever?: readonly MustNeverDeclaration[] | undefined;
   readonly maxCalls?: number | undefined;
   readonly policy?: AnalysisPlan["policy"] | undefined;
   readonly ichnaea: string;
@@ -73,7 +75,7 @@ export function resolveAnalysis(input: AnalysisInput): AnalysisPlan {
   const holm = input.primary.map((entry) => entry.measure);
   if (new Set(holm).size !== holm.length)
     throw new PlanError("each primary comparison must have a unique measure ID");
-  const caseIds = new Set(input.caseSet.cases.map((entry) => entry.id));
+  const caseIds = new Set<string>(input.caseSet.cases.map((entry) => entry.id));
   for (const primary of input.primary) {
     const mask = input.applicability[primary.measure];
     if (!mask || mask.some((id) => !caseIds.has(id)) || new Set(mask).size !== mask.length)
@@ -83,6 +85,32 @@ export function resolveAnalysis(input: AnalysisInput): AnalysisPlan {
       (primary.margin === undefined || primary.safetyMargin > primary.margin)
     )
       throw new PlanError(`invalid safety margin for '${primary.measure}'`);
+  }
+  const mustNever = new Set<string>();
+  for (const declaration of input.mustNever ?? []) {
+    const { measure, cases, detector } = declaration;
+    const selected = new Set(cases);
+    if (mustNever.has(measure) || holm.some((id) => id === measure))
+      throw new PlanError(
+        `must-never measure '${measure}' must be declared once and cannot be primary`,
+      );
+    mustNever.add(measure);
+    if (selected.size !== cases.length || cases.some((id) => !caseIds.has(id)))
+      throw new PlanError(`must-never measure '${measure}' needs unique selected cases`);
+    if (detector.kind === "deterministic") {
+      const variants = new Set(detector.variants.map((variant) => variant.pattern));
+      const controls = new Set(detector.variants.map((variant) => variant.positiveControl));
+      if (
+        controls.size !== detector.variants.length ||
+        variants.size !== detector.variants.length ||
+        detector.variants.some(
+          ({ positiveControl }) => !caseIds.has(positiveControl) || selected.has(positiveControl),
+        )
+      )
+        throw new PlanError(
+          `must-never measure '${measure}' needs a separate planned positive control for each pattern`,
+        );
+    }
   }
   const alpha = input.alpha ?? 0.05;
   const blocks = input.blocks ?? defaultBlocks(holm.length, alpha);
@@ -108,6 +136,7 @@ export function resolveAnalysis(input: AnalysisInput): AnalysisPlan {
     measures: input.measures,
     holm,
     applicability: input.applicability,
+    ...(input.mustNever === undefined ? {} : { mustNever: input.mustNever }),
     base: { role: "base", identity: configurationIdentity(input.base) },
     maxCalls:
       input.maxCalls ?? blockCalls(input.caseSet.cases.length, holm.length, blocks, replicates),
