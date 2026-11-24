@@ -2,7 +2,6 @@
 // 1/π, its inverse inclusion probability. Ordinal alpha is the exception: it takes unweighted sets
 // only, and the analysis refuses weighted levels.
 import { krippendorffAlpha } from "../stats/agreement.ts";
-import type { Rng } from "../stats/rng.ts";
 
 /**
  * A labelled calibration set in columns: one entry per answer, answers grouped into items (the
@@ -41,13 +40,6 @@ export type Pairwise = (
   answers: Answers,
   w: readonly number[],
 ) => number;
-
-/** One draw keeps every row of each selected item and preserves the size of each stratum. */
-export function sampleItems<T>(strata: readonly (readonly (readonly T[])[])[], rng: Rng): T[] {
-  return strata.flatMap((items) =>
-    items.flatMap(() => items[Math.floor(rng.uniform() * items.length)]!),
-  );
-}
 
 /** R's type-7 quantile of a sorted array. */
 export function quantile(values: readonly number[], p: number): number {

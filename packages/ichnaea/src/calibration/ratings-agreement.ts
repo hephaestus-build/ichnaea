@@ -2,7 +2,7 @@ import { krippendorffAlpha, type AlphaMetric } from "../stats/agreement.ts";
 import { createRng } from "../stats/rng.ts";
 
 import { CALIBRATION_DEFAULTS } from "./analyze.ts";
-import { quantile, sampleItems, sorted } from "./statistics.ts";
+import { quantile, sorted } from "./statistics.ts";
 
 /** Canonical input for a descriptive report about ratings. Null means a rater did not score the unit. */
 export interface RatingSet {
@@ -90,7 +90,12 @@ export function summarizeRatings(input: RatingSet, seed: number): RatingAgreemen
     unavailableReason = "every stratum has only one item";
   const resamples = unavailableReason === null ? CALIBRATION_DEFAULTS.resamples : 0;
   const estimates = sorted(
-    Array.from({ length: resamples }, () => krippendorffAlpha(sampleItems(strata, rng), metric)),
+    Array.from({ length: resamples }, () => {
+      const sample = strata.flatMap((items) =>
+        items.flatMap(() => items[Math.floor(rng.uniform() * items.length)]!),
+      );
+      return krippendorffAlpha(sample, metric);
+    }),
   );
   if (unavailableReason === null && estimates.length === 0)
     unavailableReason = "no resample gave a finite alpha";
