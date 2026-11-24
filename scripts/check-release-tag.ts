@@ -1,11 +1,10 @@
-// Fails unless a pushed release tag may be released: it is v0.<minor>.<patch>, with an optional
-// pre-release, and greater than every other v* tag, so that releases only move forward. A
+// Fails unless a pushed release tag is a 0.x pre-release greater than every other version tag
+// in the 0.x line, so that releases only move forward. A
 // breaking change since the last tag needs a minor bump over the last release. The tag exists
 // already, because pushing it starts the release workflow. Every tag and the history are read with
 // git, so the checkout needs them all (`fetch-depth: 0`).
 // Usage: node scripts/check-release-tag.ts <tag> [<commit>] >> "$GITHUB_OUTPUT"
-// The commit is HEAD by default. On success it prints `version=`, `dist-tag=` and `previous=`
-// lines for the workflow's outputs.
+// The commit is HEAD by default. On success it prints the version for the workflow.
 import { execFileSync } from "node:child_process";
 
 import { RELEASE_VERSION } from "./release-version.ts";
@@ -102,8 +101,8 @@ export const isBreaking = (message: string): boolean =>
 
 /**
  * Returns why `tag` may not carry the breaking changes among `messages`, or nothing if it may. In
- * 0.x, a breaking change needs a minor version above the last release, the greatest other tag
- * without a pre-release. Before the first release, nothing is needed.
+ * 0.x, a breaking change needs a minor version above the greatest other version tag, including
+ * pre-releases. Before the first version, nothing is needed.
  */
 export function breakingProblem(
   tag: string,
@@ -111,12 +110,12 @@ export function breakingProblem(
   messages: readonly string[],
 ): string | undefined {
   const breaking = messages.find(isBreaking);
-  const release = latestTag(releaseLine(others).line.filter((t) => parse(t).pre.length === 0));
-  if (breaking === undefined || release === undefined) return undefined;
-  const [, minor] = parse(release).core;
+  const previous = latestTag(others);
+  if (breaking === undefined || previous === undefined) return undefined;
+  const [, minor] = parse(previous).core;
   if (parse(tag).core[1] > minor) return undefined;
   return (
-    `${breaking.split("\n")[0]} is a breaking change since ${latestTag(others)}, ` +
+    `${breaking.split("\n")[0]} is a breaking change since ${previous}, ` +
     `so ${tag} must raise the minor version, to v0.${minor + 1}.0 or later`
   );
 }
@@ -142,11 +141,13 @@ if (import.meta.main) {
     console.error(`ignored: the v* tags ${ignored.join(", ")} are not versions of the 0.x line`);
   const previous = latestTag(others);
   const why =
-    tagProblem(tag, others) ?? breakingProblem(tag, others, commitMessages(previous, head));
+    tagProblem(tag, others) ??
+    (distTag(tag) === "next" ? undefined : `release tag ${tag} must be a 0.x pre-release`) ??
+    breakingProblem(tag, others, commitMessages(previous, head));
   if (why) {
     console.error(why);
     process.exit(1);
   }
   console.error(`release tag ${tag} follows ${previous ?? "no release"}`);
-  console.log(`version=${tag.slice(1)}\ndist-tag=${distTag(tag)}\nprevious=${previous ?? ""}`);
+  console.log(`version=${tag.slice(1)}`);
 }
