@@ -105,6 +105,12 @@ export interface DecisionView {
     readonly measures: readonly MeasureRow[];
     readonly method: string;
     readonly missingness: string;
+    readonly mustNever?: readonly {
+        readonly measure: string;
+        readonly note: string;
+        readonly counts: readonly [number, number, number, number];
+        readonly details: readonly string[];
+    }[];
     readonly power: readonly PowerRow[];
     readonly reason: string;
     readonly resolution: readonly string[];
@@ -872,6 +878,20 @@ export const SuiteDefinition: z.ZodObject<{
         k: z.ZodInt;
         cases: z.ZodArray<z.core.$ZodBranded<z.ZodString, "CaseId", "out">>;
     }, z.core.$strict>>;
+    mustNever: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+        cases: z.ZodArray<z.core.$ZodBranded<z.ZodString, "CaseId", "out">>;
+        scope: z.ZodString;
+        detector: z.ZodDiscriminatedUnion<[z.ZodObject<{
+            kind: z.ZodLiteral<"deterministic">;
+            variants: z.ZodArray<z.ZodObject<{
+                pattern: z.ZodString;
+                positiveControl: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
+            }, z.core.$strict>>;
+        }, z.core.$strict>, z.ZodObject<{
+            kind: z.ZodLiteral<"model">;
+        }, z.core.$strict>], "kind">;
+    }, z.core.$strict>>>;
     maxCalls: z.ZodOptional<z.ZodInt>;
     policy: z.ZodOptional<z.ZodObject<{
         onRegression: z.ZodEnum<{

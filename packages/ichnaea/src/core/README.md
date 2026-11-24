@@ -98,3 +98,9 @@ A one-arm suite can declare `trialReduction: { measure, k, cases }`. The lock pi
 measure and the selected cases. Decide reports pass^k and pass@k over fresh trials, with equal
 case weights. If a case has fewer than k fresh binary observations, the case and the suite
 aggregate are missing. The estimates have no interval.
+
+A one-arm suite can declare `mustNever` counts from a binary detector whose lower values are
+better. Declare the case IDs and the detector's scope. For a deterministic detector, name the
+pattern variants and give each a planted positive-control case. Reports count a hit once per
+case, and count a partly observed case without a hit as missing. The report shows observed
+contexts and block windows so readers can assess shared execution conditions.
