@@ -4,7 +4,7 @@ import { none } from "../data-class.ts";
 import { Digest, SuiteId, Text } from "../primitives.ts";
 import { Pool } from "./case.ts";
 import { MeasureIdentity } from "./measure-identity.ts";
-import { PrimaryRegistration } from "./suite-v2.ts";
+import { PrimaryRegistration } from "./lock-vocabulary.ts";
 import {
   Command,
   CommitSha,

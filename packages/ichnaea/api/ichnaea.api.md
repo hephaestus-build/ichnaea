@@ -400,6 +400,7 @@ export interface PlanSuiteInput {
     readonly directory: string;
     readonly host: Host;
     readonly ichnaea: string;
+    readonly legacyLock?: string;
     readonly noise?: boolean;
     readonly pilot?: RunRecords;
     readonly suite: SuiteDefinition;

@@ -87,12 +87,6 @@ export const CONTROL: Mutant = {
 
 export const MUTANTS: readonly Mutant[] = [
   {
-    id: "measurement names compared joined",
-    file: "src/contracts/identity.ts",
-    from: "  a.length === b.length && a.every((name, i) => name === b[i]);",
-    to: '  a.join("\\0") === b.join("\\0");',
-  },
-  {
     id: "I5",
     file: "src/contracts/identity.ts",
     from: 'projection["models"] = sortedUnique(projection["models"], "role", "model role");',

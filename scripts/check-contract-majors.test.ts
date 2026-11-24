@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { majorProblems } from "./check-contract-majors.ts";
+import { majorProblems, withdrawnBeforeRelease } from "./check-contract-majors.ts";
 
 describe("contract majors (REQ-07)", () => {
   const contracts = [{ name: "trial", id: "ichnaea.trial/2" }];
@@ -53,4 +53,16 @@ describe("two majors of one record, both registered", () => {
       majorProblems(both, { suite: { "2": "src/migrations/suite-1-2.ts" } }, () => true),
     ).toEqual(["suite: major 1 is registered, majors.json does not list it"]);
   });
+});
+
+it("keeps the compatibility gate for released majors and unrelated experiments", () => {
+  expect(withdrawnBeforeRelease("ichnaea.configuration/2")).toBe(true);
+  expect(withdrawnBeforeRelease("ichnaea.suite/2")).toBe(true);
+  for (const id of [
+    "ichnaea.suite/1",
+    "ichnaea.configuration/1",
+    "ichnaea.trial/2",
+    "ichnaea.suite/3",
+  ])
+    expect(withdrawnBeforeRelease(id)).toBe(false);
 });
