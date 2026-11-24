@@ -11,9 +11,9 @@ describe("reason-code reference", () => {
     expect(listed.toSorted()).toEqual([...REASON_CODES].toSorted());
   });
 
-  it("files the INVALID codes under invalid runs, and REGRESSION_DETECTED under verdicts", () => {
+  it("files the INVALID codes under invalid runs, and the within-run drop code under verdicts", () => {
     const sections = new Map(reasonSections().map((s) => [s.title, s.reasons.map((r) => r.code)]));
-    expect(sections.get("Verdicts")).toContain("REGRESSION_DETECTED");
+    expect(sections.get("Verdicts")).toContain("DROP_IN_THESE_RUNS_ONLY");
     expect(sections.get("Invalid runs")?.every((code) => code.startsWith("INVALID_"))).toBe(true);
   });
 
@@ -21,9 +21,9 @@ describe("reason-code reference", () => {
     const reasons = reasonSections().flatMap((section) => section.reasons);
     const hard = reasons.find((reason) => reason.code === "HARD_CHECK_FAILED");
     expect(hard?.params).toEqual(["check", "failures", "checked"]);
-    const regression = reasons.find((reason) => reason.code === "REGRESSION_DETECTED");
-    expect(regression?.params).toEqual([]);
-    expect(regression?.context).toContain("margin");
+    const pass = reasons.find((reason) => reason.code === "PASS");
+    expect(pass?.params).toEqual([]);
+    expect(pass?.context).toContain("cases");
   });
 
   it("explains that {arm} is a name and {side} is base or candidate", () => {

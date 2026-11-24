@@ -3,24 +3,24 @@ title: Glossary
 description: The words these pages use, and the statistical or record name behind each one where it differs.
 ---
 
-| Word         | What it means                                                                                        | Statistical or record name          |
-| ------------ | ---------------------------------------------------------------------------------------------------- | ----------------------------------- |
-| Base         | The version you compare against, usually what runs today.                                            | `base` arm                          |
-| Candidate    | The version with your change.                                                                        | `candidate` arm                     |
-| Case         | One input that both versions answer.                                                                 | `case` record                       |
-| Trial        | One answer of one version to one case.                                                               | `trial` record                      |
-| Run          | One whole evaluation: every trial of the base and the candidate.                                     | `run` record                        |
-| Measure      | How an answer is scored, for example "states every gold fact".                                       | `measureCard` record                |
-| Suite        | A set of cases, measures and limits for one feature.                                                 | `suite` record                      |
-| Decrease     | How much worse the candidate scores than the base, in points.                                        | Difference, candidate minus base    |
-| Limit        | The largest decrease you accept. You set it before any run.                                          | Non-inferiority margin, `margin`    |
-| Floor        | The smallest limit that a suite of a given size can clear.                                           | Zero-noise floor                    |
-| Bound        | The one-sided 95% lower bound of the change.                                                         | One-sided lower confidence bound    |
-| Noise check  | A comparison of a version with itself. Every alarm it raises is false.                               | A/A run                             |
-| Regression   | The candidate is worse on these cases, or a hard check failed.                                       | `REGRESSION`                        |
-| Pass         | The candidate is not worse than the base by more than the limit. Not validated yet.                  | `PASS`, non-inferior                |
-| Inconclusive | The cases cannot decide.                                                                             | `INCONCLUSIVE`                      |
-| Invalid      | The run cannot be trusted, so it gives no verdict about your change.                                 | `INVALID`                           |
-| Reason code  | Why a decision got its verdict, in a form a machine reads. Decisions carry them from a later change. | Codes such as `REGRESSION_DETECTED` |
+| Word         | What it means                                                                       | Statistical or record name       |
+| ------------ | ----------------------------------------------------------------------------------- | -------------------------------- |
+| Base         | The version you compare against, usually what runs today.                           | `base` arm                       |
+| Candidate    | The version with your change.                                                       | `candidate` arm                  |
+| Case         | One input that both versions answer.                                                | `case` record                    |
+| Trial        | One answer of one version to one case.                                              | `trial` record                   |
+| Run          | One whole evaluation: every trial of the base and the candidate.                    | `run` record                     |
+| Measure      | How an answer is scored, for example "states every gold fact".                      | `measureCard` record             |
+| Suite        | A set of cases, measures and limits for one feature.                                | `suite` record                   |
+| Decrease     | How much worse the candidate scores than the base, in points.                       | Difference, candidate minus base |
+| Limit        | The largest decrease you accept. You set it before any run.                         | Non-inferiority margin, `margin` |
+| Floor        | The smallest limit that a suite of a given size can clear.                          | Zero-noise floor                 |
+| Bound        | The one-sided 95% lower bound of the change.                                        | One-sided lower confidence bound |
+| Noise check  | A comparison of a version with itself. Every alarm it raises is false.              | A/A run                          |
+| Regression   | A hard gate failed.                                                                 | `REGRESSION`                     |
+| Pass         | The candidate is not worse than the base by more than the limit. Not validated yet. | `PASS`, non-inferior             |
+| Inconclusive | The cases cannot decide.                                                            | `INCONCLUSIVE`                   |
+| Invalid      | The run cannot be trusted, so it gives no verdict about your change.                | `INVALID`                        |
+| Reason code  | Why a decision got its verdict, in a form a machine reads.                          | `DROP_IN_THESE_RUNS_ONLY`        |
 
 The explanation pages say more about [limits](/ichnaea/explanation/limits/), [noise checks](/ichnaea/explanation/noise-checks/) and [what "validated" means](/ichnaea/explanation/validated/).

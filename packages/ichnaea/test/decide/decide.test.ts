@@ -57,21 +57,23 @@ describe("run verdicts", () => {
     expect(exitCode(d, policy("report"))).toBe(0);
   });
 
-  it("PASS: identical, stable arms on many cases, once the non-inferiority result is validated", async () => {
+  it("stays INCONCLUSIVE even with a validated within-run bound", async () => {
     const d = await decideFloorSet(await scenario({ ...stable, margin: 0.1 }));
     expect(Decision.safeParse(d).success).toBe(true);
-    expect(d.verdict).toBe("PASS");
-    expect(d.reason).toBe("Every primary measure is non-inferior and every hard gate passed.");
+    expect(d.verdict).toBe("INCONCLUSIVE");
+    expect(d.reason).toBe(
+      "No drop was detected in these runs. A statistical pass needs randomized blocks.",
+    );
     expect(d.measures[0]).toMatchObject({ verdict: "NON-INFERIOR", notes: [] });
     expect(d.measures[0]?.comparisons[0]).toMatchObject({
       regression: { validated: true, limitations: [] },
       nonInferiority: { validated: true, limitations: [] },
       regressionMethod: "exact-stratified-conditional",
     });
-    expect(exitCode(d, policy("block"))).toBe(0);
+    expect(exitCode(d, policy("block"))).toBe(1);
   });
 
-  it("REGRESSION: a large drop on every case", async () => {
+  it("reports a large drop on every case within these runs", async () => {
     const d = await run(
       await scenario({
         cases: 60,
@@ -81,8 +83,8 @@ describe("run verdicts", () => {
         margin: 0.05,
       }),
     );
-    expect(d.verdict).toBe("REGRESSION");
-    expect(d.measures[0]?.verdict).toBe("REGRESSION");
+    expect(d).toMatchObject({ verdict: "INCONCLUSIVE", reasonCode: "DROP_IN_THESE_RUNS_ONLY" });
+    expect(d.measures[0]?.verdict).toBe("INCONCLUSIVE");
     expect(d.measures[0]?.comparisons[0]?.flips.some((f) => f.direction === "negative")).toBe(true);
     expect(exitCode(d, policy("block"))).toBe(1);
     expect(exitCode(d, policy("report"))).toBe(0);
@@ -115,9 +117,9 @@ describe("run verdicts", () => {
     expect(d.reason).toBe("Hard gate 'app/schema' failed.");
   });
 
-  it("a measure non-inferior with a drop beyond noise stays NON-INFERIOR, with a note", async () => {
+  it("a within-run drop inside the margin stays visible alongside the non-inferiority result", async () => {
     // 60 cases, 3 trials (the most the validated domain allows): a 6-point drop on every case is
-    // beyond noise but inside a 15-point margin.
+    // detectable within the run and inside a 15-point margin.
     const s = await scenario({
       cases: 60,
       replicates: 3,
@@ -130,17 +132,17 @@ describe("run verdicts", () => {
     const m = d.measures[0];
     expect(m?.verdict).toBe("NON-INFERIOR");
     expect(m?.comparisons[0]?.regressionPAdjusted as number).toBeLessThanOrEqual(0.05);
-    expect(m?.notes.join(" ")).toMatch(/beyond run-to-run noise/);
-    // While the floor is not set, the same drop blocks: it is beyond noise and not shown
-    // non-inferior.
+    expect(m?.notes.join(" ")).toMatch(/A drop was detected in these runs/);
+    // The within-run drop is also detected with an unavailable non-inferiority bound.
     const unset = await run(s);
-    expect(unset.verdict).toBe("REGRESSION");
+    expect(unset.reasonCode).toBe("DROP_IN_THESE_RUNS_ONLY");
     expect(unset.measures[0]?.notes).toEqual([
       `the non-inferiority result is not validated: ${MARGIN_FLOOR_NOT_SET}`,
+      "A drop was detected in these runs.",
     ]);
   });
 
-  it("the note on a drop inside the margin claims run-to-run noise only with 2 trials per case and arm", async () => {
+  it("reports the within-run scope of a drop with missing trials", async () => {
     const d = await decideFloorSet(
       await scenario({
         cases: 60,
@@ -157,8 +159,8 @@ describe("run verdicts", () => {
     );
     const m = d.measures[0];
     expect(m?.comparisons[0]?.regressionPAdjusted as number).toBeLessThanOrEqual(0.05);
-    expect(m?.notes.join(" ")).toMatch(/a drop smaller than the margin is significant/);
-    expect(m?.notes.join(" ")).not.toMatch(/beyond run-to-run noise/);
+    expect(m?.notes.join(" ")).toMatch(/A drop was detected in these runs/);
+    expect(m?.notes.join(" ")).not.toMatch(/run-to-run noise/);
   });
 });
 
@@ -355,7 +357,7 @@ describe("INVALID (REQ-53): every check, and INVALID always blocks", () => {
       trigger: "configuration",
       varies: ["model.answer", "factor.code.commit"],
     });
-    expect((await decideFloorSet(config)).verdict).toBe("PASS");
+    expect((await decideFloorSet(config)).verdict).toBe("INCONCLUSIVE");
   });
 });
 
@@ -496,7 +498,7 @@ describe("margins and multiplicity (REQ-51)", () => {
     const secondary = d.measures.find((m) => m.measure === "app/extra");
     expect(secondary).toMatchObject({ tier: "secondary", verdict: "ESTIMATE-ONLY" });
     expect(secondary?.comparisons[0]?.regressionMethod).toBe("none (descriptive)");
-    expect(d.verdict).toBe("PASS");
+    expect(d.verdict).toBe("INCONCLUSIVE");
   });
 });
 
@@ -538,7 +540,7 @@ describe("missing data (REQ-20, REQ-30, REQ-56)", () => {
     );
     expect(d.missingness).toMatchObject({ differs: true, sensitivity: "unchanged" });
     expect(d.missingness.byArm.find((a) => a.arm === "candidate")?.missing).toBe(1);
-    expect(d.verdict).toBe("PASS");
+    expect(d.verdict).toBe("INCONCLUSIVE");
   });
 
   it("an invalid configuration is missing even when it carries a value", async () => {
@@ -584,7 +586,7 @@ describe("missing data (REQ-20, REQ-30, REQ-56)", () => {
     }
     const d = await run(s);
     expect(d.measures[0]?.arms.find((a) => a.arm === "candidate")?.availability.missing).toBe(0);
-    expect(d.verdict).toBe("REGRESSION");
+    expect(d.reasonCode).toBe("DROP_IN_THESE_RUNS_ONLY");
   });
 
   it("a reference arm that never ran does not make the comparison invalid", async () => {
@@ -601,7 +603,7 @@ describe("missing data (REQ-20, REQ-30, REQ-56)", () => {
       ],
     }));
     const d = await decideFloorSet(withRef);
-    expect(d.verdict).toBe("PASS");
+    expect(d.verdict).toBe("INCONCLUSIVE");
   });
 });
 
@@ -686,8 +688,8 @@ describe("more trials for a slice of cases", () => {
     const s = await scenario(smallGroup);
     expect(s.plan.trials).toHaveLength((17 * 3 + 43 * 2) * 2);
     const d = await decideFloorSet(s);
-    expect(d.verdict).toBe("PASS");
-    expect(d.scope).toBe("on these 60 cases, beyond run-to-run noise");
+    expect(d.verdict).toBe("INCONCLUSIVE");
+    expect(d.scope).toBe("on these 60 cases");
     expect(d.measures[0]?.comparisons[0]).toMatchObject({
       regression: { validated: true },
       nonInferiority: { validated: true },

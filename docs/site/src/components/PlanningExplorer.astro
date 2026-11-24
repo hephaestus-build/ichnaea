@@ -56,7 +56,7 @@
     <dd id="cost"></dd>
     <dt>Best-case floor</dt>
     <dd id="floor"></dd>
-    <dt>Regression test</dt>
+    <dt>Within-run drop test</dt>
     <dd id="validity"></dd>
     <dt>Smallest decrease detected in 80% of runs</dt>
     <dd id="detectable"></dd>
@@ -64,7 +64,7 @@
     <dd>
       <p id="nochange-intro"></p>
       <div class="bar-row">
-        <span class="bar-label">Ichnaea: Regression</span>
+        <span class="bar-label">Ichnaea: detected drop</span>
         <span class="bar"><span id="bar-ichnaea" class="bar-fill"></span></span>
         <span id="count-ichnaea" class="bar-count"></span>
       </div>
@@ -168,7 +168,7 @@
     field("validity").textContent =
       result.limitations.length === 0
         ? "Validated for this design."
-        : `Not validated for this design: ${result.limitations.join("; ")}. A real comparison gives no Regression here.`;
+        : `Not validated for this design: ${result.limitations.join("; ")}. A comparison gives no drop result here.`;
     field("detectable").textContent = detectableSentence(
       result.detectable,
       result.detectableRuns,

@@ -12,7 +12,7 @@ const REPETITIONS = 2000;
 const APPLICABLE = [60, 52, 17, 60];
 const MARGIN = Math.max(0.05, VALIDATED_MARGIN_FLOOR);
 
-describe("REQ-51: false REGRESSION verdicts under no change", () => {
+describe("REQ-51: false within-run drops under no change", () => {
   for (const replicates of [2, 3]) {
     it(`stay at or below α with four correlated primaries, ${replicates} trials per case and arm`, () => {
       const rng = createRng(20261115 + replicates);
@@ -58,7 +58,7 @@ describe("REQ-51: false REGRESSION verdicts under no change", () => {
           })),
         });
         const all = [...verdicts.values()];
-        if (all.some((v) => v.verdict === "REGRESSION")) regression++;
+        if (all.some((v) => v.reasonCode === "DROP_IN_THESE_RUNS_ONLY")) regression++;
         // The same rule without Holm, to show that the simulation can see a missing adjustment.
         if (
           all.some(
@@ -73,7 +73,7 @@ describe("REQ-51: false REGRESSION verdicts under no change", () => {
       const rate = regression / REPETITIONS;
       const se = Math.sqrt((rate * (1 - rate)) / REPETITIONS);
       console.log(
-        `r = ${replicates}, ${REPETITIONS} repetitions: REGRESSION ${rate.toFixed(4)} (SE ${se.toFixed(4)}), without Holm ${(unadjusted / REPETITIONS).toFixed(4)}`,
+        `r = ${replicates}, ${REPETITIONS} repetitions: within-run drops ${rate.toFixed(4)} (SE ${se.toFixed(4)}), without Holm ${(unadjusted / REPETITIONS).toFixed(4)}`,
       );
       expect(rate).toBeLessThanOrEqual(ALPHA);
       expect(unadjusted / REPETITIONS).toBeGreaterThan(ALPHA);

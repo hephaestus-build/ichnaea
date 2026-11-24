@@ -9,18 +9,15 @@ const sections = reasonSections();
 <StarlightPage
   frontmatter={{
     title: "Reason codes",
-    description: "Every reason code a decision can carry: what it means, the card's exact sentences, and the next step.",
+    description: "Reasons and planned reason codes, with the meaning and wording of each.",
   }}
   headings={sections.map((section) => ({ depth: 2, slug: section.title.toLowerCase().replaceAll(/[^a-z]+/g, "-"), text: section.title }))}
 >
   <p>
-    A reason code says why a decision got its verdict, in a form a machine can read. A decision can
-    carry several codes, for the run and for each measure. The card's sentences below come from the
-    same list that Ichnaea's report reads, so this page and a card never disagree.
-  </p>
-  <p>
-    <strong>Status:</strong> today a decision carries its reason in words, and the exit code tells a
-    CI job what to do. Decisions carry these codes from a later change.
+    A reason code is a machine-readable explanation of a decision.
+    Inconclusive decisions carry <code>DROP_IN_THESE_RUNS_ONLY</code> when the within-run test detects a drop.
+    A failed hard gate carries <code>cause: "gate"</code>.
+    The other entries describe planned codes or judge calibration.
   </p>
   <p>A word in braces, such as <code>{"{margin}"}</code>, is a slot. The report fills it from the decision, or from the reason's own parameters.</p>
   {

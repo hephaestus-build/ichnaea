@@ -20,16 +20,16 @@ A method is validated when all of these hold:
 
 ## What is validated today
 
-| Method                                                                     | Status                                                                                                                                                                                                                  |
-| -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Regression for pass/fail measures, 2 or 3 trials per case, 5 or more cases | Validated. The worst measured type-I error is 0.0454 against a bar of 0.05.                                                                                                                                             |
-| Regression at one trial per case, 5 or more cases                          | Validated when the records pass three checks: a random order within each pair, both trials of a case run close together (as the recorded start and end times and the plan's schedule show), and two clean noise checks. |
-| Pass (non-inferiority), at any number of trials                            | Not validated. The smallest validated limit is not set.                                                                                                                                                                 |
-| Measures with scores                                                       | A test exists and matches its reference values. Its type-I study has not run, so it gives no verdict.                                                                                                                   |
+| Method                                                                               | Status                                                                                                                                                                                                                  |
+| ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Within-run drop test for pass/fail measures, 2 or 3 trials per case, 5 or more cases | Validated. The worst measured type-I error is 0.0454 against a bar of 0.05.                                                                                                                                             |
+| Within-run drop test at one trial per case, 5 or more cases                          | Validated when the records pass three checks: a random order within each pair, both trials of a case run close together (as the recorded start and end times and the plan's schedule show), and two clean noise checks. |
+| Pass (non-inferiority), at any number of trials                                      | Not validated. The smallest validated limit is not set.                                                                                                                                                                 |
+| Measures with scores                                                                 | A test exists and matches its reference values. Its type-I study has not run, so it gives no verdict.                                                                                                                   |
 
 ## False alarms, measured
 
-A false alarm is a Regression when nothing changed.
+A false alarm is a detected drop when nothing changed.
 The studies run comparisons with no change and count how often the test rejects. The bar is 5%.
 The first number is a screening estimate, uncertain by about 0.25 points. The others are confirmed or computed exactly.
 The one-trial study computes 431,983 structures over four test levels. The 3.92% is its worst value at the 5% level.
@@ -54,11 +54,11 @@ The [planning explorer](/ichnaea/planner/) shows how often it fires with no chan
 
 A number from a method that is not validated always says so.
 Until the smallest limit is set, every bound is labeled "not validated".
-A verdict never rests on a result that is not validated.
+The current statistical comparison gives Inconclusive. Regression requires a failed hard gate.
 
 ## Evidence
 
 - [Statistics validation](https://github.com/hephaestus-build/ichnaea/blob/main/packages/ichnaea/src/stats/VALIDATION.md): the bar, the grids, every result, and the methods that are not validated.
 - [Decision 0006](https://github.com/hephaestus-build/ichnaea/blob/main/docs/decisions/0006-validation-rule.md): why the bar is set where it is.
 - [Decision 0009](https://github.com/hephaestus-build/ichnaea/blob/main/docs/decisions/0009-validity-per-result.md): one validity result for each statistical result.
-- [Decision 0020](https://github.com/hephaestus-build/ichnaea/blob/main/docs/decisions/0020-binary-regression-at-one-trial.md): Regression at one trial per case, and the checks of the records it needs.
+- [Decision 0020](https://github.com/hephaestus-build/ichnaea/blob/main/docs/decisions/0020-binary-regression-at-one-trial.md): Within-run drop test at one trial per case, and the checks of the records it needs.

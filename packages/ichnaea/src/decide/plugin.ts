@@ -25,8 +25,22 @@ export function exitCode(decision: Decision, policy: Plan["policy"]): number {
       ? policy.onEstimateOnly
       : decision.verdict === "REGRESSION"
         ? policy.onRegression
-        : policy.onInconclusive;
+        : decision.reasonCode === "DROP_IN_THESE_RUNS_ONLY"
+          ? (policy.onRunDrop ?? policy.onInconclusive)
+          : policy.onInconclusive;
   return action === "block" ? 1 : 0;
+}
+
+function verdictJson(decision: Decision): string {
+  const { run, mode, verdict, reason, reasonCode, cause } = decision;
+  return `${canonicalize({
+    run,
+    mode,
+    verdict,
+    reason,
+    ...(reasonCode === undefined ? {} : { reasonCode }),
+    ...(cause === undefined ? {} : { cause }),
+  })}\n`;
 }
 
 const command: CommandDefinition = {
@@ -70,10 +84,7 @@ const command: CommandDefinition = {
     const verdictFile =
       (values["verdict-file"] as string | undefined) ??
       join(storePath, "runs", runId, "verdict.json");
-    await writeFile(
-      verdictFile,
-      `${canonicalize({ run: decision.run, mode: decision.mode, verdict: decision.verdict, reason: decision.reason })}\n`,
-    );
+    await writeFile(verdictFile, verdictJson(decision));
     await host.hooks.decisionMade(decision);
     host.out(`${decision.verdict ?? "ESTIMATE-ONLY"}: ${decision.reason}`);
     return exitCode(decision, stored.plan.policy);

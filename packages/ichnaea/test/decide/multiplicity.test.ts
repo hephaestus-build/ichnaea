@@ -1,5 +1,5 @@
 // REQ-51: non-inferiority per measure at the unadjusted level (intersection-union), Holm only over
-// the tests that can produce REGRESSION.
+// the tests that can detect a within-run drop.
 import {
   type CaseCounts,
   holm,
@@ -95,6 +95,6 @@ describe("intersection-union and Holm (REQ-51)", () => {
       ?.regressionP as number;
     const at = decideAll([measure("app/a", cases, 0.05)], p).get("app/a");
     expect(at?.regressionPAdjusted).toBe(p);
-    expect(at?.verdict).toBe("REGRESSION");
+    expect(at).toMatchObject({ verdict: "INCONCLUSIVE", reasonCode: "DROP_IN_THESE_RUNS_ONLY" });
   });
 });
