@@ -2,6 +2,7 @@ import * as z from "zod";
 import { Case, CaseProvenance, Pool } from "./case.js";
 import { Configuration } from "./configuration.js";
 import { AnalysisPrimary, RegisteredTrialReduction } from "./analysis-plan.js";
+import { MustNever } from "./must-never.js";
 import { CiPolicy, Estimand } from "./suite.js";
 import { GateId, Json, MeasureId, SuiteId, Text } from "../primitives.js";
 const ModelSettings = z.strictObject({
@@ -38,6 +39,7 @@ export const SuiteDefinition = z.strictObject({
     secondary: z.array(MeasureId).optional(),
     hardGates: z.array(GateId).optional(),
     trialReduction: RegisteredTrialReduction.optional(),
+    mustNever: z.array(MustNever).min(1).optional(),
     maxCalls: z.int().min(0).optional(),
     policy: CiPolicy.optional(),
 });

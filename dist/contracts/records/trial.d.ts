@@ -87,6 +87,9 @@ export declare const Trial: z.ZodObject<{
     configuration: z.core.$ZodBranded<z.ZodString, "ConfigurationIdentity", "out">;
     arm: z.ZodOptional<z.core.$ZodBranded<z.ZodString, "ArmName", "out">>;
     replicate: z.ZodInt;
+    analysisPlan: z.ZodOptional<z.ZodString>;
+    block: z.ZodOptional<z.ZodInt>;
+    context: z.ZodOptional<z.ZodString>;
     outcome: z.ZodEnum<{
         abstained: "abstained";
         budget_exceeded: "budget_exceeded";

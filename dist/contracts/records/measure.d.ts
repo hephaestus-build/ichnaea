@@ -52,6 +52,7 @@ export declare const MeasureCard: z.ZodObject<{
                 passed: "passed";
             }>;
             digest: z.ZodString;
+            instrumentPin: z.ZodOptional<z.ZodString>;
             ranAt: z.ZodISODateTime;
         }, z.core.$strict>>;
         calibration: z.ZodOptional<z.ZodString>;

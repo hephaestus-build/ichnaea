@@ -6,6 +6,7 @@ import {
   type TrialReductionRegistration,
 } from "../contracts/records/analysis-plan.ts";
 import type { Case, CaseSet } from "../contracts/records/case.ts";
+import type { MustNeverDeclaration } from "../contracts/records/must-never.ts";
 import type { Configuration } from "../contracts/records/configuration.ts";
 
 import { PlanError } from "./resolve.ts";
@@ -69,6 +70,7 @@ export interface AnalysisInput {
   readonly measures: AnalysisPlan["measures"];
   readonly applicability: AnalysisPlan["applicability"];
   readonly trialReduction?: TrialReductionRegistration | undefined;
+  readonly mustNever?: readonly MustNeverDeclaration[] | undefined;
   readonly maxCalls?: number | undefined;
   readonly policy?: AnalysisPlan["policy"] | undefined;
   readonly ichnaea: string;
@@ -88,6 +90,32 @@ export function resolveAnalysis(input: AnalysisInput): AnalysisPlan {
       (primary.margin === undefined || primary.safetyMargin > primary.margin)
     )
       throw new PlanError(`invalid safety margin for '${primary.measure}'`);
+  }
+  const mustNever = new Set<string>();
+  for (const declaration of input.mustNever ?? []) {
+    const { measure, cases, detector } = declaration;
+    const selected = new Set(cases);
+    if (mustNever.has(measure) || holm.some((id) => id === measure))
+      throw new PlanError(
+        `must-never measure '${measure}' must be declared once and cannot be primary`,
+      );
+    mustNever.add(measure);
+    if (selected.size !== cases.length || cases.some((id) => !caseIds.has(id)))
+      throw new PlanError(`must-never measure '${measure}' needs unique selected cases`);
+    if (detector.kind === "deterministic") {
+      const variants = new Set(detector.variants.map((variant) => variant.pattern));
+      const controls = new Set(detector.variants.map((variant) => variant.positiveControl));
+      if (
+        controls.size !== detector.variants.length ||
+        variants.size !== detector.variants.length ||
+        detector.variants.some(
+          ({ positiveControl }) => !caseIds.has(positiveControl) || selected.has(positiveControl),
+        )
+      )
+        throw new PlanError(
+          `must-never measure '${measure}' needs a separate planned positive control for each pattern`,
+        );
+    }
   }
   const alpha = input.alpha ?? 0.05;
   const blocks = input.blocks ?? defaultBlocks(holm.length, alpha);
@@ -126,6 +154,7 @@ export function resolveAnalysis(input: AnalysisInput): AnalysisPlan {
     holm,
     applicability: input.applicability,
     ...(reduction === undefined ? {} : { trialReduction: reduction }),
+    ...(input.mustNever === undefined ? {} : { mustNever: input.mustNever }),
     base: { role: "base", identity: configurationIdentity(input.base) },
     maxCalls:
       input.maxCalls ?? blockCalls(input.caseSet.cases.length, holm.length, blocks, replicates),

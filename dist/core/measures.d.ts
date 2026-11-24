@@ -21,13 +21,13 @@ export interface TesterResult {
      * One message for each example that failed, or for missing examples; empty when the test passed.
      */
     readonly failures: readonly string[];
-    /** The digest of the measure's card and examples that were tested. */
+    /** Issued after all four fixture groups pass. */
+    readonly qualification?: "fixture-qualified";
+    /** The instrument and fixture digest that this result tested. */
     readonly digest: string;
 }
-/**
- * Runs a measure against its examples (REQ-33, REQ-121). It fails when a known-good example does
- * not give its expected value, when a known-bad example passes as good, or when the measure has no
- * good and no bad example.
- */
-export declare function testMeasure(measure: MeasureDefinition): Promise<TesterResult>;
+/** Check the fixtures and bind the result to the instrument that ran them. */
+export declare function testMeasure(measure: MeasureDefinition, options?: {
+    readonly directory?: string;
+}): Promise<TesterResult>;
 //# sourceMappingURL=measures.d.ts.map

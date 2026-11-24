@@ -48,6 +48,7 @@ export const MeasureCard = z.strictObject({
                 .enum(["passed", "failed"])
                 .describe("Whether the measure passed its known-good and known-bad check.")),
             digest: none(Digest.describe("The digest of the check that ran.")),
+            instrumentPin: none(Digest.describe("The instrument digest attested by the producer.")).optional(),
             ranAt: none(Timestamp.describe("When the check ran.")),
         })
             .describe("The latest known-good and known-bad check of the measure.")

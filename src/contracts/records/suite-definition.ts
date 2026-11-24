@@ -3,6 +3,7 @@ import * as z from "zod";
 import { Case, CaseProvenance, Pool } from "./case.ts";
 import { Configuration } from "./configuration.ts";
 import { AnalysisPrimary, RegisteredTrialReduction } from "./analysis-plan.ts";
+import { MustNever } from "./must-never.ts";
 import { CiPolicy, Estimand } from "./suite.ts";
 import { GateId, Json, MeasureId, SuiteId, Text } from "../primitives.ts";
 
@@ -43,6 +44,7 @@ export const SuiteDefinition = z.strictObject({
   secondary: z.array(MeasureId).optional(),
   hardGates: z.array(GateId).optional(),
   trialReduction: RegisteredTrialReduction.optional(),
+  mustNever: z.array(MustNever).min(1).optional(),
   maxCalls: z.int().min(0).optional(),
   policy: CiPolicy.optional(),
 });

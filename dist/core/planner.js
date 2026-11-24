@@ -7,7 +7,8 @@ export async function createPlan(input) {
     for (const { measure } of input.suite.primary) {
         const definition = input.measures.get(measure);
         if (definition?.card.computedBy === "ichnaea" &&
-            (await testMeasure(definition)).status === "passed")
+            (await testMeasure(definition, { directory: input.directory ?? process.cwd() })).status ===
+                "passed")
             tested.add(measure);
     }
     return resolvePlan({

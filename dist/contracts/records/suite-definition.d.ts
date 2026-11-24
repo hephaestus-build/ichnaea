@@ -412,6 +412,20 @@ export declare const SuiteDefinition: z.ZodObject<{
         k: z.ZodInt;
         cases: z.ZodArray<z.core.$ZodBranded<z.ZodString, "CaseId", "out">>;
     }, z.core.$strict>>;
+    mustNever: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+        cases: z.ZodArray<z.core.$ZodBranded<z.ZodString, "CaseId", "out">>;
+        scope: z.ZodString;
+        detector: z.ZodDiscriminatedUnion<[z.ZodObject<{
+            kind: z.ZodLiteral<"deterministic">;
+            variants: z.ZodArray<z.ZodObject<{
+                pattern: z.ZodString;
+                positiveControl: z.core.$ZodBranded<z.ZodString, "CaseId", "out">;
+            }, z.core.$strict>>;
+        }, z.core.$strict>, z.ZodObject<{
+            kind: z.ZodLiteral<"model">;
+        }, z.core.$strict>], "kind">;
+    }, z.core.$strict>>>;
     maxCalls: z.ZodOptional<z.ZodInt>;
     policy: z.ZodOptional<z.ZodObject<{
         onRegression: z.ZodEnum<{

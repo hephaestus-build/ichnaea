@@ -2,6 +2,7 @@ import * as z from "zod";
 import { none } from "../data-class.js";
 import { CaseId, ConfigurationIdentity, Digest, GateId, MeasureId, RunId, SemVer, SuiteId, Text, } from "../primitives.js";
 import { CaseSetEntry } from "./case.js";
+import { MustNever } from "./must-never.js";
 import { Resolution } from "./resolution.js";
 import { CiPolicy, Estimand } from "./suite.js";
 /** Which cases a measure can use. The keys and case IDs come from the plan. */
@@ -45,6 +46,7 @@ export const AnalysisPlan = z.strictObject({
     applicability: Applicability,
     resolution: z.array(Resolution).optional(),
     trialReduction: RegisteredTrialReduction.optional(),
+    mustNever: z.array(MustNever).min(1).optional(),
     pilot: z.strictObject({ run: none(RunId), digest: none(Digest) }).optional(),
     base: z.strictObject({
         role: none(z.literal("base")),

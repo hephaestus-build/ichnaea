@@ -137,6 +137,13 @@ export interface DecisionView {
         readonly k: number;
         readonly rows: ReadonlyArray<readonly [string, string, string, string, string]>;
     };
+    /** Cases flagged by detectors, counts, and recorded independence evidence. */
+    readonly mustNever?: readonly {
+        readonly measure: string;
+        readonly note: string;
+        readonly counts: readonly [number, number, number, number];
+        readonly details: readonly string[];
+    }[];
     /** Each hard gate with its result: `passed`, or `failed` with the number of failures. */
     readonly gates: ReadonlyArray<{
         readonly gate: string;

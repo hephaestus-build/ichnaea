@@ -207,6 +207,25 @@ export function decisionView(decision, suite, lineage = [], options = {}) {
         ...(decision.trialReduction
             ? { trialReduction: reductionView(decision.trialReduction, id) }
             : {}),
+        ...(decision.mustNever
+            ? {
+                mustNever: decision.mustNever.map((entry) => ({
+                    measure: id(entry.measure),
+                    note: `${entry.detector === "model" ? "Model flags" : "Deterministic detector hits"}. Scope: ${id(entry.scope)}. Counts use fresh trials.`,
+                    counts: [entry.planned, entry.clean, entry.hits, entry.missing],
+                    details: [
+                        ...entry.controls.map((control) => `${id(control.pattern)} positive control (${id(control.case)}): ${control.status}.`),
+                        ...entry.cases.map((row) => `${id(row.case)}: ${row.status}, ${row.observed} of ${row.planned} trials scored; contexts ${row.contexts.map(id).join(", ") || "unavailable"}.`),
+                        ...entry.windows.map((window) => `Block ${window.block}: ${window.startedAt} to ${window.endedAt}.`),
+                        ...(entry.windows.length === 0
+                            ? ["Block windows unavailable."]
+                            : [
+                                "Back-to-back blocks protect against instance, cache and sandbox state. They protect against a provider shock to one arm only when the blocks are spread in time.",
+                            ]),
+                    ],
+                })),
+            }
+            : {}),
         gates: decision.gates.map((g) => ({
             gate: id(g.gate),
             result: g.passed ? "passed" : `failed (${g.failures})`,

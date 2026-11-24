@@ -2,6 +2,7 @@ import * as z from "zod";
 import { content, none } from "../data-class.js";
 import { ArmName, CaseId, ConfigurationIdentity, Digest, GateId, MeasureId, PlanDigest, Real, RecordDataClass, RunId, Seed, SemVer, Text, Timestamp, } from "../primitives.js";
 import { PowerEntry } from "./plan.js";
+import { MustNeverCount } from "./must-never.js";
 import { Resolution } from "./resolution.js";
 import { Estimand } from "./suite.js";
 /** A run verdict (REQ-53). */
@@ -209,6 +210,7 @@ export const Decision = z.strictObject({
     power: z.strictObject({ planning: z.array(PowerEntry), run: z.array(PowerEntry) }),
     resolution: z.array(Resolution).optional(),
     trialReduction: TrialReduction.optional(),
+    mustNever: z.array(MustNeverCount).optional(),
     missingness: Missingness,
     invalidReasons: none(z.array(Text)),
     limitations: none(z.array(Text)),

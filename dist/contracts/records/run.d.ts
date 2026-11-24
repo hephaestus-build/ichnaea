@@ -27,6 +27,21 @@ export declare const LedgerEntry: z.ZodObject<{
         system_failure: "system_failure";
     }>>;
 }, z.core.$strict>;
+/** The arm-order draw and final state of one physical block. */
+export declare const ExecutedBlock: z.ZodObject<{
+    block: z.ZodInt;
+    plannedBlock: z.ZodInt;
+    first: z.ZodEnum<{
+        base: "base";
+        candidate: "candidate";
+    }>;
+    status: z.ZodEnum<{
+        abandoned: "abandoned";
+        complete: "complete";
+    }>;
+}, z.core.$strict>;
+/** A recorded arm-order draw and final block state. */
+export type ExecutedBlock = z.infer<typeof ExecutedBlock>;
 /**
  * A run: the ledger of a plan's trials, the configurations it ran (with their identities, so a
  * run without a model identity or a generation parameter does not validate), and the lineage of
@@ -37,6 +52,27 @@ export declare const Run: z.ZodObject<{
     id: z.core.$ZodBranded<z.ZodString, "RunId", "out">;
     plan: z.core.$ZodBranded<z.ZodString, "PlanDigest", "out">;
     exploratory: z.ZodBoolean;
+    execution: z.ZodOptional<z.ZodObject<{
+        source: z.ZodEnum<{
+            import: "import";
+            "re-score": "re-score";
+            runner: "runner";
+        }>;
+        analysisPlan: z.ZodString;
+        blocks: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            block: z.ZodInt;
+            plannedBlock: z.ZodInt;
+            first: z.ZodEnum<{
+                base: "base";
+                candidate: "candidate";
+            }>;
+            status: z.ZodEnum<{
+                abandoned: "abandoned";
+                complete: "complete";
+            }>;
+        }, z.core.$strict>>>;
+    }, z.core.$strict>>;
+    valuesOutsideMask: z.ZodOptional<z.ZodRecord<z.core.$ZodBranded<z.ZodString, "MeasureId", "out">, z.ZodInt>>;
     environment: z.ZodObject<{
         node: z.ZodString;
         platform: z.ZodString;

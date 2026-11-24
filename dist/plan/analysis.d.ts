@@ -1,5 +1,6 @@
 import { AnalysisLock, AnalysisPlan, type TrialReductionRegistration } from "../contracts/records/analysis-plan.ts";
 import type { Case, CaseSet } from "../contracts/records/case.ts";
+import type { MustNeverDeclaration } from "../contracts/records/must-never.ts";
 import type { Configuration } from "../contracts/records/configuration.ts";
 /** The smallest decision horizon with one extra block. */
 export declare function defaultBlocks(primaryComparisons: number, alpha: number): number;
@@ -21,6 +22,7 @@ export interface AnalysisInput {
     readonly measures: AnalysisPlan["measures"];
     readonly applicability: AnalysisPlan["applicability"];
     readonly trialReduction?: TrialReductionRegistration | undefined;
+    readonly mustNever?: readonly MustNeverDeclaration[] | undefined;
     readonly maxCalls?: number | undefined;
     readonly policy?: AnalysisPlan["policy"] | undefined;
     readonly ichnaea: string;

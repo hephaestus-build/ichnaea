@@ -7,6 +7,7 @@ import { REFUSED_MARGIN } from "../contracts/records/plan.js";
 import { proportionProblem } from "../contracts/values.js";
 import { FAILED_TRIAL_OUTCOMES as FAILED } from "../plan/trial-counting.js";
 import { runReduction } from "./trial-reduction.js";
+import { mustNeverCounts } from "./must-never.js";
 import { runResolution } from "../plan/resolution.js";
 import { TRIGGER_VARIES } from "../plan/rules.js";
 import { recordProblems } from "../contracts/run-records.js";
@@ -598,6 +599,14 @@ function recordChecks(input) {
     const planDigest = digest(plan);
     if (run.plan !== planDigest)
         invalid.push(`the run belongs to plan ${run.plan}, not to this plan (${planDigest})`);
+    if (plan.analysis) {
+        const analysisPlan = digest(plan.analysis);
+        if (run.execution && run.execution.analysisPlan !== analysisPlan)
+            invalid.push("the run execution refers to another analysis plan");
+        const wrong = input.trials.find((trial) => trial.analysisPlan !== undefined && trial.analysisPlan !== analysisPlan);
+        if (wrong)
+            invalid.push(`trial '${wrong.id}' belongs to another analysis plan`);
+    }
     for (const error of verifyArms(plan.arms))
         invalid.push(`stored configuration at ${error.path} does not match (${error.computed})`);
     const names = plan.arms.map((a) => a.name);
@@ -1099,18 +1108,43 @@ export function decideWith(input, compare) {
         ]
         : [];
     // An exploratory run (REQ-16) reports like an estimate-only plan: no confirmatory verdict.
-    const modeReasons = run.exploratory && plan.analysis === undefined
+    const statedModeReasons = run.exploratory && plan.analysis === undefined
         ? [
             "the run is exploratory: its plan changed after the first trial, so it gives no confirmatory verdict",
             ...plan.modeReasons,
         ]
         : plan.modeReasons;
-    const decision = plan.mode === "decision" && !run.exploratory;
+    const missingExecution = plan.analysis !== undefined &&
+        run.execution?.source === "runner" &&
+        (run.execution.blocks === undefined ||
+            input.trials.some((trial) => trial.startedAt === undefined ||
+                trial.endedAt === undefined ||
+                trial.analysisPlan === undefined ||
+                Date.parse(trial.endedAt) < Date.parse(trial.startedAt) ||
+                trial.context === undefined ||
+                trial.block === undefined));
+    const modeReasons = missingExecution
+        ? [
+            "EXECUTION_UNRECORDED: an execution block, context or timestamp is missing",
+            ...statedModeReasons,
+        ]
+        : run.execution?.source === "runner" && plan.analysis
+            ? ["the locked plan requires randomized block inference", ...statedModeReasons]
+            : statedModeReasons;
+    // The locked plan's statistical method is implemented by randomized block inference.
+    const decision = plan.analysis === undefined && plan.mode === "decision" && !run.exploratory;
     const ids = [
         ...plan.primary.map((p) => p.measure),
         ...plan.secondary.map((s) => s),
     ];
-    const tallies = new Map(ids.map((id) => [id, tally(plan, trials, values, id, pair, undefined, unpaired)]));
+    const tallies = new Map(ids.map((id) => {
+        const counted = tally(plan, trials, values, id, pair, undefined, unpaired);
+        const dropped = run.valuesOutsideMask;
+        return [
+            id,
+            { ...counted, valuesOutsideMask: counted.valuesOutsideMask + (dropped?.[id] ?? 0) },
+        ];
+    }));
     const primaryIds = new Set(plan.primary.map((p) => p.measure));
     const compared = pair ? [pair.base, pair.candidate] : plan.arms.map((a) => a.name);
     const coverageOf = (t) => Math.min(...compared.map((arm) => {
@@ -1368,6 +1402,7 @@ export function decideWith(input, compare) {
         }, verdict === "INVALID")
         : undefined;
     const trialReduction = runReduction(plan, input.trials, input.values);
+    const mustNever = mustNeverCounts(plan, input.trials, input.values);
     return Decision.parse({
         schema: "ichnaea.decision/1",
         mode: decision ? "decision" : "estimate-only",
@@ -1388,6 +1423,7 @@ export function decideWith(input, compare) {
         },
         ...(resolution === undefined ? {} : { resolution }),
         ...(trialReduction === undefined ? {} : { trialReduction }),
+        ...(mustNever === undefined ? {} : { mustNever }),
         missingness: { byArm, differs: new Set(byArm.map((a) => a.missing)).size > 1, sensitivity },
         invalidReasons: invalid,
         limitations,

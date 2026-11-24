@@ -47,6 +47,24 @@ export function resolveAnalysis(input) {
             (primary.margin === undefined || primary.safetyMargin > primary.margin))
             throw new PlanError(`invalid safety margin for '${primary.measure}'`);
     }
+    const mustNever = new Set();
+    for (const declaration of input.mustNever ?? []) {
+        const { measure, cases, detector } = declaration;
+        const selected = new Set(cases);
+        if (mustNever.has(measure) || holm.some((id) => id === measure))
+            throw new PlanError(`must-never measure '${measure}' must be declared once and cannot be primary`);
+        mustNever.add(measure);
+        if (selected.size !== cases.length || cases.some((id) => !caseIds.has(id)))
+            throw new PlanError(`must-never measure '${measure}' needs unique selected cases`);
+        if (detector.kind === "deterministic") {
+            const variants = new Set(detector.variants.map((variant) => variant.pattern));
+            const controls = new Set(detector.variants.map((variant) => variant.positiveControl));
+            if (controls.size !== detector.variants.length ||
+                variants.size !== detector.variants.length ||
+                detector.variants.some(({ positiveControl }) => !caseIds.has(positiveControl) || selected.has(positiveControl)))
+                throw new PlanError(`must-never measure '${measure}' needs a separate planned positive control for each pattern`);
+        }
+    }
     const alpha = input.alpha ?? 0.05;
     const blocks = input.blocks ?? defaultBlocks(holm.length, alpha);
     const replicates = input.replicates ?? 1;
@@ -83,6 +101,7 @@ export function resolveAnalysis(input) {
         holm,
         applicability: input.applicability,
         ...(reduction === undefined ? {} : { trialReduction: reduction }),
+        ...(input.mustNever === undefined ? {} : { mustNever: input.mustNever }),
         base: { role: "base", identity: configurationIdentity(input.base) },
         maxCalls: input.maxCalls ?? blockCalls(input.caseSet.cases.length, holm.length, blocks, replicates),
         policy: input.policy ?? DEFAULT_POLICY,

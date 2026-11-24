@@ -1,9 +1,11 @@
-import { canonicalize, digest } from "../contracts/canonical.ts";
+import { canonicalize } from "../contracts/canonical.ts";
 import type { Case } from "../contracts/records/case.ts";
 import type { MeasureValue } from "../contracts/records/measure.ts";
 import type { Trial } from "../contracts/records/trial.ts";
 
-import type { MeasureDefinition } from "./plugin.ts";
+import { checkCaptured, NOT_CAPTURED } from "./capture.ts";
+import { measurePin } from "./instrument-pin.ts";
+import type { MeasureDefinition, MeasureExample } from "./plugin.ts";
 
 /** Outcomes that a measure scores (REQ-20). */
 const SCORED = new Set(["completed", "abstained"]);
@@ -79,39 +81,91 @@ export interface TesterResult {
    * One message for each example that failed, or for missing examples; empty when the test passed.
    */
   readonly failures: readonly string[];
-  /** The digest of the measure's card and examples that were tested. */
+  /** Issued after all four fixture groups pass. */
+  readonly qualification?: "fixture-qualified";
+  /** The instrument and fixture digest that this result tested. */
   readonly digest: string;
 }
 
-/**
- * Runs a measure against its examples (REQ-33, REQ-121). It fails when a known-good example does
- * not give its expected value, when a known-bad example passes as good, or when the measure has no
- * good and no bad example.
- */
-export async function testMeasure(measure: MeasureDefinition): Promise<TesterResult> {
+/** Score the same normalized record shape that the evidence writer sends to the scorer. */
+function exampleValue(
+  measure: MeasureDefinition,
+  example: MeasureExample,
+): MeasureExample["expected"] {
+  const normalized = checkCaptured(example.trial);
+  const value = scoreTrials([measure], [normalized], new Map([[example.case.id, example.case]]))[0];
+  return value?.applicable === false ? "not-applicable" : (value?.value ?? "missing");
+}
+
+/** Check the fixtures and bind the result to the instrument that ran them. */
+export async function testMeasure(
+  measure: MeasureDefinition,
+  options: { readonly directory?: string } = {},
+): Promise<TesterResult> {
   const failures: string[] = [];
   const examples = measure.examples;
-  if (!examples || examples.good.length === 0 || examples.bad.length === 0) {
+  const qualified = Boolean(examples?.nothing?.length && examples?.incomplete?.length);
+  const matched = { good: new Set<string>(), bad: new Set<string>() };
+  if (!examples?.good.length || !examples.bad.length)
     failures.push(`${measure.card.id}: needs at least one known-good and one known-bad example`);
-  }
-  for (const [kind, list] of [
-    ["good", examples?.good ?? []],
-    ["bad", examples?.bad ?? []],
-  ] as const) {
-    for (const example of list) {
-      const applies = !measure.appliesTo || measure.appliesTo(example.case);
-      const actual = !applies
-        ? "not-applicable"
-        : measure.score
-          ? (measure.score(example.trial, example.case) ?? "missing")
-          : "missing";
-      if (canonicalize(actual) !== canonicalize(example.expected)) {
+  if ((examples?.nothing !== undefined || examples?.incomplete !== undefined) && !qualified)
+    failures.push(`${measure.card.id}: needs do-nothing and incomplete-capture fixtures`);
+  for (const kind of ["good", "bad", "nothing", "incomplete"] as const) {
+    for (const example of examples?.[kind] ?? []) {
+      const actual = exampleValue(measure, example);
+      const actualJson = canonicalize(actual);
+      const expectedJson = canonicalize(example.expected);
+      if (actualJson !== expectedJson) {
         failures.push(
-          `${measure.card.id}: ${kind} example '${example.name}' gave ${canonicalize(actual)}, expected ${canonicalize(example.expected)}`,
+          `${measure.card.id}: ${kind} example '${example.name}' gave ${actualJson}, expected ${expectedJson}`,
         );
+        continue;
       }
+      if (kind === "incomplete") {
+        if (
+          actual !== "missing" ||
+          example.trial.outcome !== "completed" ||
+          checkCaptured(example.trial).error?.kind !== NOT_CAPTURED
+        )
+          failures.push(
+            `${measure.card.id}: incomplete-capture fixture must exercise a completed trial with missing capture`,
+          );
+        continue;
+      }
+      if (kind === "nothing") {
+        if (
+          !SCORED.has(example.trial.outcome) ||
+          typeof actual === "string" ||
+          actual.type !== measure.card.valueType ||
+          matched.good.has(actualJson) ||
+          (actual.type === "binary" && actual.pass === (measure.card.direction === "higher"))
+        )
+          failures.push(`${measure.card.id}: do-nothing fixture needs an observed failing score`);
+        continue;
+      }
+      if (typeof actual === "string" || actual.type !== measure.card.valueType) continue;
+      const shouldPass = (kind === "good") === (measure.card.direction === "higher");
+      if (actual.type === "binary" && actual.pass !== shouldPass) continue;
+      matched[kind].add(actualJson);
     }
   }
-  const hash = await digest({ card: measure.card, examples: examples ?? null });
-  return { status: failures.length === 0 ? "passed" : "failed", failures, digest: hash };
+  if (
+    failures.length === 0 &&
+    (matched.good.size === 0 ||
+      matched.bad.size === 0 ||
+      new Set([...matched.good, ...matched.bad]).size < 2)
+  )
+    failures.push(
+      `${measure.card.id}: needs different scores for known-good and known-bad examples`,
+    );
+  const digest = await measurePin(measure, options.directory);
+  const recorded = measure.card.validation?.tester;
+  if (measure.card.computedBy === "ichnaea" && recorded && recorded.digest !== digest)
+    failures.push(`${measure.card.id}: tester is stale for this instrument and its fixtures`);
+  return {
+    status: failures.length === 0 ? "passed" : "failed",
+    failures,
+    digest,
+    ...(qualified && failures.length === 0 ? { qualification: "fixture-qualified" as const } : {}),
+  };
 }

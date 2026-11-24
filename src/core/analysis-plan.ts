@@ -15,6 +15,7 @@ import { planResolution } from "../plan/resolution.ts";
 import { PlanError } from "../plan/resolve.ts";
 
 import type { Host } from "./host.ts";
+import { measurePin } from "./instrument-pin.ts";
 import { testMeasure } from "./measures.ts";
 import { type ArmDefinition, SuiteDefinition } from "../contracts/records/suite-definition.ts";
 
@@ -126,13 +127,22 @@ export async function armConfiguration(
   });
 }
 
-function measurePins(host: Host, ids: readonly string[]): AnalysisPlan["measures"] {
-  const pins = ids.map((id) => {
-    const measure = host.measures.get(id);
-    if (!measure) throw new PlanError(`measure '${id}' is not provided by a plugin`);
-    return { id, version: measure.card.version, pin: digest(measure.card) };
-  });
-  return pins.map((pin) => AnalysisPlan.shape.measures.element.parse(pin));
+async function measurePins(
+  host: Host,
+  ids: readonly string[],
+  directory: string,
+): Promise<AnalysisPlan["measures"]> {
+  return Promise.all(
+    ids.map(async (id) => {
+      const measure = host.measures.get(id);
+      if (!measure) throw new PlanError(`measure '${id}' is not provided by a plugin`);
+      return AnalysisPlan.shape.measures.element.parse({
+        id,
+        version: measure.card.version,
+        pin: await measurePin(measure, directory),
+      });
+    }),
+  );
 }
 
 /** Resolves the case and measure pins without reading or binding a candidate. */
@@ -157,7 +167,19 @@ export async function planSuite(input: PlanSuiteInput): Promise<PlannedSuite> {
   }
   const measureIds = new Set([...primary.map((p) => p.measure), ...secondary]);
   if (reduction) measureIds.add(reduction.measure);
-  const measures = measurePins(input.host, [...measureIds]);
+  if (suite.mustNever && arms.candidate !== undefined)
+    throw new PlanError("must-never counting requires one arm");
+  for (const { measure, detector } of suite.mustNever ?? []) {
+    const card = input.host.measures.get(measure)?.card;
+    if (!card || card.valueType !== "binary" || card.composite || card.direction !== "lower")
+      throw new PlanError(
+        `must-never measure '${measure}' needs a binary measure with lower values better`,
+      );
+    if (card.computedBy === "judge" && detector.kind === "deterministic")
+      throw new PlanError(`must-never measure '${measure}' needs a model detector`);
+    measureIds.add(measure);
+  }
+  const measures = await measurePins(input.host, [...measureIds], input.directory);
   for (const gate of hardGates)
     if (!input.host.gates.has(gate))
       throw new PlanError(`hard gate '${gate}' is not provided by a plugin`);
@@ -173,12 +195,18 @@ export async function planSuite(input: PlanSuiteInput): Promise<PlannedSuite> {
       throw new PlanError(
         `primary measure '${measure}' needs a binary, non-composite application measure`,
       );
-    const qualification =
-      card.computedBy === "ichnaea"
-        ? (await testMeasure(definition)).status
-        : card.validation?.tester?.status;
-    if (qualification !== "passed")
+    if (card.computedBy === "ichnaea") {
+      const tester = await testMeasure(definition, { directory: input.directory });
+      if (measures.find((entry) => entry.id === measure)?.pin !== tester.digest)
+        throw new PlanError(`primary measure '${measure}' changed during fixture qualification`);
+      if (!tester.qualification)
+        throw new PlanError(
+          tester.failures[0] ??
+            `primary measure '${measure}' needs good, bad, do-nothing and incomplete-capture fixtures`,
+        );
+    } else if (card.validation?.tester?.status !== "passed") {
       throw new PlanError(`primary measure '${measure}' needs a passing tester`);
+    }
     const declared = caseSet.applicability?.[measure];
     applicability[measure] =
       declared ??
@@ -262,19 +290,22 @@ export async function bindImportedPlan(
   const { arms: definitions, ...rules } = suite;
   if (suite.trialReduction && definitions.candidate !== undefined)
     throw new PlanError("a trial reduction requires one arm");
+  if (suite.mustNever && definitions.candidate !== undefined)
+    throw new PlanError("must-never counting requires one arm");
   const { cases, caseSet } = await suiteCases(suite, input.directory);
   if (analysis.suiteDigest !== digest(rules) || analysis.caseSetDigest !== caseSet.digest)
     throw new PlanError("the suite or case set differs from the locked plan");
   if (
     digest(analysis.measures) !==
     digest(
-      measurePins(
+      await measurePins(
         host,
         analysis.measures.map((m) => m.id),
+        input.directory,
       ),
     )
   )
-    throw new PlanError("the measure cards differ from the locked plan");
+    throw new PlanError("the measure cards or instrument pins differ from the locked plan");
   const base = await armConfiguration(definitions.base, input.directory);
   const baseIdentity = configurationIdentity(base);
   if (baseIdentity !== analysis.base.identity)
