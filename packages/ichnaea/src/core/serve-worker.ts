@@ -84,13 +84,29 @@ async function respond(
   } catch {
     return refused(request.trial, request.dataClass, "invalid-settings");
   }
-  const reply = await handler({
-    case: request.case,
-    arm: { settings },
-    workdir: request.workdir,
-    limits: request.limits,
-    signal,
-  });
+  let reply: WorkerReply;
+  try {
+    signal.throwIfAborted();
+    reply = await handler({
+      case: request.case,
+      arm: { settings },
+      workdir: request.workdir,
+      limits: request.limits,
+      signal,
+    });
+  } catch (error) {
+    if (
+      !signal.aborted ||
+      (error !== signal.reason && !(error instanceof Error && error.name === "AbortError"))
+    ) {
+      throw error;
+    }
+    // The callback stopped before it could report usage. Charge the full attempt allowance.
+    reply = {
+      failure: { class: "system", kind: "cancelled" },
+      usage: { calls: request.limits.calls ?? 1, responseIds: [] },
+    };
+  }
   const dataClass = reply.dataClass ?? request.dataClass;
   if (classRank(dataClass) < classRank(request.dataClass))
     throw new Error("the callback lowered the data class");
