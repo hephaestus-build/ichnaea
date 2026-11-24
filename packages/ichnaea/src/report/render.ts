@@ -49,6 +49,10 @@ function measureDetails(view: DecisionView): string[] {
   ]);
 }
 
+function reductionNote(reduction: NonNullable<DecisionView["trialReduction"]>): string {
+  return `${reduction.measure} defines success. k = ${reduction.k}. Each case has equal weight. The policy assumes fresh trials from the same distribution within each case. Uncertainty unavailable.`;
+}
+
 /** Renders the CI summary in Markdown (a GitHub job summary or a merge-request note). */
 export function renderMarkdown(view: DecisionView): string {
   const lines: string[] = [];
@@ -60,10 +64,11 @@ export function renderMarkdown(view: DecisionView): string {
     md(view.method),
     "",
   );
-  lines.push(
-    "| Measure | Verdict | Arm | Rate | Interval | n | Missing | Difference | Bound | Margin |",
-    "|---|---|---|---|---|---|---|---|---|---|",
-  );
+  if (view.measures.length > 0)
+    lines.push(
+      "| Measure | Verdict | Arm | Rate | Interval | n | Missing | Difference | Bound | Margin |",
+      "|---|---|---|---|---|---|---|---|---|---|",
+    );
   for (const m of view.measures) {
     m.arms.forEach((a, i) => {
       const first = i === 0;
@@ -75,6 +80,17 @@ export function renderMarkdown(view: DecisionView): string {
   const details = measureDetails(view);
   if (details.length > 0)
     lines.push("", "**Measure details**", "", ...details.map((d) => `- ${md(d)}`));
+  if (view.trialReduction)
+    lines.push(
+      "",
+      "**Trial reductions**",
+      "",
+      md(reductionNote(view.trialReduction)),
+      "",
+      "| Case | Valid trials | pass^k | pass@k | Result |",
+      "|---|---|---|---|---|",
+      ...view.trialReduction.rows.map((row) => `| ${row.map(cell).join(" | ")} |`),
+    );
   const notes = view.measures.flatMap((m) => m.notes.map((n) => `- ${md(m.measure)}: ${md(n)}`));
   if (notes.length > 0) lines.push("", ...notes);
   if (view.gates.length > 0)
@@ -255,14 +271,25 @@ figure { margin: .5rem 0 1rem; } svg text { fill: var(--muted); font-size: 10px;
 <h1>${escape(view.title)}</h1>
 <p class="verdict">${badge(view.verdict)} <strong>${escape(view.claim)}</strong>: ${escape(view.reason)}</p>
 <p class="muted">${escape(view.method)}</p>
-<table>
+${
+  view.measures.length > 0
+    ? `<table>
 <caption>Primary and secondary measures</caption>
 <thead><tr><th scope="col">Measure</th><th scope="col">Verdict</th><th scope="col">Arm</th><th scope="col">Rate</th><th scope="col">Interval</th><th scope="col">n</th><th scope="col">Missing</th><th scope="col">Difference</th><th scope="col">Bound</th><th scope="col">Margin</th></tr></thead>
 <tbody>
 ${rows}
 </tbody>
-</table>
+</table>`
+    : ""
+}
 ${view.measures.length > 0 ? `<h2>Measure details</h2>${list(measureDetails(view))}` : ""}
+${
+  view.trialReduction
+    ? `<h2>Trial reductions</h2><p>${escape(reductionNote(view.trialReduction))}</p><table><thead><tr><th scope="col">Case</th><th scope="col">Valid trials</th><th scope="col">pass^k</th><th scope="col">pass@k</th><th scope="col">Result</th></tr></thead><tbody>
+${view.trialReduction.rows.map((row) => `<tr>${row.map((value) => `<td>${escape(value)}</td>`).join("")}</tr>`).join("\n")}
+</tbody></table>`
+    : ""
+}
 ${view.measures.some((m) => m.difference?.axis) ? `<h2>Differences</h2>${view.measures.flatMap((m) => (m.difference?.axis ? [axisFigure(m.measure, m.difference.axis)] : [])).join("\n")}` : ""}
 ${view.measures.some((m) => m.notes.length > 0) ? `<h2>Notes</h2>${list(view.measures.flatMap((m) => m.notes.map((n) => `${m.measure}: ${n}`)))}` : ""}
 ${view.gates.length > 0 ? `<h2>Hard gates</h2>${list(view.gates.map((g) => `${g.gate}: ${g.result}`))}` : ""}

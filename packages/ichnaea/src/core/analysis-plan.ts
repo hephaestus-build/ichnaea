@@ -145,7 +145,19 @@ export async function planSuite(input: PlanSuiteInput): Promise<PlannedSuite> {
   );
   const secondary = suite.secondary ?? [];
   const hardGates = suite.hardGates ?? [];
-  const measures = measurePins(input.host, [...primary.map((p) => p.measure), ...secondary]);
+  const reduction = suite.trialReduction;
+  if (reduction && arms.candidate !== undefined)
+    throw new PlanError("a trial reduction requires one arm");
+  if (reduction) {
+    const card = input.host.measures.get(reduction.measure)?.card;
+    if (!card || card.valueType !== "binary" || card.composite || card.computedBy === "judge")
+      throw new PlanError(
+        `trial reduction '${reduction.measure}' needs a binary application measure`,
+      );
+  }
+  const measureIds = new Set([...primary.map((p) => p.measure), ...secondary]);
+  if (reduction) measureIds.add(reduction.measure);
+  const measures = measurePins(input.host, [...measureIds]);
   for (const gate of hardGates)
     if (!input.host.gates.has(gate))
       throw new PlanError(`hard gate '${gate}' is not provided by a plugin`);
@@ -248,6 +260,8 @@ export async function bindImportedPlan(
   const analysis = await readLockedPlan(input.planPath);
   const suite = SuiteDefinition.parse(input.definition);
   const { arms: definitions, ...rules } = suite;
+  if (suite.trialReduction && definitions.candidate !== undefined)
+    throw new PlanError("a trial reduction requires one arm");
   const { cases, caseSet } = await suiteCases(suite, input.directory);
   if (analysis.suiteDigest !== digest(rules) || analysis.caseSetDigest !== caseSet.digest)
     throw new PlanError("the suite or case set differs from the locked plan");

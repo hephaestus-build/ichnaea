@@ -192,6 +192,31 @@ export const Missingness = z.strictObject({
   sensitivity: none(z.enum(["unchanged", "changes-verdict", "not-needed"])),
 });
 
+const ReductionMissing = z.strictObject({ status: none(z.literal("missing")) });
+const ReductionEstimate = z.strictObject({
+  status: none(z.enum(["observed", "estimate-only"])),
+  passAll: none(z.number().min(0).max(1)),
+  passAny: none(z.number().min(0).max(1)),
+});
+const ReductionCounts = {
+  case: none(CaseId),
+  plannedTrials: none(z.int().min(0)),
+  validTrials: none(z.int().min(0)),
+};
+
+/** Descriptive pass^k and pass@k estimates from the registered cases. */
+const TrialReduction = z.strictObject({
+  measure: none(MeasureId),
+  k: none(z.int().min(1)),
+  cases: z.array(
+    z.discriminatedUnion("status", [
+      ReductionMissing.extend(ReductionCounts),
+      ReductionEstimate.extend(ReductionCounts),
+    ]),
+  ),
+  overall: z.discriminatedUnion("status", [ReductionMissing, ReductionEstimate]),
+});
+
 /** The verdict of one run with estimates, intervals, flips and lineage (REQ-49 to REQ-56). */
 export const Decision = z.strictObject({
   schema: none(z.literal("ichnaea.decision/1")),
@@ -228,6 +253,7 @@ export const Decision = z.strictObject({
    */
   power: z.strictObject({ planning: z.array(PowerEntry), run: z.array(PowerEntry) }),
   resolution: z.array(Resolution).optional(),
+  trialReduction: TrialReduction.optional(),
   missingness: Missingness,
   invalidReasons: none(z.array(Text)),
   limitations: none(z.array(Text)),
