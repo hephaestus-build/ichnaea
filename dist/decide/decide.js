@@ -251,7 +251,8 @@ function aaLimitations(plan, given) {
     }
     return out;
 }
-function seedOf(plan) {
+/** Map the plan’s unsigned 64-bit seed into the generator’s supported range. */
+export function seedOf(plan) {
     return Number((BigInt(plan.seed.value) % 4294967295n) + 1n);
 }
 const emptyAvailability = () => ({

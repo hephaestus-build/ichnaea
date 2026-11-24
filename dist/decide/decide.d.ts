@@ -49,6 +49,8 @@ export type Compare = (input: ComparisonInput) => Comparison;
  * it, so it must not read as a broken setup.
  */
 export declare const FLOOR_NOT_SET_REASON = "No primary measure regressed, but no candidate can PASS yet: the validated margin floor for non-inferiority is not set.";
+/** Map the plan’s unsigned 64-bit seed into the generator’s supported range. */
+export declare function seedOf(plan: Plan): number;
 /** One primary measure's counts, as the decision rule reads them. */
 export interface PrimaryCounts {
     /** The measure's ID. */

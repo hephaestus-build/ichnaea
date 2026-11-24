@@ -1,3 +1,5 @@
+import { summarizeRatings } from "../calibration/ratings-agreement.js";
+import { seedOf } from "../decide/decide.js";
 import { canonicalize } from "../contracts/canonical.js";
 import { projectForEgress } from "../contracts/egress.js";
 import { Decision } from "../contracts/records/decision.js";
@@ -66,8 +68,12 @@ export function verifiedReport(records, options = {}, engine = records.decision.
     }).value);
     const suite = options.suite ?? `run ${decision.run}`;
     const lineage = options.lineage ?? records.run.lineage;
+    const agreement = options.ratings && summarizeRatings(options.ratings, seedOf(records.plan));
     const build = (neutral) => {
-        const view = buildView(projected, suite, lineage, { neutral });
+        const view = {
+            ...buildView(projected, suite, lineage, { neutral }),
+            ...(agreement ? { agreement } : {}),
+        };
         return replay
             ? {
                 ...view,

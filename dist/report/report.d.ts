@@ -1,3 +1,4 @@
+import { type RatingSet } from "../calibration/ratings-agreement.ts";
 import type { RunManifest } from "../contracts/run-manifest.ts";
 import type { Run } from "../contracts/records/run.ts";
 import { type Recalculation } from "./manifest.ts";
@@ -16,6 +17,8 @@ export interface ReportOptions {
     readonly suite?: string;
     /** The run's lineage, shown in the footer. Default: none beyond the decision's own. */
     readonly lineage?: Run["lineage"];
+    /** Canonical ratings for a descriptive agreement section. */
+    readonly ratings?: RatingSet;
 }
 /** A run and its sealed digests, if they were recorded by the deciding engine. */
 export interface ReportRecords extends DecisionRecords {

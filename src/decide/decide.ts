@@ -380,7 +380,8 @@ function aaLimitations(plan: Plan, given: readonly AaEvidence[]): string[] {
   return out;
 }
 
-function seedOf(plan: Plan): number {
+/** Map the plan’s unsigned 64-bit seed into the generator’s supported range. */
+export function seedOf(plan: Plan): number {
   return Number((BigInt(plan.seed.value) % 4294967295n) + 1n);
 }
 

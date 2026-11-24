@@ -1,5 +1,6 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import * as z from "zod";
 import { projectForEgress } from "../contracts/egress.js";
 import { Decision } from "../contracts/records/decision.js";
 import { canonicalize } from "../contracts/canonical.js";
@@ -61,6 +62,29 @@ export const decideCommand = {
         return exitCode(decision, stored.plan.policy);
     },
 };
+const ratingSet = z.strictObject({
+    metric: z.enum(["nominal", "ordinal", "interval"]),
+    units: z
+        .array(z.strictObject({
+        item: z.string().min(1),
+        stratum: z.string().min(1),
+        raters: z.array(z.number().nullable()).min(2),
+    }))
+        .min(1),
+});
+async function readRatings(path) {
+    let value;
+    try {
+        value = JSON.parse(await readFile(path, "utf8"));
+    }
+    catch {
+        throw new Error("cannot read the ratings JSON file");
+    }
+    const parsed = ratingSet.safeParse(value);
+    if (!parsed.success)
+        throw new Error("the ratings file needs a metric and valid rating units");
+    return parsed.data;
+}
 export const reportCommand = {
     name: "report",
     description: "Render a stored decision as summary.md and report.html, after the recompute check",
@@ -68,6 +92,10 @@ export const reportCommand = {
         store: { type: "string", description: "The record store (default .ichnaea)" },
         run: { type: "string", description: "The run ID" },
         json: { type: "boolean", description: "Print the class-none record as JSON" },
+        ratings: {
+            type: "string",
+            description: "Read a canonical JSON ratings set for the agreement section",
+        },
         out: { type: "string", description: "Output directory (default <store>/runs/<run>/report)" },
     },
     async run(values, { out: print, err }) {
@@ -86,7 +114,8 @@ export const reportCommand = {
         let markdown;
         let html;
         try {
-            const result = verifiedReport({ ...stored, decision: stored.decision, aa: await store.aaEvidence(stored.plan) }, { suite: stored.plan.suite }, CORE_VERSION);
+            const ratings = typeof values["ratings"] === "string" ? await readRatings(values["ratings"]) : undefined;
+            const result = verifiedReport({ ...stored, decision: stored.decision, aa: await store.aaEvidence(stored.plan) }, { suite: stored.plan.suite, ...(ratings ? { ratings } : {}) }, CORE_VERSION);
             if (result.recalculation)
                 await store.writeRecalculation(runId, result.recalculation);
             if (values["json"] === true) {
