@@ -11,6 +11,7 @@ import type { Trial } from "../contracts/records/trial.ts";
 import { proportionProblem } from "../contracts/values.ts";
 import { FAILED_TRIAL_OUTCOMES as FAILED } from "../plan/trial-counting.ts";
 import { runReduction } from "./trial-reduction.ts";
+import { mustNeverCounts } from "./must-never.ts";
 import { runResolution } from "../plan/resolution.ts";
 import { TRIGGER_VARIES } from "../plan/rules.ts";
 import { recordProblems } from "../contracts/run-records.ts";
@@ -1776,6 +1777,7 @@ export function decideWith(input: DecideInput, compare: Compare): Decision {
     : undefined;
 
   const trialReduction = runReduction(plan, input.trials, input.values);
+  const mustNever = mustNeverCounts(plan, input.trials, input.values);
   return Decision.parse({
     schema: "ichnaea.decision/1",
     mode: decision ? "decision" : "estimate-only",
@@ -1796,6 +1798,7 @@ export function decideWith(input: DecideInput, compare: Compare): Decision {
     },
     ...(resolution === undefined ? {} : { resolution }),
     ...(trialReduction === undefined ? {} : { trialReduction }),
+    ...(mustNever === undefined ? {} : { mustNever }),
     missingness: { byArm, differs: new Set(byArm.map((a) => a.missing)).size > 1, sensitivity },
     invalidReasons: invalid,
     limitations,
