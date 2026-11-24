@@ -522,6 +522,12 @@ export const WorkerReady = z.strictObject({
    * requests for a scorer. Ichnaea refuses a process that reads another kind.
    */
   protocol: none(z.enum(["ichnaea.trialRequest/1", "ichnaea.scoreRequest/1"])),
+  /** The runtime the worker reports, including its version when known. */
+  runtime: none(Text).optional(),
+  /** The harness the worker reports, including its version when known. */
+  harness: none(Text).optional(),
+  /** The digest of the worker's tool catalogue, when reported. */
+  toolCatalogueDigest: none(Digest).optional(),
 });
 /** A ready line. */
 export type WorkerReady = z.infer<typeof WorkerReady>;

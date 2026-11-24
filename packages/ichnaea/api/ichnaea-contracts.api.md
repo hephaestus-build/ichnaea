@@ -5731,6 +5731,9 @@ export const WorkerReady: z.ZodObject<{
         "ichnaea.scoreRequest/1": "ichnaea.scoreRequest/1";
         "ichnaea.trialRequest/1": "ichnaea.trialRequest/1";
     }>;
+    runtime: z.ZodOptional<z.ZodString>;
+    harness: z.ZodOptional<z.ZodString>;
+    toolCatalogueDigest: z.ZodOptional<z.ZodString>;
 }, z.core.$strict>;
 
 // @public
