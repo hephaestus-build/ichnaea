@@ -4,14 +4,14 @@ import { join } from "node:path";
 import * as z from "zod";
 
 import type { RatingSet } from "../calibration/ratings-agreement.ts";
-import { canonicalize } from "../contracts/canonical.ts";
+import { canonicalize, digest } from "../contracts/canonical.ts";
 import { projectForEgress } from "../contracts/egress.ts";
 import { ReportView } from "../contracts/records/cli.ts";
 import { Decision } from "../contracts/records/decision.ts";
 import { exitCode } from "../decide/ci-policy.ts";
 import { decide } from "../decide/decide.ts";
 import { resolutionLine } from "../plan/resolution.ts";
-import { renderReport, ReportError, verifiedReport } from "../report/report.ts";
+import { renderReport, ReportError, type ReportOptions, verifiedReport } from "../report/report.ts";
 
 import { storeFor } from "./cli-config.ts";
 import {
@@ -23,6 +23,8 @@ import {
   STORE_OPTION,
   text,
 } from "./command-grammar.ts";
+import { calibrationInput } from "./ratings-calibration.ts";
+import { importLabelStudio } from "./ratings.ts";
 import { runDirectory } from "./store-path.ts";
 import { FileStore, type StoredRun } from "./store.ts";
 import { CORE_VERSION } from "./version.ts";
@@ -143,6 +145,38 @@ async function readRatings(path: string): Promise<RatingSet> {
   return parsed.data;
 }
 
+export const importRatingsCommand: Command = {
+  name: "import-ratings",
+  description: "Import two human raters’ Label Studio annotations into a stored run",
+  options: {
+    config: CONFIG_OPTION,
+    store: STORE_OPTION,
+    run: RUN_OPTION,
+    file: { type: "string", description: "The Label Studio JSON export", required: true },
+    key: { type: "string", description: "The local key mapping tasks to trials", required: true },
+    registration: {
+      type: "string",
+      description: "The study registration and judge identity",
+      required: true,
+    },
+  },
+  async run(args, load) {
+    const record = await importLabelStudio({
+      run: required(args, "run"),
+      file: required(args, "file"),
+      key: required(args, "key"),
+      registration: required(args, "registration"),
+      store: await storeFor(args, load),
+    });
+    const counts = { ratings: record.values.length, units: record.units.length };
+    return {
+      code: 0,
+      text: [`import-ratings: stored ${counts.ratings} ratings for ${counts.units} units`],
+      json: counts,
+    };
+  },
+};
+
 export const reportCommand: Command = {
   name: "report",
   description: "Recompute and report a stored decision",
@@ -154,6 +188,7 @@ export const reportCommand: Command = {
       type: "string",
       description: "Read a canonical JSON ratings set for the agreement section",
     },
+    "ratings-study": { type: "string", description: "Use a study imported into this run" },
     out: { type: "string", description: "Output directory (default <store>/runs/<run>/report)" },
     format: {
       type: "string",
@@ -165,6 +200,9 @@ export const reportCommand: Command = {
     const store = new FileStore(await storeFor(args, load));
     const run = required(args, "run");
     const ratingsPath = text(args, "ratings");
+    const study = text(args, "ratings-study");
+    if (ratingsPath !== undefined && study !== undefined)
+      throw new CliError("USAGE", "report: choose either --ratings or --ratings-study");
     return writeRunReport(
       store,
       run,
@@ -172,6 +210,7 @@ export const reportCommand: Command = {
       text(args, "out"),
       args.values["json"] === true,
       ratingsPath,
+      study,
     );
   },
 };
@@ -183,6 +222,7 @@ export async function writeRunReport(
   output?: string,
   jsonOnly = false,
   ratingsPath?: string,
+  study?: string,
 ): Promise<CommandResult> {
   const stored = await readRun(store, run);
   if (!stored.decision) {
@@ -190,12 +230,22 @@ export async function writeRunReport(
     const message = `report: no decision at ${file}; run 'ichnaea decide' first`;
     throw new CliError("RECORDS", message, { publicMessage: message });
   }
-  const ratings = ratingsPath === undefined ? undefined : await readRatings(ratingsPath);
+  let ratings = ratingsPath === undefined ? undefined : await readRatings(ratingsPath);
+  let ratingsSource: ReportOptions["ratingsSource"];
+  if (study !== undefined) {
+    const record = await store.readRatings(run, study);
+    ratings = { metric: "ordinal", units: calibrationInput(record).units };
+    ratingsSource = { sidecar: digest(record), registration: record.registration };
+  }
   let verified: ReturnType<typeof verifiedReport>;
   try {
     verified = verifiedReport(
       { ...stored, decision: stored.decision, aa: await store.aaEvidence(stored.plan) },
-      { suite: stored.plan.suite, ...(ratings ? { ratings } : {}) },
+      {
+        suite: stored.plan.suite,
+        ...(ratings ? { ratings } : {}),
+        ...(ratingsSource ? { ratingsSource } : {}),
+      },
       CORE_VERSION,
     );
   } catch (cause) {

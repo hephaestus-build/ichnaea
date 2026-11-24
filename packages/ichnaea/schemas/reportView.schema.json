@@ -1224,6 +1224,40 @@
             "retention": "record"
           }
         },
+        "source": {
+          "type": "object",
+          "properties": {
+            "sidecar": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            },
+            "registration": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "x-ichnaea-data": {
+                "class": "none",
+                "identifier": "none",
+                "egress": [
+                  "*"
+                ],
+                "retention": "record"
+              }
+            }
+          },
+          "required": [
+            "sidecar",
+            "registration"
+          ],
+          "additionalProperties": false
+        },
         "metric": {
           "type": "string",
           "enum": [

@@ -20,6 +20,7 @@ against the schema files in [`schemas/`](../../schemas).
 | `ichnaea.measureCard/1`                                                 | `measureCard.schema.json`   | The definition of a measure                                |
 | `ichnaea.measureValue/1`                                                | `measureValue.schema.json`  | One measured value on one trial                            |
 | `ichnaea.decision/1`                                                    | `decision.schema.json`      | The verdict of one run with estimates, intervals and flips |
+| `ichnaea.ratingsImport/1`                                               | `ratingsImport.schema.json` | Protected human ratings and their run and judge binding    |
 | `ichnaea.judge/1`, `label/1`, `calibration/1`, `monitor/1`, `finding/1` |                             | In development                                             |
 | `ichnaea.project/1`                                                     | `project.1.schema.json`     | The project config that several suites share (alpha)       |
 | `ichnaea.suite.lock/1`                                                  | `suite.lock.schema.json`    | The digests that pin a suite, written by `lock` (alpha)    |

@@ -54,7 +54,7 @@ function reductionNote(reduction: NonNullable<DecisionView["trialReduction"]>): 
 }
 
 function agreementLines(agreement: NonNullable<DecisionView["agreement"]>): string[] {
-  const { estimate, interval, counts } = agreement;
+  const { estimate, interval, counts, source } = agreement;
   const value = estimate === null ? "undefined" : estimate.toFixed(4);
   const limits =
     interval.lower === null || interval.upper === null
@@ -67,6 +67,9 @@ function agreementLines(agreement: NonNullable<DecisionView["agreement"]>): stri
   return [
     `Krippendorff’s alpha (${agreement.metric}) is ${value}. ${limits}${omitted}`,
     `${counts.pairedUnits} of ${counts.units} units had at least two ratings. They contribute ${counts.pairedRatings} of ${counts.ratings} ratings across ${counts.pairedItems} of ${counts.items} items and ${counts.raters} rater columns.`,
+    ...(source
+      ? [`Ratings sidecar digest ${source.sidecar}. Registration digest ${source.registration}.`]
+      : []),
   ];
 }
 
