@@ -135,7 +135,7 @@ export const MUTANTS: readonly Mutant[] = [
   },
   {
     id: "trigger ignores parameters",
-    file: D,
+    file: "src/plan/rules.ts",
     from: 'out.set(`parameter.${p.name}`, { value: canonicalize(p), part: "parameter" });',
     to: "void p;",
   },
