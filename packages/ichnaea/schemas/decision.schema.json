@@ -2432,6 +2432,210 @@
       ],
       "additionalProperties": false
     },
+    "resolution": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "measure": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*\\/[a-z0-9][a-z0-9._-]*$",
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
+            }
+          },
+          "basis": {
+            "type": "string",
+            "enum": [
+              "default-simulation",
+              "noise-pilot",
+              "base-arm-rates"
+            ],
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
+            }
+          },
+          "targetPower": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
+            }
+          },
+          "level": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
+            }
+          },
+          "targetDrop": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
+            }
+          },
+          "powerAtTarget": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
+            }
+          },
+          "result": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "detectable-drop",
+                    "x-ichnaea-data": {
+                      "class": "none",
+                      "identifier": "none",
+                      "egress": [
+                        "*"
+                      ],
+                      "retention": "record"
+                    }
+                  },
+                  "drop": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "x-ichnaea-data": {
+                      "class": "none",
+                      "identifier": "none",
+                      "egress": [
+                        "*"
+                      ],
+                      "retention": "record"
+                    }
+                  }
+                },
+                "required": [
+                  "kind",
+                  "drop"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "extreme",
+                    "x-ichnaea-data": {
+                      "class": "none",
+                      "identifier": "none",
+                      "egress": [
+                        "*"
+                      ],
+                      "retention": "record"
+                    }
+                  },
+                  "power": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "x-ichnaea-data": {
+                      "class": "none",
+                      "identifier": "none",
+                      "egress": [
+                        "*"
+                      ],
+                      "retention": "record"
+                    }
+                  }
+                },
+                "required": [
+                  "kind",
+                  "power"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "unavailable",
+                    "x-ichnaea-data": {
+                      "class": "none",
+                      "identifier": "none",
+                      "egress": [
+                        "*"
+                      ],
+                      "retention": "record"
+                    }
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "x-ichnaea-data": {
+                      "class": "none",
+                      "identifier": "none",
+                      "egress": [
+                        "*"
+                      ],
+                      "retention": "record"
+                    }
+                  }
+                },
+                "required": [
+                  "kind",
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "required": [
+          "measure",
+          "basis",
+          "targetPower",
+          "level",
+          "result"
+        ],
+        "additionalProperties": false
+      }
+    },
     "missingness": {
       "type": "object",
       "properties": {

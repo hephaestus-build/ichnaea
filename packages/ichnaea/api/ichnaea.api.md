@@ -97,6 +97,7 @@ export interface DecisionView {
     readonly missingness: string;
     readonly power: readonly PowerRow[];
     readonly reason: string;
+    readonly resolution: readonly string[];
     readonly sensitivity: readonly SensitivityRow[];
     readonly title: string;
     readonly verdict: string;
@@ -377,6 +378,7 @@ export interface PlanSuiteInput {
     readonly directory: string;
     readonly host: Host;
     readonly ichnaea: string;
+    readonly pilot?: RunRecords;
     readonly suite: SuiteDefinition;
 }
 
@@ -847,6 +849,7 @@ export const SuiteDefinition: z.ZodObject<{
         measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
         margin: z.ZodOptional<z.ZodNumber>;
         safetyMargin: z.ZodOptional<z.ZodNumber>;
+        targetDrop: z.ZodOptional<z.ZodNumber>;
         coverageFloor: z.ZodOptional<z.ZodNumber>;
     }, z.core.$strict>]>>>;
     secondary: z.ZodOptional<z.ZodArray<z.core.$ZodBranded<z.ZodString, "MeasureId", "out">>>;

@@ -10,6 +10,8 @@ import { Plan } from "../contracts/records/plan.ts";
 import { Configuration } from "../contracts/records/configuration.ts";
 import { sha256Hex } from "../contracts/sha256.ts";
 import { checkCases, lockFor, resolveAnalysis } from "../plan/analysis.ts";
+import type { RunRecords } from "../contracts/run-records.ts";
+import { planResolution } from "../plan/resolution.ts";
 import { PlanError } from "../plan/resolve.ts";
 
 import type { Host } from "./host.ts";
@@ -26,6 +28,8 @@ export interface PlanSuiteInput {
   readonly directory: string;
   /** The version recorded in the analysis plan. */
   readonly ichnaea: string;
+  /** Optional noise run used for the planning model. */
+  readonly pilot?: RunRecords;
 }
 
 /** The two records that the plan command writes. */
@@ -188,7 +192,11 @@ export async function planSuite(input: PlanSuiteInput): Promise<PlannedSuite> {
     applicability,
     ichnaea: input.ichnaea,
   });
-  return { plan, lock: lockFor(plan) };
+  const resolved = AnalysisPlan.parse({
+    ...plan,
+    ...planResolution(plan, suite.blocks !== undefined, suite.maxCalls, input.pilot),
+  });
+  return { plan: resolved, lock: lockFor(resolved) };
 }
 
 export async function readLockedPlan(path: string): Promise<AnalysisPlan> {
@@ -308,7 +316,7 @@ export async function bindImportedPlan(
       version,
       digest: pin,
     })),
-    primary: analysis.primary.map((primary) => ({
+    primary: analysis.primary.map(({ targetDrop: _targetDrop, ...primary }) => ({
       ...primary,
       margin: primary.margin ?? 0,
       marginStatus: "registered",

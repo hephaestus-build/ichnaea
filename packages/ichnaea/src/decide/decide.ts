@@ -9,6 +9,8 @@ import { type Plan, REFUSED_MARGIN } from "../contracts/records/plan.ts";
 import type { Run } from "../contracts/records/run.ts";
 import type { Trial } from "../contracts/records/trial.ts";
 import { proportionProblem } from "../contracts/values.ts";
+import { FAILED_TRIAL_OUTCOMES as FAILED } from "../plan/trial-counting.ts";
+import { runResolution } from "../plan/resolution.ts";
 import { TRIGGER_VARIES } from "../plan/rules.ts";
 import { recordProblems } from "../contracts/run-records.ts";
 import {
@@ -85,11 +87,6 @@ const MISSING = new Set([
   // The run is INVALID; the trial gives no value, and it is never a failure or a pass.
   "protocol_failure",
 ]);
-/**
- * Outcomes that score as a failed trial on a binary measure whatever value a record carries
- * (REQ-20): the system failed, so the trial cannot pass.
- */
-const FAILED = new Set(["system_failure", "budget_exceeded"]);
 const DEFAULT_COVERAGE_FLOOR = 0.9;
 
 /**
@@ -1649,6 +1646,20 @@ export function decideWith(input: DecideInput, compare: Compare): Decision {
     ...invalid.slice(1).map((m) => `Also invalid: ${m}`),
   ];
 
+  const resolution = plan.analysis
+    ? runResolution(
+        plan.analysis,
+        (measure) => {
+          const caseCounts = tallies.get(measure)?.cases.values() ?? [];
+          const rates = new Map<string, number>();
+          for (const c of caseCounts)
+            if (c.base.trials > 0) rates.set(c.id, c.base.successes / c.base.trials);
+          return rates;
+        },
+        verdict === "INVALID",
+      )
+    : undefined;
+
   return Decision.parse({
     schema: "ichnaea.decision/1",
     mode: decision ? "decision" : "estimate-only",
@@ -1667,6 +1678,7 @@ export function decideWith(input: DecideInput, compare: Compare): Decision {
       planning: planningOf(plan),
       run: runPower(plan, tallies, pair?.base, verdict === "INVALID"),
     },
+    ...(resolution === undefined ? {} : { resolution }),
     missingness: { byArm, differs: new Set(byArm.map((a) => a.missing)).size > 1, sensitivity },
     invalidReasons: invalid,
     limitations,

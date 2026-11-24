@@ -80,6 +80,7 @@ export const AnalysisPlan: z.ZodObject<{
         measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
         margin: z.ZodOptional<z.ZodNumber>;
         safetyMargin: z.ZodOptional<z.ZodNumber>;
+        targetDrop: z.ZodOptional<z.ZodNumber>;
         coverageFloor: z.ZodOptional<z.ZodNumber>;
     }, z.core.$strict>>;
     secondary: z.ZodArray<z.core.$ZodBranded<z.ZodString, "MeasureId", "out">>;
@@ -91,6 +92,32 @@ export const AnalysisPlan: z.ZodObject<{
     }, z.core.$strict>>;
     holm: z.ZodArray<z.core.$ZodBranded<z.ZodString, "MeasureId", "out">>;
     applicability: z.ZodRecord<z.core.$ZodBranded<z.ZodString, "MeasureId", "out">, z.ZodArray<z.core.$ZodBranded<z.ZodString, "CaseId", "out">>>;
+    resolution: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+        basis: z.ZodEnum<{
+            "base-arm-rates": "base-arm-rates";
+            "default-simulation": "default-simulation";
+            "noise-pilot": "noise-pilot";
+        }>;
+        targetPower: z.ZodNumber;
+        level: z.ZodNumber;
+        targetDrop: z.ZodOptional<z.ZodNumber>;
+        powerAtTarget: z.ZodOptional<z.ZodNumber>;
+        result: z.ZodDiscriminatedUnion<[z.ZodObject<{
+            kind: z.ZodLiteral<"detectable-drop">;
+            drop: z.ZodNumber;
+        }, z.core.$strict>, z.ZodObject<{
+            kind: z.ZodLiteral<"extreme">;
+            power: z.ZodNumber;
+        }, z.core.$strict>, z.ZodObject<{
+            kind: z.ZodLiteral<"unavailable">;
+            reason: z.ZodString;
+        }, z.core.$strict>], "kind">;
+    }, z.core.$strict>>>;
+    pilot: z.ZodOptional<z.ZodObject<{
+        run: z.core.$ZodBranded<z.ZodString, "RunId", "out">;
+        digest: z.ZodString;
+    }, z.core.$strict>>;
     base: z.ZodObject<{
         role: z.ZodLiteral<"base">;
         identity: z.core.$ZodBranded<z.ZodString, "ConfigurationIdentity", "out">;
@@ -121,6 +148,7 @@ export const AnalysisPrimary: z.ZodObject<{
     measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
     margin: z.ZodOptional<z.ZodNumber>;
     safetyMargin: z.ZodOptional<z.ZodNumber>;
+    targetDrop: z.ZodOptional<z.ZodNumber>;
     coverageFloor: z.ZodOptional<z.ZodNumber>;
 }, z.core.$strict>;
 
@@ -1427,6 +1455,28 @@ export const Decision: z.ZodObject<{
             refusal: z.ZodString;
         }, z.core.$strict>], "reason">], "computed">>;
     }, z.core.$strict>;
+    resolution: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+        basis: z.ZodEnum<{
+            "base-arm-rates": "base-arm-rates";
+            "default-simulation": "default-simulation";
+            "noise-pilot": "noise-pilot";
+        }>;
+        targetPower: z.ZodNumber;
+        level: z.ZodNumber;
+        targetDrop: z.ZodOptional<z.ZodNumber>;
+        powerAtTarget: z.ZodOptional<z.ZodNumber>;
+        result: z.ZodDiscriminatedUnion<[z.ZodObject<{
+            kind: z.ZodLiteral<"detectable-drop">;
+            drop: z.ZodNumber;
+        }, z.core.$strict>, z.ZodObject<{
+            kind: z.ZodLiteral<"extreme">;
+            power: z.ZodNumber;
+        }, z.core.$strict>, z.ZodObject<{
+            kind: z.ZodLiteral<"unavailable">;
+            reason: z.ZodString;
+        }, z.core.$strict>], "kind">;
+    }, z.core.$strict>>>;
     missingness: z.ZodObject<{
         byArm: z.ZodArray<z.ZodObject<{
             arm: z.core.$ZodBranded<z.ZodString, "ArmName", "out">;
@@ -3053,6 +3103,7 @@ export const Plan: z.ZodObject<{
             measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
             margin: z.ZodOptional<z.ZodNumber>;
             safetyMargin: z.ZodOptional<z.ZodNumber>;
+            targetDrop: z.ZodOptional<z.ZodNumber>;
             coverageFloor: z.ZodOptional<z.ZodNumber>;
         }, z.core.$strict>>;
         secondary: z.ZodArray<z.core.$ZodBranded<z.ZodString, "MeasureId", "out">>;
@@ -3064,6 +3115,32 @@ export const Plan: z.ZodObject<{
         }, z.core.$strict>>;
         holm: z.ZodArray<z.core.$ZodBranded<z.ZodString, "MeasureId", "out">>;
         applicability: z.ZodRecord<z.core.$ZodBranded<z.ZodString, "MeasureId", "out">, z.ZodArray<z.core.$ZodBranded<z.ZodString, "CaseId", "out">>>;
+        resolution: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            measure: z.core.$ZodBranded<z.ZodString, "MeasureId", "out">;
+            basis: z.ZodEnum<{
+                "base-arm-rates": "base-arm-rates";
+                "default-simulation": "default-simulation";
+                "noise-pilot": "noise-pilot";
+            }>;
+            targetPower: z.ZodNumber;
+            level: z.ZodNumber;
+            targetDrop: z.ZodOptional<z.ZodNumber>;
+            powerAtTarget: z.ZodOptional<z.ZodNumber>;
+            result: z.ZodDiscriminatedUnion<[z.ZodObject<{
+                kind: z.ZodLiteral<"detectable-drop">;
+                drop: z.ZodNumber;
+            }, z.core.$strict>, z.ZodObject<{
+                kind: z.ZodLiteral<"extreme">;
+                power: z.ZodNumber;
+            }, z.core.$strict>, z.ZodObject<{
+                kind: z.ZodLiteral<"unavailable">;
+                reason: z.ZodString;
+            }, z.core.$strict>], "kind">;
+        }, z.core.$strict>>>;
+        pilot: z.ZodOptional<z.ZodObject<{
+            run: z.core.$ZodBranded<z.ZodString, "RunId", "out">;
+            digest: z.ZodString;
+        }, z.core.$strict>>;
         base: z.ZodObject<{
             role: z.ZodLiteral<"base">;
             identity: z.core.$ZodBranded<z.ZodString, "ConfigurationIdentity", "out">;

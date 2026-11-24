@@ -40,6 +40,16 @@ const DEFAULT_POLICY: AnalysisPlan["policy"] = {
   onEstimateOnly: "report",
 };
 
+/** Planned calls for the block horizon, before any retries. */
+export function blockCalls(
+  cases: number,
+  comparisons: number,
+  blocks: number,
+  replicates: number,
+): number {
+  return cases * (comparisons > 0 ? 2 : 1) * blocks * replicates;
+}
+
 export interface AnalysisInput {
   readonly suite: string;
   readonly suiteDigest: string;
@@ -100,8 +110,7 @@ export function resolveAnalysis(input: AnalysisInput): AnalysisPlan {
     applicability: input.applicability,
     base: { role: "base", identity: configurationIdentity(input.base) },
     maxCalls:
-      input.maxCalls ??
-      input.caseSet.cases.length * (holm.length > 0 ? 2 : 1) * blocks * replicates,
+      input.maxCalls ?? blockCalls(input.caseSet.cases.length, holm.length, blocks, replicates),
     policy: input.policy ?? DEFAULT_POLICY,
     ichnaea: input.ichnaea,
   });

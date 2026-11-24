@@ -7,12 +7,14 @@ import {
   Digest,
   GateId,
   MeasureId,
+  RunId,
   SemVer,
   SuiteId,
   Text,
 } from "../primitives.ts";
 
 import { CaseSetEntry } from "./case.ts";
+import { Resolution } from "./resolution.ts";
 import { CiPolicy, Estimand } from "./suite.ts";
 
 /** Which cases a measure can use. The keys and case IDs come from the plan. */
@@ -23,6 +25,7 @@ export const AnalysisPrimary = z.strictObject({
   measure: none(MeasureId),
   margin: none(z.number().gt(0).lt(1)).optional(),
   safetyMargin: none(z.number().min(0)).optional(),
+  targetDrop: none(z.number().gt(0).max(1)).optional(),
   coverageFloor: none(z.number().min(0).max(1)).optional(),
 });
 
@@ -51,6 +54,8 @@ export const AnalysisPlan = z.strictObject({
   ),
   holm: none(z.array(MeasureId)),
   applicability: Applicability,
+  resolution: z.array(Resolution).optional(),
+  pilot: z.strictObject({ run: none(RunId), digest: none(Digest) }).optional(),
   base: z.strictObject({
     role: none(z.literal("base")),
     identity: none(ConfigurationIdentity),

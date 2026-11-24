@@ -60,3 +60,12 @@ primary measure's applicability once for each case. The mask applies to every tr
 Use `ichnaea import --plan plan.json` to import results against the planned trial IDs. The store
 keeps the analysis and the resolved arms together. A value marked not applicable inside the mask
 counts as missing. Values from cases outside the mask do not enter the comparison.
+
+The plan line gives the number of cases, blocks and calls. Each primary measure gives a detectable
+drop at 80% power or the power when every candidate trial fails. Give a measure a `targetDrop`
+to plan for that drop. The planner uses the per-measure level α divided by the primary family size.
+
+Use `ichnaea plan --pilot <run>` with a noise run of the same base, cases, masks and measures.
+Without a pilot, the plan uses simulated base rates. The decision estimates resolution from the
+observed base-arm rates and labels that estimate. This model uses independent trials without
+block shocks.

@@ -18,6 +18,7 @@ import {
   Timestamp,
 } from "../primitives.ts";
 import { PowerEntry } from "./plan.ts";
+import { Resolution } from "./resolution.ts";
 import { Estimand } from "./suite.ts";
 
 /** A run verdict (REQ-53). */
@@ -196,6 +197,7 @@ export const Decision = z.strictObject({
    * so no later plan can take its noise as an assumption.
    */
   power: z.strictObject({ planning: z.array(PowerEntry), run: z.array(PowerEntry) }),
+  resolution: z.array(Resolution).optional(),
   missingness: Missingness,
   invalidReasons: none(z.array(Text)),
   limitations: none(z.array(Text)),

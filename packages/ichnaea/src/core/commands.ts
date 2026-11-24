@@ -8,6 +8,8 @@ import { recompute } from "../report/recompute.ts";
 import { lintReport, renderHtml, renderMarkdown } from "../report/render.ts";
 import { decisionView } from "../report/view.ts";
 
+import { resolutionLine } from "../plan/resolution.ts";
+
 import { FileStore } from "./store.ts";
 
 /** A built-in command with options described by its help text. */
@@ -75,6 +77,7 @@ export const decideCommand: CommandDefinition = {
       `${canonicalize({ run: decision.run, mode: decision.mode, verdict: decision.verdict, reason: decision.reason })}\n`,
     );
     out(`${decision.verdict ?? "ESTIMATE-ONLY"}: ${decision.reason}`);
+    for (const entry of decision.resolution ?? []) out(resolutionLine(entry));
     return exitCode(decision, stored.plan.policy);
   },
 };
