@@ -568,7 +568,7 @@ describe("planner (REQ-16, REQ-19, REQ-27, REQ-33, REQ-49, decision 0008)", asyn
     expect(p.measures[0]?.digest).toMatch(/^sha256:/);
   });
 
-  it("runs the tester of a measure Ichnaea computes, whatever its card says", async () => {
+  it("runs the inline tester and refuses an attestation from another instrument", async () => {
     const asserted = {
       ...exact,
       card: {
@@ -591,9 +591,10 @@ describe("planner (REQ-16, REQ-19, REQ-27, REQ-33, REQ-49, decision 0008)", asyn
     await expect(planWith({ measures: new Map([["app/correct", untested]]) })).rejects.toThrow(
       PlanError,
     );
-    await expect(
-      planWith({ measures: new Map([["app/correct", asserted]]) }),
-    ).resolves.toMatchObject({
+    await expect(planWith({ measures: new Map([["app/correct", asserted]]) })).rejects.toThrow(
+      PlanError,
+    );
+    await expect(planWith({ measures: new Map([["app/correct", exact]]) })).resolves.toMatchObject({
       mode: "decision",
     });
   });

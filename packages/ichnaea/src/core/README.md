@@ -88,3 +88,13 @@ better. Declare the case IDs and the detector's scope. For a deterministic detec
 pattern variants and give each a planted positive-control case. Reports count a hit once per
 case, and count a partly observed case without a hit as missing. The report shows observed
 contexts and block windows so readers can assess shared execution conditions.
+
+### Fixture qualification
+
+A locked primary scorer is fixture-qualified with good, bad, do-nothing, and incomplete-capture
+examples. The tester pins the scorer source, applicability source, examples and declared
+`instrument.files` relative to the configuration file. If a scorer or one of those files
+changes, the prior test digest is stale. Declare files that supply values captured by the
+scorer's closure. A do-nothing fixture must produce a failing score from captured output.
+The incomplete-capture fixture starts as completed with its capture absent. Imported measures
+can supply a producer-attested `validation.tester.instrumentPin`.

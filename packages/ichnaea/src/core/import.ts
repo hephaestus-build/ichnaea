@@ -21,6 +21,8 @@ export { ImportError, NOT_CAPTURED } from "./record-run.ts";
 interface ImportRunOptions {
   /** The loaded configuration that provides the importer, measures and gates. */
   readonly host: Host;
+  /** Directory of declared scorer files for imports using the inline flags. */
+  readonly directory?: string;
   /** The directory of the file store that the run is written to. */
   readonly store: string;
   /** The ID of the run to create. */
@@ -128,6 +130,7 @@ async function prepareLegacyImport(
   );
   const aa = await citations(store, input.aa ?? []);
   const draft = await createPlan({
+    ...(input.directory === undefined ? {} : { directory: input.directory }),
     suite,
     caseSet,
     cases,

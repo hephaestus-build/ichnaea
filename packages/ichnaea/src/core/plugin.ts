@@ -17,7 +17,7 @@ export interface MeasureExample {
   /** The trial of that case that the measure scores. */
   readonly trial: Trial;
   /** The value the measure must give. */
-  readonly expected: MeasuredValue | "not-applicable";
+  readonly expected: MeasuredValue | "not-applicable" | "missing";
 }
 
 /**
@@ -37,10 +37,14 @@ export interface MeasureDefinition<Id extends string = string> {
   readonly items?: (c: Case) => number;
   /** Scores one trial of one case. Returns undefined when the trial carries no value. */
   readonly score?: (trial: Trial, c: Case) => MeasuredValue | undefined;
-  /** Known-good and known-bad examples. A measure is primary only when its tester passes. */
+  /** Files that influence this scorer, resolved from the configuration directory. */
+  readonly instrument?: { readonly files: readonly string[] };
+  /** Fixtures used to qualify a primary measure before a locked plan runs. */
   readonly examples?: {
     readonly good: readonly MeasureExample[];
     readonly bad: readonly MeasureExample[];
+    readonly nothing?: readonly MeasureExample[];
+    readonly incomplete?: readonly MeasureExample[];
   };
 }
 

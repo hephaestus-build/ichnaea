@@ -216,7 +216,7 @@ async function dispatch(
     err(`configuration error: ${error instanceof Error ? error.message : String(error)}`);
     return 2;
   }
-  if (command === "doctor") return doctor(host, out);
+  if (command === "doctor") return doctor(host, dirname(configFile), out);
   if (command === "plan") {
     const { values } = parseArgs({
       args: rest,
@@ -258,20 +258,22 @@ async function dispatch(
   return importCommand(host, config, dirname(configFile), rest, out, err);
 }
 
-async function doctor(host: Host, out: (text: string) => void): Promise<number> {
+async function doctor(host: Host, directory: string, out: (text: string) => void): Promise<number> {
   let problems = 0;
   out(`plugins: ${host.plugins.map((p) => `${p.id}@${p.version}`).join(", ") || "none"}`);
   for (const measure of host.measures.values()) {
     if (measure.card.computedBy === "application") {
-      const status = measure.card.validation?.tester?.status;
+      const tester = measure.card.validation?.tester;
+      const status = tester?.status;
       out(
         `measure ${measure.card.id}: computed by the application; tester ${status ?? "not recorded"}`,
       );
+      if (tester?.instrumentPin) out(`  producer-attested instrument ${tester.instrumentPin}`);
       if (status !== "passed" && measure.card.tier === "primary") problems++;
       continue;
     }
-    const result = await testMeasure(measure);
-    out(`measure ${measure.card.id}: tester ${result.status}`);
+    const result = await testMeasure(measure, { directory });
+    out(`measure ${measure.card.id}: tester ${result.qualification ?? result.status}`);
     for (const failure of result.failures) out(`  ${failure}`);
     if (result.status === "failed") problems++;
   }
@@ -380,6 +382,7 @@ async function importCommand(
   }
   const result = await importRun({
     ...inputs,
+    directory,
     host,
     store: values.store ?? ".ichnaea",
     run: values.run,
