@@ -24,6 +24,10 @@ export declare const CiPolicy: z.ZodObject<{
         block: "block";
         report: "report";
     }>;
+    onRunDrop: z.ZodOptional<z.ZodEnum<{
+        block: "block";
+        report: "report";
+    }>>;
     onEstimateOnly: z.ZodEnum<{
         block: "block";
         report: "report";
@@ -134,6 +138,10 @@ export declare const Suite: z.ZodObject<{
             block: "block";
             report: "report";
         }>;
+        onRunDrop: z.ZodOptional<z.ZodEnum<{
+            block: "block";
+            report: "report";
+        }>>;
         onEstimateOnly: z.ZodEnum<{
             block: "block";
             report: "report";

@@ -121,6 +121,10 @@ export declare const AnalysisPlan: z.ZodObject<{
             block: "block";
             report: "report";
         }>;
+        onRunDrop: z.ZodOptional<z.ZodEnum<{
+            block: "block";
+            report: "report";
+        }>>;
         onEstimateOnly: z.ZodEnum<{
             block: "block";
             report: "report";

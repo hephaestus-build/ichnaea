@@ -12,6 +12,8 @@ export const PolicyAction = z.enum(["block", "report"]);
 export const CiPolicy = z.strictObject({
     onRegression: none(PolicyAction),
     onInconclusive: none(PolicyAction),
+    /** An optional action for a drop detected within these runs. Otherwise use onInconclusive. */
+    onRunDrop: none(PolicyAction).optional(),
     onEstimateOnly: none(PolicyAction),
 });
 /** The run budget (REQ-21). */

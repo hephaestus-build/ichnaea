@@ -559,6 +559,8 @@ export declare const Decision: z.ZodObject<{
         REGRESSION: "REGRESSION";
     }>>;
     reason: z.ZodString;
+    reasonCode: z.ZodOptional<z.ZodLiteral<"DROP_IN_THESE_RUNS_ONLY">>;
+    cause: z.ZodOptional<z.ZodLiteral<"gate">>;
     scope: z.ZodString;
     plan: z.core.$ZodBranded<z.ZodString, "PlanDigest", "out">;
     run: z.core.$ZodBranded<z.ZodString, "RunId", "out">;

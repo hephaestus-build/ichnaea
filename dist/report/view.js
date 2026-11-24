@@ -130,7 +130,7 @@ export function decisionView(decision, suite, lineage = [], options = {}) {
         reason: prose(decision.reason),
         method: decision.mode === "estimate-only"
             ? `Estimate-only (${decision.measures[0]?.estimand ?? "fixed-cases"}): no statistical verdict. Rates give cases equal weight; differences carry one-sided ${level}% lower bounds and are descriptive.`
-            : `Estimand ${decision.measures[0]?.estimand ?? "fixed-cases"}; one-sided ${level}% lower bounds for differences (candidate minus base); intersection-union over primary measures; Holm across regression tests.`,
+            : `Estimand ${decision.measures[0]?.estimand ?? "fixed-cases"}; one-sided ${level}% lower bounds for differences (candidate minus base); Holm adjustment for within-run drop tests.`,
         measures: decision.measures.map((m) => {
             const comparison = m.comparisons[0];
             return {
@@ -260,7 +260,10 @@ export function decisionView(decision, suite, lineage = [], options = {}) {
                 ? "No verdict changes."
                 : "A verdict changes, and that measure is INCONCLUSIVE."}`}`,
         differingFactors: decision.differingFactors.map(id),
-        limitations: decision.limitations.map(prose),
+        limitations: [
+            "Ichnaea can show that a change failed a hard gate, or dropped within these runs. It cannot yet show a regression across runs, or that a change is safe.",
+            ...decision.limitations.map(prose),
+        ],
         lineage: lineageRows.map(([label, value]) => [id(label), id(value)]),
     };
 }

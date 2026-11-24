@@ -33,7 +33,7 @@ const DEFAULT_COVERAGE_FLOOR = 0.9;
  * missing trials imputed against non-inferiority (decision 0015). A stable unchanged candidate gets
  * it, so it must not read as a broken setup.
  */
-export const FLOOR_NOT_SET_REASON = "No primary measure regressed, but no candidate can PASS yet: the validated margin floor for non-inferiority is not set.";
+export const FLOOR_NOT_SET_REASON = "No drop was detected in these runs. A statistical pass needs randomized blocks and a validated margin floor.";
 /** One measure's cause when the floor alone keeps it from NON-INFERIOR, and others have causes too. */
 const FLOOR_CAUSE = "no PASS yet, because the validated margin floor is not set";
 /** The statistics package's name for a value type. A type it has no name for has no method. */
@@ -241,8 +241,9 @@ function aaLimitations(plan, given) {
             primaries.every((m) => m.comparisons.length > 0 && m.comparisons.every((c) => c.regression.validated));
         if (!validated)
             fail("its regression results are not validated");
-        if (primaries.some((m) => m.verdict === "REGRESSION"))
-            fail("a primary measure gave REGRESSION");
+        if (primaries.some((m) => m.verdict === "REGRESSION") ||
+            e.decision.reasonCode === "DROP_IN_THESE_RUNS_ONLY")
+            fail("a primary measure dropped in the A/A run");
         if (baseModels(e.plan) !== baseModels(plan))
             fail("its model differs from this plan's base arm");
         if (plan.schedule === undefined ||
@@ -675,21 +676,6 @@ function recordChecks(input) {
     }
     return invalid;
 }
-/**
- * Whether counts may claim "beyond run-to-run noise" (decision 0016): some case is compared, and
- * every compared case has at least 2 trials in each arm.
- */
-function replicated(cases) {
-    let compared = false;
-    for (const c of cases) {
-        if (c.base.trials === 0 || c.candidate.trials === 0)
-            continue;
-        compared = true;
-        if (c.base.trials < 2 || c.candidate.trials < 2)
-            return false;
-    }
-    return compared;
-}
 /** The limitations of a comparison's non-inferiority result that its regression result lacks. */
 function nonInferiorityOnly(comparison) {
     const domain = new Set(comparison.regression.limitations);
@@ -710,12 +696,9 @@ function onlyTheFloor(c, effective) {
  * Per-measure verdicts for the primary measures (DESIGN § 6.3, REQ-51, decision 0015):
  * NON-INFERIOR when both results of the comparison are validated and the one-sided lower bound
  * exceeds −(δ − s), each at the unadjusted level (intersection-union, so a PASS needs no
- * adjustment); otherwise REGRESSION when the regression result is validated and the regression test
- * rejects Δ ≥ 0 after Holm across the comparisons whose regression result is validated; otherwise
- * INCONCLUSIVE. Holm covers only the tests that can produce REGRESSION, and a comparison whose
- * regression result is not validated cannot (decision 0008), so it stays out of the family. Whether
- * a result is validated depends on the cases, trials and margin, not on the outcomes, so the family
- * still holds the error rate at α. The measures are decided in order with one generator from
+ * adjustment); INCONCLUSIVE otherwise. A validated test that rejects Δ ≥ 0 after Holm signals a
+ * drop within these runs. An unavailable or unvalidated test contributes p = 1 to that fixed
+ * family. The measures are decided in order with one generator from
  * `seed`, so the same counts give the same verdicts.
  */
 export function decidePrimaries(input) {
@@ -793,30 +776,18 @@ export function decidePrimariesWith(input, compare) {
             });
         }
     }
-    const family = [...verdicts.entries()].filter(([, v]) => v.comparison?.regression.validated === true);
-    const pAdjusted = holm(family.map(([, v]) => v.comparison.regressionP));
+    const family = [...verdicts.entries()];
+    const pAdjusted = holm(family.map(([, { comparison }]) => comparison?.regression.validated ? comparison.regressionP : 1));
     family.forEach(([id, v], i) => {
-        const pa = pAdjusted[i];
-        const comparison = v.comparison;
-        if (pa > input.alpha) {
-            verdicts.set(id, { ...v, regressionPAdjusted: pa });
+        const { comparison } = v;
+        if (!comparison?.regression.validated)
             return;
-        }
-        if (v.verdict !== "NON-INFERIOR") {
-            const { cause: _cause, ...rest } = v;
-            verdicts.set(id, { ...rest, verdict: "REGRESSION", regressionPAdjusted: pa });
-        }
-        else {
-            const cases = input.measures.find((p) => p.measure === id)?.cases ?? [];
-            verdicts.set(id, {
-                ...v,
-                regressionPAdjusted: pa,
-                notes: [
-                    ...v.notes,
-                    `a drop smaller than the margin is ${replicated(cases) ? "beyond run-to-run noise" : "significant"}: compatible with a drop of up to ${(Math.abs(comparison.difference.lower) * 100).toFixed(1)} points`,
-                ],
-            });
-        }
+        const pa = pAdjusted[i];
+        verdicts.set(id, {
+            ...v,
+            regressionPAdjusted: pa,
+            ...(pa <= input.alpha ? { reasonCode: "DROP_IN_THESE_RUNS_ONLY" } : {}),
+        });
     });
     return verdicts;
 }
@@ -947,22 +918,8 @@ function sensitivityResult(imputation, v, changesVerdict, level) {
         changesVerdict,
     };
 }
-/**
- * Whether a verdict of this run may say "beyond run-to-run noise" (decision 0016): only under
- * fixed-cases, and only when every case the primary measures compare has at least 2 trials in each
- * arm. The scope sentence and the REGRESSION reason both read it, so they never disagree.
- */
-function beyondNoise(plan, tallies) {
-    const cases = plan.primary.flatMap((p) => [...(tallies.get(p.measure)?.cases.values() ?? [])]);
-    return plan.estimand === "fixed-cases" && replicated(cases);
-}
-/**
- * The scope sentence of a verdict, built from the records (decision 0011). An INVALID decision
- * makes no claim. A failed hard gate says that a deterministic check failed. Otherwise it names the
- * cases the primary measures compare, and says "beyond run-to-run noise" only when `noise` holds
- * (`beyondNoise`).
- */
-function scopeOf(verdict, gateFailed, plan, tallies, noise) {
+/** The cases compared, or the narrower scope of an invalid run or a failed gate. */
+function scopeOf(verdict, gateFailed, plan, tallies) {
     const compared = new Set();
     for (const p of plan.primary)
         for (const c of tallies.get(p.measure)?.cases.values() ?? [])
@@ -981,12 +938,7 @@ function scopeOf(verdict, gateFailed, plan, tallies, noise) {
                 : `estimates on ${cases} randomly drawn cases, without a verdict`,
             cases,
         };
-    if (!fixed)
-        return { scope: `on the population these ${cases} randomly drawn cases represent`, cases };
-    return {
-        scope: `on these ${cases} cases${noise ? ", beyond run-to-run noise" : ""}`,
-        cases,
-    };
+    return { scope: `on these ${cases} cases`, cases };
 }
 /**
  * Why a comparison is not non-inferior, for a measure the floor alone does not explain: no
@@ -1001,8 +953,6 @@ function shortfall(v, effective, many) {
         return `${many ? "they have" : "it has"} no comparison (${v?.notes[0] ?? "no data"})`;
     if (!c.regression.validated)
         return `${many ? "their comparisons are" : "its comparison is"} outside the validated domain`;
-    if (v.verdict === "REGRESSION")
-        return `${many ? "they regress" : "it regresses"}`;
     const limitations = nonInferiorityOnly(c);
     const unvalidated = limitations.length === 0
         ? ""
@@ -1040,6 +990,11 @@ function inconclusiveCause(v, effective, s) {
     }
     return { onlyTheFloor: false, text: (many) => shortfall(v, effective, many) };
 }
+function measureList(measures) {
+    if (measures.length === 1)
+        return `Measure ${measures[0]}`;
+    return `Measures ${measures.slice(0, -1).join(", ")} and ${measures.at(-1)}`;
+}
 /** The INCONCLUSIVE reason that names each measure's cause, with measures of one cause together. */
 function inconclusiveReason(open) {
     const groups = new Map();
@@ -1052,9 +1007,7 @@ function inconclusiveReason(open) {
             groups.set(key, { measures: [o.measure], cause: o.cause });
     }
     const parts = [...groups.values()].map(({ measures, cause }) => ({
-        who: measures.length === 1
-            ? `Measure ${measures[0]}`
-            : `Measures ${measures.slice(0, -1).join(", ")} and ${measures.at(-1)}`,
+        who: measureList(measures),
         why: cause.text(measures.length > 1),
     }));
     const [only] = parts;
@@ -1070,9 +1023,8 @@ function inconclusiveReason(open) {
  * records, a gate without a result, the budget, arms that differ beyond what the trigger varies and
  * the plan declares, the base has no value, a primary measure's coverage is below its floor); else
  * REGRESSION when a hard gate failed, in either mode, because a gate does not depend on power; else
- * no verdict when the plan is estimate-only or the run is exploratory; else REGRESSION when a
- * primary measure regressed; else PASS when every primary measure is non-inferior; else
- * INCONCLUSIVE. Whenever a primary measure misses a trial in either arm, each measure's verdict is
+ * no verdict when the plan is estimate-only or the run is exploratory; else INCONCLUSIVE with a
+ * reason that says if a drop was detected within these runs. Whenever a primary measure misses a trial in either arm, each measure's verdict is
  * tested against the imputation that works against it, and a verdict that changes is INCONCLUSIVE
  * (decision 0010).
  */
@@ -1167,8 +1119,10 @@ export function decideWith(input, compare) {
     // against it.
     let sensitivity = "not-needed";
     const changed = new Set();
+    const changedNonInferiority = new Set();
     const imputed = new Map();
     let againstNonInferiority = new Map();
+    let againstRegression = new Map();
     const missesOwnTrials = (measure) => pair !== undefined &&
         [pair.base, pair.candidate].some((arm) => (tallies.get(measure)?.arms.get(arm)?.missing ?? 0) > 0);
     const missesTrials = plan.primary.some((p) => missesOwnTrials(p.measure));
@@ -1178,12 +1132,14 @@ export function decideWith(input, compare) {
             tally(plan, trials, values, p.measure, pair, imputation, unpaired),
         ])), compare, one?.checks);
         againstNonInferiority = again(AGAINST_NON_INFERIORITY);
-        const againstRegression = again(AGAINST_REGRESSION);
+        againstRegression = again(AGAINST_REGRESSION);
         for (const [id, v] of tested) {
             const ni = againstNonInferiority.get(id);
             const reg = againstRegression.get(id);
             const changesNi = v.verdict === "NON-INFERIOR" && ni.verdict !== "NON-INFERIOR";
-            const changesReg = v.verdict === "REGRESSION" && reg.verdict !== "REGRESSION";
+            const changesReg = v.reasonCode !== undefined && reg.reasonCode === undefined;
+            if (changesNi)
+                changedNonInferiority.add(id);
             if (changesNi || changesReg)
                 changed.add(id);
             imputed.set(id, [
@@ -1193,6 +1149,10 @@ export function decideWith(input, compare) {
         }
         sensitivity = changed.size > 0 ? "changes-verdict" : "unchanged";
     }
+    const dropped = [...(tested ?? [])]
+        .filter(([id, result]) => result.reasonCode !== undefined &&
+        (!missesTrials || againstRegression.get(id)?.reasonCode !== undefined))
+        .map(([id]) => id);
     const measures = ids.map((id) => {
         const t = tallies.get(id);
         const tier = primaryIds.has(id) ? "primary" : "secondary";
@@ -1295,9 +1255,14 @@ export function decideWith(input, compare) {
         }
         const c = result.comparison;
         const notes = [...maskNotes, ...pairNote, ...result.notes];
+        if (dropped.includes(id))
+            notes.push("A drop was detected in these runs.");
         if (c && c.excludedCases > 0)
             notes.push(`${c.excludedCases} case(s) have no completed trial in an arm and count as missing`);
-        if (changed.has(id))
+        if (changed.has(id) && result.verdict === "NON-INFERIOR" && !changedNonInferiority.has(id)) {
+            notes.push("The missing trials can account for the observed drop.");
+        }
+        else if (changed.has(id))
             notes.push(`imputing ${missesOwnTrials(id) ? "its missing trials" : "the missing trials of other primary measures"} against this verdict changes it, so it is INCONCLUSIVE (see the sensitivity analysis)`);
         return {
             ...outcome,
@@ -1318,7 +1283,7 @@ export function decideWith(input, compare) {
                     flips: flipsOf(t.cases),
                 },
             ],
-            verdict: changed.has(id) ? "INCONCLUSIVE" : result.verdict,
+            verdict: changedNonInferiority.has(id) ? "INCONCLUSIVE" : result.verdict,
             notes,
         };
     });
@@ -1336,9 +1301,10 @@ export function decideWith(input, compare) {
     const primaries = measures.filter((m) => m.tier === "primary");
     const gates = input.gates.filter((g) => plan.hardGates.includes(g.gate));
     const failedGate = gates.find((g) => !g.passed);
-    const noise = beyondNoise(plan, tallies);
     let verdict;
     let reason;
+    let reasonCode;
+    let cause;
     if (invalid.length > 0) {
         verdict = "INVALID";
         reason = invalid[0];
@@ -1346,19 +1312,17 @@ export function decideWith(input, compare) {
     else if (failedGate) {
         // A hard gate is deterministic and does not depend on power, so it decides in both modes.
         verdict = "REGRESSION";
+        cause = "gate";
         reason = `Hard gate '${failedGate.gate}' failed.`;
     }
     else if (!decision) {
         verdict = null;
         reason = `Estimate-only: ${modeReasons.join("; ") || "the plan supports no verdict"}. It reports estimates, intervals, differences and flips without a verdict.`;
     }
-    else if (primaries.some((m) => m.verdict === "REGRESSION")) {
-        verdict = "REGRESSION";
-        reason = `Measure ${primaries.find((m) => m.verdict === "REGRESSION")?.measure} dropped${noise ? " beyond run-to-run noise" : ""} and is not shown non-inferior.`;
-    }
-    else if (primaries.length > 0 && primaries.every((m) => m.verdict === "NON-INFERIOR")) {
-        verdict = "PASS";
-        reason = "Every primary measure is non-inferior and every hard gate passed.";
+    else if (dropped.length > 0) {
+        verdict = "INCONCLUSIVE";
+        reasonCode = "DROP_IN_THESE_RUNS_ONLY";
+        reason = `${measureList(dropped)} dropped in these runs.`;
     }
     else {
         verdict = "INCONCLUSIVE";
@@ -1377,17 +1341,19 @@ export function decideWith(input, compare) {
         });
         // The floor alone keeps every measure from NON-INFERIOR: say so in plain words.
         reason =
-            open.length > 0 && open.every((o) => o.cause.onlyTheFloor)
-                ? FLOOR_NOT_SET_REASON
-                : inconclusiveReason(open);
+            open.length === 0
+                ? "No drop was detected in these runs. A statistical pass needs randomized blocks."
+                : open.every((o) => o.cause.onlyTheFloor)
+                    ? FLOOR_NOT_SET_REASON
+                    : inconclusiveReason(open);
     }
-    const { scope, cases } = scopeOf(verdict, verdict === "REGRESSION" && !!failedGate, plan, tallies, noise);
+    const { scope, cases } = scopeOf(verdict, cause === "gate", plan, tallies);
     const limitations = [
         ...(plan.estimand === "fixed-cases" && verdict !== "INVALID"
             ? [`The result is about these ${cases} cases. It makes no claim about new inputs.`]
             : []),
         "An observed model identity cannot detect a silent update behind the same identity.",
-        "Hosted models rarely honour seeds; replicates measure run-to-run noise instead.",
+        "Hosted models rarely honour seeds. Repeated trials measure variability within these runs.",
         ...(one ? [CLOCK_LIMITATION] : []),
         ...importedCallsLimitation(input),
         ...invalid.slice(1).map((m) => `Also invalid: ${m}`),
@@ -1409,6 +1375,8 @@ export function decideWith(input, compare) {
         mode: decision ? "decision" : "estimate-only",
         verdict,
         reason,
+        ...(reasonCode === undefined ? {} : { reasonCode }),
+        ...(cause === undefined ? {} : { cause }),
         scope,
         plan: digest(plan),
         run: run.id,

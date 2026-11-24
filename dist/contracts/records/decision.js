@@ -181,10 +181,13 @@ export const Decision = z.strictObject({
     mode: none(z.enum(["decision", "estimate-only"])),
     verdict: none(Verdict.nullable()),
     reason: none(Text),
+    /** Identifies a drop supported by the within-run test. */
+    reasonCode: none(z.literal("DROP_IN_THESE_RUNS_ONLY")).optional(),
+    /** A failed hard gate caused the regression verdict. */
+    cause: none(z.literal("gate")).optional(),
     /**
      * What the verdict is about, stated next to it in every output and built from the records: the
-     * cases the primary measures compare, "beyond run-to-run noise" only when each of them has at
-     * least 2 trials per arm, never a claim about new inputs. A failed hard gate says that a
+     * cases the primary measures compare. A failed hard gate says that a
      * deterministic check failed; an INVALID decision makes no claim.
      */
     scope: none(Text),

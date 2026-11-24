@@ -48,7 +48,7 @@ export type Compare = (input: ComparisonInput) => Comparison;
  * missing trials imputed against non-inferiority (decision 0015). A stable unchanged candidate gets
  * it, so it must not read as a broken setup.
  */
-export declare const FLOOR_NOT_SET_REASON = "No primary measure regressed, but no candidate can PASS yet: the validated margin floor for non-inferiority is not set.";
+export declare const FLOOR_NOT_SET_REASON = "No drop was detected in these runs. A statistical pass needs randomized blocks and a validated margin floor.";
 /** Map the plan’s unsigned 64-bit seed into the generator’s supported range. */
 export declare function seedOf(plan: Plan): number;
 /** One primary measure's counts, as the decision rule reads them. */
@@ -67,7 +67,9 @@ export interface PrimaryCounts {
 /** The verdict of one primary measure and how it was reached. */
 export interface PrimaryVerdict {
     /** The measure's verdict. */
-    readonly verdict: "NON-INFERIOR" | "REGRESSION" | "INCONCLUSIVE";
+    readonly verdict: "NON-INFERIOR" | "INCONCLUSIVE";
+    /** A within-run drop before any sensitivity analysis. */
+    readonly reasonCode?: Decision["reasonCode"];
     /** The paired comparison; absent when none could be run. */
     readonly comparison?: Comparison;
     /** The Holm-adjusted regression p-value, for a validated comparison. */
@@ -101,12 +103,9 @@ export interface PrimariesInput {
  * Per-measure verdicts for the primary measures (DESIGN § 6.3, REQ-51, decision 0015):
  * NON-INFERIOR when both results of the comparison are validated and the one-sided lower bound
  * exceeds −(δ − s), each at the unadjusted level (intersection-union, so a PASS needs no
- * adjustment); otherwise REGRESSION when the regression result is validated and the regression test
- * rejects Δ ≥ 0 after Holm across the comparisons whose regression result is validated; otherwise
- * INCONCLUSIVE. Holm covers only the tests that can produce REGRESSION, and a comparison whose
- * regression result is not validated cannot (decision 0008), so it stays out of the family. Whether
- * a result is validated depends on the cases, trials and margin, not on the outcomes, so the family
- * still holds the error rate at α. The measures are decided in order with one generator from
+ * adjustment); INCONCLUSIVE otherwise. A validated test that rejects Δ ≥ 0 after Holm signals a
+ * drop within these runs. An unavailable or unvalidated test contributes p = 1 to that fixed
+ * family. The measures are decided in order with one generator from
  * `seed`, so the same counts give the same verdicts.
  */
 export declare function decidePrimaries(input: PrimariesInput): Map<string, PrimaryVerdict>;
@@ -120,9 +119,8 @@ export declare function decidePrimariesWith(input: PrimariesInput, compare: Comp
  * records, a gate without a result, the budget, arms that differ beyond what the trigger varies and
  * the plan declares, the base has no value, a primary measure's coverage is below its floor); else
  * REGRESSION when a hard gate failed, in either mode, because a gate does not depend on power; else
- * no verdict when the plan is estimate-only or the run is exploratory; else REGRESSION when a
- * primary measure regressed; else PASS when every primary measure is non-inferior; else
- * INCONCLUSIVE. Whenever a primary measure misses a trial in either arm, each measure's verdict is
+ * no verdict when the plan is estimate-only or the run is exploratory; else INCONCLUSIVE with a
+ * reason that says if a drop was detected within these runs. Whenever a primary measure misses a trial in either arm, each measure's verdict is
  * tested against the imputation that works against it, and a verdict that changes is INCONCLUSIVE
  * (decision 0010).
  */

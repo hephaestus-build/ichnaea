@@ -26,6 +26,7 @@ const JUDGE_LABELS = [];
 export const REASON_CODES = [
     "REGRESSION_DETECTED",
     "HARD_CHECK_FAILED",
+    "DROP_IN_THESE_RUNS_ONLY",
     "PASS",
     "NO_DECREASE_DETECTED",
     "NON_INFERIORITY_UNVALIDATED",
@@ -79,51 +80,13 @@ export const REASON_CODES = [
  * no "safe", no improvement claim, at most 25 words.
  */
 export const REASONS = {
-    REGRESSION_DETECTED: run(["Regression"], "A primary measure decreased beyond run-to-run noise: its regression test rejects, Holm-adjusted across the declared primary measures.", [
-        {
-            key: "noise",
-            when: "every case has at least 2 trials each for base and candidate",
-            text: "The paired decrease is beyond run-to-run noise ({test}, {p}).",
-        },
-        {
-            key: "single-trial",
-            when: "every case has one trial each for base and candidate",
-            text: "{broke} {caseNoun} broke and {fixed} got fixed. With no real change, both directions are equally likely. A split this uneven arises by chance with probability {rawP}.",
-        },
-        {
-            key: "single-trial-holm",
-            when: "every case has one trial each for base and candidate, and the plan declares more than one primary measure",
-            text: "Holm-adjusted across the {m} primary measures: p = {p}.",
-        },
-        always("margin", "This does not establish that the loss exceeds the {margin}-point limit."),
-        {
-            key: "unvalidated-margin",
-            when: "non-inferiority is not validated, and every case has at least 2 trials each for base and candidate",
-            text: "Until the limit check is validated, any decrease beyond run-to-run noise counts as worse.",
-        },
-    ], "Inspect the {changed} changed cases."),
+    REGRESSION_DETECTED: run(["Regression"], "Reserved for a harmful result from a randomized block comparison.", [always("scope", "The configurations are not interchangeable on these cases.")]),
     HARD_CHECK_FAILED: run(["Regression"], "A hard check failed. A hard check is deterministic, so it decides without a statistical test.", [
         always("failed", 'Hard check "{check}" failed on {failures} of {checked} answers. A hard check is exact, so one failure is enough.'),
     ], "Inspect the {failures} failing answers."),
-    PASS: run(["Pass"], "Every primary measure is non-inferior: its validated one-sided 95% bound lies inside its limit.", [
-        {
-            key: "one-measure",
-            when: "the plan has one primary measure",
-            text: "With 95% confidence, the average decrease on these cases is at most {bound} points, within the {margin}-point limit.",
-        },
-        {
-            key: "measures",
-            when: "the plan has more than one primary measure",
-            text: "With 95% confidence, each primary measure’s average decrease on these cases is within its limit.",
-        },
-        always("scope", "This holds for these {cases} cases. It makes no claim about new inputs."),
-        {
-            key: "small-decrease",
-            when: "a primary measure is non-inferior and its regression test also rejects",
-            text: "{measure} changed by {change} points, beyond run-to-run noise, but within its {margin}-point limit.",
-        },
-    ]),
-    NO_DECREASE_DETECTED: run(["Inconclusive"], "No primary measure’s validated regression test finds a decrease beyond run-to-run noise, but that is not evidence that no larger decrease exists. The verdict is Inconclusive, and the codes beside it say why it is not a Pass.", [
+    DROP_IN_THESE_RUNS_ONLY: run(["Inconclusive"], "The within-run test detected a drop after adjustment across the primary measures.", [always("detected", "A drop was detected in these runs.")], 'Set policy.onRunDrop to "block" to stop CI on a detected drop.'),
+    PASS: run(["Pass"], "Reserved for a comparison whose block bound and within-run bound both clear the limit.", [always("scope", "This holds for these {cases} cases.")]),
+    NO_DECREASE_DETECTED: run(["Inconclusive"], "The within-run test did not detect a drop. A statistical pass needs randomized blocks and a validated limit.", [
         always("both-halves", "No decrease detected. The data cannot rule out a decrease larger than your limit of {margin} points."),
     ]),
     NON_INFERIORITY_UNVALIDATED: run(["Inconclusive"], "A bound clears its limit, but the non-inferiority result is not validated, so no Pass is possible yet.", [
@@ -146,7 +109,7 @@ export const REASONS = {
         always("consequence", "So this suite cannot clear the {margin}-point limit of {measure}, even when nothing changes. Chance of a Pass at no change: 0%."),
     ], "To make a Pass possible for {measure}, add at least {add} cases."),
     MISSING_TRIALS_CHANGE_VERDICT: run(["Inconclusive"], "Imputing the missing trials against the verdict changes it, so no verdict holds. Missing trials are missing, never failures.", [
-        always("sensitivity", "As recorded, the decrease is beyond run-to-run noise ({test}, {p}). If the {missing} missing trials of the {side} ({arm}) had {imputed}, it would not be ({imputedP}). No verdict holds."),
+        always("sensitivity", "The recorded trials show a drop ({test}, {p}). If the {missing} missing trials of the {side} ({arm}) had {imputed}, the test would no longer detect it ({imputedP})."),
         always("missing", "Missing trials are not failures: the system gave no answer, so Ichnaea has no result for them."),
     ], "Find out why {missing} trials did not finish, then resume the run."),
     REGRESSION_TEST_UNVALIDATED: run(["Inconclusive"], "A primary measure’s regression test is outside its validated domain, so it can show neither a decrease nor its absence.", [always("domain", "The regression test is not validated for this design: {limitation}.")]),
@@ -380,6 +343,7 @@ export const CONTEXT_SLOTS = [
 export const REASON_PARAMS = {
     REGRESSION_DETECTED: [],
     HARD_CHECK_FAILED: ["check", "failures", "checked"],
+    DROP_IN_THESE_RUNS_ONLY: [],
     PASS: [],
     NO_DECREASE_DETECTED: [],
     NON_INFERIORITY_UNVALIDATED: [],
