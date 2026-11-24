@@ -1,4 +1,5 @@
 import { AnalysisLock, AnalysisPlan } from "./records/analysis-plan.js";
+import { CliDoctor, CliErrorRecord, CliHelp, ReportView } from "./records/cli.js";
 import { Case, CaseSet } from "./records/case.js";
 import { Configuration } from "./records/configuration.js";
 import { ConfigurationV2 } from "./records/configuration-v2.js";
@@ -17,6 +18,34 @@ import { Trial } from "./records/trial.js";
 import { Cancel, TrialRequest, TrialResult, WorkerError, WorkerEvent, WorkerReady, } from "./records/worker.js";
 /** Every record contract, by name. The generated JSON Schema files follow this list. */
 export const RECORD_CONTRACTS = [
+    {
+        name: "cli.error",
+        id: "ichnaea.cli.error/1",
+        schema: CliErrorRecord,
+        stability: "alpha",
+        description: "The CLI error code and safe message.",
+    },
+    {
+        name: "help",
+        id: "ichnaea.help/1",
+        schema: CliHelp,
+        stability: "alpha",
+        description: "The command grammar and exit codes.",
+    },
+    {
+        name: "doctor",
+        id: "ichnaea.doctor/1",
+        schema: CliDoctor,
+        stability: "alpha",
+        description: "The CLI configuration and measure tester status.",
+    },
+    {
+        name: "reportView",
+        id: "ichnaea.reportView/1",
+        schema: ReportView,
+        stability: "alpha",
+        description: "The verified decision view that the CLI exports.",
+    },
     {
         name: "case",
         id: "ichnaea.case/1",

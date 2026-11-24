@@ -1,0 +1,209 @@
+import * as z from "zod";
+/** The exit-2 document that a CLI consumer can handle without parsing a diagnostic. */
+export declare const CliErrorRecord: z.ZodObject<{
+    schema: z.ZodLiteral<"ichnaea.cli.error/1">;
+    code: z.ZodEnum<{
+        COMMAND_FAILED: "COMMAND_FAILED";
+        CONFIGURATION: "CONFIGURATION";
+        RECOMPUTE_MISMATCH: "RECOMPUTE_MISMATCH";
+        RECORDS: "RECORDS";
+        USAGE: "USAGE";
+    }>;
+    message: z.ZodString;
+}, z.core.$strict>;
+/** The argument grammar that Ichnaea shows to a CLI consumer. */
+export declare const CliHelp: z.ZodObject<{
+    schema: z.ZodLiteral<"ichnaea.help/1">;
+    commands: z.ZodArray<z.ZodObject<{
+        name: z.ZodString;
+        description: z.ZodString;
+        positionals: z.ZodArray<z.ZodString>;
+        optionalPositionals: z.ZodNumber;
+        options: z.ZodArray<z.ZodObject<{
+            name: z.ZodString;
+            description: z.ZodString;
+            type: z.ZodEnum<{
+                boolean: "boolean";
+                string: "string";
+            }>;
+            required: z.ZodOptional<z.ZodBoolean>;
+            multiple: z.ZodOptional<z.ZodBoolean>;
+            choices: z.ZodOptional<z.ZodArray<z.ZodString>>;
+        }, z.core.$strict>>;
+        together: z.ZodOptional<z.ZodArray<z.ZodString>>;
+        worker: z.ZodOptional<z.ZodLiteral<true>>;
+    }, z.core.$strict>>;
+    exitCodes: z.ZodObject<{
+        success: z.ZodLiteral<0>;
+        blocked: z.ZodLiteral<1>;
+        error: z.ZodLiteral<2>;
+    }, z.core.$strict>;
+}, z.core.$strict>;
+/** Configuration and tester status without diagnostic messages. */
+export declare const CliDoctor: z.ZodObject<{
+    schema: z.ZodLiteral<"ichnaea.doctor/1">;
+    plugins: z.ZodArray<z.ZodString>;
+    measures: z.ZodArray<z.ZodObject<{
+        id: z.ZodString;
+        status: z.ZodString;
+    }, z.core.$strict>>;
+    problems: z.ZodNumber;
+}, z.core.$strict>;
+/** The verified, class-none view of a decision that the CLI prints as JSON. */
+export declare const ReportView: z.ZodObject<{
+    schema: z.ZodLiteral<"ichnaea.reportView/1">;
+    title: z.ZodString;
+    verdict: z.ZodString;
+    claim: z.ZodString;
+    reason: z.ZodString;
+    method: z.ZodString;
+    measures: z.ZodArray<z.ZodObject<{
+        measure: z.ZodString;
+        tier: z.ZodString;
+        verdict: z.ZodString;
+        estimand: z.ZodString;
+        arms: z.ZodArray<z.ZodObject<{
+            arm: z.ZodString;
+            rate: z.ZodString;
+            interval: z.ZodString;
+            n: z.ZodString;
+            missing: z.ZodNumber;
+            denominators: z.ZodObject<{
+                observedCases: z.ZodNullable<z.ZodInt>;
+                plannedCases: z.ZodNullable<z.ZodInt>;
+                observedTrials: z.ZodNumber;
+                plannedTrials: z.ZodNumber;
+                caseCountsReason: z.ZodOptional<z.ZodString>;
+            }, z.core.$strict>;
+            estimand: z.ZodString;
+            method: z.ZodString;
+            level: z.ZodNumber;
+            sidedness: z.ZodString;
+            validity: z.ZodDiscriminatedUnion<[z.ZodObject<{
+                validated: z.ZodLiteral<true>;
+                limitations: z.ZodArray<z.ZodString>;
+            }, z.core.$strict>, z.ZodObject<{
+                validated: z.ZodLiteral<false>;
+                limitations: z.ZodArray<z.ZodString>;
+            }, z.core.$strict>], "validated">;
+        }, z.core.$strict>>;
+        difference: z.ZodOptional<z.ZodObject<{
+            estimate: z.ZodString;
+            bound: z.ZodString;
+            margin: z.ZodString;
+            method: z.ZodString;
+            sidedness: z.ZodString;
+            level: z.ZodNumber;
+            negativeFlips: z.ZodNumber;
+            positiveFlips: z.ZodNumber;
+            validated: z.ZodBoolean;
+            axis: z.ZodOptional<z.ZodObject<{
+                estimate: z.ZodNumber;
+                lower: z.ZodNumber;
+                margin: z.ZodNumber;
+                validated: z.ZodBoolean;
+            }, z.core.$strict>>;
+        }, z.core.$strict>>;
+        blocks: z.ZodOptional<z.ZodObject<{
+            planned: z.ZodInt;
+            observed: z.ZodInt;
+            effective: z.ZodNullable<z.ZodInt>;
+            reason: z.ZodOptional<z.ZodString>;
+        }, z.core.$strict>>;
+        noise: z.ZodOptional<z.ZodObject<{
+            betweenBlockVariance: z.ZodNullable<z.ZodNumber>;
+            contrastBlocks: z.ZodInt;
+            arms: z.ZodArray<z.ZodObject<{
+                withinCaseVariance: z.ZodNullable<z.ZodNumber>;
+                replicatedCells: z.ZodInt;
+                caseDispersion: z.ZodNullable<z.ZodNumber>;
+                arm: z.ZodString;
+            }, z.core.$strict>>;
+        }, z.core.$strict>>;
+        notes: z.ZodArray<z.ZodString>;
+    }, z.core.$strict>>;
+    trialReduction: z.ZodOptional<z.ZodObject<{
+        measure: z.ZodString;
+        k: z.ZodInt;
+        rows: z.ZodArray<z.ZodArray<z.ZodString>>;
+    }, z.core.$strict>>;
+    gates: z.ZodArray<z.ZodObject<{
+        gate: z.ZodString;
+        result: z.ZodString;
+    }, z.core.$strict>>;
+    flips: z.ZodArray<z.ZodObject<{
+        measure: z.ZodString;
+        case: z.ZodString;
+        direction: z.ZodString;
+        base: z.ZodString;
+        candidate: z.ZodString;
+    }, z.core.$strict>>;
+    power: z.ZodArray<z.ZodObject<{
+        statement: z.ZodEnum<{
+            planning: "planning";
+            "this run": "this run";
+        }>;
+        measure: z.ZodString;
+        cases: z.ZodNumber;
+        replicates: z.ZodNumber;
+        floor: z.ZodString;
+        mde: z.ZodString;
+        margin: z.ZodString;
+        reach: z.ZodString;
+        assumption: z.ZodString;
+    }, z.core.$strict>>;
+    resolution: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    sensitivity: z.ZodArray<z.ZodObject<{
+        measure: z.ZodString;
+        imputation: z.ZodString;
+        difference: z.ZodString;
+        bound: z.ZodString;
+        validated: z.ZodBoolean;
+        verdict: z.ZodString;
+        changes: z.ZodString;
+    }, z.core.$strict>>;
+    agreement: z.ZodOptional<z.ZodObject<{
+        statistic: z.ZodLiteral<"krippendorff-alpha">;
+        metric: z.ZodEnum<{
+            interval: "interval";
+            nominal: "nominal";
+            ordinal: "ordinal";
+        }>;
+        estimate: z.ZodNullable<z.ZodNumber>;
+        counts: z.ZodObject<{
+            items: z.ZodNumber;
+            units: z.ZodNumber;
+            pairedUnits: z.ZodNumber;
+            pairedItems: z.ZodNumber;
+            raters: z.ZodNumber;
+            ratings: z.ZodNumber;
+            pairedRatings: z.ZodNumber;
+        }, z.core.$strict>;
+        interval: z.ZodObject<{
+            method: z.ZodLiteral<"item-cluster-percentile">;
+            level: z.ZodLiteral<0.95>;
+            validated: z.ZodLiteral<false>;
+            seed: z.ZodNumber;
+            algorithm: z.ZodString;
+            lower: z.ZodNullable<z.ZodNumber>;
+            upper: z.ZodNullable<z.ZodNumber>;
+            resamples: z.ZodNumber;
+            omittedResamples: z.ZodNumber;
+            unavailableReason: z.ZodNullable<z.ZodString>;
+        }, z.core.$strict>;
+    }, z.core.$strict>>;
+    missingness: z.ZodString;
+    differingFactors: z.ZodArray<z.ZodString>;
+    limitations: z.ZodArray<z.ZodString>;
+    mustNever: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        measure: z.ZodString;
+        note: z.ZodString;
+        counts: z.ZodArray<z.ZodInt>;
+        details: z.ZodArray<z.ZodString>;
+    }, z.core.$strict>>>;
+    lineage: z.ZodArray<z.ZodObject<{
+        label: z.ZodString;
+        value: z.ZodString;
+    }, z.core.$strict>>;
+}, z.core.$strict>;
+//# sourceMappingURL=cli.d.ts.map
