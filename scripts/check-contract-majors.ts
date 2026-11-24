@@ -82,6 +82,11 @@ async function loadMigration(root: string, file: string): Promise<Migrate> {
 const schemaOf = (value: unknown): unknown =>
   value && typeof value === "object" && "schema" in value ? value.schema : undefined;
 
+/** Two format experiments that had schemas and fixtures but no record writer. */
+export function withdrawnBeforeRelease(id: string): boolean {
+  return id === "ichnaea.suite/2" || id === "ichnaea.configuration/2";
+}
+
 /** Check base-commit fixtures even when the branch regenerated its own fixtures. */
 async function compatibilityProblems(
   root: string,
@@ -120,6 +125,7 @@ async function compatibilityProblems(
       const { record, major } = recordOf(original);
       let id = original;
       let contract = contracts.get(id);
+      if (!contract && withdrawnBeforeRelease(id)) continue;
       for (let next = major + 1; !contract; next++) {
         const path = majors[record]?.[next];
         const migrate = path ? migrations.get(path) : undefined;

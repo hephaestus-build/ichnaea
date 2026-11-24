@@ -23,8 +23,7 @@ import { digest } from "../../src/contracts/canonical.ts";
 import { instrumentImplementation, measureDefinitionDigest } from "../../src/contracts/identity.ts";
 import { staleLockEntries } from "../../src/contracts/lock-checks.ts";
 import { SuiteLock } from "../../src/contracts/records/lock.ts";
-import type { SuiteV2 } from "../../src/contracts/records/suite-v2.ts";
-import { measurementDigest } from "../../src/contracts/identity.ts";
+import { MeasureDefinition } from "../../src/contracts/records/lock-vocabulary.ts";
 import {
   buildIdentity,
   builtinImplementation,
@@ -330,16 +329,23 @@ describe("the implementation digest of a built-in scorer", () => {
   });
 });
 
-const SUITE = JSON.parse(
-  readFileSync(path.join(import.meta.dirname, "../../fixtures/valid/suite.2.json"), "utf8"),
-) as SuiteV2;
+type LockedMeasure = ReturnType<typeof MeasureDefinition.parse>;
+const MEASURES: Readonly<Record<string, LockedMeasure>> = {
+  grounded: { type: "binary", scorer: { builtin: "links-grounded" } },
+  searched: { type: "binary", stage: "search", status: "ok" },
+  correct: { type: "binary", scorer: { instrument: "quality-judge", dimension: "correctness" } },
+  "cites-page": {
+    type: "binary",
+    scorer: { instrument: "ts-scorers", module: "scorers/cites.ts", export: "citesPage" },
+  },
+};
 const LOCK = SuiteLock.parse(
   JSON.parse(
     readFileSync(path.join(import.meta.dirname, "../../fixtures/valid/suite.lock.json"), "utf8"),
   ),
 );
 
-const measure = (id: string): SuiteV2["measures"][string] => SUITE.measures[id]!;
+const measure = (id: string): LockedMeasure => MEASURES[id]!;
 
 describe("a measure's implementation, by what computes it", () => {
   it("takes a built-in scorer's from the build", async () => {
@@ -405,13 +411,18 @@ describe("a measure's implementation, by what computes it", () => {
 });
 
 /** A tree with the module measure's files, and the lock that the suite and the tree give. */
-function lockedTree(): { root: string; lockOf: (suite: SuiteV2) => Promise<SuiteLock> } {
+function lockedTree(): {
+  root: string;
+  lockOf: (definitions: Readonly<Record<string, LockedMeasure>>) => Promise<SuiteLock>;
+} {
   const root = scratch(MODULES);
   const context = { suiteDir: root, root, instruments: LOCK.instruments };
-  const lockOf = async (suite: SuiteV2): Promise<SuiteLock> => {
+  const lockOf = async (
+    definitions: Readonly<Record<string, LockedMeasure>>,
+  ): Promise<SuiteLock> => {
     const measures = Object.fromEntries(
       await Promise.all(
-        Object.entries(suite.measures).map(async ([id, m]) => [
+        Object.entries(definitions).map(async ([id, m]) => [
           id,
           {
             definition: measureDefinitionDigest(m),
@@ -420,47 +431,39 @@ function lockedTree(): { root: string; lockOf: (suite: SuiteV2) => Promise<Suite
         ]),
       ),
     );
-    const pins = { sources: LOCK.sources, instruments: LOCK.instruments, measures };
-    return { ...LOCK, measures, measurementDigest: measurementDigest(suite, pins) };
+    return { ...LOCK, measures };
   };
   return { root, lockOf };
 }
 
 describe("a change to a measure's scoring code, its definition unchanged", () => {
-  it("changes its implementation, the measurement digest and its lock entry, and makes the lock stale", async () => {
+  it("changes its implementation and its lock entry, and makes the lock stale", async () => {
     const { root, lockOf } = lockedTree();
-    const locked = await lockOf(SUITE);
-    expect(staleLockEntries(locked, await lockOf(SUITE))).toEqual([]);
+    const locked = await lockOf(MEASURES);
+    expect(staleLockEntries(locked, await lockOf(MEASURES))).toEqual([]);
 
     write(root, {
       "lib/helper.ts": "export const helper = (a: string): number => a.length * 2;\n",
     });
-    const current = await lockOf(SUITE);
+    const current = await lockOf(MEASURES);
     expect(current.measures["cites-page"]?.definition).toBe(
       locked.measures["cites-page"]?.definition,
     );
     expect(current.measures["cites-page"]?.implementation).not.toBe(
       locked.measures["cites-page"]?.implementation,
     );
-    expect(current.measurementDigest).not.toBe(locked.measurementDigest);
-    expect(staleLockEntries(locked, current)).toEqual([
-      "/measurementDigest",
-      "/measures/cites-page/implementation",
-    ]);
+    expect(staleLockEntries(locked, current)).toEqual(["/measures/cites-page/implementation"]);
   });
 });
 
 /** The fixture suite with a level measure whose lowest level has the given anchor. */
-const tone = (anchor: string): SuiteV2 => ({
-  ...SUITE,
-  measures: {
-    ...SUITE.measures,
-    tone: {
-      type: "level",
-      levels: [1, 2, 3],
-      anchors: { "1": anchor, "3": "warm" },
-      scorer: { builtin: "exact" },
-    },
+const tone = (anchor: string): Readonly<Record<string, LockedMeasure>> => ({
+  ...MEASURES,
+  tone: {
+    type: "level",
+    levels: [1, 2, 3],
+    anchors: { "1": anchor, "3": "warm" },
+    scorer: { builtin: "exact" },
   },
 });
 
@@ -470,10 +473,7 @@ describe("a change to a measure definition's wording alone", () => {
     const locked = await lockOf(tone("curt"));
     const current = await lockOf(tone("brusque"));
     expect(current.measures["tone"]?.implementation).toBe(locked.measures["tone"]?.implementation);
-    expect(staleLockEntries(locked, current)).toEqual([
-      "/measurementDigest",
-      "/measures/tone/definition",
-    ]);
+    expect(staleLockEntries(locked, current)).toEqual(["/measures/tone/definition"]);
   });
 });
 
@@ -513,7 +513,7 @@ export async function score(answer: string): Promise<number> {
   "scorers/thresholds.json": '{ "min": 1 }\n',
   "scorers/bonus.sh": "echo 1\n",
 };
-const LAZY_MEASURE: SuiteV2["measures"][string] = {
+const LAZY_MEASURE: LockedMeasure = {
   type: "binary",
   scorer: { instrument: "ts-scorers", module: "scorers/m.ts", export: "score" },
 };
