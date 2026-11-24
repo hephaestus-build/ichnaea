@@ -1,5 +1,5 @@
 import { stat } from "node:fs/promises";
-import { basename, dirname, extname, resolve } from "node:path";
+import { basename, dirname, extname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 
@@ -7,12 +7,15 @@ import { toJsonSchema } from "./contracts/json-schema.ts";
 import { notComputedReason, TriggerKind } from "./contracts/records/plan.ts";
 import { RECORD_CONTRACTS } from "./contracts/registry.ts";
 
-import { planSuite, writeAnalysis } from "./core/analysis-plan.ts";
+import { planSuite, readLockedPlan, writeAnalysis } from "./core/analysis-plan.ts";
 
 import { type CommandDefinition, decideCommand, reportCommand } from "./core/commands.ts";
 import { createHost, type Host } from "./core/host.ts";
 import { importRun } from "./core/import.ts";
 import { testMeasure } from "./core/measures.ts";
+import { FileStore } from "./core/store.ts";
+import { blockCalls } from "./plan/analysis.ts";
+import { resolutionLine } from "./plan/resolution.ts";
 import { TRIGGER_VARIES } from "./plan/rules.ts";
 import type { Config } from "./core/plugin.ts";
 import { CORE_VERSION } from "./core/version.ts";
@@ -94,7 +97,7 @@ const HELP = `${HELP_COMMANDS}\n\n${triggerHelp()}\n\nExit codes: 0 success, 1 a
 const CORE_HELP: ReadonlyMap<string, string> = new Map([
   [
     "plan",
-    "Usage: ichnaea plan [--config <file>] [--frozen]\n\nResolve the suite's analysis plan and lock.",
+    "Usage: ichnaea plan [--config <file>] [--frozen] [--pilot <run> --store <directory>]\n\nResolve the suite's analysis plan and lock.",
   ],
   ["schema", "Usage: ichnaea schema <record>\n\nPrint the normative JSON Schema of a record."],
   [
@@ -217,22 +220,38 @@ async function dispatch(
   if (command === "plan") {
     const { values } = parseArgs({
       args: rest,
-      options: { config: CONFIG_OPTION, frozen: { type: "boolean" } },
+      options: {
+        config: CONFIG_OPTION,
+        frozen: { type: "boolean" },
+        pilot: { type: "string" },
+        store: { type: "string" },
+      },
     });
     if (!config.suite) {
       err("plan: the configuration must define a suite");
       return 2;
     }
     const directory = dirname(configFile);
+    const prior =
+      values.frozen === true ? await readLockedPlan(join(directory, "plan.json")) : undefined;
+    const pilotId = values.pilot ?? prior?.pilot?.run;
+    const pilot =
+      pilotId === undefined
+        ? undefined
+        : await new FileStore(values.store ?? config.store ?? ".ichnaea").read(pilotId);
     const planned = await planSuite({
+      ...(pilot === undefined ? {} : { pilot }),
       suite: config.suite,
       host,
       directory,
       ichnaea: CORE_VERSION,
     });
     await writeAnalysis(directory, planned, values.frozen === true);
+    const { cases, holm, blocks, replicates } = planned.plan;
+    const calls = blockCalls(cases.length, holm.length, blocks, replicates);
+    const resolution = planned.plan.resolution?.map((entry) => resolutionLine(entry)).join(" • ");
     out(
-      `plan: ${planned.plan.cases.length} cases, ${planned.plan.blocks} blocks, ${planned.plan.maxCalls} calls budgeted`,
+      `plan: ${planned.plan.cases.length} cases, ${planned.plan.blocks} blocks, ${calls} calls${resolution ? ` • ${resolution}` : ""}`,
     );
     return 0;
   }

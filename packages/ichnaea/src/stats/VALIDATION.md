@@ -1302,3 +1302,21 @@ outputs and applies the rule; `scripts/stats/score-ni-points.ts` holds every poi
   a study, because each study's claim stands on its own; reuse across studies is allowed.
 - **One runtime:** every shard of both phases records its runtime, and the collector refuses shards
   of different runtimes.
+
+## Resolution for the default block horizon
+
+The planning model uses binary trials and one trial per case per block. The base rates are spaced
+evenly between 60% and 100%. Each simulated candidate rate is the base rate less the target drop,
+with a floor of zero. The simulation uses independent draws and excludes block shocks.
+
+Each entry gives the smallest drop detected in at least 80% of 1,024 simulated runs on a one-point
+grid. The seed is 20261124. The test uses the exact block sign-flip tail with ties and the
+per-measure level of 0.05 divided by the family size. The percentages are planning estimates.
+
+| Cases | One measure (6 blocks) | Two (7 blocks) | Three (7 blocks) | Four (8 blocks) |
+| ----- | ---------------------- | -------------- | ---------------- | --------------- |
+| 20    | 19 points, 240 calls   | 21, 280        | 22, 280          | 22, 320         |
+| 60    | 11 points, 720 calls   | 11, 840        | 12, 840          | 12, 960         |
+| 72    | 9 points, 864 calls    | 10, 1,008      | 11, 1,008        | 11, 1,152       |
+
+The resolution estimates do not set the validated domain of the decision tests.

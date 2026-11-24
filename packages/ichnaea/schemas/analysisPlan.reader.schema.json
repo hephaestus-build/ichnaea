@@ -248,6 +248,19 @@
               "retention": "record"
             }
           },
+          "targetDrop": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "maximum": 1,
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
+            }
+          },
           "coverageFloor": {
             "type": "number",
             "minimum": 0,
@@ -382,6 +395,252 @@
         ],
         "retention": "record"
       }
+    },
+    "resolution": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "measure": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*\\/[a-z0-9][a-z0-9._-]*$",
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
+            }
+          },
+          "basis": {
+            "type": "string",
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
+            },
+            "x-ichnaea-known": [
+              "default-simulation",
+              "noise-pilot",
+              "base-arm-rates"
+            ]
+          },
+          "targetPower": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
+            }
+          },
+          "level": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
+            }
+          },
+          "targetDrop": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
+            }
+          },
+          "powerAtTarget": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "x-ichnaea-data": {
+              "class": "none",
+              "identifier": "none",
+              "egress": [
+                "*"
+              ],
+              "retention": "record"
+            }
+          },
+          "result": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "detectable-drop",
+                    "x-ichnaea-data": {
+                      "class": "none",
+                      "identifier": "none",
+                      "egress": [
+                        "*"
+                      ],
+                      "retention": "record"
+                    }
+                  },
+                  "drop": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "x-ichnaea-data": {
+                      "class": "none",
+                      "identifier": "none",
+                      "egress": [
+                        "*"
+                      ],
+                      "retention": "record"
+                    }
+                  }
+                },
+                "required": [
+                  "kind",
+                  "drop"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "extreme",
+                    "x-ichnaea-data": {
+                      "class": "none",
+                      "identifier": "none",
+                      "egress": [
+                        "*"
+                      ],
+                      "retention": "record"
+                    }
+                  },
+                  "power": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "x-ichnaea-data": {
+                      "class": "none",
+                      "identifier": "none",
+                      "egress": [
+                        "*"
+                      ],
+                      "retention": "record"
+                    }
+                  }
+                },
+                "required": [
+                  "kind",
+                  "power"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "const": "unavailable",
+                    "x-ichnaea-data": {
+                      "class": "none",
+                      "identifier": "none",
+                      "egress": [
+                        "*"
+                      ],
+                      "retention": "record"
+                    }
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "x-ichnaea-data": {
+                      "class": "none",
+                      "identifier": "none",
+                      "egress": [
+                        "*"
+                      ],
+                      "retention": "record"
+                    }
+                  }
+                },
+                "required": [
+                  "kind",
+                  "reason"
+                ]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "pattern": "^(?!(?:detectable-drop|extreme|unavailable)$)"
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "x-ichnaea-unknown-kind": true
+              }
+            ]
+          }
+        },
+        "required": [
+          "measure",
+          "basis",
+          "targetPower",
+          "level",
+          "result"
+        ]
+      }
+    },
+    "pilot": {
+      "type": "object",
+      "properties": {
+        "run": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,199}$",
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          }
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "x-ichnaea-data": {
+            "class": "none",
+            "identifier": "none",
+            "egress": [
+              "*"
+            ],
+            "retention": "record"
+          }
+        }
+      },
+      "required": [
+        "run",
+        "digest"
+      ]
     },
     "base": {
       "type": "object",

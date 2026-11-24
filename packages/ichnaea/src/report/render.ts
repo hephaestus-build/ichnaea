@@ -61,6 +61,8 @@ export function renderMarkdown(view: DecisionView): string {
       ),
     );
   }
+  if (view.resolution.length > 0)
+    lines.push("", "**Resolution**", "", ...view.resolution.map((line) => `- ${md(line)}`));
   if (view.power.length > 0) {
     lines.push(
       "",
@@ -226,6 +228,7 @@ ${view.measures.some((m) => m.notes.length > 0) ? `<h2>Notes</h2>${list(view.mea
 ${view.gates.length > 0 ? `<h2>Hard gates</h2>${list(view.gates.map((g) => `${g.gate}: ${g.result}`))}` : ""}
 <h2>Flips</h2>
 ${view.flips.length === 0 ? "<p>No case changed its majority outcome.</p>" : `<table><thead><tr><th scope="col">Measure</th><th scope="col">Case</th><th scope="col">Direction</th><th scope="col">Base</th><th scope="col">Candidate</th></tr></thead><tbody>\n${flipRows}\n</tbody></table>`}
+${view.resolution.length > 0 ? `<h2>Resolution</h2>${list(view.resolution)}` : ""}
 ${view.power.length > 0 ? `<h2>Power statement</h2><table><thead><tr><th scope="col">Statement</th><th scope="col">Measure</th><th scope="col">Cases</th><th scope="col">Replicates</th><th scope="col">Zero-noise floor</th><th scope="col">MDE</th><th scope="col">Margin</th><th scope="col">Margin within reach</th><th scope="col">Assumption</th></tr></thead><tbody>\n${powerRows}\n</tbody></table>` : ""}
 <h2>Missing data</h2>
 <p>${escape(view.missingness)}</p>
