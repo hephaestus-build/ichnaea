@@ -69,3 +69,11 @@ Use `ichnaea plan --pilot <run>` with a noise run of the same base, cases, masks
 Without a pilot, the plan uses simulated base rates. The decision estimates resolution from the
 observed base-arm rates and labels that estimate. This model uses independent trials without
 block shocks.
+
+### Evidence admission
+
+Import and runner capture use `recordRun`. It binds each trial to the locked analysis digest,
+checks the value's card and source, and records the judge's version and digest for judge values.
+It drops values outside the applicability mask and keeps their counts. A value marked
+not applicable inside the mask counts as missing. For runner evidence, a missing block,
+context or timestamp gives `EXECUTION_UNRECORDED` and estimate-only output.

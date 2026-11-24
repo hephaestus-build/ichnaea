@@ -102,6 +102,7 @@
     "EnvironmentFactor",
     "Estimand",
     "Estimate",
+    "ExecutedBlock",
     "Exposure",
     "FAILURE_OUTCOME",
     "FORBIDDEN_CHECKS",
